@@ -19,7 +19,9 @@ unsigned int ProbabilisticMeshVisual::instance_counter_ = 0;
 ProbabilisticMeshVisual::ProbabilisticMeshVisual(Ogre::SceneManager* scene_manager,
                                                  Ogre::SceneNode* parent_node) :
     visualize_covariances_(false),
-    backface_culling_(false) {
+    backface_culling_(false),
+    edge_color_(0.0, 0.0, 0.0, 0.8),
+    surface_color_(0.0, 0.0, 1.0, 0.8) {
   scene_manager_ = scene_manager;
   frame_node_ = parent_node;
   instance_number_ = instance_counter_++;
@@ -109,7 +111,7 @@ void ProbabilisticMeshVisual::update() {
                           vrtx.y,
                           vrtx.z);
 
-    ogre_object->colour(0.0, 0.0, 1.0, 0.3);
+    ogre_object->colour(surface_color_);
 
   }
   for (auto triangle : msg_->triangles) {
@@ -132,7 +134,7 @@ void ProbabilisticMeshVisual::update() {
                             vrtx_a.y,
                             vrtx_a.z);
 
-      ogre_object->colour(1.0, 1.0, 1.0, 0.45);
+      ogre_object->colour(edge_color_);
 
       const auto& vrtx_b = msg_->vertices[triangle.vertex_indices[(i + 1) % 3]];
       ogre_object->position(vrtx_b.x,
@@ -175,15 +177,16 @@ void ProbabilisticMeshVisual::update() {
     }
   }
   Ogre::ManualObject::ManualObjectSection* section = ogre_object->end();
+  const Ogre::MaterialPtr& mat = section->getMaterial();
+
+  // set material properties for transparency
+  mat->setSceneBlending(Ogre::SceneBlendType::SBT_TRANSPARENT_ALPHA);
+  mat->setDepthWriteEnabled(false);
 
   // if backface culling is not desired, set culling mode to CULL_NONE
-  if (backface_culling_) {
-    const Ogre::MaterialPtr& mat = section->getMaterial();
-    mat->setCullingMode(Ogre::CullingMode::CULL_CLOCKWISE);
-  } else {
-    const Ogre::MaterialPtr& mat = section->getMaterial();
-    mat->setCullingMode(Ogre::CullingMode::CULL_NONE);
-  }
+  mat->setCullingMode(backface_culling_ ?
+                      Ogre::CullingMode::CULL_CLOCKWISE :
+                      Ogre::CullingMode::CULL_NONE);
 
 }
 
