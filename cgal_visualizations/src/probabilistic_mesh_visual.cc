@@ -6,6 +6,7 @@
 #include <OGRE/OgreSceneManager.h>
 #include <OGRE/OgreSceneNode.h>
 #include <rviz/ogre_helpers/shape.h>
+#include <rviz/properties/bool_property.h>
 #include <ros/package.h> // This dependency should be moved out of here, it is just used for a search path.
 #include <ros/ros.h>
 
@@ -17,10 +18,21 @@ unsigned int ProbabilisticMeshVisual::instance_counter_ = 0;
 
 ProbabilisticMeshVisual::ProbabilisticMeshVisual(Ogre::SceneManager* scene_manager,
                                                  Ogre::SceneNode* parent_node) :
-    visualize_covariances_(false) {
+    visualize_covariances_(false),
+    backface_culling_(false) {
   scene_manager_ = scene_manager;
   frame_node_ = parent_node;
   instance_number_ = instance_counter_++;
+
+  initResourcePaths();
+
+  using namespace std::chrono;
+  unsigned long long ticks =
+      duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+  object_name_ = std::to_string(ticks);
+}
+
+void ProbabilisticMeshVisual::initResourcePaths() {
 
   // set up resource paths
   std::string rviz_path = ros::package::getPath("rviz");
@@ -66,16 +78,16 @@ ProbabilisticMeshVisual::ProbabilisticMeshVisual(Ogre::SceneManager* scene_manag
                                                                      ROS_PACKAGE_NAME);
     }
   }
-  using namespace std::chrono;
-  unsigned long long ticks =
-      duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-  object_name_ = std::to_string(ticks);
+}
+
+void ProbabilisticMeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr& msg) {
+  msg_ = msg;
 }
 
 ProbabilisticMeshVisual::~ProbabilisticMeshVisual() {
 }
 
-void ProbabilisticMeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr& msg) {
+void ProbabilisticMeshVisual::update() {
 
   Ogre::ManualObject* ogre_object;
 
@@ -88,11 +100,11 @@ void ProbabilisticMeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::Con
   ogre_object->clear();
   BOOST_ASSERT(ogre_object != nullptr);
 
-  ogre_object->estimateVertexCount(msg->vertices.size());
+  ogre_object->estimateVertexCount(msg_->vertices.size());
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
-  for (auto vrtx : msg->vertices) {
+  for (auto vrtx : msg_->vertices) {
     ogre_object->position(vrtx.x,
                           vrtx.y,
                           vrtx.z);
@@ -100,7 +112,7 @@ void ProbabilisticMeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::Con
     ogre_object->colour(0.0, 0.0, 1.0, 0.3);
 
   }
-  for (auto triangle : msg->triangles) {
+  for (auto triangle : msg_->triangles) {
     ogre_object->triangle(triangle.vertex_indices[2],
                           triangle.vertex_indices[1],
                           triangle.vertex_indices[0]);
@@ -111,18 +123,18 @@ void ProbabilisticMeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::Con
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_LINE_LIST);
 
-  for (auto triangle : msg->triangles) {
+  for (auto triangle : msg_->triangles) {
 
     for (int i = 0; i < 3; ++i) {
 
-      const auto& vrtx_a = msg->vertices[triangle.vertex_indices[i]];
+      const auto& vrtx_a = msg_->vertices[triangle.vertex_indices[i]];
       ogre_object->position(vrtx_a.x,
                             vrtx_a.y,
                             vrtx_a.z);
 
       ogre_object->colour(1.0, 1.0, 1.0, 0.45);
 
-      const auto& vrtx_b = msg->vertices[triangle.vertex_indices[(i + 1) % 3]];
+      const auto& vrtx_b = msg_->vertices[triangle.vertex_indices[(i + 1) % 3]];
       ogre_object->position(vrtx_b.x,
                             vrtx_b.y,
                             vrtx_b.z);
@@ -134,17 +146,17 @@ void ProbabilisticMeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::Con
   // code to visualize covariances as lines. Disabled per default.
   if (visualize_covariances_) {
 
-    for (size_t i = 0; i < msg->vertices.size(); ++i) {
+    for (size_t i = 0; i < msg_->vertices.size(); ++i) {
 
       Ogre::Vector3 mean;
-      mean.x = msg->vertices[i].x;
-      mean.y = msg->vertices[i].y;
-      mean.z = msg->vertices[i].z;
+      mean.x = msg_->vertices[i].x;
+      mean.y = msg_->vertices[i].y;
+      mean.z = msg_->vertices[i].z;
 
       Ogre::Vector3 stdev;
-      stdev.x = sqrt(msg->cov_vertices[i].x);
-      stdev.y = sqrt(msg->cov_vertices[i].y);
-      stdev.z = sqrt(msg->cov_vertices[i].z);
+      stdev.x = sqrt(msg_->cov_vertices[i].x);
+      stdev.y = sqrt(msg_->cov_vertices[i].y);
+      stdev.z = sqrt(msg_->cov_vertices[i].z);
 
       Ogre::Vector3 start = mean - stdev, end = mean + stdev;
 
@@ -162,8 +174,25 @@ void ProbabilisticMeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::Con
 
     }
   }
-  ogre_object->end();
+  Ogre::ManualObject::ManualObjectSection* section = ogre_object->end();
 
+  // if backface culling is not desired, set culling mode to CULL_NONE
+  if (backface_culling_) {
+    const Ogre::MaterialPtr& mat = section->getMaterial();
+    mat->setCullingMode(Ogre::CullingMode::CULL_CLOCKWISE);
+  } else {
+    const Ogre::MaterialPtr& mat = section->getMaterial();
+    mat->setCullingMode(Ogre::CullingMode::CULL_NONE);
+  }
+
+}
+
+void ProbabilisticMeshVisual::clear() {
+  Ogre::ManualObject* ogre_object;
+  if (scene_manager_->hasManualObject(object_name_)) {
+    ogre_object = scene_manager_->getManualObject(object_name_);
+    scene_manager_->destroyManualObject(ogre_object);
+  }
 }
 
 void ProbabilisticMeshVisual::setFramePosition(const Ogre::Vector3& position) {
