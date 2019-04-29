@@ -1,12 +1,10 @@
+#include <cgal_visualizations/probabilistic_mesh_display.h>
+
 #include <OGRE/OgreSceneManager.h>
 #include <OGRE/OgreSceneNode.h>
-
-#include <tf/transform_listener.h>
-
 #include <rviz/frame_manager.h>
 #include <rviz/visualization_manager.h>
-
-#include <cgal_visualizations/probabilistic_mesh_display.h>
+#include <tf/transform_listener.h>
 
 namespace cad_percept {
 

@@ -1,10 +1,9 @@
 #ifndef CGAL_VISUALIZATIONS_PROBABILISTIC_MESH_DISPLAY_H
 #define CGAL_VISUALIZATIONS_PROBABILISTIC_MESH_DISPLAY_H
 
+#include <Eigen/Dense>
 #include <rviz/message_filter_display.h>
 #include <cgal_msgs/ProbabilisticMesh.h>
-
-#include <Eigen/Dense>
 #include "probabilistic_mesh_visual.h"
 
 namespace cad_percept {

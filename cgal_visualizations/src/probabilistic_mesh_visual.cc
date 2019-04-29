@@ -1,13 +1,13 @@
+#include <cgal_visualizations/probabilistic_mesh_visual.h>
+
 #include <limits>
+#include <chrono>
 
 #include <OGRE/OgreSceneManager.h>
 #include <OGRE/OgreSceneNode.h>
 #include <rviz/ogre_helpers/shape.h>
 #include <ros/package.h> // This dependency should be moved out of here, it is just used for a search path.
 #include <ros/ros.h>
-#include <chrono>
-
-#include <cgal_visualizations/probabilistic_mesh_visual.h>
 
 namespace cad_percept {
 
