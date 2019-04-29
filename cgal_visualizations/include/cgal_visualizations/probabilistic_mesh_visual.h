@@ -3,7 +3,7 @@
 
 #include <OGRE/OgreManualObject.h>
 #include <cgal_msgs/ProbabilisticMesh.h>
-#include <rviz/properties/bool_property.h>
+#include <QtGui/QColor>
 
 namespace cad_percept {
 namespace visualizations {
@@ -29,6 +29,16 @@ class ProbabilisticMeshVisual {
     backface_culling_ = value;
   }
 
+  void setAppearance(const Ogre::ColourValue edge_color,
+                     const Ogre::ColourValue surface_color,
+                     const float alpha) {
+    edge_color_ = edge_color;
+    edge_color_.a = alpha;
+
+    surface_color_ = surface_color;
+    surface_color_.a = alpha;
+  }
+
  private:
   Ogre::SceneNode* frame_node_;
   Ogre::SceneManager* scene_manager_;
@@ -39,6 +49,8 @@ class ProbabilisticMeshVisual {
   static unsigned int instance_counter_;
   bool visualize_covariances_;
   bool backface_culling_;
+  Ogre::ColourValue edge_color_;
+  Ogre::ColourValue surface_color_;
 };
 } // namespace visualizations
 }  // namespace cad-percept

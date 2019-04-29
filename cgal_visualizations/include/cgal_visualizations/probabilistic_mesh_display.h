@@ -3,6 +3,9 @@
 
 #include <Eigen/Dense>
 #include <rviz/message_filter_display.h>
+#include <rviz/properties/bool_property.h>
+#include <rviz/properties/color_property.h>
+#include <rviz/properties/float_property.h>
 #include <cgal_msgs/ProbabilisticMesh.h>
 #include "probabilistic_mesh_visual.h"
 
@@ -25,6 +28,7 @@ class ProbabilisticMeshDisplay
  private Q_SLOTS:
   // Property Callbacks
   void backfaceCullingPropertyChanged();
+  void appearencePropertyChanged();
 
  protected:
   virtual void onInitialize();
@@ -35,6 +39,10 @@ class ProbabilisticMeshDisplay
 
   struct {
     rviz::BoolProperty* BackfaceCulling;
+    rviz::ColorProperty* SurfaceColor;
+    rviz::ColorProperty* EdgeColor;
+    rviz::FloatProperty* Alpha;
+
   } properties_;
 
   std::unique_ptr<ProbabilisticMeshVisual> visual_;
