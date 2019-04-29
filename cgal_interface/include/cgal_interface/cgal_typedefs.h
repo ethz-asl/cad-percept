@@ -22,6 +22,8 @@
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 
 namespace cad_percept {
+namespace cgal {
+
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef Kernel::FT FT;
 typedef Kernel::Point_3 Point;
@@ -62,5 +64,6 @@ typedef boost::optional<SurfaceMeshAABBTree::Intersection_and_primitive_id<Ray>:
 typedef SurfaceMeshAABBTree::Primitive_id SurfaceMeshPrimitiveId;
 typedef std::pair<Point, SurfaceMeshPrimitive::Id> PointAndPrimitiveId;
 
+}
 }
 #endif //CGAL_INTERFACE_CGAL_TYPEDEFS_H
