@@ -15,5 +15,9 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>cgal_catkin</depend>
-  <depend>roscpp</depend>
+  <depend>cgal_msgs</depend>
+  <depend>pcl_ros</depend>
+  <depend>shape_msgs</depend>
+
+  shape_msgs
 </package>
