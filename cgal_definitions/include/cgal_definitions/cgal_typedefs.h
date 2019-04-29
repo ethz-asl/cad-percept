@@ -2,24 +2,24 @@
 // Created by mpantic on 20.02.19.
 //
 
-#ifndef CGAL_INTERFACE_CGAL_TYPEDEFS_H
-#define CGAL_INTERFACE_CGAL_TYPEDEFS_H
+#ifndef CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
+#define CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 
 #include <CGAL/Simple_cartesian.h>
 
-#include <CGAL/Triangulation_vertex_base_with_info_2.h>
-#include <CGAL/Polyhedron_3.h>
-#include <CGAL/Polyhedron_items_with_id_3.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Polygon_mesh_processing/measure.h>
-#include <CGAL/Surface_mesh_parameterization/parameterize.h>
+#include <CGAL/Polyhedron_3.h>
+#include <CGAL/Polyhedron_items_with_id_3.h>
 #include <CGAL/Surface_mesh.h>
+#include <CGAL/Surface_mesh_parameterization/parameterize.h>
+#include <CGAL/Triangulation_vertex_base_with_info_2.h>
 #include <CGAL/property_map.h>
 
 // tree typdefs
-#include <CGAL/AABB_tree.h>
-#include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
+#include <CGAL/AABB_traits.h>
+#include <CGAL/AABB_tree.h>
 
 namespace cad_percept {
 namespace cgal {
@@ -66,4 +66,4 @@ typedef std::pair<Point, SurfaceMeshPrimitive::Id> PointAndPrimitiveId;
 
 }
 }
-#endif //CGAL_INTERFACE_CGAL_TYPEDEFS_H
+#endif //CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
