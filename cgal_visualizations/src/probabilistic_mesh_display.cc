@@ -23,8 +23,6 @@ void ProbabilisticMeshDisplay::reset() {
 
 void ProbabilisticMeshDisplay::processMessage(
     const cgal_msgs::ProbabilisticMesh::ConstPtr& msg) {
-
-
   // Here we call the rviz::FrameManager to get the transform from the
   // fixed frame to the frame in the header of this Imu message.  If
   // it fails, we can't do anything else so we return.
@@ -53,4 +51,4 @@ void ProbabilisticMeshDisplay::processMessage(
 
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::ProbabilisticMeshDisplay,
-    rviz::Display)
+                       rviz::Display)

@@ -1,6 +1,6 @@
 <library path="lib/libcgal_visualizations">
   <class name="cgal_visualizations/ProbabilisticMeshDisplay"
-         type="cad-percept::visualizations::ProbabilisticMeshDisplay"
+         type="cad_percept::visualizations::ProbabilisticMeshDisplay"
          base_class_type="rviz::Display">
     <description>Displays Probabilistic Meshes.</description>
     <message_type>cgal_msgs/ProbabilisticMesh</message_type>
