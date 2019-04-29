@@ -20,12 +20,22 @@ class ProbabilisticMeshDisplay
   ProbabilisticMeshDisplay() {}
   virtual ~ProbabilisticMeshDisplay();
 
+  void initProperties();
+
+ private Q_SLOTS:
+  // Property Callbacks
+  void backfaceCullingPropertyChanged();
+
  protected:
   virtual void onInitialize();
   virtual void reset();
 
  private:
   void processMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr& msg);
+
+  struct {
+    rviz::BoolProperty* BackfaceCulling;
+  } properties_;
 
   std::unique_ptr<ProbabilisticMeshVisual> visual_;
 };

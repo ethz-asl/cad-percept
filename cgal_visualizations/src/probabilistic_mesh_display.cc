@@ -10,13 +10,38 @@ namespace cad_percept {
 
 namespace visualizations {
 
-void ProbabilisticMeshDisplay::onInitialize() { MFDClass::onInitialize(); }
+void ProbabilisticMeshDisplay::onInitialize() {
+  MFDClass::onInitialize();
+  initProperties();
+}
 
 ProbabilisticMeshDisplay::~ProbabilisticMeshDisplay() {}
 
 void ProbabilisticMeshDisplay::reset() {
   MFDClass::reset();
+
+  if (visual_ != nullptr) {
+    visual_->clear();
+  }
   visual_.reset();
+}
+
+void ProbabilisticMeshDisplay::initProperties() {
+  properties_.BackfaceCulling = new rviz::BoolProperty("Backface Culling",
+                                                       false,
+                                                       "If backface culling is active, a surface is only visible from the front face defined by the normal",
+                                                       this,
+                                                       SLOT(
+                                                           backfaceCullingPropertyChanged())
+  );
+
+}
+
+void ProbabilisticMeshDisplay::backfaceCullingPropertyChanged() {
+  if (visual_ != nullptr) {
+    visual_->setBackFaceCulling(properties_.BackfaceCulling->getBool());
+    visual_->update();
+  }
 }
 
 void ProbabilisticMeshDisplay::processMessage(
@@ -42,6 +67,7 @@ void ProbabilisticMeshDisplay::processMessage(
   visual_->setMessage(msg);
   visual_->setFramePosition(position);
   visual_->setFrameOrientation(orientation);
+  visual_->update();
 }
 
 }  // namespace visualizations
