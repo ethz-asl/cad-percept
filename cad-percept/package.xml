@@ -14,8 +14,11 @@
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
 
-  <depend>cgal_catkin</depend>
   <depend>roscpp</depend>
+  <depend>cgal_catkin</depend>
+
   <depend>cgal_interface</depend>
+  <depend>cgal_msgs</depend>
   <depend>cgal_visualizations</depend>
+
 </package>
