@@ -18,7 +18,7 @@
   <depend>roscpp</depend>
   <depend>cgal_catkin</depend>
   <depend>cgal_msgs</depend>
-  <depend>cgal_interface</depend>
+  <depend>cgal_definitions</depend>
   <depend>rviz</depend>
   <depend>Eigen3</depend>
   <export>
