@@ -3,7 +3,7 @@
 
 #include <rviz/message_filter_display.h>
 #include <cgal_msgs/ProbabilisticMesh.h>
-#include <memory>
+
 #include <Eigen/Dense>
 #include "probabilistic_mesh_visual.h"
 
@@ -15,7 +15,7 @@ class ProbabilisticMeshVisual;  // Forward definition
 
 class ProbabilisticMeshDisplay
     : public rviz::MessageFilterDisplay<cgal_msgs::ProbabilisticMesh> {
-  Q_OBJECT
+ Q_OBJECT
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   ProbabilisticMeshDisplay() {}
