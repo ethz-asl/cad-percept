@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>cad-percept</name>
+  <name>cgal_visualizations</name>
   <version>0.0.1</version>
-  <description>cad-percept</description>
+  <description>cgal_visualizations</description>
 
   <author email="mpantic@ethz.ch">Michael Pantic</author>
   <author email="gawela@ethz.ch">Abel Gawel</author>
@@ -15,7 +15,6 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>cgal_catkin</depend>
-  <depend>roscpp</depend>
   <depend>cgal_interface</depend>
-  <depend>cgal_visualizations</depend>
+  <depend>roscpp</depend>
 </package>
