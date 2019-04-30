@@ -12,17 +12,17 @@ Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const 
   associations.distances.resize(pc_msg.width);
   for (size_t i = 0u; i < pc_msg.width; ++i) {
 
-    architect_model::Point_and_primitive_id ppid =
-        architect_model_->getClosestTriangle(pc_msg[i].x,
+    cgal::PointAndPrimitiveId ppid =
+        mesh_model_->getClosestTriangle(pc_msg[i].x,
                                              pc_msg[i].y,
                                              pc_msg[i].z);
-    architect_model::Point pt = ppid.first;
+    cgal::Point pt = ppid.first;
     associations.points_from(0, i) = pc_msg[i].x;
     associations.points_from(1, i) = pc_msg[i].y;
     associations.points_from(2, i) = pc_msg[i].z;
 
     // Raycast into direction of triangle normal.
-    Eigen::Vector3d normal = architect_model_->getNormal(ppid);
+    Eigen::Vector3d normal = mesh_model_->getNormal(ppid);
     normal.normalize();
     Eigen::Vector3d relative = Eigen::Vector3d(pt.x(), pt.y(), pt.z())
         - Eigen::Vector3d(pc_msg[i].x, pc_msg[i].y, pc_msg[i].z);

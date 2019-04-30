@@ -16,5 +16,6 @@
 
   <depend>cgal_catkin</depend>
   <depend>cgal_definitions</depend>
+  <depend>pcl_ros</depend>
   <depend>roscpp</depend>
 </package>

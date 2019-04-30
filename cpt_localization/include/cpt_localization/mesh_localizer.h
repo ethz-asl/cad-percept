@@ -1,7 +1,10 @@
 #ifndef CPT_LOCALIZATION_MESH_LOCALIZER_H
 #define CPT_LOCALIZATION_MESH_LOCALIZER_H
 
+#include <pcl_ros/point_cloud.h>
+
 #include <cgal_definitions/cgal_typedefs.h>
+#include <cgal_definitions/mesh_model.h>
 
 namespace cad_percept {
 namespace localization {
@@ -29,7 +32,7 @@ class MeshLocalizer {
   void icm(const PointCloud &pc_msg);
 
  private:
-  cad_percept::cgal::SurfaceMesh mesh_;
+  std::shared_ptr<cgal::MeshModel> mesh_model_;
 };
 
 }
