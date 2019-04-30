@@ -45,18 +45,50 @@ bool Delaunay3DMesher::getMesh(cad_percept::cgal::Polyhedron* output,
     counters->processing_time = execution_time.count();
   }
 
+  return true;
 }
 
 template<class HDS>
 void Delaunay3DMesher::Delaunay3DToPolyhedron<HDS>::operator()(HDS& hds) {
 
-  // add all vertices with their respective index
+  size_t num_vertices = triangulation_.number_of_vertices();
+  size_t num_facets = triangulation_.number_of_cells();
+
+  //  Build a builder and begin construction
+  CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
+  B.begin_surface(num_vertices, num_facets);
+
+  // add all vertices and check index
+  uint test_index = 0;
   for (DelaunayTriangulation::Vertex_iterator
            vit = triangulation_.vertices_begin();
        vit != triangulation_.vertices_end(); ++vit) {
-    std::cout << (*vit) << std::endl;
-    std::cout << vit->info() << std::endl;
+    cgal::Point point = vit->point();
+    uint index = vit->info();
+
+    if (index != test_index++) {
+      std::cout << "Warning, indexing error during conversion" << std::endl;
+    }
+    // check assumption
+    B.add_vertex(point);
   }
+
+  // Iterate through all triangles and add them
+  for (DelaunayTriangulation::Cell_iterator cit = triangulation_.cells_begin();
+       cit != triangulation_.cells_end(); ++cit) {
+
+    DelaunayTriangulation::Cell_handle cell = cit;
+
+    // Create new facet and add vertices
+    B.begin_facet();
+    for (int i = 0; i < 3; ++i) {
+      uint vertex_index = cell->vertex(i + 1)->info();
+      B.add_vertex_to_facet(vertex_index);
+    }
+    B.end_facet();
+  }
+
+  B.end_surface();
 }
 }
 }
