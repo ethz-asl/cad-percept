@@ -14,8 +14,8 @@ Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const 
 
     cgal::PointAndPrimitiveId ppid =
         mesh_model_->getClosestTriangle(pc_msg[i].x,
-                                             pc_msg[i].y,
-                                             pc_msg[i].z);
+                                        pc_msg[i].y,
+                                        pc_msg[i].z);
     cgal::Point pt = ppid.first;
     associations.points_from(0, i) = pc_msg[i].x;
     associations.points_from(1, i) = pc_msg[i].y;

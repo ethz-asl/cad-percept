@@ -20,15 +20,19 @@ struct Associations {
 class MeshLocalizer {
  public:
   MeshLocalizer();
-  MeshLocalizer(const cad_percept::cgal::SurfaceMesh& mesh);
+  MeshLocalizer(const cad_percept::cgal::SurfaceMesh &mesh);
 
   ~MeshLocalizer();
 
-  // Associates point clouds with mesh.
+  /*
+   Associates point clouds with mesh.
+   */
   Associations associatePointCloud(const PointCloud &pc_msg) const;
 
-  // Iteratively minimize error and re-associatepoint cloud with mesh. ICM =
-  // iterative closest mesh.
+  /*
+  Iteratively minimize error and re-associatepoint cloud with mesh. ICM =
+  iterative closest mesh.
+   */
   void icm(const PointCloud &pc_msg);
 
  private:
