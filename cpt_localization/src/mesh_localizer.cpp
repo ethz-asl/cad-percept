@@ -1,3 +1,5 @@
+#include <kindr/minimal/quat-transformation-gtsam.h>
+
 #include "cpt_localization/mesh_localizer.h"
 
 namespace cad_percept {
@@ -39,8 +41,51 @@ Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const 
   return associations;
 }
 
-void MeshLocalizer::icm(const PointCloud &pc_msg) {
+void MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
+  bool iterate = true;
+  PointCloud point_cloud = pc_msg;
+  SE3 pose = initial_pose;
+  gtsam::noiseModel::Base::shared_ptr match_noise;
+  Eigen::Matrix<double,6,1> noise_model;
+  noise_model = Eigen::Matrix<double, 6, 1>::Ones() * 0.1;
+  match_noise = gtsam::noiseModel::Diagonal::Sigmas(noise_model);
+  while (iterate) {
+    // Associate point cloud with mesh.
+    Associations associations = associatePointCloud(point_cloud);
+    // Weight outliers? Or simply use robust cost function?
 
+    // Reduce error with GTSAM?.
+    // Create expression factors from associations and add to factor graph.
+    SE3::Position mu_A_SA, mu_B_SB; // The point measures in ref frames.
+    Eigen::Vector3d normal_SA;
+    SE3::Position normalRef_l = pose.getRotation().inverseRotate
+        (normal_SA);
+    gtsam::Expression<Eigen::Vector3d> E_normalRef_l(normalRef_l);
+    gtsam::Expression<Eigen::Vector3d> E_mu_A_SA(mu_A_SA);
+    gtsam::Expression<Eigen::Vector3d> E_mu_B_SB(mu_B_SB);
+    gtsam::Expression<SE3> T_W_A(pose); // 0,0,0,0 (origin).
+    gtsam::Expression<SE3> T_W_B(pose); // Current pose.
+    gtsam::Expression<Eigen::Vector3d> pointTransformedB = kindr::minimal::transform(T_W_B, E_mu_B_SB);
+    gtsam::Expression<Eigen::Vector3d> pointTransformedA = kindr::minimal::transform(T_W_A, E_mu_A_SA);
+    gtsam::Expression<Eigen::Vector3d> substracted = kindr::minimal::vectorDifference(pointTransformedA, pointTransformedB);
+    gtsam::Expression<Eigen::Vector3d> E_normalRef_w = kindr::minimal::rotate(kindr::minimal::rotationFromTransformation(T_W_A),
+                                                                       E_normalRef_l);
+    gtsam::Expression<double> error = multiplyVectors(substracted,E_normalRef_w);
+    gtsam::ExpressionFactor<double> match_factor(match_noise,(double (0)),
+        error);
+    factor_graph_.push_back(match_factor);
+
+
+
+
+
+
+
+    // Update point_cloud with transformation.
+
+    // Add stop condition.
+    iterate = false;
+  }
 }
 
 }
