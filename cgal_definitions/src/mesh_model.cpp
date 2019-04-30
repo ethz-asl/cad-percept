@@ -1,7 +1,7 @@
 #include "cgal_definitions/mesh_model.h"
 
 namespace cad_percept {
-namespace mesh_model {
+namespace cgal {
 
 MeshModel::MeshModel(const std::string &off_path, bool verbose)
     : verbose_(verbose) {
@@ -19,7 +19,9 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
  * and distance queries. For this, we build an AABB tree.
  **/
   tree_ =
-      std::make_shared<Tree>(CGAL::faces(P_).first, CGAL::faces(P_).second, P_);
+      std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
+                                            CGAL::faces(P_).second,
+                                            P_);
   tree_->accelerate_distance_queries();
 };
 
@@ -37,22 +39,19 @@ Intersection MeshModel::getIntersection(
   Point onRay = Point(ray_points(0, 1), ray_points(1, 1), ray_points(2, 1));
   Ray query(ray_origin, onRay);
 
-  if (verbose_)
-    ROS_INFO(" %i intersections ",
-             tree_->number_of_intersected_primitives(query));
+  if (verbose_) {
+    std::cout << " %i intersections " << tree_->number_of_intersected_primitives
+        (query) << std::endl;
+  }
 
   // compute the closest intersection point and the distance
-  Ray_intersection intersection = tree_->first_intersection(query);
+  SurfaceMeshRayIntersection intersection = tree_->first_intersection(query);
   if (intersection) {
     if (boost::get<Point>(&(intersection->first))) {
       Intersection intersection_result;
       Point p = *boost::get<Point>(&(intersection->first));
       intersection_result.point = Eigen::Vector3d(p.x(), p.y(), p.z());
-      // Polyhedron::Face_handle face_handle =
-      //   *boost::get<Polyhedron::Face_handle>(&(intersection->second));
-      // Polyhedron::Face_handle face_handle =
-      //    tree_->first_intersected_primitive(query);
-      Polyhedron::Face_handle face_handle = intersection->second;
+      SurfaceMesh::Face_handle face_handle = intersection->second;
       Triangle intersected_triangle(
           face_handle->halfedge()->vertex()->point(),
           face_handle->halfedge()->next()->vertex()->point(),
@@ -79,14 +78,14 @@ double MeshModel::getDistance(
   return sqrt(squared_distance);
 }
 
-Point_and_primitive_id MeshModel::getClosestTriangle(
+PointAndPrimitiveId MeshModel::getClosestTriangle(
     double x, double y, double z) const {
   Point pt = Point(x, y, z);
   return tree_->closest_point_and_primitive(pt);
 }
 
-Eigen::Vector3d MeshModel::getNormal(const Point_and_primitive_id &ppid) const {
-  Polyhedron::Face_handle face_handle = ppid.second;
+Eigen::Vector3d MeshModel::getNormal(const PointAndPrimitiveId &ppid) const {
+  SurfaceMesh::Face_handle face_handle = ppid.second;
   Triangle intersected_triangle(
       face_handle->halfedge()->vertex()->point(),
       face_handle->halfedge()->next()->vertex()->point(),
@@ -101,7 +100,9 @@ void MeshModel::transform(const Transformation &transform) {
                  P_.points_begin(),
                  transform);
   tree_ =
-      std::make_shared<Tree>(CGAL::faces(P_).first, CGAL::faces(P_).second, P_);
+      std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
+                                            CGAL::faces(P_).second,
+                                            P_);
   tree_->accelerate_distance_queries();
 }
 

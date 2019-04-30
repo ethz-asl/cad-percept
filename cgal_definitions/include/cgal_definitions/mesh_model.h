@@ -11,7 +11,7 @@
 #include "cgal_typedefs.h"
 
 namespace cad_percept {
-namespace mesh_model {
+namespace cgal {
 
 struct Intersection {
   Eigen::Vector3d point;
@@ -20,7 +20,7 @@ struct Intersection {
 
 class MeshModel {
  public:
-  ArchitectModel(const std::string &off_pathm, bool verbose = false);
+  MeshModel(const std::string &off_pathm, bool verbose = false);
 
   /**
  * Get the Intersection point with the arhcitecture model from the pose of the
@@ -40,12 +40,12 @@ class MeshModel {
   /**
  * Get closest point on surface and surface id to a given point.
  */
-  Point_and_primitive_id getClosestTriangle(double x, double y, double z) const;
+  PointAndPrimitiveId getClosestTriangle(double x, double y, double z) const;
 
   /**
  * Get normal of primitive.
  */
-  Eigen::Vector3d getNormal(const Point_and_primitive_id &ppid) const;
+  Eigen::Vector3d getNormal(const PointAndPrimitiveId &ppid) const;
 
   /**
  * Transform the architect model.
@@ -57,8 +57,8 @@ class MeshModel {
  */
   int size() const;
  private:
-  Polyhedron P_;
-  std::shared_ptr<Tree> tree_;
+  SurfaceMesh P_;
+  std::shared_ptr<SurfaceMeshAABBTree> tree_;
   bool verbose_;
 };
 }
