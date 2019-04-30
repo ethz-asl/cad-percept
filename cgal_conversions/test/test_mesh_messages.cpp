@@ -1,26 +1,72 @@
+#include <CGAL/Polyhedron_incremental_builder_3.h>
+#include <gflags/gflags.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_definitions/cgal_typedefs.h>
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
-#include <cgal>
-
 #include <cgal_msgs/TriangleMesh.h>
 
 using namespace cad_percept::cgal;
 
+typedef SurfaceMesh::HalfedgeDS HalfedgeDS;
+
+// A modifier creating a triangle with the incremental builder.
+template <class HDS>
+class TestingMesh : public CGAL::Modifier_base<HDS> {
+ public:
+  TestingMesh() {}
+  void operator()(HDS& hds) {
+    // Postcondition: hds is a valid polyhedral surface.
+    CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
+    B.begin_surface(4, 3);
+    B.add_vertex(Point(0, 0, 0));
+    B.add_vertex(Point(1, 0, 0));
+    B.add_vertex(Point(0, 1, 0));
+    B.add_vertex(Point(1, 1, 0));
+
+    B.begin_facet();
+    B.add_vertex_to_facet(0);
+    B.add_vertex_to_facet(1);
+    B.add_vertex_to_facet(2);
+    B.end_facet();
+
+    B.begin_facet();
+    B.add_vertex_to_facet(1);
+    B.add_vertex_to_facet(3);
+    B.add_vertex_to_facet(2);
+    B.end_facet();
+
+    B.begin_facet();
+    B.add_vertex_to_facet(0);
+    B.add_vertex_to_facet(3);
+    B.add_vertex_to_facet(1);
+    B.end_facet();
+
+    B.end_surface();
+  }
+};
+
+geometry_msgs::Point pointMsg(int x, int y, int z) {
+  geometry_msgs::Point p;
+  p.x = x;
+  p.y = y;
+  p.z = z;
+  return p;
+}
+
 TEST(CGALConversionsTest, traingle_mesh_to_msg) {
   SurfaceMesh m;
-  // create 4 vertices
-  vertex_descriptor a = m.add_vertex(Point(1, 0, 0));
-  vertex_descriptor b = m.add_vertex(Point(0, 1, 0));
-  vertex_descriptor c = m.add_vertex(Point(0, 0, 0));
-  vertex_descriptor d = m.add_vertex(Point(1, 1, 0));
-  // create 3 triangles
-  m.add_face(a, b, c);
-  m.add_face(b, c, d);
-  m.add_face(a, b, d);
+  TestingMesh<HalfedgeDS> testcase;
+  m.delegate(testcase);
+
   // get message from mesh
-  TriangleMeshMsg msg = triangleMeshToMsg(m);
-  ExpectElementsAreArray(msg.vertices,
-                         {{1, 0, 0}, {0, 1, 0}, {0, 0, 0}, {1, 1, 0}});
+  cgal_msgs::TriangleMesh msg;
+  triangleMeshToMsg(&m, &msg);
+  EXPECT_EQ(msg.vertices.size(), 4);
+  // geometry_msgs::Point a = pointMsg(1, 0, 0);
+  // geometry_msgs::Point b = pointMsg(0, 1, 0);
+  // geometry_msgs::Point c = pointMsg(0, 0, 0);
+  // geometry_msgs::Point d = pointMsg(1, 1, 0);
+  // EXPECT_THAT(msg.vertices, testing::UnorderedElementsAre(a, b, c, d));
 }
