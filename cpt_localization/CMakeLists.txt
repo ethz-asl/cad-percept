@@ -12,13 +12,17 @@ add_definitions(-std=c++11 -Wall -Wextra)
 #############
 cs_add_library(${PROJECT_NAME}
         src/mesh_localizer.cpp
+        src/mesh_localizer_ros.cpp
         )
 
 
 ############
 # BINARIES #
 ############
-
+cs_add_executable(mesh_localizer_ros_node
+        src/mesh_localizer_ros_node.cpp
+        )
+target_link_libraries(mesh_localizer_ros_node ${PROJECT_NAME})
 
 ##########
 # EXPORT #

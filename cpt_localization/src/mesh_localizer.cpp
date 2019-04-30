@@ -6,6 +6,12 @@
 namespace cad_percept {
 namespace localization {
 
+MeshLocalizer::MeshLocalizer(const std::string &model_file) {
+  mesh_model_ = std::make_shared<cgal::MeshModel>(model_file);
+}
+
+MeshLocalizer::~MeshLocalizer() { }
+
 Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const {
   std::cout << "Associating pointcloud of size " << pc_msg.width << " "
             << pc_msg.height << std::endl;
@@ -48,13 +54,13 @@ void MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
   bool iterate = true;
   PointCloud point_cloud = pc_msg;
   gtsam::noiseModel::Base::shared_ptr match_noise;
-  Eigen::Matrix<double, 6, 1> noise_model;
-  noise_model = Eigen::Matrix<double, 6, 1>::Ones() * 0.1;
+  Eigen::Matrix<double, 1, 1> noise_model;
+  noise_model = Eigen::Matrix<double, 1, 1>::Ones() * 0.1;
   match_noise = gtsam::noiseModel::Diagonal::Sigmas(noise_model);
   while (iterate) {
     // Associate point cloud with mesh.
     Associations associations = associatePointCloud(point_cloud);
-    // Weight outliers? Or simply use robust cost function?
+    // todo: Weight outliers? Or simply use robust cost function?
 
     SE3 T_W_A, T_W_B;
     T_W_A = SE3(SE3::Position(0, 0, 0), SE3::Rotation(1, 0, 0, 0));
@@ -86,8 +92,7 @@ void MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
                                            pointTransformedB);
       gtsam::Expression<Eigen::Vector3d> E_normalRef_w =
           kindr::minimal::rotate(kindr::minimal::rotationFromTransformation(
-              E_T_W_A),
-                                 E_normalRef_l);
+              E_T_W_A),  E_normalRef_l);
       gtsam::Expression<double>
           error = multiplyVectors(substracted, E_normalRef_w);
       gtsam::ExpressionFactor<double> match_factor(match_noise, (double(0)),
@@ -105,6 +110,24 @@ void MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
     // todo: Add stop condition.
     iterate = false;
   }
+}
+
+void MeshLocalizer::transformModel(const Eigen::Matrix4d &transformation) {
+  cgal::Transformation
+      trans(transformation(0, 0),
+            transformation(0, 1),
+            transformation(0, 2),
+            transformation(0, 3),
+            transformation(1, 0),
+            transformation(1, 1),
+            transformation(1, 2),
+            transformation(1, 3),
+            transformation(2, 0),
+            transformation(2, 1),
+            transformation(2, 2),
+            transformation(2, 3),
+            1.0);
+  mesh_model_->transform(trans);
 }
 
 }

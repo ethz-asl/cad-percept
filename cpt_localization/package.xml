@@ -21,4 +21,5 @@
   <depend>minkindr_gtsam</depend>
   <depend>pcl_ros</depend>
   <depend>roscpp</depend>
+  <depend>tf_conversions</depend>
 </package>
