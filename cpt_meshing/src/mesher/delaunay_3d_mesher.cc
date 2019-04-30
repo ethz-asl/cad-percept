@@ -6,7 +6,7 @@ namespace cad_percept {
 namespace meshing {
 
 bool Delaunay3DMesher::getMesh(cad_percept::cgal::Polyhedron* output,
-                               MeshPerformanceCounters* counters = nullptr) {
+                               MeshPerformanceCounters* counters) {
   if (!inputPointsValid()) {
     return false;
   }

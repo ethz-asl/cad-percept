@@ -32,7 +32,7 @@ class Delaunay3DMesher : public AbstractSimpleMesher {
 
  public:
   bool getMesh(cad_percept::cgal::Polyhedron* output,
-               MeshPerformanceCounters* counters);
+               MeshPerformanceCounters* counters = nullptr);
 
  protected:
 
