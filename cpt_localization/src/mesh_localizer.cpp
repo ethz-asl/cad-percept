@@ -82,7 +82,7 @@ void MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
       gtsam::Expression<Eigen::Vector3d> E_mu_A_SA(mu_A_SA);
       gtsam::Expression<Eigen::Vector3d> E_mu_B_SB(mu_B_SB);
       gtsam::Expression<SE3> E_T_W_A(T_W_A); // 0,0,0,0 (origin).
-      gtsam::Expression<SE3> E_T_W_B(T_W_B); // Current pose.
+      gtsam::Expression<SE3> E_T_W_B(1); // Current pose.
       gtsam::Expression<Eigen::Vector3d>
           pointTransformedB = kindr::minimal::transform(E_T_W_B, E_mu_B_SB);
       gtsam::Expression<Eigen::Vector3d>
@@ -99,7 +99,9 @@ void MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
                                                    error);
       factor_graph_.push_back(match_factor);
     }
+//    factor_graph_.print();
     gtsam::Values initial_estimate;
+    //initial_estimate.insert(0, T_W_A);
     initial_estimate.insert(1, T_W_B);
     gtsam::LevenbergMarquardtOptimizer optimizer(factor_graph_,
                                                  initial_estimate);
