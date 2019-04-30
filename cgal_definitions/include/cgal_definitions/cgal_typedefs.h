@@ -12,7 +12,6 @@
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/Polyhedron_items_with_id_3.h>
 #include <CGAL/Surface_mesh.h>
-#include <CGAL/Surface_mesh_parameterization/parameterize.h>
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 #include <CGAL/property_map.h>
 
