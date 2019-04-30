@@ -59,7 +59,7 @@ void ProbabilisticMeshVisual::initResourcePaths() {
       std::string path;
       int pos1 = 0;
       int pos2 = iter->find(delim);
-      while (pos2 != (int)std::string::npos) {
+      while (pos2 != (int) std::string::npos) {
         path = iter->substr(pos1, pos2 - pos1);
         ROS_DEBUG("adding resource location: '%s'\n", path.c_str());
         Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
@@ -92,7 +92,7 @@ void ProbabilisticMeshVisual::update() {
     frame_node_->attachObject(ogre_object);
   }
   ogre_object->clear();
-  BOOST_ASSERT(ogre_object != nullptr);
+  assert(ogre_object != nullptr);
 
   ogre_object->estimateVertexCount(msg_->vertices.size());
   ogre_object->begin("BaseWhiteNoLighting",
