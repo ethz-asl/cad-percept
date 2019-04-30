@@ -14,8 +14,8 @@ namespace cad_percept {
 namespace cgal {
 
 struct Intersection {
-  Eigen::Vector3d point;
-  Eigen::Vector3d surface_normal;
+  Point intersected_point;
+  Vector surface_normal;
 };
 
 class MeshModel {
@@ -56,6 +56,7 @@ class MeshModel {
  * Return size of architect model (number of primitives).
  */
   int size() const;
+
  private:
   SurfaceMesh P_;
   std::shared_ptr<SurfaceMeshAABBTree> tree_;
