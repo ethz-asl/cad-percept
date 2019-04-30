@@ -40,6 +40,7 @@ static gtsam::Expression<double> multiplyVectors(const gtsam::Expression<Eigen::
 struct Associations {
   Eigen::Matrix3Xd points_from;
   Eigen::Matrix3Xd points_to;
+  Eigen::Matrix3Xd normals_to;
   Eigen::VectorXd distances;
 };
 
