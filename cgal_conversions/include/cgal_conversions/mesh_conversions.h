@@ -8,6 +8,6 @@ namespace cad_percept {
 namespace cgal {
 void vertexToPointMsg(const Point *vertex, geometry_msgs::Point *msg);
 geometry_msgs::Point vertexToPointMsg(const Point *vertex);
-void triangleMeshToMsg(SurfaceMesh *m, cgal_msgs::TriangleMesh *msg);
+void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg);
 }
 }
