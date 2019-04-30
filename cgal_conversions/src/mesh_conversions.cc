@@ -15,7 +15,7 @@ geometry_msgs::Point pointToMsg(const Point &p) {
   return msg;
 }
 
-void triangleMeshToMsg(SurfaceMesh *m, cgal_msgs::TriangleMesh *msg) {
+void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg) {
   // enforce unique IDs per vertice
   CGAL::set_halfedgeds_items_id(*m);
 
@@ -23,14 +23,14 @@ void triangleMeshToMsg(SurfaceMesh *m, cgal_msgs::TriangleMesh *msg) {
   std::map<int, int> vertex_idx_for_id;
 
   // get triangles
-  for (SurfaceMesh::Facet_iterator facet = m->facets_begin();
+  for (Polyhedron::Facet_iterator facet = m->facets_begin();
        facet != m->facets_end(); ++facet) {
     if (!facet->is_triangle()) continue;
 
     shape_msgs::MeshTriangle triangle;
 
     int i = 0;
-    SurfaceMesh::Halfedge_around_facet_const_circulator hit =
+    Polyhedron::Halfedge_around_facet_const_circulator hit =
         facet->facet_begin();
     do {
       if (i > 2) {
