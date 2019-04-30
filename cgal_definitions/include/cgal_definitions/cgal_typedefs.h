@@ -36,32 +36,32 @@ typedef Kernel::Vector_3 Vector;
 typedef CGAL::Aff_transformation_3<Kernel> Transformation;
 
 typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3>
-    SurfaceMesh; // cadify: Polyhedron
-typedef std::shared_ptr<SurfaceMesh> SurfaceMeshPtr;
+    Polyhedron;
+typedef std::shared_ptr<Polyhedron> PolyhedronPtr;
 
 // datastructures
-typedef boost::graph_traits<SurfaceMesh>::vertex_descriptor vertex_descriptor;
-typedef boost::graph_traits<SurfaceMesh>::halfedge_descriptor
+typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
+typedef boost::graph_traits<Polyhedron>::halfedge_descriptor
     halfedge_descriptor;
-typedef boost::graph_traits<SurfaceMesh>::face_descriptor face_descriptor;
+typedef boost::graph_traits<Polyhedron>::face_descriptor face_descriptor;
 
-typedef boost::graph_traits<SurfaceMesh>::vertex_iterator vertex_iterator;
-typedef boost::graph_traits<SurfaceMesh>::face_iterator face_iterator;
+typedef boost::graph_traits<Polyhedron>::vertex_iterator vertex_iterator;
+typedef boost::graph_traits<Polyhedron>::face_iterator face_iterator;
 
 // Tree structures
 // AABB tree
-typedef CGAL::AABB_face_graph_triangle_primitive<SurfaceMesh>
-    SurfaceMeshPrimitive; //cadify: Primitive
-typedef CGAL::AABB_traits<Kernel, SurfaceMeshPrimitive> SurfaceMeshAABBTraits; // cadify: Traits
-typedef CGAL::AABB_tree<SurfaceMeshAABBTraits> SurfaceMeshAABBTree; // cadify: Tree
-typedef boost::optional<SurfaceMeshAABBTree::Intersection_and_primitive_id<
-    Segment>::Type> SurfaceMeshSegmentIntersection;
-typedef boost::optional<SurfaceMeshAABBTree::Intersection_and_primitive_id<Plane>::Type>
-    SurfaceMeshPlaneIntersection;
-typedef boost::optional<SurfaceMeshAABBTree::Intersection_and_primitive_id<Ray>::Type>
-    SurfaceMeshRayIntersection; // cadify: Ray_intersection
-typedef SurfaceMeshAABBTree::Primitive_id SurfaceMeshPrimitiveId;
-typedef std::pair<Point, SurfaceMeshPrimitive::Id> PointAndPrimitiveId;
+typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron>
+    PolyhedronPrimitive; //cadify: Primitive
+typedef CGAL::AABB_traits<Kernel, PolyhedronPrimitive> PolyhedronAABBTraits; // cadify: Traits
+typedef CGAL::AABB_tree<PolyhedronAABBTraits> PolyhedronAABBTree; // cadify: Tree
+typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<
+    Segment>::Type> PolyhedronSegmentIntersection;
+typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Plane>::Type>
+    PolyhedronPlaneIntersection;
+typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Ray>::Type>
+    PolyhedronRayIntersection; // cadify: Ray_intersection
+typedef PolyhedronAABBTree::Primitive_id PolyhedronPrimitiveId;
+typedef std::pair<Point, PolyhedronPrimitive::Id> PointAndPrimitiveId;
 
 }
 }
