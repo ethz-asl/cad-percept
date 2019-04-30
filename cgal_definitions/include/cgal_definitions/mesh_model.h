@@ -5,17 +5,14 @@
 #include <fstream>
 #include <iostream>
 
-#include <kindr/minimal/quat-transformation.h>
-#include <Eigen/Geometry>
-
 #include "cgal_typedefs.h"
 
 namespace cad_percept {
 namespace cgal {
 
 struct Intersection {
-  Eigen::Vector3d point;
-  Eigen::Vector3d surface_normal;
+  Point intersected_point;
+  Vector surface_normal;
 };
 
 class MeshModel {
@@ -27,25 +24,26 @@ class MeshModel {
  * pointlaser. The pointlaser is assumed to point into the x-axis direction in
  * it's own frame.
  */
-  Intersection getIntersection(
-      const kindr::minimal::QuatTransformationTemplate<double> &pose) const;
+  Intersection getIntersection(const Ray &query) const;
   /**
  * Get the epxected measured distance according to the architecture model from
  * the given  pose of the pointlaser. The pointlaser is assumed to point into
  * the x-axis direction in it's own frame.
  */
-  double getDistance(
-      const kindr::minimal::QuatTransformationTemplate<double> &pose) const;
+  double getDistance(const Ray &query) const;
 
   /**
  * Get closest point on surface and surface id to a given point.
  */
-  PointAndPrimitiveId getClosestTriangle(double x, double y, double z) const;
+  PointAndPrimitiveId getClosestTriangle(Point &p) const;
+  PointAndPrimitiveId getClosestTriangle(const double x, const double y,
+                                         const double z) const;
 
   /**
  * Get normal of primitive.
  */
-  Eigen::Vector3d getNormal(const PointAndPrimitiveId &ppid) const;
+  Vector getNormal(const SurfaceMesh::Face_handle &face_handle) const;
+  Vector getNormal(const PointAndPrimitiveId &ppid) const;
 
   /**
  * Transform the architect model.
@@ -56,6 +54,7 @@ class MeshModel {
  * Return size of architect model (number of primitives).
  */
   int size() const;
+
  private:
   SurfaceMesh P_;
   std::shared_ptr<SurfaceMeshAABBTree> tree_;

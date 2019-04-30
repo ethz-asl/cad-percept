@@ -15,7 +15,4 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>cgal_catkin</depend>
-  <depend>eigen_catkin</depend>
-  <depend>minkindr</depend>
-  <depend>roscpp</depend>
 </package>
