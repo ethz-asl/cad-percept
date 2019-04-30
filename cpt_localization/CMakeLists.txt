@@ -10,8 +10,9 @@ add_definitions(-std=c++11 -Wall -Wextra)
 #############
 # LIBRARIES #
 #############
-#cs_add_library(${PROJECT_NAME}
-#)
+cs_add_library(${PROJECT_NAME}
+        src/mesh_localizer.cpp
+        )
 
 
 ############
