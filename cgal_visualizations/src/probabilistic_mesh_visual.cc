@@ -38,9 +38,9 @@ ProbabilisticMeshVisual::ProbabilisticMeshVisual(
 void ProbabilisticMeshVisual::initResourcePaths() {
   // set up resource paths
   std::string rviz_path = ros::package::getPath("rviz");
-  std::cout << rviz_path + "/ogre_media/models" << std::endl;
-  std::cout << ROS_PACKAGE_NAME << std::endl;
 
+  // Adds folders with materials and script such that generic rviz materials
+  // become available inside this plugin.
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
       rviz_path + "/ogre_media/models", "FileSystem", ROS_PACKAGE_NAME);
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
@@ -48,7 +48,7 @@ void ProbabilisticMeshVisual::initResourcePaths() {
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
       rviz_path + "/ogre_media/materials/scripts", "FileSystem",
       ROS_PACKAGE_NAME);
-
+  
   // Add paths exported to the "media_export" package.
   std::vector<std::string> media_paths;
   ros::package::getPlugins("media_export", "ogre_media_path", media_paths);
