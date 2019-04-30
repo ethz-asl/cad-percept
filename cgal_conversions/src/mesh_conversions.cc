@@ -1,9 +1,9 @@
-#include <cgal_definitions/cgal_typedefs.h>
+#include <cgal_conversions/mesh_conversions.h>
 
 namespace cad_perecpt {
 namespace cgal {
 
-triangleMeshToMsg(const SurfaceMesh *m, TriangleMesh *msg) {
+triangleMeshToMsg(const SurfaceMesh *mesh, TriangleMesh *msg) {
   int vertex_count = 0;
   std::map<long, long> vertex_idx_for_id;
 
@@ -43,5 +43,38 @@ triangleMeshToMsg(const SurfaceMesh *m, TriangleMesh *msg) {
     msg.triangles.push_back(triangle);
   }
 }
+
+// A modifier creating a triangle with the incremental builder.
+template <class HDS>
+void BuildMesh<HDS>::operator()(HDS& hds){
+  CGAL::Polyhedron_incremental_builder_3<HDS> b(hds, true);
+  B.begin_surface(3, 1, 6); //3 vertices, 1 facet, 6 halfedges
+
+    for (i=0, i < msg_->triangles.size(), ++i){
+      //build a triangle incrementally:
+      B.begin_surface(3, 1, 6); //3 vertices, 1 facet, 6 halfedges
+      B.begin_facet();
+      for (d=0, d<3, ++d){  
+        B.add_vertex( Point(msg_->vertices[msg_->triangles[i].vertex_indices[d]].x, msg_->vertices[msg_->triangles[i].vertex_indices[d]].y, msg_->vertices[msg_->triangles[i].vertex_indices[d]].z));
+        B.add_vertex_to_facet(d);
+        }
+      B.end_facet();
+      B.end_surface();
+
+    }
+}
+
+void BuildMesh<HDS>::setMsg(const triangleMesh *msg){
+  msg_ = &msg;
+}
+
+
+msgToTriangleMesh(const TriangleMesh *msg, SurfaceMesh *mesh){
+  mesh->erase_all();
+  BuildMesh<HalfedgeDS> triangleMesh;
+  triangleMesh.setMsg(msg);
+  mesh.delegate(triangleMesh);
+}
+
 }
 }
