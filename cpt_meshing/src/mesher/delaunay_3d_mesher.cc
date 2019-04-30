@@ -66,11 +66,13 @@ void Delaunay3DMesher::Delaunay3DToPolyhedron<HDS>::operator()(HDS& hds) {
     cgal::Point point = vit->point();
     uint index = vit->info();
 
+    // check assumption
     if (index != test_index++) {
       std::cout << "Warning, indexing error during conversion" << std::endl;
     }
-    // check assumption
-    B.add_vertex(point);
+
+    typename HDS::Vertex_handle vh = B.add_vertex(point);
+    vh->id() = index;
   }
 
   // Iterate through all triangles and add them
