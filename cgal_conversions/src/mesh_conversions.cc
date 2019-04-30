@@ -16,6 +16,7 @@ geometry_msgs::Point pointToMsg(const Point &p) {
 }
 
 void triangleMeshToMsg(SurfaceMesh *m, cgal_msgs::TriangleMesh *msg) {
+  // enforce unique IDs per vertice
   CGAL::set_halfedgeds_items_id(*m);
 
   int vertex_count = 0;
