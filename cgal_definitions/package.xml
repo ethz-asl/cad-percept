@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>cgal_interface</name>
+  <name>cgal_definitions</name>
   <version>0.0.1</version>
-  <description>cgal_interface</description>
+  <description>cgal_definitions</description>
 
   <author email="mpantic@ethz.ch">Michael Pantic</author>
   <author email="gawela@ethz.ch">Abel Gawel</author>
