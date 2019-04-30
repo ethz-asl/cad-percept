@@ -60,10 +60,12 @@ TEST(CGALConversionsTest, traingle_mesh_to_msg) {
   TestingMesh<HalfedgeDS> testcase;
   m.delegate(testcase);
 
+  EXPECT_TRUE(m.is_valid());
+
   // get message from mesh
   cgal_msgs::TriangleMesh msg;
   triangleMeshToMsg(&m, &msg);
-  EXPECT_EQ(msg.vertices.size(), 4);
+  EXPECT_EQ(msg.vertices.size(), 4) << msg;
   // geometry_msgs::Point a = pointMsg(1, 0, 0);
   // geometry_msgs::Point b = pointMsg(0, 1, 0);
   // geometry_msgs::Point c = pointMsg(0, 0, 0);
