@@ -31,8 +31,22 @@ class Delaunay3DMesher : public AbstractSimpleMesher {
       DelaunayTriangulation;
 
  public:
-  bool getMesh(cad_percept::cgal::SurfaceMesh* output,
+  bool getMesh(cad_percept::cgal::Polyhedron* output,
                MeshPerformanceCounters* counters);
+
+ protected:
+
+  /* Internal helper class for conversion */
+  template<class HDS>
+  class Delaunay3DToPolyhedron : public CGAL::Modifier_base<HDS> {
+   public:
+    Delaunay3DToPolyhedron(const DelaunayTriangulation& triangulation) :
+        triangulation_(triangulation) {}
+
+    void operator()(HDS& hds);
+   private:
+    const DelaunayTriangulation& triangulation_;
+  };
 
 };
 }
