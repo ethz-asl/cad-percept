@@ -28,7 +28,7 @@ class MesherInterface {
    *  otherwise returns false.
    *  Note: This call might block for a long time (processing happens here)
    */
-  virtual bool getMesh(cad_percept::cgal::SurfaceMesh* output,
+  virtual bool getMesh(cad_percept::cgal::Polyhedron* output,
                        MeshPerformanceCounters* counters) = 0;
 
 };

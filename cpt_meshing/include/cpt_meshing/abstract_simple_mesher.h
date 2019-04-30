@@ -19,7 +19,7 @@ class AbstractSimpleMesher : public MesherInterface {
     normals_ = normals;
   }
 
-  virtual bool getMesh(cad_percept::cgal::SurfaceMesh* output,
+  virtual bool getMesh(cad_percept::cgal::Polyhedron* output,
                        MeshPerformanceCounters* counters) = 0;
 
  protected:
