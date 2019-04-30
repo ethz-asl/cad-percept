@@ -18,30 +18,15 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
  * Now we have loaded the geometric structure and need to conduct intersection
  * and distance queries. For this, we build an AABB tree.
  **/
-  tree_ =
-      std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
-                                            CGAL::faces(P_).second,
-                                            P_);
+  tree_ = std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
+                                                CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 };
 
-Intersection MeshModel::getIntersection(
-    const kindr::minimal::QuatTransformationTemplate<double> &pose) const {
-  // Building the ray to query for intersections.
-  // The ray will be defined by a rayOrigin and a point on the ray.
-  // We put the point on the ray to 1, 0, 0 and apply the transformation.
-  Eigen::Matrix<double, 3, Eigen::Dynamic> ray_points =
-      Eigen::MatrixXd::Zero(3, 2);
-  ray_points(0, 1) = 1;
-  ray_points = pose.transformVectorized(ray_points);
-  Point ray_origin =
-      Point(ray_points(0, 0), ray_points(1, 0), ray_points(2, 0));
-  Point onRay = Point(ray_points(0, 1), ray_points(1, 1), ray_points(2, 1));
-  Ray query(ray_origin, onRay);
-
+Intersection MeshModel::getIntersection(const Ray &query) const {
   if (verbose_) {
-    std::cout << " %i intersections " << tree_->number_of_intersected_primitives
-        (query) << std::endl;
+    std::cout << " %i intersections "
+              << tree_->number_of_intersected_primitives(query) << std::endl;
   }
 
   // compute the closest intersection point and the distance
@@ -50,65 +35,52 @@ Intersection MeshModel::getIntersection(
     if (boost::get<Point>(&(intersection->first))) {
       Intersection intersection_result;
       Point p = *boost::get<Point>(&(intersection->first));
-      intersection_result.point = Eigen::Vector3d(p.x(), p.y(), p.z());
-      SurfaceMesh::Face_handle face_handle = intersection->second;
-      Triangle intersected_triangle(
-          face_handle->halfedge()->vertex()->point(),
-          face_handle->halfedge()->next()->vertex()->point(),
-          face_handle->halfedge()->next()->next()->vertex()->point());
-      Vector normal =
-          intersected_triangle.supporting_plane().orthogonal_vector();
-      intersection_result.surface_normal =
-          Eigen::Vector3d(normal.x(), normal.y(), normal.z());
+      intersection_result.point = p;
+      intersection_result.surface_normal = getNormal(intersection->second);
       return intersection_result;
     }
   }
 }
 
-double MeshModel::getDistance(
-    const kindr::minimal::QuatTransformationTemplate<double> &pose) const {
+double MeshModel::getDistance(const Ray &query) const {
   // get the first intersection Point
-  Eigen::Vector3d p = getIntersection(pose).point;
-  Eigen::Vector3d o = pose.getPosition();
-  Point ray_origin = Point(o(0), o(1), o(2));
-  Point intersection = Point(p(0), p(1), p(2));
-  // get the squared distance
-  Vector distance(ray_origin, intersection);
+  Point p = getIntersection(query).point;
+  // get the distance from the ray origin
+  Vector distance(query.source(), p);
   const double squared_distance = boost::get<double>(distance.squared_length());
   return sqrt(squared_distance);
 }
 
-PointAndPrimitiveId MeshModel::getClosestTriangle(
-    double x, double y, double z) const {
-  Point pt = Point(x, y, z);
-  return tree_->closest_point_and_primitive(pt);
+PointAndPrimitiveId MeshModel::getClosestTriangle(Point &p) const {
+  return tree_->closest_point_and_primitive(p);
 }
 
-Eigen::Vector3d MeshModel::getNormal(const PointAndPrimitiveId &ppid) const {
-  SurfaceMesh::Face_handle face_handle = ppid.second;
+PointAndPrimitiveId MeshModel::getClosestTriangle(double x, double y,
+                                                  double z) const {
+  Point pt = Point(x, y, z);
+  return getClosestTriangle(pt);
+}
+
+Vector MeshModel::getNormal(SurfaceMesh::Face_handle &face_handle) const {
   Triangle intersected_triangle(
       face_handle->halfedge()->vertex()->point(),
       face_handle->halfedge()->next()->vertex()->point(),
       face_handle->halfedge()->next()->next()->vertex()->point());
-  Vector normal = intersected_triangle.supporting_plane().orthogonal_vector();
-  return Eigen::Vector3d(normal.x(), normal.y(), normal.z());
+  return intersected_triangle.supporting_plane().orthogonal_vector();
+}
+
+Vector MeshModel::getNormal(const PointAndPrimitiveId &ppid) const {
+  return getNormal(ppid.second);
 }
 
 void MeshModel::transform(const Transformation &transform) {
-  std::transform(P_.points_begin(),
-                 P_.points_end(),
-                 P_.points_begin(),
+  std::transform(P_.points_begin(), P_.points_end(), P_.points_begin(),
                  transform);
-  tree_ =
-      std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
-                                            CGAL::faces(P_).second,
-                                            P_);
+  tree_ = std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
+                                                CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 }
 
-int MeshModel::size() const {
-  return P_.size_of_facets();
-}
-
+int MeshModel::size() const { return P_.size_of_facets(); }
 }
 }
