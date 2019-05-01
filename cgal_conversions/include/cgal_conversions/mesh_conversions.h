@@ -29,6 +29,8 @@ class BuildMesh : public CGAL::Modifier_base<HDS> {
 
 };
 
+=======
+void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg);
 }
 }
 
