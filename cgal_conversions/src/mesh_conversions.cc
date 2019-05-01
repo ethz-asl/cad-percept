@@ -86,7 +86,7 @@ void BuildMesh<HDS>::setMsg(cgal_msgs::TriangleMesh *msg){
   msg_ = msg;
 }
 
-void msgToTriangleMesh(cgal_msgs::TriangleMesh *msg, SurfaceMesh *mesh){
+void msgToTriangleMesh(cgal_msgs::TriangleMesh *msg, Polyhedron *mesh){
   mesh->erase_all();
   BuildMesh<HalfedgeDS> me;
   me.setMsg(msg);
