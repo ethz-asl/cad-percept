@@ -53,7 +53,7 @@ geometry_msgs::Point pointMsg(int x, int y, int z) {
 }
 
 TEST(CGALConversionsTest, triangle_mesh_to_msg) {
-  SurfaceMesh m;
+  Polyhedron m;
   TestingMesh<HalfedgeDS> testcase;
   m.delegate(testcase);
 
@@ -66,8 +66,8 @@ TEST(CGALConversionsTest, triangle_mesh_to_msg) {
 }
 
 TEST(CGALConversionsTest, msg_to_triangle_mesh) {
-  SurfaceMesh m1;
-  SurfaceMesh m2;
+  Polyhedron m1;
+  Polyhedron m2;
   TestingMesh<HalfedgeDS> testcase;
   m1.delegate(testcase);
   EXPECT_TRUE(m1.is_valid());
@@ -78,24 +78,24 @@ TEST(CGALConversionsTest, msg_to_triangle_mesh) {
   
   //compare number of facets
   int i = 0;
-  for (SurfaceMesh::Facet_iterator facet = m1.facets_begin();
+  for (Polyhedron::Facet_iterator facet = m1.facets_begin();
         facet != m1.facets_end(); ++facet){
     ++i;
   }
   int j = 0;
-  for (SurfaceMesh::Facet_iterator facet = m2.facets_begin();
+  for (Polyhedron::Facet_iterator facet = m2.facets_begin();
         facet != m2.facets_end(); ++facet){
     ++j;
   }
   EXPECT_TRUE(i == j);
 
   //compare vertices of every triangle
-  //this is a bit cumbersome since SurfaceMeshes can not be compared
+  //this is a bit cumbersome since Polyhedrones can not be compared
   std::vector<int> vertices1;
   std::vector<int> vertices2;
-  for (SurfaceMesh::Facet_iterator facet = m1.facets_begin();
+  for (Polyhedron::Facet_iterator facet = m1.facets_begin();
         facet != m1.facets_end(); ++facet){
-    SurfaceMesh::Halfedge_around_facet_const_circulator hit = facet->facet_begin();
+    Polyhedron::Halfedge_around_facet_const_circulator hit = facet->facet_begin();
     do {
     Point p = hit->vertex()->point();
     vertices1.push_back(p.x());
@@ -103,9 +103,9 @@ TEST(CGALConversionsTest, msg_to_triangle_mesh) {
     vertices1.push_back(p.z());
     } while (++hit != facet->facet_begin());
   }
-  for (SurfaceMesh::Facet_iterator facet = m2.facets_begin();
+  for (Polyhedron::Facet_iterator facet = m2.facets_begin();
       facet != m2.facets_end(); ++facet){
-    SurfaceMesh::Halfedge_around_facet_const_circulator hit = facet->facet_begin();
+    Polyhedron::Halfedge_around_facet_const_circulator hit = facet->facet_begin();
     do {
     Point p = hit->vertex()->point();
     vertices2.push_back(p.x());
