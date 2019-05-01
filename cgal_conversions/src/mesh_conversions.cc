@@ -1,19 +1,37 @@
 #include <cgal_conversions/mesh_conversions.h>
 
-namespace cad_perecpt {
+namespace cad_percept {
 namespace cgal {
 
-triangleMeshToMsg(const SurfaceMesh *mesh, TriangleMesh *msg) {
+void pointToMsg(const Point &p, geometry_msgs::Point *msg) {
+  msg->x = p.x();
+  msg->y = p.y();
+  msg->z = p.z();
+}
+
+geometry_msgs::Point pointToMsg(const Point &p) {
+  geometry_msgs::Point msg;
+  pointToMsg(p, &msg);
+  return msg;
+}
+
+void triangleMeshToMsg(SurfaceMesh *m, cgal_msgs::TriangleMesh *msg) {
+  // enforce unique IDs per vertice
+  CGAL::set_halfedgeds_items_id(*m);
+
   int vertex_count = 0;
-  std::map<long, long> vertex_idx_for_id;
+  std::map<int, int> vertex_idx_for_id;
 
   // get triangles
-  for (SurfaceMesh::Facet_iterator fit = mesh->facets_begin();
-       fit != mesh->facets_end(); ++fit) {
+  for (SurfaceMesh::Facet_iterator facet = m->facets_begin();
+       facet != m->facets_end(); ++facet) {
+    if (!facet->is_triangle()) continue;
+
     shape_msgs::MeshTriangle triangle;
 
     int i = 0;
-    SurfaceMesh::Halfedge_around_facet_circulator hit = fit->facet_begin();
+    SurfaceMesh::Halfedge_around_facet_const_circulator hit =
+        facet->facet_begin();
     do {
       if (i > 2) {
         std::cout << "Non-triangular mesh" << std::endl;
@@ -22,14 +40,14 @@ triangleMeshToMsg(const SurfaceMesh *mesh, TriangleMesh *msg) {
       const int vertex_id = hit->vertex()->id();
       int vertex_idx;
       // search for id in previously found vertices
-      map<int, int>::iterator it = vertex_idx_for_id.find(vertex_id);
+      std::map<int, int>::iterator it = vertex_idx_for_id.find(vertex_id);
       // if found, get idx
       if (it != vertex_idx_for_id.end())
         vertex_idx = it->second;
       else {
         vertex_idx = vertex_count++;
         vertex_idx_for_id[vertex_id] = vertex_idx;
-        msg.vertices.push_back();
+        msg->vertices.push_back(pointToMsg(hit->vertex()->point()));
       }
       triangle.vertex_indices[i] = vertex_idx;
 
@@ -38,42 +56,41 @@ triangleMeshToMsg(const SurfaceMesh *mesh, TriangleMesh *msg) {
       }
 
       i++;
-    } while (++hit != fit->facet_begin());
+    } while (++hit != facet->facet_begin());
 
-    msg.triangles.push_back(triangle);
+    msg->triangles.push_back(triangle);
   }
 }
 
 // A modifier creating a triangle with the incremental builder.
 template <class HDS>
 void BuildMesh<HDS>::operator()(HDS& hds){
-  CGAL::Polyhedron_incremental_builder_3<HDS> b(hds, true);
-  B.begin_surface(3, 1, 6); //3 vertices, 1 facet, 6 halfedges
-
-    for (i=0, i < msg_->triangles.size(), ++i){
-      //build a triangle incrementally:
-      B.begin_surface(3, 1, 6); //3 vertices, 1 facet, 6 halfedges
-      B.begin_facet();
-      for (d=0, d<3, ++d){  
-        B.add_vertex( Point(msg_->vertices[msg_->triangles[i].vertex_indices[d]].x, msg_->vertices[msg_->triangles[i].vertex_indices[d]].y, msg_->vertices[msg_->triangles[i].vertex_indices[d]].z));
-        B.add_vertex_to_facet(d);
-        }
-      B.end_facet();
-      B.end_surface();
-
+  CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
+  B.begin_surface(msg_->vertices.size(), msg_->triangles.size(), 6); //vertices, facets, 6 halfedges
+  //add all vertices first
+  for (uint i = 0; i < msg_->vertices.size(); ++i){
+    B.add_vertex( Point(msg_->vertices[i].x, msg_->vertices[i].y, msg_->vertices[i].z));
+  }
+  for (uint i = 0; i < msg_->triangles.size(); ++i){
+    B.begin_facet();
+    for (int j = 0; j<3; ++j){
+      B.add_vertex_to_facet(msg_->triangles[i].vertex_indices[j]);
     }
+    B.end_facet();
+  }
+  B.end_surface();
 }
 
-void BuildMesh<HDS>::setMsg(const triangleMesh *msg){
-  msg_ = &msg;
+template <class HDS>
+void BuildMesh<HDS>::setMsg(cgal_msgs::TriangleMesh *msg){
+  msg_ = msg;
 }
 
-
-msgToTriangleMesh(const TriangleMesh *msg, SurfaceMesh *mesh){
+void msgToTriangleMesh(cgal_msgs::TriangleMesh *msg, SurfaceMesh *mesh){
   mesh->erase_all();
-  BuildMesh<HalfedgeDS> triangleMesh;
-  triangleMesh.setMsg(msg);
-  mesh.delegate(triangleMesh);
+  BuildMesh<HalfedgeDS> me;
+  me.setMsg(msg);
+  mesh->delegate(me);
 }
 
 }
