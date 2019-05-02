@@ -66,15 +66,15 @@ void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg) {
 template <class HDS>
 void BuildMesh<HDS>::operator()(HDS& hds){
   CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
-  B.begin_surface(msg_->vertices.size(), msg_->triangles.size(), 6); //vertices, facets, 6 halfedges
+  B.begin_surface(msg_->vertices.size(), msg_->triangles.size()); //vertices, facets, halfedges
   //add all vertices first
-  for (uint i = 0; i < msg_->vertices.size(); ++i){
-    B.add_vertex( Point(msg_->vertices[i].x, msg_->vertices[i].y, msg_->vertices[i].z));
+  for (auto const& vertice : msg_->vertices){
+    B.add_vertex( Point(vertice.x, vertice.y, vertice.z));
   }
-  for (uint i = 0; i < msg_->triangles.size(); ++i){
+  for (auto const& triangle : msg_->triangles){
     B.begin_facet();
     for (int j = 0; j<3; ++j){
-      B.add_vertex_to_facet(msg_->triangles[i].vertex_indices[j]);
+      B.add_vertex_to_facet(triangle.vertex_indices[j]);
     }
     B.end_facet();
   }
@@ -82,15 +82,15 @@ void BuildMesh<HDS>::operator()(HDS& hds){
 }
 
 template <class HDS>
-void BuildMesh<HDS>::setMsg(cgal_msgs::TriangleMesh *msg){
+void BuildMesh<HDS>::setMsg(const cgal_msgs::TriangleMesh *msg){
   msg_ = msg;
 }
 
-void msgToTriangleMesh(cgal_msgs::TriangleMesh *msg, Polyhedron *mesh){
+void msgToTriangleMesh(const cgal_msgs::TriangleMesh *msg, Polyhedron *mesh){
   mesh->erase_all();
-  BuildMesh<HalfedgeDS> me;
-  me.setMsg(msg);
-  mesh->delegate(me);
+  BuildMesh<HalfedgeDS> mesh_generator;
+  mesh_generator.setMsg(msg);
+  mesh->delegate(mesh_generator);
 }
 
 }

@@ -76,18 +76,8 @@ TEST(CGALConversionsTest, msg_to_triangle_mesh) {
   msgToTriangleMesh(&msg, &m2);
   EXPECT_TRUE(m2.is_valid());
   
-  //compare number of facets
-  int i = 0;
-  for (Polyhedron::Facet_iterator facet = m1.facets_begin();
-        facet != m1.facets_end(); ++facet){
-    ++i;
-  }
-  int j = 0;
-  for (Polyhedron::Facet_iterator facet = m2.facets_begin();
-        facet != m2.facets_end(); ++facet){
-    ++j;
-  }
-  EXPECT_TRUE(i == j);
+  //compare number of facets 
+  EXPECT_TRUE(m1.size_of_facets() == m2.size_of_facets());
 
   //compare vertices of every triangle
   //this is a bit cumbersome since Polyhedrones can not be compared
