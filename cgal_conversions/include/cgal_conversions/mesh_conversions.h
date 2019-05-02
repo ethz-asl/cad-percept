@@ -1,10 +1,10 @@
 #ifndef MESH_CONVERSIONS_H
 #define MESH_CONVERSIONS_H
 
-#include <cgal_definitions/cgal_typedefs.h>
 #include <CGAL/Polyhedron_incremental_builder_3.h>
-#include <geometry_msgs/Point.h>
+#include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_msgs/TriangleMesh.h>
+#include <geometry_msgs/Point.h>
 
 namespace cad_percept {
 namespace cgal {
@@ -14,20 +14,18 @@ geometry_msgs::Point vertexToPointMsg(const Point *vertex);
 void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg);
 void msgToTriangleMesh(const cgal_msgs::TriangleMesh *msg, Polyhedron *mesh);
 
-template<class HDS>
+template <class HDS>
 class BuildMesh : public CGAL::Modifier_base<HDS> {
-    public:
-    BuildMesh(){}
+ public:
+  BuildMesh() {}
 
-    void operator()(HDS& hds);
-    void setMsg(const cgal_msgs::TriangleMesh *msg);
+  void operator()(HDS &hds);
+  void setMsg(const cgal_msgs::TriangleMesh *msg);
 
-    private:
-    const cgal_msgs::TriangleMesh *msg_;
-
+ private:
+  const cgal_msgs::TriangleMesh *msg_;
 };
-
 }
 }
 
-#endif //MESH_CONVERSIONS_H
+#endif  // MESH_CONVERSIONS_H
