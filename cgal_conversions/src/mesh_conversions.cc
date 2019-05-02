@@ -61,5 +61,37 @@ void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg) {
     msg->triangles.push_back(triangle);
   }
 }
+
+// A modifier creating a triangle with the incremental builder.
+template <class HDS>
+void BuildMesh<HDS>::operator()(HDS& hds){
+  CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
+  B.begin_surface(msg_->vertices.size(), msg_->triangles.size()); //vertices, facets, halfedges
+  //add all vertices first
+  for (auto const& vertice : msg_->vertices){
+    B.add_vertex( Point(vertice.x, vertice.y, vertice.z));
+  }
+  for (auto const& triangle : msg_->triangles){
+    B.begin_facet();
+    for (int j = 0; j<3; ++j){
+      B.add_vertex_to_facet(triangle.vertex_indices[j]);
+    }
+    B.end_facet();
+  }
+  B.end_surface();
+}
+
+template <class HDS>
+void BuildMesh<HDS>::setMsg(const cgal_msgs::TriangleMesh *msg){
+  msg_ = msg;
+}
+
+void msgToTriangleMesh(const cgal_msgs::TriangleMesh *msg, Polyhedron *mesh){
+  mesh->erase_all();
+  BuildMesh<HalfedgeDS> mesh_generator;
+  mesh_generator.setMsg(msg);
+  mesh->delegate(mesh_generator);
+}
+
 }
 }
