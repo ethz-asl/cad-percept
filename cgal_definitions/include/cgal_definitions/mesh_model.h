@@ -42,7 +42,7 @@ class MeshModel {
   /**
  * Get normal of primitive.
  */
-  Vector getNormal(const SurfaceMesh::Face_handle &face_handle) const;
+  Vector getNormal(const Polyhedron::Face_handle &face_handle) const;
   Vector getNormal(const PointAndPrimitiveId &ppid) const;
 
   /**
@@ -56,8 +56,8 @@ class MeshModel {
   int size() const;
 
  private:
-  SurfaceMesh P_;
-  std::shared_ptr<SurfaceMeshAABBTree> tree_;
+  Polyhedron P_;
+  std::shared_ptr<PolyhedronAABBTree> tree_;
   bool verbose_;
 };
 }
