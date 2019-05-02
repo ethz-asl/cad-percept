@@ -75,32 +75,34 @@ TEST(CGALConversionsTest, msg_to_triangle_mesh) {
   triangleMeshToMsg(&m1, &msg);
   msgToTriangleMesh(&msg, &m2);
   EXPECT_TRUE(m2.is_valid());
-  
-  //compare number of facets 
+
+  // compare number of facets
   EXPECT_TRUE(m1.size_of_facets() == m2.size_of_facets());
 
-  //compare vertices of every triangle
-  //this is a bit cumbersome since Polyhedrones can not be compared
+  // compare vertices of every triangle
+  // this is a bit cumbersome since Polyhedrones can not be compared
   std::vector<int> vertices1;
   std::vector<int> vertices2;
   for (Polyhedron::Facet_iterator facet = m1.facets_begin();
-        facet != m1.facets_end(); ++facet){
-    Polyhedron::Halfedge_around_facet_const_circulator hit = facet->facet_begin();
+       facet != m1.facets_end(); ++facet) {
+    Polyhedron::Halfedge_around_facet_const_circulator hit =
+        facet->facet_begin();
     do {
-    Point p = hit->vertex()->point();
-    vertices1.push_back(p.x());
-    vertices1.push_back(p.y());
-    vertices1.push_back(p.z());
+      Point p = hit->vertex()->point();
+      vertices1.push_back(p.x());
+      vertices1.push_back(p.y());
+      vertices1.push_back(p.z());
     } while (++hit != facet->facet_begin());
   }
   for (Polyhedron::Facet_iterator facet = m2.facets_begin();
-      facet != m2.facets_end(); ++facet){
-    Polyhedron::Halfedge_around_facet_const_circulator hit = facet->facet_begin();
+       facet != m2.facets_end(); ++facet) {
+    Polyhedron::Halfedge_around_facet_const_circulator hit =
+        facet->facet_begin();
     do {
-    Point p = hit->vertex()->point();
-    vertices2.push_back(p.x());
-    vertices2.push_back(p.y());
-    vertices2.push_back(p.z());
+      Point p = hit->vertex()->point();
+      vertices2.push_back(p.x());
+      vertices2.push_back(p.y());
+      vertices2.push_back(p.z());
     } while (++hit != facet->facet_begin());
   }
   EXPECT_TRUE(vertices1 == vertices2);
