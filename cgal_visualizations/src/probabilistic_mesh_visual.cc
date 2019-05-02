@@ -48,7 +48,7 @@ void ProbabilisticMeshVisual::initResourcePaths() {
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
       rviz_path + "/ogre_media/materials/scripts", "FileSystem",
       ROS_PACKAGE_NAME);
-  
+
   // Add paths exported to the "media_export" package.
   std::vector<std::string> media_paths;
   ros::package::getPlugins("media_export", "ogre_media_path", media_paths);
@@ -59,7 +59,7 @@ void ProbabilisticMeshVisual::initResourcePaths() {
       std::string path;
       int pos1 = 0;
       int pos2 = iter->find(delim);
-      while (pos2 != (int) std::string::npos) {
+      while (pos2 != (int)std::string::npos) {
         path = iter->substr(pos1, pos2 - pos1);
         ROS_DEBUG("adding resource location: '%s'\n", path.c_str());
         Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
@@ -99,14 +99,14 @@ void ProbabilisticMeshVisual::update() {
                      Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
   // Displaying Vertices
-  for (auto vrtx : msg_->vertices) {
+  for (auto vrtx : msg_->mesh.vertices) {
     ogre_object->position(vrtx.x, vrtx.y, vrtx.z);
 
     ogre_object->colour(surface_color_);
   }
 
   // Displaying Triangles
-  for (auto triangle : msg_->triangles) {
+  for (auto triangle : msg_->mesh.triangles) {
     ogre_object->triangle(triangle.vertex_indices[2],
                           triangle.vertex_indices[1],
                           triangle.vertex_indices[0]);
@@ -116,25 +116,26 @@ void ProbabilisticMeshVisual::update() {
   // Displaying Edges
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_LINE_LIST);
-  for (auto triangle : msg_->triangles) {
+  for (auto triangle : msg_->mehs.triangles) {
     for (int i = 0; i < 3; ++i) {
-      const auto& vrtx_a = msg_->vertices[triangle.vertex_indices[i]];
+      const auto& vrtx_a = msg_->mesh.vertices[triangle.vertex_indices[i]];
       ogre_object->position(vrtx_a.x, vrtx_a.y, vrtx_a.z);
 
       ogre_object->colour(edge_color_);
 
-      const auto& vrtx_b = msg_->vertices[triangle.vertex_indices[(i + 1) % 3]];
+      const auto& vrtx_b =
+          msg_->mesh.vertices[triangle.vertex_indices[(i + 1) % 3]];
       ogre_object->position(vrtx_b.x, vrtx_b.y, vrtx_b.z);
     }
   }
 
   // code to visualize covariances as lines. Disabled per default.
   if (visualize_covariances_) {
-    for (size_t i = 0; i < msg_->vertices.size(); ++i) {
+    for (size_t i = 0; i < msg_->mesh.vertices.size(); ++i) {
       Ogre::Vector3 mean;
-      mean.x = msg_->vertices[i].x;
-      mean.y = msg_->vertices[i].y;
-      mean.z = msg_->vertices[i].z;
+      mean.x = msg_->mesh.vertices[i].x;
+      mean.y = msg_->mesh.vertices[i].y;
+      mean.z = msg_->mesh.vertices[i].z;
 
       Ogre::Vector3 stdev;
       stdev.x = sqrt(msg_->cov_vertices[i].x);
