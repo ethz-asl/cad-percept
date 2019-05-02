@@ -18,8 +18,8 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
  * Now we have loaded the geometric structure and need to conduct intersection
  * and distance queries. For this, we build an AABB tree.
  **/
-  tree_ = std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
-                                                CGAL::faces(P_).second, P_);
+  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
+                                               CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 };
 
@@ -30,7 +30,7 @@ Intersection MeshModel::getIntersection(const Ray &query) const {
   }
 
   // compute the closest intersection point and the distance
-  SurfaceMeshRayIntersection intersection = tree_->first_intersection(query);
+  PolyhedronRayIntersection intersection = tree_->first_intersection(query);
   if (intersection) {
     if (boost::get<Point>(&(intersection->first))) {
       Intersection intersection_result;
@@ -62,7 +62,7 @@ PointAndPrimitiveId MeshModel::getClosestTriangle(const double x,
   return getClosestTriangle(pt);
 }
 
-Vector MeshModel::getNormal(const SurfaceMesh::Face_handle &face_handle) const {
+Vector MeshModel::getNormal(const Polyhedron::Face_handle &face_handle) const {
   Triangle intersected_triangle(
       face_handle->halfedge()->vertex()->point(),
       face_handle->halfedge()->next()->vertex()->point(),
@@ -77,8 +77,8 @@ Vector MeshModel::getNormal(const PointAndPrimitiveId &ppid) const {
 void MeshModel::transform(const Transformation &transform) {
   std::transform(P_.points_begin(), P_.points_end(), P_.points_begin(),
                  transform);
-  tree_ = std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
-                                                CGAL::faces(P_).second, P_);
+  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
+                                               CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 }
 
