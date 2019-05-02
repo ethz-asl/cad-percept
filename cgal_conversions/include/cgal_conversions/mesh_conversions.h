@@ -9,8 +9,6 @@
 namespace cad_percept {
 namespace cgal {
 
-typedef Polyhedron::HalfedgeDS HalfedgeDS;
-
 void vertexToPointMsg(const Point *vertex, geometry_msgs::Point *msg);
 geometry_msgs::Point vertexToPointMsg(const Point *vertex);
 void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg);
