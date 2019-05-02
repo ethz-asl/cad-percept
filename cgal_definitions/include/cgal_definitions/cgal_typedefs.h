@@ -35,8 +35,7 @@ typedef Kernel::Triangle_3 Triangle;
 typedef Kernel::Vector_3 Vector;
 typedef CGAL::Aff_transformation_3<Kernel> Transformation;
 
-typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3>
-    Polyhedron;
+typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef std::shared_ptr<Polyhedron> PolyhedronPtr;
 
 // datastructures
@@ -53,18 +52,22 @@ typedef boost::graph_traits<Polyhedron>::face_iterator face_iterator;
 // Tree structures
 // AABB tree
 typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron>
-    PolyhedronPrimitive; //cadify: Primitive
-typedef CGAL::AABB_traits<Kernel, PolyhedronPrimitive> PolyhedronAABBTraits; // cadify: Traits
-typedef CGAL::AABB_tree<PolyhedronAABBTraits> PolyhedronAABBTree; // cadify: Tree
-typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<
-    Segment>::Type> PolyhedronSegmentIntersection;
-typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Plane>::Type>
+    PolyhedronPrimitive;  // cadify: Primitive
+typedef CGAL::AABB_traits<Kernel, PolyhedronPrimitive>
+    PolyhedronAABBTraits;  // cadify: Traits
+typedef CGAL::AABB_tree<PolyhedronAABBTraits>
+    PolyhedronAABBTree;  // cadify: Tree
+typedef boost::optional<
+    PolyhedronAABBTree::Intersection_and_primitive_id<Segment>::Type>
+    PolyhedronSegmentIntersection;
+typedef boost::optional<
+    PolyhedronAABBTree::Intersection_and_primitive_id<Plane>::Type>
     PolyhedronPlaneIntersection;
-typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Ray>::Type>
-    PolyhedronRayIntersection; // cadify: Ray_intersection
+typedef boost::optional<
+    PolyhedronAABBTree::Intersection_and_primitive_id<Ray>::Type>
+    PolyhedronRayIntersection;  // cadify: Ray_intersection
 typedef PolyhedronAABBTree::Primitive_id PolyhedronPrimitiveId;
 typedef std::pair<Point, PolyhedronPrimitive::Id> PointAndPrimitiveId;
-
 }
 }
-#endif //CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
+#endif  // CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
