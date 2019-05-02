@@ -9,7 +9,7 @@
 
 using namespace cad_percept::cgal;
 
-typedef SurfaceMesh::HalfedgeDS HalfedgeDS;
+typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
 // A modifier creating a triangle with the incremental builder.
 template <class HDS>
@@ -56,7 +56,7 @@ geometry_msgs::Point pointMsg(int x, int y, int z) {
 }
 
 TEST(CGALConversionsTest, traingle_mesh_to_msg) {
-  SurfaceMesh m;
+  Polyhedron m;
   TestingMesh<HalfedgeDS> testcase;
   m.delegate(testcase);
 
