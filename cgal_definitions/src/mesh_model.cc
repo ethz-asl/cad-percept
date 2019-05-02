@@ -51,7 +51,7 @@ double MeshModel::getDistance(const Ray &query) const {
   return sqrt(squared_distance);
 }
 
-PointAndPrimitiveId MeshModel::getClosestTriangle(Point &p) const {
+PointAndPrimitiveId MeshModel::getClosestTriangle(const Point &p) const {
   return tree_->closest_point_and_primitive(p);
 }
 
