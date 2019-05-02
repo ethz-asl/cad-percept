@@ -20,15 +20,11 @@ class MeshModel {
   MeshModel(const std::string &off_pathm, bool verbose = false);
 
   /**
- * Get the Intersection point with the arhcitecture model from the pose of the
- * pointlaser. The pointlaser is assumed to point into the x-axis direction in
- * it's own frame.
+ * Get the intersection between the ray and the mesh model.
  */
   Intersection getIntersection(const Ray &query) const;
   /**
- * Get the epxected measured distance according to the architecture model from
- * the given  pose of the pointlaser. The pointlaser is assumed to point into
- * the x-axis direction in it's own frame.
+ * Get the distance of the intersection with the mesh from the ray origin.
  */
   double getDistance(const Ray &query) const;
 
@@ -46,12 +42,12 @@ class MeshModel {
   Vector getNormal(const PointAndPrimitiveId &ppid) const;
 
   /**
- * Transform the architect model.
+ * Transform the mesh model.
  */
   void transform(const Transformation &transform);
 
   /**
- * Return size of architect model (number of primitives).
+ * Return size of mesh (number of facet primitives).
  */
   int size() const;
 
