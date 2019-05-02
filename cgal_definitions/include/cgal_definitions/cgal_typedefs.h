@@ -40,6 +40,8 @@ typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3>
 typedef std::shared_ptr<Polyhedron> PolyhedronPtr;
 
 // datastructures
+typedef Polyhedron::HalfedgeDS HalfedgeDS;
+
 typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
 typedef boost::graph_traits<Polyhedron>::halfedge_descriptor
     halfedge_descriptor;
