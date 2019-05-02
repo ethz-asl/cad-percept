@@ -14,7 +14,7 @@ typedef Polyhedron::HalfedgeDS HalfedgeDS;
 void vertexToPointMsg(const Point *vertex, geometry_msgs::Point *msg);
 geometry_msgs::Point vertexToPointMsg(const Point *vertex);
 void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg);
-void msgToTriangleMesh(cgal_msgs::TriangleMesh *msg, Polyhedron *mesh);
+void msgToTriangleMesh(const cgal_msgs::TriangleMesh *msg, Polyhedron *mesh);
 
 template<class HDS>
 class BuildMesh : public CGAL::Modifier_base<HDS> {
@@ -22,14 +22,13 @@ class BuildMesh : public CGAL::Modifier_base<HDS> {
     BuildMesh(){}
 
     void operator()(HDS& hds);
-    void setMsg(cgal_msgs::TriangleMesh *msg);
+    void setMsg(const cgal_msgs::TriangleMesh *msg);
 
     private:
-    cgal_msgs::TriangleMesh *msg_;
+    const cgal_msgs::TriangleMesh *msg_;
 
 };
 
-void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg);
 }
 }
 
