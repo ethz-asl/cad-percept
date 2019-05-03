@@ -4,6 +4,20 @@
 #include "cpt_localization/mesh_localizer.h"
 
 using namespace cad_percept::localization;
+
+void ASSERT_MATRIX_EQ(const Eigen::MatrixXd &A,
+                      const Eigen::MatrixXd &B,
+                      std::string str) {
+  double tol = 1e-7;
+  ASSERT_EQ(A.rows(), B.rows()) << str << " are not the same size.";
+  ASSERT_EQ(A.cols(), B.cols()) << str << " are not the same size.";
+  for (int i = 0; i < A.rows(); i++) {
+    for (int j = 0; j < A.cols(); j++) {
+      ASSERT_NEAR(A(i, j), B(i, j), tol) << str << " have different values.";
+    }
+  }
+}
+
 // Initialize common objects needed by multiple tests.
 class LocalizationTest : public ::testing::Test {
  protected:
@@ -54,7 +68,6 @@ class LocalizationTest : public ::testing::Test {
 TEST_F(LocalizationTest, test_localization) {
   SE3 initial_pose = SE3(SE3::Position(0, 0, 0), SE3::Rotation(1, 0, 0, 0));
   SE3 result = mesh_localizer_.icm(point_cloud_, initial_pose);
-  std::cout << "resulting position: " << result.getPosition().transpose()
-  << std::endl;
-EXPECT_GE(0, 0);
+  ASSERT_MATRIX_EQ(result.getPosition(), Eigen::Vector3d(-0.1, 0.1, -0.1),
+      "localization result");
 }

@@ -41,9 +41,6 @@ Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const 
     Eigen::Vector3d relative = Eigen::Vector3d(pt.x(), pt.y(), pt.z())
         - Eigen::Vector3d(pc_msg[i].x, pc_msg[i].y, pc_msg[i].z);
     Eigen::Vector3d direction = normal.dot(relative) * normal;
-    std::cout << "normal " << normal.transpose() << std::endl;
-    std::cout << "query " << pc_msg[i].x << " " << pc_msg[i].y << " " <<
-    pc_msg[i].z << std::endl;
 
     associations.points_to(0, i) =
         associations.points_from(0, i) + direction(0);
@@ -72,7 +69,6 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
     SE3 T_W_A, T_W_B;
     T_W_A = SE3(SE3::Position(0, 0, 0), SE3::Rotation(1, 0, 0, 0));
     T_W_B = initial_pose;
-    std::cout << "position " << T_W_B.getPosition().transpose() << std::endl;
 
     gtsam::Expression<SE3> E_T_W_A(0); // 0,0,0,0 (origin).
     gtsam::Expression<SE3> E_T_W_B(1); // Current pose.
@@ -94,16 +90,12 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
 
     for (size_t i = 0u; i < associations.points_from.cols(); ++i) {
       // Reduce error with GTSAM.
-      std::cout << "From " << associations.points_from.col(i).transpose() <<
-      " to " << associations.points_to.col(i).transpose() << std::endl;
       // Create expression factors from associations and add to factor graph.
       SE3::Position mu_W_SA = associations.points_to.block(0, i, 3, 1);
       SE3::Position mu_W_SB = associations.points_from.block(0, i, 3, 1);
       SE3::Position mu_A_SA, mu_B_SB; // The individual points.
       mu_A_SA = T_W_A.inverse().transform(mu_W_SA);
       mu_B_SB = T_W_B.inverse().transform(mu_W_SB);
-      // ref
-      // frames.
       SE3::Position normalRef_l = T_W_A.getRotation().inverseRotate
           (associations.normals_to.block(0, i, 3, 1));
       gtsam::Expression<Eigen::Vector3d> E_normalRef_l(normalRef_l);
@@ -127,7 +119,6 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
                                                    error);
       factor_graph_.push_back(match_factor);
     }
-//    factor_graph_.print();
     gtsam::Values initial_estimate;
     initial_estimate.insert(0, T_W_A);
     initial_estimate.insert(1, T_W_B);
