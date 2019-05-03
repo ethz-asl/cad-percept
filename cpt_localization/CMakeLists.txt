@@ -24,6 +24,13 @@ cs_add_executable(mesh_localizer_ros_node
         )
 target_link_libraries(mesh_localizer_ros_node ${PROJECT_NAME})
 
+catkin_add_gtest(${PROJECT_NAME}_tests
+        test/test_main.cpp
+        test/test_localizer.cpp
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test
+        )
+target_link_libraries(${PROJECT_NAME}_tests ${PROJECT_NAME})
+
 ##########
 # EXPORT #
 ##########

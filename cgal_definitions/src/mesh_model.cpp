@@ -3,6 +3,9 @@
 namespace cad_percept {
 namespace cgal {
 
+MeshModel::MeshModel(bool verbose)
+    : verbose_(verbose) {};
+
 MeshModel::MeshModel(const std::string &off_path, bool verbose)
     : verbose_(verbose) {
   std::ifstream off_file(off_path.c_str(), std::ios::binary);
@@ -99,6 +102,15 @@ void MeshModel::transform(const Transformation &transform) {
                  P_.points_end(),
                  P_.points_begin(),
                  transform);
+  tree_ =
+      std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
+                                            CGAL::faces(P_).second,
+                                            P_);
+  tree_->accelerate_distance_queries();
+}
+
+void MeshModel::setSurfaceMesh(const SurfaceMesh &mesh) {
+  P_ = mesh;
   tree_ =
       std::make_shared<SurfaceMeshAABBTree>(CGAL::faces(P_).first,
                                             CGAL::faces(P_).second,

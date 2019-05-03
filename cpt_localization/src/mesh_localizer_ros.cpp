@@ -1,3 +1,4 @@
+#include <nav_msgs/Odometry.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <tf_conversions/tf_eigen.h>
 
@@ -26,12 +27,18 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
       nh_.advertise<visualization_msgs::Marker>("architect_model", 100);
   arch_pub_ =
       nh_.advertise<PointCloud>("architect_model_pcl", 100, true);
+  pose_pub_ = nh_.advertise<nav_msgs::Odometry>
+      ("optimized_pose", 100, true);
 
   pointcloud_sub_ =
       nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"),
                             10,
                             &MeshLocalizerRos::associatePointCloud,
                             this);
+  icp_sub_ = nh_private_.subscribe("/icp_pose",
+                                   10,
+                                   &MeshLocalizerRos::recordPose,
+                                   this);
   model_.type = visualization_msgs::Marker::MESH_RESOURCE;
   model_.ns = "primitive_surfaces";
   if (!nh_private_.hasParam("stl_model"))
@@ -61,59 +68,86 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
 
 MeshLocalizerRos::~MeshLocalizerRos() {}
 
+void MeshLocalizerRos::recordPose(const geometry_msgs::TransformStamped
+&msg) {
+  SE3 initial(SE3::Position(msg.transform.translation.x,msg.transform
+  .translation.y, msg.transform.translation.z), SE3::Rotation(msg.transform
+  .rotation.w, msg.transform.rotation.x, msg.transform.rotation.y, msg
+  .transform.rotation.z));
+  current_pose_ = initial;
+  std::cout << "++++++++++++++++++++++++++Calling initial******" << std::endl;
+}
 void MeshLocalizerRos::associatePointCloud(const PointCloud &pc_msg) {
-  SE3 initial(SE3::Position(0, 0, 0), SE3::Rotation(1, 0, 0, 0));
-  mesh_localizer_.icm(pc_msg, initial);
-//  Associations associations = mesh_localizer_.associatePointCloud(pc_msg);
-//  CHECK_EQ(associations.points_from.cols(), pc_msg.width);
-//  CHECK_EQ(associations.points_to.cols(), pc_msg.width);
-//  CHECK_EQ(associations.distances.rows(), pc_msg.width);
-//  visualization_msgs::Marker good_marker, bad_marker;
-//  good_marker.header.frame_id = map_frame_;
-//  good_marker.ns = "semantic_graph_matches";
-//  good_marker.type = visualization_msgs::Marker::LINE_LIST;
-//  good_marker.action = visualization_msgs::Marker::ADD;
-//  good_marker.id = 0;
-//
-//  good_marker.scale.x = 0.01f;
-//  good_marker.color.r = 0.0f;
-//  good_marker.color.g = 1.0f;
-//  good_marker.color.b = 0.0f;
-//  good_marker.color.a = 0.7f;
-//  bad_marker = good_marker;
-//  bad_marker.color.r = 1.0f;
-//  bad_marker.color.g = 0.0f;
-//
-//  geometry_msgs::Point p_from, p_to;
-//  int differences = 0;
-//  for (size_t i = 0u; i < pc_msg.width; ++i) {
-//
-//// todo: less copying
-//    p_from.x = associations.points_from(0, i);
-//    p_from.y = associations.points_from(1, i);
-//    p_from.z = associations.points_from(2, i);
-//    p_to.x = associations.points_to(0, i);
-//    p_to.y = associations.points_to(1, i);
-//    p_to.z = associations.points_to(2, i);
-//    double length = associations.distances(i);
-//    if (length > distance_threshold_) {
-//      differences++;
-//      bad_marker.color.r = 1.0f;
-//      bad_marker.color.g = 0.0f;
-//      bad_marker.points.push_back(p_from);
-//      bad_marker.points.push_back(p_to);
-//    } else {
-//      good_marker.color.r = 0.0f;
-//      good_marker.color.g = 1.0f;
-//      good_marker.points.push_back(p_from);
-//      good_marker.points.push_back(p_to);
-//    }
-//  }
-//  std::cout << "differences " << differences << "/" << pc_msg.width
-//            << std::endl;
-//
-//  good_matches_pub_.publish(good_marker);
-//  bad_matches_pub_.publish(bad_marker);
+
+
+//  SE3 initial(SE3::Position(0, 0, 0), SE3::Rotation(1, 0, 0, 0));
+  SE3 final_pose = mesh_localizer_.icm(pc_msg, current_pose_);
+
+  nav_msgs::Odometry odom_msg;
+  odom_msg.child_frame_id = "lidar";
+  odom_msg.header.frame_id = "map";
+  odom_msg.pose.pose.position.x = final_pose.getPosition().x();
+  odom_msg.pose.pose.position.y = final_pose.getPosition().y();
+  odom_msg.pose.pose.position.z = final_pose.getPosition().z();
+
+  odom_msg.pose.pose.orientation.w = final_pose.getRotation().w();
+  odom_msg.pose.pose.orientation.x = final_pose.getRotation().x();
+  odom_msg.pose.pose.orientation.y = final_pose.getRotation().y();
+  odom_msg.pose.pose.orientation.z = final_pose.getRotation().z();
+
+  pose_pub_.publish(odom_msg);
+
+  // Duplicated associations, just for visualization, todo: remove
+  Associations associations = mesh_localizer_.associatePointCloud(pc_msg);
+  CHECK_EQ(associations.points_from.cols(), pc_msg.width);
+  CHECK_EQ(associations.points_to.cols(), pc_msg.width);
+  CHECK_EQ(associations.distances.rows(), pc_msg.width);
+  visualization_msgs::Marker good_marker, bad_marker;
+  good_marker.header.frame_id = map_frame_;
+  good_marker.ns = "semantic_graph_matches";
+  good_marker.type = visualization_msgs::Marker::LINE_LIST;
+  good_marker.action = visualization_msgs::Marker::ADD;
+  good_marker.id = 0;
+
+  good_marker.scale.x = 0.01f;
+  good_marker.color.r = 0.0f;
+  good_marker.color.g = 1.0f;
+  good_marker.color.b = 0.0f;
+  good_marker.color.a = 0.7f;
+  bad_marker = good_marker;
+  bad_marker.color.r = 1.0f;
+  bad_marker.color.g = 0.0f;
+
+  geometry_msgs::Point p_from, p_to;
+  int differences = 0;
+  for (size_t i = 0u; i < pc_msg.width; ++i) {
+
+// todo: less copying
+    p_from.x = associations.points_from(0, i);
+    p_from.y = associations.points_from(1, i);
+    p_from.z = associations.points_from(2, i);
+    p_to.x = associations.points_to(0, i);
+    p_to.y = associations.points_to(1, i);
+    p_to.z = associations.points_to(2, i);
+    double length = associations.distances(i);
+    if (length > distance_threshold_) {
+      differences++;
+      bad_marker.color.r = 1.0f;
+      bad_marker.color.g = 0.0f;
+      bad_marker.points.push_back(p_from);
+      bad_marker.points.push_back(p_to);
+    } else {
+      good_marker.color.r = 0.0f;
+      good_marker.color.g = 1.0f;
+      good_marker.points.push_back(p_from);
+      good_marker.points.push_back(p_to);
+    }
+  }
+  std::cout << "differences " << differences << "/" << pc_msg.width
+            << std::endl;
+
+  good_matches_pub_.publish(good_marker);
+  bad_matches_pub_.publish(bad_marker);
 //  model_pub_.publish(model_);
 //
 //  publishArchitectModel();

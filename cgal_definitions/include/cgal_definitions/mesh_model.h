@@ -20,6 +20,8 @@ struct Intersection {
 
 class MeshModel {
  public:
+  MeshModel(bool verbose = false);
+
   MeshModel(const std::string &off_pathm, bool verbose = false);
 
   /**
@@ -56,6 +58,12 @@ class MeshModel {
  * Return size of architect model (number of primitives).
  */
   int size() const;
+
+  /**
+ * Set the mesh.
+ */
+  void setSurfaceMesh(const SurfaceMesh &mesh);
+
  private:
   SurfaceMesh P_;
   std::shared_ptr<SurfaceMeshAABBTree> tree_;

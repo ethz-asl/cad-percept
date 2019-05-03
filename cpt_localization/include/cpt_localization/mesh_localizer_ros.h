@@ -24,6 +24,9 @@ class MeshLocalizerRos {
   MeshLocalizerRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
   ~MeshLocalizerRos();
 
+  // Record the current pose of the robot.
+  void recordPose(const geometry_msgs::TransformStamped &transform_msg);
+
   // Associate point-cloud with architect model.
   void associatePointCloud(const PointCloud &pc_msg);
 
@@ -37,12 +40,14 @@ class MeshLocalizerRos {
  private:
   MeshLocalizer mesh_localizer_;
   ros::NodeHandle &nh_, nh_private_;
-  ros::Publisher good_matches_pub_, bad_matches_pub_, model_pub_, arch_pub_;
-  ros::Subscriber pointcloud_sub_;
+  ros::Publisher good_matches_pub_, bad_matches_pub_, model_pub_, arch_pub_,
+  pose_pub_;
+  ros::Subscriber pointcloud_sub_, icp_sub_;
   visualization_msgs::Marker model_;
   ros::ServiceServer transformSrv_;
   tf::TransformListener tf_listener_;
   std::string map_frame_, cad_frame_;
+  SE3 current_pose_;
   double distance_threshold_;
 };
 }

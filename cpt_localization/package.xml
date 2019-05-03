@@ -16,9 +16,11 @@
 
   <depend>cgal_catkin</depend>
   <depend>cgal_definitions</depend>
+  <depend>glog_catkin</depend>
   <depend>gtsam_catkin</depend>
   <depend>minkindr</depend>
   <depend>minkindr_gtsam</depend>
+  <depend>nav_msgs</depend>
   <depend>pcl_ros</depend>
   <depend>roscpp</depend>
   <depend>tf_conversions</depend>

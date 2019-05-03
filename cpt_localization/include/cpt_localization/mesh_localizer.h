@@ -46,6 +46,7 @@ struct Associations {
 
 class MeshLocalizer {
  public:
+  MeshLocalizer();
   MeshLocalizer(const std::string &model_file);
   MeshLocalizer(const cad_percept::cgal::SurfaceMesh &mesh);
 
@@ -60,15 +61,17 @@ class MeshLocalizer {
   Iteratively minimize error and re-associatepoint cloud with mesh. ICM =
   iterative closest mesh.
    */
-  void icm(const PointCloud &pc_msg, const SE3 &initial_pose);
+  SE3 icm(const PointCloud &pc_msg, const SE3 &initial_pose);
 
   /*
   Transform the mesh model.
    */
   void transformModel(const Eigen::Matrix4d &transformation);
 
+  void setMesh(const cgal::SurfaceMesh &mesh);
+
  private:
-  std::shared_ptr<cgal::MeshModel> mesh_model_;
+  cgal::MeshModel mesh_model_;
   gtsam::NonlinearFactorGraph factor_graph_;
 };
 
