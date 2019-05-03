@@ -41,6 +41,9 @@ Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const 
     Eigen::Vector3d relative = Eigen::Vector3d(pt.x(), pt.y(), pt.z())
         - Eigen::Vector3d(pc_msg[i].x, pc_msg[i].y, pc_msg[i].z);
     Eigen::Vector3d direction = normal.dot(relative) * normal;
+    std::cout << "normal " << normal.transpose() << std::endl;
+    std::cout << "query " << pc_msg[i].x << " " << pc_msg[i].y << " " <<
+    pc_msg[i].z << std::endl;
 
     associations.points_to(0, i) =
         associations.points_from(0, i) + direction(0);
@@ -84,14 +87,15 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
     noise(5) = 0.0000001;
 
     gtsam::noiseModel::Diagonal::shared_ptr prior_noise =
-        gtsam::noiseModel::Diagonal::
-        Sigmas(noise);
+        gtsam::noiseModel::Diagonal::Sigmas(noise);
     gtsam::ExpressionFactor<SE3> anchor(prior_noise, T_W_A,
                                         E_T_W_A);
     factor_graph_.push_back(anchor);
 
     for (size_t i = 0u; i < associations.points_from.cols(); ++i) {
       // Reduce error with GTSAM.
+      std::cout << "From " << associations.points_from.col(i).transpose() <<
+      " to " << associations.points_to.col(i).transpose() << std::endl;
       // Create expression factors from associations and add to factor graph.
       SE3::Position mu_W_SA = associations.points_to.block(0, i, 3, 1);
       SE3::Position mu_W_SB = associations.points_from.block(0, i, 3, 1);

@@ -13,10 +13,10 @@ class LocalizationTest : public ::testing::Test {
     // Initiate simple tetrahedron mesh.
     cad_percept::cgal::SurfaceMesh sample_mesh;
     cad_percept::cgal::Point vertex_a(-1.0, 1.0, 10.0);
-    cad_percept::cgal::Point vertex_b(-1.0, 1.0, 1.0);
+    cad_percept::cgal::Point vertex_b(-1.0, 1.0, -1.0);
     cad_percept::cgal::Point vertex_c(10.0, 1.0, -1.0);
     cad_percept::cgal::Point vertex_d(-1.0, -10.0, -1.0) ;
-    sample_mesh.make_tetrahedron(vertex_a, vertex_b, vertex_c, vertex_d);
+    sample_mesh.make_tetrahedron(vertex_a, vertex_b, vertex_d, vertex_c);
     mesh_localizer_.setMesh(sample_mesh);
 
     // Make point cloud.
