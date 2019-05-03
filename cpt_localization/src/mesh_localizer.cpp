@@ -90,7 +90,7 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
                                         E_T_W_A);
     factor_graph_.push_back(anchor);
 
-    for (size_t i = 0u; i < associations.points_from.cols(); i = i + 200) {
+    for (size_t i = 0u; i < associations.points_from.cols(); ++i) {
       // Reduce error with GTSAM.
       // Create expression factors from associations and add to factor graph.
       SE3::Position mu_W_SA = associations.points_to.block(0, i, 3, 1);
@@ -129,7 +129,7 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
     initial_estimate.insert(1, T_W_B);
     gtsam::LevenbergMarquardtParams params;
     params.setVerbosity("LINEAR"); // LINEAR - ERROR
-    params.setMaxIterations(2);
+//    params.setMaxIterations(2);
     gtsam::LevenbergMarquardtOptimizer optimizer(factor_graph_,
                                                  initial_estimate, params);
     gtsam::Values result = optimizer.optimize();
