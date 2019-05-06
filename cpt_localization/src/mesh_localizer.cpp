@@ -60,85 +60,81 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
   Eigen::Matrix<double, 1, 1> noise_model;
   noise_model = Eigen::Matrix<double, 1, 1>::Ones() * 0.02;
 
-  match_noise  = gtsam::noiseModel::Robust::Create(
+  match_noise = gtsam::noiseModel::Robust::Create(
       gtsam::noiseModel::mEstimator::Cauchy::Create(1),
       gtsam::noiseModel::Diagonal::Sigmas(noise_model));
 
-  while (iterate) {
+  // todo: should we iterate and reassociate?
 
-    // Associate point cloud with mesh.
-    Associations associations = associatePointCloud(point_cloud);
-    // todo: Weight outliers? Or simply use robust cost function?
+  // Associate point cloud with mesh.
+  Associations associations = associatePointCloud(point_cloud);
+  // todo: Weight outliers? Or simply use robust cost function?
 
-    SE3 T_W_A, T_W_B;
-    T_W_A = SE3(SE3::Position(0, 0, 0), SE3::Rotation(1, 0, 0, 0));
-    T_W_B = initial_pose;
+  SE3 T_W_A, T_W_B;
+  T_W_A = SE3(SE3::Position(0, 0, 0), SE3::Rotation(1, 0, 0, 0));
+  T_W_B = initial_pose;
 
-    gtsam::Expression<SE3> E_T_W_A(0); // 0,0,0,0 (origin).
-    gtsam::Expression<SE3> E_T_W_B(1); // Current pose.
+  gtsam::Expression<SE3> E_T_W_A(0); // 0,0,0,0 (origin).
+  gtsam::Expression<SE3> E_T_W_B(1); // Current pose.
 
-    // Anchor map pose with prior factor.
-    Eigen::Matrix<double, 6, 1> noise;
-    noise(0) = 0.0000001;
-    noise(1) = 0.0000001;
-    noise(2) = 0.0000001;
-    noise(3) = 0.0000001;
-    noise(4) = 0.0000001;
-    noise(5) = 0.0000001;
+  // Anchor map pose with prior factor.
+  Eigen::Matrix<double, 6, 1> noise;
+  noise(0) = 0.0000001;
+  noise(1) = 0.0000001;
+  noise(2) = 0.0000001;
+  noise(3) = 0.0000001;
+  noise(4) = 0.0000001;
+  noise(5) = 0.0000001;
 
-    gtsam::noiseModel::Diagonal::shared_ptr prior_noise =
-        gtsam::noiseModel::Diagonal::Sigmas(noise);
-    gtsam::ExpressionFactor<SE3> anchor(prior_noise, T_W_A,
-                                        E_T_W_A);
-    factor_graph_.push_back(anchor);
+  gtsam::noiseModel::Diagonal::shared_ptr prior_noise =
+      gtsam::noiseModel::Diagonal::Sigmas(noise);
+  gtsam::ExpressionFactor<SE3> anchor(prior_noise, T_W_A,
+                                      E_T_W_A);
+  factor_graph_.push_back(anchor);
 
-    for (size_t i = 0u; i < associations.points_from.cols(); ++i) {
-      // Reduce error with GTSAM.
-      // Create expression factors from associations and add to factor graph.
-      SE3::Position mu_W_SA = associations.points_to.block(0, i, 3, 1);
-      SE3::Position mu_W_SB = associations.points_from.block(0, i, 3, 1);
-      SE3::Position mu_A_SA, mu_B_SB; // The individual points.
-      mu_A_SA = T_W_A.inverse().transform(mu_W_SA);
-      mu_B_SB = T_W_B.inverse().transform(mu_W_SB);
-      SE3::Position normalRef_l = T_W_A.getRotation().inverseRotate
-          (associations.normals_to.block(0, i, 3, 1));
-      gtsam::Expression<Eigen::Vector3d> E_normalRef_l(normalRef_l);
-      gtsam::Expression<Eigen::Vector3d> E_normalRef_w =
-          kindr::minimal::rotate(kindr::minimal::rotationFromTransformation(
-              E_T_W_A), E_normalRef_l);
+  for (size_t i = 0u; i < associations.points_from.cols(); ++i) {
+    // Reduce error with GTSAM.
+    // Create expression factors from associations and add to factor graph.
+    SE3::Position mu_W_SA = associations.points_to.block(0, i, 3, 1);
+    SE3::Position mu_W_SB = associations.points_from.block(0, i, 3, 1);
+    SE3::Position mu_A_SA, mu_B_SB; // The individual points.
+    mu_A_SA = T_W_A.inverse().transform(mu_W_SA);
+    mu_B_SB = T_W_B.inverse().transform(mu_W_SB);
+    SE3::Position normalRef_l = T_W_A.getRotation().inverseRotate
+        (associations.normals_to.block(0, i, 3, 1));
+    gtsam::Expression<Eigen::Vector3d> E_normalRef_l(normalRef_l);
+    gtsam::Expression<Eigen::Vector3d> E_normalRef_w =
+        kindr::minimal::rotate(kindr::minimal::rotationFromTransformation(
+            E_T_W_A), E_normalRef_l);
 
-      gtsam::Expression<Eigen::Vector3d> E_mu_A_SA(mu_A_SA);
-      gtsam::Expression<Eigen::Vector3d> E_mu_B_SB(mu_B_SB);
+    gtsam::Expression<Eigen::Vector3d> E_mu_A_SA(mu_A_SA);
+    gtsam::Expression<Eigen::Vector3d> E_mu_B_SB(mu_B_SB);
 
-      gtsam::Expression<Eigen::Vector3d>
-          pointTransformedB = kindr::minimal::transform(E_T_W_B, E_mu_B_SB);
-      gtsam::Expression<Eigen::Vector3d>
-          pointTransformedA = kindr::minimal::transform(E_T_W_A, E_mu_A_SA);
-      gtsam::Expression<Eigen::Vector3d> subtracted =
-          kindr::minimal::vectorDifference(pointTransformedA,
-                                           pointTransformedB);
-      gtsam::Expression<double>
-          error = multiplyVectors(subtracted, E_normalRef_w);
-      gtsam::ExpressionFactor<double> match_factor(match_noise, (double(0)),
-                                                   error);
-      factor_graph_.push_back(match_factor);
-    }
-    gtsam::Values initial_estimate;
-    initial_estimate.insert(0, T_W_A);
-    initial_estimate.insert(1, T_W_B);
-    gtsam::LevenbergMarquardtParams params;
-    params.setVerbosity("LINEAR"); // LINEAR - ERROR
-//    params.setMaxIterations(2);
-    gtsam::LevenbergMarquardtOptimizer optimizer(factor_graph_,
-                                                 initial_estimate, params);
-    gtsam::Values result = optimizer.optimize();
-    result.print("Result from optimization");
-    // todo: Update point_cloud with transformation.
-
-    // todo: Add stop condition.
-    iterate = false;
-    return result.at<SE3>(1);
+    gtsam::Expression<Eigen::Vector3d>
+        pointTransformedB = kindr::minimal::transform(E_T_W_B, E_mu_B_SB);
+    gtsam::Expression<Eigen::Vector3d>
+        pointTransformedA = kindr::minimal::transform(E_T_W_A, E_mu_A_SA);
+    gtsam::Expression<Eigen::Vector3d> subtracted =
+        kindr::minimal::vectorDifference(pointTransformedA,
+                                         pointTransformedB);
+    gtsam::Expression<double>
+        error = multiplyVectors(subtracted, E_normalRef_w);
+    gtsam::ExpressionFactor<double> match_factor(match_noise, (double(0)),
+                                                 error);
+    factor_graph_.push_back(match_factor);
   }
+  gtsam::Values initial_estimate;
+  initial_estimate.insert(0, T_W_A);
+  initial_estimate.insert(1, T_W_B);
+  gtsam::LevenbergMarquardtParams params;
+  params.setVerbosity("LINEAR"); // LINEAR - ERROR
+//    params.setMaxIterations(2);
+  gtsam::LevenbergMarquardtOptimizer optimizer(factor_graph_,
+                                               initial_estimate, params);
+  gtsam::Values result = optimizer.optimize();
+  result.print("Result from optimization");
+  // todo: Update point_cloud with transformation.
+  return result.at<SE3>(1);
 }
 
 void MeshLocalizer::transformModel(const Eigen::Matrix4d &transformation) {
