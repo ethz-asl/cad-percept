@@ -59,7 +59,11 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
   gtsam::noiseModel::Base::shared_ptr match_noise;
   Eigen::Matrix<double, 1, 1> noise_model;
   noise_model = Eigen::Matrix<double, 1, 1>::Ones() * 0.02;
-  match_noise = gtsam::noiseModel::Diagonal::Sigmas(noise_model);
+
+  match_noise  = gtsam::noiseModel::Robust::Create(
+      gtsam::noiseModel::mEstimator::Cauchy::Create(1),
+      gtsam::noiseModel::Diagonal::Sigmas(noise_model));
+
   while (iterate) {
 
     // Associate point cloud with mesh.
