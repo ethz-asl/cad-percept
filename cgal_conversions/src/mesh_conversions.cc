@@ -94,7 +94,7 @@ void msgToTriangleMesh(const cgal_msgs::TriangleMesh *msg, Polyhedron *mesh){
 }
 
 void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *pc) {
-  pc->width = mesh.size_of_vertices();
+  pc->width = mesh.size_of_vertices(); //number of vertices
   pc->header.frame_id = "mesh";
   pcl::PointXYZ point;
   for (auto vertex_point = mesh.points_begin();
