@@ -10,8 +10,6 @@ MeshLocalizer::MeshLocalizer() {}
 
 MeshLocalizer::MeshLocalizer(const std::string &model_file) : mesh_model_
                                                                   (model_file) {}
-//  mesh_model_ = cgal::MeshModel>(model_file);
-//}
 
 MeshLocalizer::~MeshLocalizer() {}
 
