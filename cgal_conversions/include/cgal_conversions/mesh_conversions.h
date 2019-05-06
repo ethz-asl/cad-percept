@@ -1,7 +1,10 @@
-#ifndef CGAL_INTERFACE_CGAL_CONVERSIONS_H
-#define CGAL_INTERFACE_CGAL_CONVERSIONS_H
+#ifndef MESH_CONVERSIONS_H
+#define MESH_CONVERSIONS_H
 
+#include <CGAL/Polyhedron_incremental_builder_3.h>
 #include <cgal_definitions/cgal_typedefs.h>
+#include <cgal_msgs/TriangleMesh.h>
+#include <geometry_msgs/Point.h>
 #include <cgal_msgs/ProbabilisticMesh.h>
 #include <pcl_ros/point_cloud.h>
 
@@ -10,8 +13,24 @@ namespace cgal {
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
+void vertexToPointMsg(const Point *vertex, geometry_msgs::Point *msg);
+geometry_msgs::Point vertexToPointMsg(const Point *vertex);
+void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg);
+void msgToTriangleMesh(const cgal_msgs::TriangleMesh *msg, Polyhedron *mesh);
 void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *msg);
+
+template <class HDS>
+class BuildMesh : public CGAL::Modifier_base<HDS> {
+ public:
+  BuildMesh() {}
+
+  void operator()(HDS &hds);
+  void setMsg(const cgal_msgs::TriangleMesh *msg);
+
+ private:
+  const cgal_msgs::TriangleMesh *msg_;
+};
 }
 }
 
-#endif  // CGAL_INTERFACE_CGAL_CONVERSIONS_H
+#endif  // MESH_CONVERSIONS_H
