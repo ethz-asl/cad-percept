@@ -94,7 +94,7 @@ void ProbabilisticMeshVisual::update() {
   ogre_object->clear();
   assert(ogre_object != nullptr);
 
-  ogre_object->estimateVertexCount(msg_->vertices.size());
+  ogre_object->estimateVertexCount(msg_->cov_vertices.size());
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
@@ -116,7 +116,7 @@ void ProbabilisticMeshVisual::update() {
   // Displaying Edges
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_LINE_LIST);
-  for (auto triangle : msg_->mehs.triangles) {
+  for (auto triangle : msg_->mesh.triangles) {
     for (int i = 0; i < 3; ++i) {
       const auto& vrtx_a = msg_->mesh.vertices[triangle.vertex_indices[i]];
       ogre_object->position(vrtx_a.x, vrtx_a.y, vrtx_a.z);
