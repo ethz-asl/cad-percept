@@ -20,5 +20,7 @@
   <depend>cgal_catkin</depend>
   <depend>cgal_definitions</depend>
   <depend>cgal_msgs</depend>
+  <depend>pcl_ros</depend>
+  <depend>shape_msgs</depend>
   <depend>roscpp</depend>
 </package>
