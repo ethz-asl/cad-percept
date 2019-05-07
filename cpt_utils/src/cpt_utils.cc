@@ -71,6 +71,8 @@ PointCloud getModelAsPointCloud(const cgal::MeshModel &mesh_model_) {
   return pc_msg;
 }
 
+/* Use the conversion functions in cgal_conversions package later! */
+
 Eigen::Vector3d vectorToEigenVector(const cgal::Vector &v) {
   return Eigen::Vector3d(v.x(), v.y(), v.z());
 }
@@ -78,6 +80,8 @@ Eigen::Vector3d vectorToEigenVector(const cgal::Vector &v) {
 cgal::Vector eigenVectorToVector(const Eigen::Vector3d &ve) {
   return cgal::Vector(ve(0,0), ve(1,0), ve(2,0));
 }
+
+/* ---- */
 
 }
 }
