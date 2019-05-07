@@ -51,6 +51,12 @@ class MeshModel {
  */
   int size() const;
 
+  /**
+   * Return mesh
+   */
+  Polyhedron getMesh() const;
+
+
  private:
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;

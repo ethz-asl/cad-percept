@@ -40,6 +40,8 @@ Intersection MeshModel::getIntersection(const Ray &query) const {
       return intersection_result;
     }
   }
+  
+  // a return value is needed to avoid warning!
 }
 
 double MeshModel::getDistance(const Ray &query) const {
@@ -83,5 +85,8 @@ void MeshModel::transform(const Transformation &transform) {
 }
 
 int MeshModel::size() const { return P_.size_of_facets(); }
+
+Polyhedron MeshModel::getMesh() const { return P_; }
+
 }
 }
