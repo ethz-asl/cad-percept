@@ -1,3 +1,4 @@
+#include <cgal_conversions/eigen_conversions.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <kindr/minimal/quat-transformation-gtsam.h>
 
@@ -37,7 +38,8 @@ Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const 
     associations.points_from(2, i) = pc_msg[i].z;
 
     // Raycast into direction of triangle normal.
-    Eigen::Vector3d normal = mesh_model_.getNormal(ppid);
+    Eigen::Vector3d normal;
+    cgal::cgalPointToEigenVector(mesh_model_.getNormal(ppid), &normal);
     normal.normalize();
     associations.normals_to.block(0, i, 3, 1) = normal;
     Eigen::Vector3d relative = Eigen::Vector3d(pt.x(), pt.y(), pt.z())
