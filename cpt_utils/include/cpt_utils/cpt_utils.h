@@ -8,6 +8,7 @@
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_conversions/mesh_conversions.h>
+#include <cgal_conversions/eigen_conversions.h>
 
 namespace cad_percept {
 namespace cpt_utils {
@@ -33,10 +34,6 @@ int size(const cgal::MeshModel &mesh_model_);
 
 // Return architect model as point cloud.
 PointCloud getModelAsPointCloud(const cgal::MeshModel &mesh_model_);
-
-Eigen::Vector3d vectorToEigenVector(const cgal::Vector &v);
-
-cgal::Vector eigenVectorToVector(const Eigen::Vector3d &ve);
 
 }
 }
