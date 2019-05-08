@@ -7,6 +7,7 @@
   <author email="mpantic@ethz.ch">Michael Pantic</author>
   <author email="gawela@ethz.ch">Abel Gawel</author>
   <author email="blumh@ethz.ch">Hermann Blum</author>
+  <author email="jstiefel@student.ethz.ch">Julian Stiefel</author>
   <maintainer email="michael.pantic@mavt.ethz.ch">Michael Pantic</maintainer>
 
   <license>BSD</license>
@@ -20,6 +21,7 @@
   <depend>cgal_catkin</depend>
   <depend>cgal_definitions</depend>
   <depend>cgal_msgs</depend>
+  <depend>eigen_catkin</depend>
   <depend>pcl_ros</depend>
   <depend>shape_msgs</depend>
   <depend>roscpp</depend>
