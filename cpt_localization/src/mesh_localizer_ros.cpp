@@ -16,6 +16,7 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
       mesh_localizer_(nh_private.param<std::string>("off_model", "fail")),
       map_frame_(nh_private.param<std::string>("map_frame", "fail")),
       cad_frame_(nh_private.param<std::string>("cad_frame", "fail")),
+      lidar_frame_(nh_private.param<std::string>("lidar_frame", "fail")),
       distance_threshold_(nh_private.param<double>("distance_threshold", 0.2)) {
   if (!nh_private_.hasParam("off_model"))
     std::cerr << "ERROR 'off_model' not set as parameter." << std::endl;
@@ -23,10 +24,6 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
       nh_.advertise<visualization_msgs::Marker>("good_cad_matches", 100);
   bad_matches_pub_ =
       nh_.advertise<visualization_msgs::Marker>("bad_cad_matches", 100);
-  model_pub_ =
-      nh_.advertise<visualization_msgs::Marker>("architect_model", 100);
-  arch_pub_ =
-      nh_.advertise<PointCloud>("architect_model_pcl", 100, true);
   pose_pub_ = nh_.advertise<nav_msgs::Odometry>
       ("optimized_pose", 100, true);
 
@@ -35,7 +32,10 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
                             10,
                             &MeshLocalizerRos::associatePointCloud,
                             this);
-  icp_sub_ = nh_private_.subscribe("/icp_pose",
+  // todo: abandon localization input from icp
+  icp_sub_ = nh_private_.subscribe(nh_private.param<std::string>
+                                       ("localization_topic",
+                                        "fail"),
                                    10,
                                    &MeshLocalizerRos::recordPose,
                                    this);
@@ -63,29 +63,29 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
 
   transformSrv_ =
       nh.advertiseService("transformModel",
-          &MeshLocalizerRos::transformModelCb, this);
+                          &MeshLocalizerRos::transformModelCb, this);
 }
 
 MeshLocalizerRos::~MeshLocalizerRos() {}
 
 void MeshLocalizerRos::recordPose(const geometry_msgs::TransformStamped
-&msg) {
-  SE3 initial(SE3::Position(msg.transform.translation.x,msg.transform
-  .translation.y, msg.transform.translation.z), SE3::Rotation(msg.transform
-  .rotation.w, msg.transform.rotation.x, msg.transform.rotation.y, msg
-  .transform.rotation.z));
+                                  &msg) {
+  SE3 initial(SE3::Position(msg.transform.translation.x, msg.transform
+      .translation.y, msg.transform.translation.z), SE3::Rotation(msg.transform
+                                                                      .rotation.w,
+                                                                  msg.transform.rotation.x,
+                                                                  msg.transform.rotation.y,
+                                                                  msg
+                                                                      .transform.rotation.z));
   current_pose_ = initial;
-  std::cout << "++++++++++++++++++++++++++Calling initial******" << std::endl;
 }
 void MeshLocalizerRos::associatePointCloud(const PointCloud &pc_msg) {
 
-
-//  SE3 initial(SE3::Position(0, 0, 0), SE3::Rotation(1, 0, 0, 0));
   SE3 final_pose = mesh_localizer_.icm(pc_msg, current_pose_);
 
   nav_msgs::Odometry odom_msg;
-  odom_msg.child_frame_id = "lidar";
-  odom_msg.header.frame_id = "map";
+  odom_msg.child_frame_id = lidar_frame_;
+  odom_msg.header.frame_id = map_frame_;
   odom_msg.pose.pose.position.x = final_pose.getPosition().x();
   odom_msg.pose.pose.position.y = final_pose.getPosition().y();
   odom_msg.pose.pose.position.z = final_pose.getPosition().z();
@@ -104,7 +104,6 @@ void MeshLocalizerRos::associatePointCloud(const PointCloud &pc_msg) {
   CHECK_EQ(associations.distances.rows(), pc_msg.width);
   visualization_msgs::Marker good_marker, bad_marker;
   good_marker.header.frame_id = map_frame_;
-  good_marker.ns = "semantic_graph_matches";
   good_marker.type = visualization_msgs::Marker::LINE_LIST;
   good_marker.action = visualization_msgs::Marker::ADD;
   good_marker.id = 0;
@@ -143,16 +142,10 @@ void MeshLocalizerRos::associatePointCloud(const PointCloud &pc_msg) {
       good_marker.points.push_back(p_to);
     }
   }
-  std::cout << "differences " << differences << "/" << pc_msg.width
-            << std::endl;
 
   good_matches_pub_.publish(good_marker);
   bad_matches_pub_.publish(bad_marker);
-//  model_pub_.publish(model_);
-//
-//  publishArchitectModel();
-//
-//  // todo: Filter out points that are close to several (non-parallel) planes.
+  // todo: Filter out points that are close to several (non-parallel) planes.
 }
 
 bool MeshLocalizerRos::transformModelCb(std_srvs::Empty::Request &request,
@@ -170,11 +163,5 @@ bool MeshLocalizerRos::transformModelCb(std_srvs::Empty::Request &request,
   return true;
 }
 
-void MeshLocalizerRos::publishArchitectModel() const {
-//  PointCloud pc_msg = mesh_localizer_.getModelAsPointCloud();
-//  pc_msg.header.frame_id = map_frame_;
-//  pcl_conversions::toPCL(ros::Time(0), pc_msg.header.stamp);
-//  arch_pub_.publish(pc_msg);
-}
 }
 }

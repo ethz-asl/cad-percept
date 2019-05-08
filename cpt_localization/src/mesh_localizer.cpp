@@ -38,8 +38,8 @@ Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const 
     associations.points_from(2, i) = pc_msg[i].z;
 
     // Raycast into direction of triangle normal.
-    Eigen::Vector3d normal;
-    cgal::cgalPointToEigenVector(mesh_model_.getNormal(ppid), &normal);
+    Eigen::Vector3d
+        normal = cgal::vectorToEigenVector(mesh_model_.getNormal(ppid));
     normal.normalize();
     associations.normals_to.block(0, i, 3, 1) = normal;
     Eigen::Vector3d relative = Eigen::Vector3d(pt.x(), pt.y(), pt.z())
@@ -78,7 +78,7 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
   T_W_A = SE3(SE3::Position(0, 0, 0), SE3::Rotation(1, 0, 0, 0));
   T_W_B = initial_pose;
 
-  gtsam::Expression<SE3> E_T_W_A(0); // 0,0,0,0 (origin).
+  gtsam::Expression<SE3> E_T_W_A(0); // Origin.
   gtsam::Expression<SE3> E_T_W_B(1); // Current pose.
 
   // Anchor map pose with prior factor.
