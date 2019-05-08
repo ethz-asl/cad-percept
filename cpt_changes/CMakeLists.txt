@@ -21,6 +21,7 @@ cs_add_library(${PROJECT_NAME}
 cs_add_executable(cadify_ros_node
         src/cadify_ros_node.cc
         )
+        
 target_link_libraries(cadify_ros_node ${PROJECT_NAME})
 
 ##########

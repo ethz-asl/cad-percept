@@ -7,10 +7,10 @@ int main(int argc, char **argv){
 
     ros::NodeHandle nh;
     ros::NodeHandle nh_private("~");
-    std::shared_ptr<cad_percept::cadify::CadifyRos> cadify_node;
+    std::shared_ptr<cad_percept::cadify::CadifyRos> cadify_ros_node;
 
     // Hand over the handle to the object.
-    cadify_node = std::make_shared<cad_percept::cadify::CadifyRos>(nh, nh_private);
+    cadify_ros_node = std::make_shared<cad_percept::cadify::CadifyRos>(nh, nh_private);
 
     ros::spin();
 
