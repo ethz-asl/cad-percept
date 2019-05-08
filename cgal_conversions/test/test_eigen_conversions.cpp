@@ -10,16 +10,16 @@ using namespace cad_percept::cgal;
 TEST(CGALConversionsTest, vector_to_eigen_vector) {
   //convert in both directions and compare
   Eigen::Vector3d v_eigen_a(Eigen::Vector3d::Random());
-  Vector v_cgal_a = eigenVectorToVector(v_eigen_a);
-  Eigen::Vector3d v_eigen_comp_a = vectorToEigenVector(v_cgal_a);
+  Vector v_cgal_a = eigenVectorToCgalVector(v_eigen_a);
+  Eigen::Vector3d v_eigen_comp_a = cgalVectorToEigenVector(v_cgal_a);
 
   EXPECT_TRUE(v_eigen_a == v_eigen_comp_a);
 
   Eigen::Vector3d v_eigen_b(Eigen::Vector3d::Random());
   Vector v_cgal_b;
-  eigenVectorToVector(&v_eigen_b, &v_cgal_b);
+  eigenVectorToCgalVector(&v_eigen_b, &v_cgal_b);
   Eigen::Vector3d v_eigen_comp_b;
-  vectorToEigenVector(&v_cgal_b, &v_eigen_comp_b);
+  cgalVectorToEigenVector(&v_cgal_b, &v_eigen_comp_b);
 
   EXPECT_TRUE(v_eigen_b == v_eigen_comp_b);
 }
