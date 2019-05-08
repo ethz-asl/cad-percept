@@ -23,7 +23,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel
     associations.points_from(2, i) = pc_msg[i].z;
 
     // Raycast into direction of triangle normal.
-    Eigen::Vector3d normal = vectorToEigenVector(mesh_model_.getNormal(ppid)); 
+    Eigen::Vector3d normal = cgal::cgalVectorToEigenVector(mesh_model_.getNormal(ppid)); 
     normal.normalize();
     Eigen::Vector3d relative = Eigen::Vector3d(pt.x(), pt.y(), pt.z())
         - Eigen::Vector3d(pc_msg[i].x, pc_msg[i].y, pc_msg[i].z);
@@ -70,18 +70,6 @@ PointCloud getModelAsPointCloud(const cgal::MeshModel &mesh_model_) {
 
   return pc_msg;
 }
-
-/* Use the conversion functions in cgal_conversions package later! */
-
-Eigen::Vector3d vectorToEigenVector(const cgal::Vector &v) {
-  return Eigen::Vector3d(v.x(), v.y(), v.z());
-}
-
-cgal::Vector eigenVectorToVector(const Eigen::Vector3d &ve) {
-  return cgal::Vector(ve(0,0), ve(1,0), ve(2,0));
-}
-
-/* ---- */
 
 }
 }
