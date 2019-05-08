@@ -6,14 +6,17 @@
 namespace cad_percept {
 namespace cgal {
 
+// Point <-> Vector
 void cgalPointToEigenVector(const Point *point, Eigen::Vector3d *vector);
 void eigenVectorToCgalPoint(const Eigen::Vector3d *vector, Point *point);
 Eigen::Vector3d cgalPointToEigenVector(const Point &point);
 Point eigenVectorToCgalPoint(const Eigen::Vector3d &vector);
-void vectorToEigenVector(const Vector *cvector, Eigen::Vector3d *vector);
-void eigenVectorToVector(const Eigen::Vector3d *vector, Vector *cvector);
-Eigen::Vector3d vectorToEigenVector(const Vector &v);
-Vector eigenVectorToVector(const Eigen::Vector3d &ve);
+
+// Vector <-> Vector
+void cgalVectorToEigenVector(const Vector *cvector, Eigen::Vector3d *vector);
+void eigenVectorToCgalVector(const Eigen::Vector3d *vector, Vector *cvector);
+Eigen::Vector3d cgalVectorToEigenVector(const Vector &cvector);
+Vector eigenVectorToCgalVector(const Eigen::Vector3d &vector);
 
 }
 }
