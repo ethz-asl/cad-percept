@@ -8,8 +8,8 @@ namespace cgal {
 
 void cgalPointToEigenVector(const Point *point, Eigen::Vector3d *vector);
 void eigenVectorToCgalPoint(const Eigen::Vector3d *vector, Point *point);
-Eigen::Vector3d cgalPointToEigenVector(const Point *point);
-Point eigenVectorToCgalPoint(const Eigen::Vector3d *vector);
+Eigen::Vector3d cgalPointToEigenVector(const Point &point);
+Point eigenVectorToCgalPoint(const Eigen::Vector3d &vector);
 void vectorToEigenVector(const Vector *cvector, Eigen::Vector3d *vector);
 void eigenVectorToVector(const Eigen::Vector3d *vector, Vector *cvector);
 Eigen::Vector3d vectorToEigenVector(const Vector &v);
