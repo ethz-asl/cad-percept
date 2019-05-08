@@ -48,7 +48,7 @@ class MeshLocalizer {
  public:
   MeshLocalizer();
   MeshLocalizer(const std::string &model_file);
-  MeshLocalizer(const cad_percept::cgal::SurfaceMesh &mesh);
+  MeshLocalizer(const cgal::Polyhedron &mesh);
 
   ~MeshLocalizer();
 
@@ -68,7 +68,7 @@ class MeshLocalizer {
    */
   void transformModel(const Eigen::Matrix4d &transformation);
 
-  void setMesh(const cgal::SurfaceMesh &mesh);
+  void setMesh(const cgal::Polyhedron &mesh);
 
  private:
   cgal::MeshModel mesh_model_;

@@ -11,6 +11,10 @@ MeshLocalizer::MeshLocalizer() {}
 MeshLocalizer::MeshLocalizer(const std::string &model_file) : mesh_model_
                                                                   (model_file) {}
 
+MeshLocalizer::MeshLocalizer(const cgal::Polyhedron &mesh) {
+  setMesh(mesh);
+}
+
 MeshLocalizer::~MeshLocalizer() {}
 
 Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const {
@@ -153,7 +157,7 @@ void MeshLocalizer::transformModel(const Eigen::Matrix4d &transformation) {
   mesh_model_.transform(trans);
 }
 
-void MeshLocalizer::setMesh(const cgal::SurfaceMesh &mesh) {
+void MeshLocalizer::setMesh(const cgal::Polyhedron &mesh) {
   mesh_model_.setSurfaceMesh(mesh);
 }
 
