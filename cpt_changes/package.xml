@@ -18,11 +18,11 @@
   <depend>cgal_catkin</depend>
   <depend>cgal_definitions</depend>
   <depend>cpt_utils</depend>
-  <depend>gtsam_catkin</depend>
-  <depend>minkindr</depend>
-  <depend>minkindr_gtsam</depend>
-  <depend>pcl_ros</depend>
+  <depend>glog_catkin</depend>
   <depend>roscpp</depend>
-  <depend>tf_conversions</depend>
-  
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
+  <depend>sensor_msgs</depend>
+  <depend>shape_msgs</depend>
+
 </package>
