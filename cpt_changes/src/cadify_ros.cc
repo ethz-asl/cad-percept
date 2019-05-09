@@ -23,9 +23,11 @@ CadifyRos::CadifyRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     model_pub_ =
         nh_.advertise<visualization_msgs::Marker>("architect_model", 100);
     arch_pub_ =
-        nh_.advertise<PointCloud>("architect_model_pcl", 100, true);
+        nh_.advertise<PointCloud>("architect_model_pcl", 100, true); // latching to true (saves last messages and sends to future subscriber)
 
     pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10, &CadifyRos::associatePointCloud, this);
+    
+    // start defining visualization_msgs Marker, this is just a block, right?
     model_.type = visualization_msgs::Marker::MESH_RESOURCE;
     model_.ns = "primitive_surfaces";
     if (!nh_private_.hasParam("stl_model"))
@@ -43,10 +45,10 @@ CadifyRos::CadifyRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     model_.pose.orientation.y = 0.0;
     model_.pose.orientation.z = 0.0;
     model_.pose.orientation.w = 1.0;
-    model_.color.b = 0.0f;
-    model_.color.g = 0.0f;
-    model_.color.r = 1.0;
     model_.color.a = 1.0;
+    model_.color.r = 1.0;
+    model_.color.g = 0.0f;
+    model_.color.b = 0.0f;
 
     transformSrv_ =
             nh.advertiseService("transformModel", &CadifyRos::transformModelCb, this);
@@ -54,9 +56,10 @@ CadifyRos::CadifyRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
 CadifyRos::~CadifyRos() {}
 
+// callback for each p.c. scan topic
 void CadifyRos::associatePointCloud(const PointCloud &pc_msg) {
     cpt_utils::Associations associations = cpt_utils::associatePointCloud(pc_msg, mesh_model_);
-    CHECK_EQ(associations.points_from.cols(), pc_msg.width);
+    CHECK_EQ(associations.points_from.cols(), pc_msg.width); // glog, checks equality
     CHECK_EQ(associations.points_to.cols(), pc_msg.width);
     CHECK_EQ(associations.distances.rows(), pc_msg.width);
     visualization_msgs::Marker good_marker, bad_marker;
@@ -76,62 +79,62 @@ void CadifyRos::associatePointCloud(const PointCloud &pc_msg) {
     bad_marker.color.g = 0.0f;
 
     geometry_msgs::Point p_from, p_to;
-    int differences = 0;
+    int differences = 0; // number of differences in current reading
+    // for each point i in point cloud:
     for (size_t i = 0u; i < pc_msg.width; ++i) {
 
     // todo: less copying
-        p_from.x = associations.points_from(0, i);
-        p_from.y = associations.points_from(1, i);
-        p_from.z = associations.points_from(2, i);
-        p_to.x = associations.points_to(0, i);
-        p_to.y = associations.points_to(1, i);
-        p_to.z = associations.points_to(2, i);
+        p_from.x = associations.points_from(0, i); // x
+        p_from.y = associations.points_from(1, i); // y
+        p_from.z = associations.points_from(2, i); // z
+        p_to.x = associations.points_to(0, i); // x
+        p_to.y = associations.points_to(1, i); // y
+        p_to.z = associations.points_to(2, i); // z
         double length = associations.distances(i);
         if (length > distance_threshold_) {
         differences++;
-        bad_marker.color.r = 1.0f;
-        bad_marker.color.g = 0.0f;
-        bad_marker.points.push_back(p_from);
+        bad_marker.points.push_back(p_from); // marker makes point between these two, but where is absolute position of map frame defined?
         bad_marker.points.push_back(p_to);
         } else {
-        good_marker.color.r = 0.0f;
-        good_marker.color.g = 1.0f;
         good_marker.points.push_back(p_from);
         good_marker.points.push_back(p_to);
         }
     }
-    std::cout << "differences " << differences << "/" << pc_msg.width
+    std::cout << "number of differences in current reading: " << differences << "/" << pc_msg.width
                 << std::endl;
 
     good_matches_pub_.publish(good_marker);
     bad_matches_pub_.publish(bad_marker);
-    model_pub_.publish(model_);
+    model_pub_.publish(model_); // what is this?
 
     publishArchitectModel();
 
     // todo: Filter out points that are close to several (non-parallel) planes.
+    // -> because they might be associated to the wrong plane
 }
 
+// how to handle empty request, response?
 bool CadifyRos::transformModelCb(std_srvs::Empty::Request &request,
                                 std_srvs::Empty::Response &response) {
-    tf::StampedTransform transform;
-    tf_listener_.lookupTransform(map_frame_, cad_frame_, ros::Time(0), transform);
+    tf::StampedTransform transform; //tf is ROS package for coordinate frames
+    tf_listener_.lookupTransform(map_frame_, cad_frame_, ros::Time(0), transform); // transform from cad_frame_ to map_frame_, latest available transform, but where is cad_frame?
     Eigen::Matrix3d rotation;
-    tf::matrixTFToEigen(transform.getBasis(), rotation);
+    tf::matrixTFToEigen(transform.getBasis(), rotation); // basis matrix for rotation
     Eigen::Vector3d translation;
-    tf::vectorTFToEigen(transform.getOrigin(), translation);
+    tf::vectorTFToEigen(transform.getOrigin(), translation); // origin vector translation
     Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
     transformation.block(0, 0, 3, 3) = rotation;
     transformation.block(0, 3, 3, 1) = translation;
-    cpt_utils::transformModel(transformation, mesh_model_);
+    mesh_model_.transform(cgal::eigenTransformationToCgalTransformation(transformation)); // apply transform from cad_frame_ to map_frame_ to get aligned data
     return true;
 }
 
+// publishes architect model mesh as point cloud of vertices
 void CadifyRos::publishArchitectModel() const {
     PointCloud pc_msg;
-    pc_msg = cpt_utils::getModelAsPointCloud(mesh_model_);
+    cgal::meshToVerticePointCloud(mesh_model_.getMesh(), &pc_msg);
     pc_msg.header.frame_id = map_frame_;
-    pcl_conversions::toPCL(ros::Time(0), pc_msg.header.stamp);
+    pcl_conversions::toPCL(ros::Time(0), pc_msg.header.stamp); // ROS time stamp to PCL time stamp
     arch_pub_.publish(pc_msg);
 }
 

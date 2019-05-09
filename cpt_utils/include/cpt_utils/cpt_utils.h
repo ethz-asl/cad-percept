@@ -26,12 +26,6 @@ struct Associations {
 // Associate point-cloud with architect model.
 Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel &mesh_model);
 
-// Function to transform architect model.
-void transformModel(const Eigen::Matrix4d &transformation, cgal::MeshModel &mesh_model);
-
-// Return architect model as point cloud.
-PointCloud getModelAsPointCloud(const cgal::MeshModel &mesh_model);
-
 }
 }
 
