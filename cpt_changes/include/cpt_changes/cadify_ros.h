@@ -37,7 +37,7 @@ class CadifyRos {
     void publishArchitectModel() const;
 
     private:
-    ros::NodeHandle &nh_, nh_private_;
+     ros::NodeHandle &nh_, nh_private_;
      cgal::MeshModel mesh_model_;
      ros::Publisher good_matches_pub_, bad_matches_pub_, model_pub_, arch_pub_;
      ros::Subscriber pointcloud_sub_;

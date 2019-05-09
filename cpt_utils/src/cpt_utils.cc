@@ -41,30 +41,5 @@ Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel
   return associations;
 }
 
-void transformModel(const Eigen::Matrix4d &transformation, cgal::MeshModel &mesh_model) {
-  cgal::Transformation
-      trans(transformation(0, 0),
-            transformation(0, 1),
-            transformation(0, 2),
-            transformation(0, 3),
-            transformation(1, 0),
-            transformation(1, 1),
-            transformation(1, 2),
-            transformation(1, 3),
-            transformation(2, 0),
-            transformation(2, 1),
-            transformation(2, 2),
-            transformation(2, 3),
-            1.0);
-  mesh_model.transform(trans);
-}
-
-PointCloud getModelAsPointCloud(const cgal::MeshModel &mesh_model) {
-  PointCloud pc_msg;
-  cgal::meshToVerticePointCloud(mesh_model.getMesh(), &pc_msg);
-
-  return pc_msg;
-}
-
 }
 }

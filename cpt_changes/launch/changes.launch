@@ -18,7 +18,7 @@
         output="screen"
         respawn="true">
     <param name="off_model" value="$(find cpt_changes)/resources/cla_updated.off" />
-    <param name="stl_model" value="$(find cpt_changes)/resources/model.dae" />
+    <param name="stl_model" value="$(find cpt_changes)/resources/model.dae" /> 
     <param name="map_frame" value="$(arg map_frame)" />
     <param name="cad_frame" value="$(arg cad_frame)" />
     <param name="scan_topic" value="$(arg scan_topic)" />
