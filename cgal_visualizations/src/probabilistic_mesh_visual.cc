@@ -94,7 +94,7 @@ void ProbabilisticMeshVisual::update() {
   ogre_object->clear();
   assert(ogre_object != nullptr);
 
-  ogre_object->estimateVertexCount(msg_->cov_vertices.size());
+  ogre_object->estimateVertexCount(msg_->mesh.vertices.size());
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
@@ -186,5 +186,5 @@ void ProbabilisticMeshVisual::setFrameOrientation(
   frame_node_->setOrientation(orientation);
 }
 
-}  // namespace visualization
+}  // namespace visualizations
 }  // namespace cad_percept
