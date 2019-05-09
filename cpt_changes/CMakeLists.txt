@@ -11,18 +11,18 @@ add_definitions(-std=c++11 -Wall -Wextra)
 # LIBRARIES #
 #############
 cs_add_library(${PROJECT_NAME}
-        src/cadify_ros.cc
+        src/changes_ros.cc
         )
 
 
 ############
 # BINARIES #
 ############
-cs_add_executable(cadify_ros_node
-        src/cadify_ros_node.cc
+cs_add_executable(changes_ros_node
+        src/changes_ros_node.cc
         )
         
-target_link_libraries(cadify_ros_node ${PROJECT_NAME})
+target_link_libraries(changes_ros_node ${PROJECT_NAME})
 
 ##########
 # EXPORT #

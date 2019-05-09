@@ -1,13 +1,13 @@
-#include "cpt_changes/cadify_ros.h"
+#include "cpt_changes/changes_ros.h"
 #include <pcl_conversions/pcl_conversions.h>
 #include <tf_conversions/tf_eigen.h>
 
 namespace cad_percept {
-namespace cadify {
+namespace changes {
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-CadifyRos::CadifyRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
+ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     : nh_(nh),
       nh_private_(nh_private),
       mesh_model_(nh_private.param<std::string>("off_model", "fail")),
@@ -25,7 +25,7 @@ CadifyRos::CadifyRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     arch_pub_ =
         nh_.advertise<PointCloud>("architect_model_pcl", 100, true); // latching to true (saves last messages and sends to future subscriber)
 
-    pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10, &CadifyRos::associatePointCloud, this);
+    pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10, &ChangesRos::associatePointCloud, this);
     
     // start defining visualization_msgs Marker, this is just a block, right?
     model_.type = visualization_msgs::Marker::MESH_RESOURCE;
@@ -51,13 +51,13 @@ CadifyRos::CadifyRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     model_.color.b = 0.0f;
 
     transformSrv_ =
-            nh.advertiseService("transformModel", &CadifyRos::transformModelCb, this);
+            nh.advertiseService("transformModel", &ChangesRos::transformModelCb, this);
 }
 
-CadifyRos::~CadifyRos() {}
+ChangesRos::~ChangesRos() {}
 
 // callback for each p.c. scan topic
-void CadifyRos::associatePointCloud(const PointCloud &pc_msg) {
+void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
     cpt_utils::Associations associations = cpt_utils::associatePointCloud(pc_msg, mesh_model_);
     CHECK_EQ(associations.points_from.cols(), pc_msg.width); // glog, checks equality
     CHECK_EQ(associations.points_to.cols(), pc_msg.width);
@@ -114,7 +114,7 @@ void CadifyRos::associatePointCloud(const PointCloud &pc_msg) {
 }
 
 // how to handle empty request, response?
-bool CadifyRos::transformModelCb(std_srvs::Empty::Request &request,
+bool ChangesRos::transformModelCb(std_srvs::Empty::Request &request,
                                 std_srvs::Empty::Response &response) {
     tf::StampedTransform transform; //tf is ROS package for coordinate frames
     tf_listener_.lookupTransform(map_frame_, cad_frame_, ros::Time(0), transform); // transform from cad_frame_ to map_frame_, latest available transform, but where is cad_frame?
@@ -130,7 +130,7 @@ bool CadifyRos::transformModelCb(std_srvs::Empty::Request &request,
 }
 
 // publishes architect model mesh as point cloud of vertices
-void CadifyRos::publishArchitectModel() const {
+void ChangesRos::publishArchitectModel() const {
     PointCloud pc_msg;
     cgal::meshToVerticePointCloud(mesh_model_.getMesh(), &pc_msg);
     pc_msg.header.frame_id = map_frame_;
