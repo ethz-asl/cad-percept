@@ -18,6 +18,12 @@ void eigenVectorToCgalVector(const Eigen::Vector3d *vector, Vector *cvector);
 Eigen::Vector3d cgalVectorToEigenVector(const Vector &cvector);
 Vector eigenVectorToCgalVector(const Eigen::Vector3d &vector);
 
+// Transformation <-> Transformation
+void cgalTransformationToEigenTransformation(const Transformation *ctransformation, Eigen::Matrix4d *transformation);
+void eigenTransformationToCgalTransformation(const Eigen::Matrix4d *transformation, Transformation *ctransformation);
+Eigen::Matrix4d cgalTransformationToEigenTransformation(const Transformation &ctransformation);
+Transformation eigenTransformationToCgalTransformation(const Eigen::Matrix4d &transformation);
+
 }
 }
 
