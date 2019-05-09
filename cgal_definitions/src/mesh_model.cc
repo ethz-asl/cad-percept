@@ -31,24 +31,23 @@ Intersection MeshModel::getIntersection(const Ray &query) const {
 
   // compute the closest intersection point and the distance
   PolyhedronRayIntersection intersection = tree_->first_intersection(query);
+  Intersection intersection_result;
   if (intersection) {
     if (boost::get<Point>(&(intersection->first))) {
-      Intersection intersection_result;
       Point p = *boost::get<Point>(&(intersection->first));
       intersection_result.intersected_point = p;
       intersection_result.surface_normal = getNormal(intersection->second);
-      return intersection_result;
     }
   }
   
-  // a return value is needed to avoid warning!
+  return intersection_result;
 }
 
 double MeshModel::getDistance(const Ray &query) const {
   // get the first intersection Point
   Point p = getIntersection(query).intersected_point;
   // get the distance from the ray origin
-  Vector distance(query.source(), p);
+  Vector distance(query.source(), p); // creates a vector "distance"
   const double squared_distance = boost::get<double>(distance.squared_length());
   return sqrt(squared_distance);
 }
@@ -64,7 +63,9 @@ PointAndPrimitiveId MeshModel::getClosestTriangle(const double x,
   return getClosestTriangle(pt);
 }
 
+// directed to positive side of h
 Vector MeshModel::getNormal(const Polyhedron::Face_handle &face_handle) const {
+  // introduce the triangle with 3 points:
   Triangle intersected_triangle(
       face_handle->halfedge()->vertex()->point(),
       face_handle->halfedge()->next()->vertex()->point(),
@@ -79,6 +80,7 @@ Vector MeshModel::getNormal(const PointAndPrimitiveId &ppid) const {
 void MeshModel::transform(const Transformation &transform) {
   std::transform(P_.points_begin(), P_.points_end(), P_.points_begin(),
                  transform);
+  // create updated AABBTree:
   tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
                                                CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();

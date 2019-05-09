@@ -18,26 +18,21 @@ typedef SE3::Rotation SO3;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 struct Associations {
-  Eigen::Matrix3Xd points_from;
+  Eigen::Matrix3Xd points_from; // dynamic, double
   Eigen::Matrix3Xd points_to;
   Eigen::VectorXd distances;
 };
 
 // Associate point-cloud with architect model.
-Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel &mesh_model_);
+Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel &mesh_model);
 
 // Function to transform architect model.
-void transformModel(const Eigen::Matrix4d &transformation, cgal::MeshModel &mesh_model_);
-
-// Return model size.
-int size(const cgal::MeshModel &mesh_model_);
+void transformModel(const Eigen::Matrix4d &transformation, cgal::MeshModel &mesh_model);
 
 // Return architect model as point cloud.
-PointCloud getModelAsPointCloud(const cgal::MeshModel &mesh_model_);
+PointCloud getModelAsPointCloud(const cgal::MeshModel &mesh_model);
 
 }
 }
-
-
 
 #endif // CPT_UTILS_H
