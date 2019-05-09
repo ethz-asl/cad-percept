@@ -1,5 +1,5 @@
-#ifndef CADIFY_ROS_H_
-#define CADIFY_ROS_H_
+#ifndef CHANGES_ROS_H_
+#define CHANGES_ROS_H_
 
 #include <kindr/minimal/quat-transformation-gtsam.h>
 #include <pcl_ros/point_cloud.h>
@@ -14,16 +14,16 @@
 #include "cpt_utils/cpt_utils.h"
 
 namespace cad_percept {
-namespace cadify {
+namespace changes {
 
 typedef kindr::minimal::QuatTransformationTemplate<double> SE3;
 typedef SE3::Rotation SO3;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-class CadifyRos {
+class ChangesRos {
     public:
-     CadifyRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
-     ~CadifyRos();
+     ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
+     ~ChangesRos();
 
 
     // Associate point-cloud with architect model.
@@ -52,5 +52,4 @@ class CadifyRos {
 }
 }
 
-
-#endif // CADIFY_ROS_H_
+#endif // CHANGES_ROS_H_

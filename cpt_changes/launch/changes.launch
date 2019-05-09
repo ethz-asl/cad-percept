@@ -11,10 +11,10 @@
   <param name="robot_description" textfile="$(find cpt_changes)/launch/architect_model.urdf" />
   <node pkg="robot_state_publisher" type="state_publisher" name="robot_state_publisher" />
 
-  <!-- cadify node -->
+  <!-- changes node -->
   <node name="cpt_changes"
         pkg="cpt_changes"
-        type="cadify_ros_node"
+        type="changes_ros_node"
         output="screen"
         respawn="true">
     <param name="off_model" value="$(find cpt_changes)/resources/cla_updated.off" />
