@@ -13,14 +13,14 @@ namespace cgal {
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-void vertexToPointMsg(const Point *vertex, geometry_msgs::Point *msg);
-geometry_msgs::Point vertexToPointMsg(const Point *vertex);
-void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg);
-void triToProbMsg(const cgal_msgs::TriangleMesh *t_msg, cgal_msgs::ProbabilisticMesh *p_msg);
-void probToTriMsg(const cgal_msgs::ProbabilisticMesh *p_msg, cgal_msgs::TriangleMesh *t_msg);
-void triangleMeshToProbMsg(Polyhedron *m, cgal_msgs::ProbabilisticMesh *p_msg);
-void probMsgToTriangleMesh(const cgal_msgs::ProbabilisticMesh *p_msg, Polyhedron *m);
-void msgToTriangleMesh(const cgal_msgs::TriangleMesh *msg, Polyhedron *mesh);
+void pointToMsg(const Point &p, geometry_msgs::Point *msg);
+geometry_msgs::Point pointToMsg(const Point &p);
+void triangleMeshToMsg(Polyhedron &m, cgal_msgs::TriangleMesh *msg);
+void triToProbMsg(const cgal_msgs::TriangleMesh &t_msg, cgal_msgs::ProbabilisticMesh *p_msg);
+void probToTriMsg(const cgal_msgs::ProbabilisticMesh &p_msg, cgal_msgs::TriangleMesh *t_msg);
+void triangleMeshToProbMsg(Polyhedron &m, cgal_msgs::ProbabilisticMesh *p_msg);
+void probMsgToTriangleMesh(const cgal_msgs::ProbabilisticMesh &p_msg, Polyhedron *m);
+void msgToTriangleMesh(const cgal_msgs::TriangleMesh &msg, Polyhedron *mesh);
 void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *msg);
 
 template <class HDS>
@@ -29,7 +29,7 @@ class BuildMesh : public CGAL::Modifier_base<HDS> {
   BuildMesh() {}
 
   void operator()(HDS &hds);
-  void setMsg(const cgal_msgs::TriangleMesh *msg);
+  void setMsg(const cgal_msgs::TriangleMesh &msg);
 
  private:
   const cgal_msgs::TriangleMesh *msg_;
