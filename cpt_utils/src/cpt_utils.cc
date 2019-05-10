@@ -3,7 +3,7 @@
 namespace cad_percept {
 namespace cpt_utils {
 
-Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel &mesh_model) {
+Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel *mesh_model) {
   // Convert point cloud msg
   std::cout << "Associating pointcloud of size " << pc_msg.width << " x "
             << pc_msg.height << std::endl;
@@ -15,7 +15,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel
     // loop through all points of point cloud
 
     cgal::PointAndPrimitiveId ppid =
-        mesh_model.getClosestTriangle(pc_msg[i].x,
+        mesh_model->getClosestTriangle(pc_msg[i].x,
                                         pc_msg[i].y,
                                         pc_msg[i].z);
     cgal::Point pt = ppid.first;
@@ -24,7 +24,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel
     associations.points_from(2, i) = pc_msg[i].z;
 
     // Raycast into direction of triangle normal.
-    Eigen::Vector3d normal = cgal::cgalVectorToEigenVector(mesh_model.getNormal(ppid)); 
+    Eigen::Vector3d normal = cgal::cgalVectorToEigenVector(mesh_model->getNormal(ppid)); 
     normal.normalize();
     Eigen::Vector3d relative = Eigen::Vector3d(pt.x(), pt.y(), pt.z())
         - Eigen::Vector3d(pc_msg[i].x, pc_msg[i].y, pc_msg[i].z);

@@ -60,7 +60,7 @@ ChangesRos::~ChangesRos() {}
 
 // callback for each p.c. scan topic
 void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
-    cpt_utils::Associations associations = cpt_utils::associatePointCloud(pc_msg, mesh_model_);
+    cpt_utils::Associations associations = cpt_utils::associatePointCloud(pc_msg, &mesh_model_);
     CHECK_EQ(associations.points_from.cols(), pc_msg.width); // glog, checks equality
     CHECK_EQ(associations.points_to.cols(), pc_msg.width);
     CHECK_EQ(associations.distances.rows(), pc_msg.width);
@@ -146,7 +146,7 @@ void ChangesRos::publishArchitectModelMesh() const {
     cgal_msgs::ProbabilisticMesh p_msg;
     cgal::Polyhedron mesh;
     mesh = mesh_model_.getMesh();
-    cgal::triangleMeshToProbMsg(&mesh, &p_msg);
+    cgal::triangleMeshToProbMsg(mesh, &p_msg);
     p_msg.header.frame_id = map_frame_;
     p_msg.header.stamp = {secs: 0, nsecs: 0};
     p_msg.header.seq = 0;
