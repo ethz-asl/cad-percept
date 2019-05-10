@@ -102,7 +102,7 @@ void ProbabilisticMeshVisual::update() {
   for (auto vrtx : msg_->mesh.vertices) {
     ogre_object->position(vrtx.x, vrtx.y, vrtx.z);
 
-    ogre_object->colour(surface_color_);
+    ogre_object->colour(surface_color_); // here we can set different colour for each vertex
   }
 
   // Displaying Triangles
@@ -121,7 +121,7 @@ void ProbabilisticMeshVisual::update() {
       const auto& vrtx_a = msg_->mesh.vertices[triangle.vertex_indices[i]];
       ogre_object->position(vrtx_a.x, vrtx_a.y, vrtx_a.z);
 
-      ogre_object->colour(edge_color_);
+      ogre_object->colour(edge_color_); // here we can set differen color for each vertex
 
       const auto& vrtx_b =
           msg_->mesh.vertices[triangle.vertex_indices[(i + 1) % 3]];
