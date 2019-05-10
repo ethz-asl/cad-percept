@@ -24,6 +24,8 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
         nh_.advertise<visualization_msgs::Marker>("architect_model", 100);
     arch_pub_ =
         nh_.advertise<PointCloud>("architect_model_pcl", 100, true); // latching to true (saves last messages and sends to future subscriber)
+    mesh_pub_ = 
+        nh_.advertise<cgal_msgs::ProbabilisticMesh>("mesh_model", 100, true); // latching to true
 
     pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10, &ChangesRos::associatePointCloud, this);
     
@@ -108,6 +110,7 @@ void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
     model_pub_.publish(model_); // what is this?
 
     publishArchitectModel();
+    publishArchitectModelMesh();
 
     // todo: Filter out points that are close to several (non-parallel) planes.
     // -> because they might be associated to the wrong plane
@@ -138,6 +141,17 @@ void ChangesRos::publishArchitectModel() const {
     arch_pub_.publish(pc_msg);
 }
 
+// publish architect model mesh as triangle mesh
+void ChangesRos::publishArchitectModelMesh() const {
+    cgal_msgs::ProbabilisticMesh p_msg;
+    cgal::Polyhedron mesh;
+    mesh = mesh_model_.getMesh();
+    cgal::triangleMeshToProbMsg(&mesh, &p_msg);
+    p_msg.header.frame_id = map_frame_;
+    p_msg.header.stamp = {secs: 0, nsecs: 0};
+    p_msg.header.seq = 0;
+    mesh_pub_.publish(p_msg);
+}
 
 }
 }
