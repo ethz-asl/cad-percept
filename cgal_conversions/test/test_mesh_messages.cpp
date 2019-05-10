@@ -61,7 +61,7 @@ TEST(CGALConversionsTest, triangle_mesh_to_msg) {
 
   // get message from mesh
   cgal_msgs::TriangleMesh msg;
-  triangleMeshToMsg(&m, &msg);
+  triangleMeshToMsg(m, &msg);
   EXPECT_EQ(msg.vertices.size(), 4) << msg;
 }
 
@@ -72,8 +72,8 @@ TEST(CGALConversionsTest, msg_to_triangle_mesh) {
   m1.delegate(testcase);
   EXPECT_TRUE(m1.is_valid());
   cgal_msgs::TriangleMesh msg;
-  triangleMeshToMsg(&m1, &msg);
-  msgToTriangleMesh(&msg, &m2);
+  triangleMeshToMsg(m1, &msg);
+  msgToTriangleMesh(msg, &m2);
   EXPECT_TRUE(m2.is_valid());
 
   // compare number of facets
@@ -155,10 +155,10 @@ TEST(CGALConversionsTest, msg_conversions) {
   cgal_msgs::TriangleMesh t_msg;
   Polyhedron m_comp;
 
-  triangleMeshToProbMsg(&m, &p_msg);
-  probToTriMsg(&p_msg, &t_msg);
-  triToProbMsg(&t_msg, &p_msg);
-  probMsgToTriangleMesh(&p_msg, &m_comp);
+  triangleMeshToProbMsg(m, &p_msg);
+  probToTriMsg(p_msg, &t_msg);
+  triToProbMsg(t_msg, &p_msg);
+  probMsgToTriangleMesh(p_msg, &m_comp);
 
   //compare polyhedron
   EXPECT_TRUE(m_comp.is_valid());

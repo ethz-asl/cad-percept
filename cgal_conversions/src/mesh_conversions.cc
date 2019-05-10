@@ -15,16 +15,16 @@ geometry_msgs::Point pointToMsg(const Point &p) {
   return msg;
 }
 
-void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg) {
+void triangleMeshToMsg(Polyhedron &m, cgal_msgs::TriangleMesh *msg) {
   // enforce unique IDs per vertice
-  CGAL::set_halfedgeds_items_id(*m);
+  CGAL::set_halfedgeds_items_id(m);
 
   int vertex_count = 0;
   std::map<int, int> vertex_idx_for_id;
 
   // get triangles
-  for (Polyhedron::Facet_iterator facet = m->facets_begin();
-       facet != m->facets_end(); ++facet) {
+  for (Polyhedron::Facet_iterator facet = m.facets_begin();
+       facet != m.facets_end(); ++facet) {
     if (!facet->is_triangle()) continue;
 
     shape_msgs::MeshTriangle triangle;
@@ -63,27 +63,27 @@ void triangleMeshToMsg(Polyhedron *m, cgal_msgs::TriangleMesh *msg) {
 }
 
 // does not include any probabilities yet
-void triToProbMsg(const cgal_msgs::TriangleMesh *t_msg, cgal_msgs::ProbabilisticMesh *p_msg){
-  p_msg->mesh.triangles = t_msg->triangles;
-  p_msg->mesh.vertices = t_msg->vertices;
+void triToProbMsg(const cgal_msgs::TriangleMesh &t_msg, cgal_msgs::ProbabilisticMesh *p_msg){
+  p_msg->mesh.triangles = t_msg.triangles;
+  p_msg->mesh.vertices = t_msg.vertices;
 }
 
-void probToTriMsg(const cgal_msgs::ProbabilisticMesh *p_msg, cgal_msgs::TriangleMesh *t_msg){
-  t_msg->triangles = p_msg->mesh.triangles;
-  t_msg->vertices = p_msg->mesh.vertices;
+void probToTriMsg(const cgal_msgs::ProbabilisticMesh &p_msg, cgal_msgs::TriangleMesh *t_msg){
+  t_msg->triangles = p_msg.mesh.triangles;
+  t_msg->vertices = p_msg.mesh.vertices;
 }
 
 // does not include any probabilities yet
-void triangleMeshToProbMsg(Polyhedron *m, cgal_msgs::ProbabilisticMesh *p_msg){
+void triangleMeshToProbMsg(Polyhedron &m, cgal_msgs::ProbabilisticMesh *p_msg){
   cgal_msgs::TriangleMesh t_msg;
   triangleMeshToMsg(m, &t_msg);
-  triToProbMsg(&t_msg, p_msg);
+  triToProbMsg(t_msg, p_msg);
 }
 
-void probMsgToTriangleMesh(const cgal_msgs::ProbabilisticMesh *p_msg, Polyhedron *m){
+void probMsgToTriangleMesh(const cgal_msgs::ProbabilisticMesh &p_msg, Polyhedron *m){
   cgal_msgs::TriangleMesh t_msg;
   probToTriMsg(p_msg, &t_msg);
-  msgToTriangleMesh(&t_msg, m);
+  msgToTriangleMesh(t_msg, m);
 }
 
 // A modifier creating a triangle with the incremental builder.
@@ -106,11 +106,11 @@ void BuildMesh<HDS>::operator()(HDS& hds){
 }
 
 template <class HDS>
-void BuildMesh<HDS>::setMsg(const cgal_msgs::TriangleMesh *msg){
-  msg_ = msg;
+void BuildMesh<HDS>::setMsg(const cgal_msgs::TriangleMesh &msg){
+  msg_ = &msg;
 }
 
-void msgToTriangleMesh(const cgal_msgs::TriangleMesh *msg, Polyhedron *mesh){
+void msgToTriangleMesh(const cgal_msgs::TriangleMesh &msg, Polyhedron *mesh){
   mesh->erase_all();
   BuildMesh<HalfedgeDS> mesh_generator;
   mesh_generator.setMsg(msg);
