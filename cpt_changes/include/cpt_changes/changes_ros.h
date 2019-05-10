@@ -8,7 +8,7 @@
 #include <std_srvs/Empty.h>
 #include <tf/transform_listener.h>
 #include <visualization_msgs/Marker.h>
-
+#include <cgal_msgs/ProbabilisticMesh.h>
 #include "cgal_conversions/mesh_conversions.h"
 #include "cgal_definitions/mesh_model.h"
 #include "cpt_utils/cpt_utils.h"
@@ -36,10 +36,13 @@ class ChangesRos {
     // Publishing of architect model as point cloud.
     void publishArchitectModel() const;
 
+    // Publishing of architect model as mesh
+    void publishArchitectModelMesh() const;
+
     private:
      ros::NodeHandle &nh_, nh_private_;
      cgal::MeshModel mesh_model_;
-     ros::Publisher good_matches_pub_, bad_matches_pub_, model_pub_, arch_pub_;
+     ros::Publisher good_matches_pub_, bad_matches_pub_, model_pub_, arch_pub_, mesh_pub_;
      ros::Subscriber pointcloud_sub_;
      visualization_msgs::Marker model_;
      ros::ServiceServer transformSrv_;

@@ -17,6 +17,8 @@
 
   <depend>cgal_catkin</depend>
   <depend>cgal_definitions</depend>
+  <depend>cgal_msgs</depend>
+  <depend>cgal_conversions</depend>
   <depend>cpt_utils</depend>
   <depend>glog_catkin</depend>
   <depend>roscpp</depend>
