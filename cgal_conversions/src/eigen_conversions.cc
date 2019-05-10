@@ -84,49 +84,15 @@ void eigenTransformationToCgalTransformation(const Eigen::Matrix4d *transformati
 }
 
 Eigen::Matrix4d cgalTransformationToEigenTransformation(const Transformation &ctransformation) {
-  if (ctransformation.m(3,3) != 1) {
-    std::cerr << "Transformation Matrix is not an affine transformation with m(3,3) = 1!" << std::endl;
-  }
-
   Eigen::Matrix4d transformation;
-  (transformation)(0,0) = ctransformation.m(0,0);
-  (transformation)(0,1) = ctransformation.m(0,1);
-  (transformation)(0,2) = ctransformation.m(0,2);
-  (transformation)(0,3) = ctransformation.m(0,3);
-  (transformation)(1,0) = ctransformation.m(1,0);
-  (transformation)(1,1) = ctransformation.m(1,1);
-  (transformation)(1,2) = ctransformation.m(1,2);
-  (transformation)(1,3) = ctransformation.m(1,3);
-  (transformation)(2,0) = ctransformation.m(2,0);
-  (transformation)(2,1) = ctransformation.m(2,1);
-  (transformation)(2,2) = ctransformation.m(2,2);
-  (transformation)(2,3) = ctransformation.m(2,3);
-  (transformation)(3,0) = 0.0;
-  (transformation)(3,1) = 0.0;
-  (transformation)(3,2) = 0.0;
-  (transformation)(3,3) = ctransformation.m(3,3);
+  cgalTransformationToEigenTransformation(&ctransformation, &transformation);
   return transformation;
 }
 
 Transformation eigenTransformationToCgalTransformation(const Eigen::Matrix4d &transformation) {
-  if ((transformation)(3,0) != 0 || (transformation)(3,1) != 0 || (transformation)(3,2) != 0 || (transformation)(3,3) != 1) {
-    std::cerr << "Transformation Matrix is not an affine transformation with m(3,3) = 1!" << std::endl;
-  }
-
-  return Transformation(
-                      (transformation)(0,0),
-                      (transformation)(0,1),
-                      (transformation)(0,2),
-                      (transformation)(0,3),
-                      (transformation)(1,0),
-                      (transformation)(1,1),
-                      (transformation)(1,2),
-                      (transformation)(1,3),
-                      (transformation)(2,0),
-                      (transformation)(2,1),
-                      (transformation)(2,2),
-                      (transformation)(2,3),
-                      (transformation)(3,3));
+  Transformation ctransformation;
+  eigenTransformationToCgalTransformation(&transformation, &ctransformation);
+  return ctransformation;
 }
 
 }

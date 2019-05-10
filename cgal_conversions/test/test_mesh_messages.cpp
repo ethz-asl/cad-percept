@@ -141,3 +141,56 @@ TEST(CGALConversionsTest, mesh_to_vertice_point_cloud) {
 
   EXPECT_TRUE(vertices == points);
 }
+
+TEST(CGALConversionsTest, msg_conversions) {
+  //test for functions: triToProbMsg, probToTriMsg, triangleMeshToProbMsg, probMsgToTriangleMesh
+  
+  //generate test mesh
+  Polyhedron m;
+  TestingMesh<HalfedgeDS> testcase;
+  m.delegate(testcase);
+  EXPECT_TRUE(m.is_valid());
+
+  cgal_msgs::ProbabilisticMesh p_msg;
+  cgal_msgs::TriangleMesh t_msg;
+  Polyhedron m_comp;
+
+  triangleMeshToProbMsg(&m, &p_msg);
+  probToTriMsg(&p_msg, &t_msg);
+  triToProbMsg(&t_msg, &p_msg);
+  probMsgToTriangleMesh(&p_msg, &m_comp);
+
+  //compare polyhedron
+  EXPECT_TRUE(m_comp.is_valid());
+  
+  // compare number of facets
+  EXPECT_TRUE(m.size_of_facets() == m_comp.size_of_facets());
+
+  // compare vertices of every triangle
+  // this is a bit cumbersome since Polyhedrones can not be compared
+  std::vector<int> vertices1;
+  std::vector<int> vertices2;
+  for (Polyhedron::Facet_iterator facet = m.facets_begin();
+       facet != m.facets_end(); ++facet) {
+    Polyhedron::Halfedge_around_facet_const_circulator hit =
+        facet->facet_begin();
+    do {
+      Point p = hit->vertex()->point();
+      vertices1.push_back(p.x());
+      vertices1.push_back(p.y());
+      vertices1.push_back(p.z());
+    } while (++hit != facet->facet_begin());
+  }
+  for (Polyhedron::Facet_iterator facet = m_comp.facets_begin();
+       facet != m_comp.facets_end(); ++facet) {
+    Polyhedron::Halfedge_around_facet_const_circulator hit =
+        facet->facet_begin();
+    do {
+      Point p = hit->vertex()->point();
+      vertices2.push_back(p.x());
+      vertices2.push_back(p.y());
+      vertices2.push_back(p.z());
+    } while (++hit != facet->facet_begin());
+  }
+  EXPECT_TRUE(vertices1 == vertices2);
+}
