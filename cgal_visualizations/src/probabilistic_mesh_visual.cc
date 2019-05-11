@@ -98,11 +98,14 @@ void ProbabilisticMeshVisual::update() {
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
+  // get and set color of mesh object, otherwise keep values set at beginning
+    surface_color_ = Ogre::ColourValue(msg_->mesh.color.r, msg_->mesh.color.g, msg_->mesh.color.b, msg_->mesh.color.a);
+
   // Displaying Vertices
   for (auto vrtx : msg_->mesh.vertices) {
     ogre_object->position(vrtx.x, vrtx.y, vrtx.z);
 
-    ogre_object->colour(surface_color_); // here we can set different colour for each vertex
+    ogre_object->colour(surface_color_); // here we can set different colour for each triangle
   }
 
   // Displaying Triangles
@@ -121,7 +124,7 @@ void ProbabilisticMeshVisual::update() {
       const auto& vrtx_a = msg_->mesh.vertices[triangle.vertex_indices[i]];
       ogre_object->position(vrtx_a.x, vrtx_a.y, vrtx_a.z);
 
-      ogre_object->colour(edge_color_); // here we can set differen color for each vertex
+      ogre_object->colour(edge_color_); // here we can set differen color for each triangle
 
       const auto& vrtx_b =
           msg_->mesh.vertices[triangle.vertex_indices[(i + 1) % 3]];
