@@ -26,6 +26,8 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
         nh_.advertise<PointCloud>("architect_model_pcl", 100, true); // latching to true (saves last messages and sends to future subscriber)
     mesh_pub_ = 
         nh_.advertise<cgal_msgs::ProbabilisticMesh>("mesh_model", 100, true); // latching to true
+    distance_triangles_pub_ =
+        nh_.advertise<cgal_msgs::ProbabilisticMesh>("distance_mesh", 100, true);
 
     pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10, &ChangesRos::associatePointCloud, this);
     
@@ -64,6 +66,19 @@ void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
     CHECK_EQ(associations.points_from.cols(), pc_msg.width); // glog, checks equality
     CHECK_EQ(associations.points_to.cols(), pc_msg.width);
     CHECK_EQ(associations.distances.rows(), pc_msg.width);
+    CHECK_EQ(associations.triangles_to.size(), pc_msg.width);
+
+    publishArchitectModelMesh();
+    publishArchitectModel();
+    
+    publishColorizedAssocMarkers(associations);
+    publishColorizedAssocTriangles(associations);
+
+    // todo: Filter out points that are close to several (non-parallel) planes.
+    // -> because they might be associated to the wrong plane
+}
+
+void ChangesRos::publishColorizedAssocMarkers(const Associations &associations) {
     visualization_msgs::Marker good_marker, bad_marker;
     good_marker.header.frame_id = map_frame_;
     good_marker.ns = "semantic_graph_matches";
@@ -83,7 +98,7 @@ void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
     geometry_msgs::Point p_from, p_to;
     int differences = 0; // number of differences in current reading
     // for each point i in point cloud:
-    for (size_t i = 0u; i < pc_msg.width; ++i) {
+    for (size_t i = 0u; i < associations.points_from.cols(); ++i) {
 
     // todo: less copying
         p_from.x = associations.points_from(0, i); // x
@@ -102,18 +117,12 @@ void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
         good_marker.points.push_back(p_to);
         }
     }
-    std::cout << "number of differences in current reading: " << differences << "/" << pc_msg.width
+    std::cout << "number of differences in current reading: " << differences << "/" << associations.points_from.cols()
                 << std::endl;
 
     good_matches_pub_.publish(good_marker);
     bad_matches_pub_.publish(bad_marker);
     model_pub_.publish(model_); // what is this?
-
-    publishArchitectModel();
-    publishArchitectModelMesh();
-
-    // todo: Filter out points that are close to several (non-parallel) planes.
-    // -> because they might be associated to the wrong plane
 }
 
 // how to handle empty request, response?
@@ -151,6 +160,50 @@ void ChangesRos::publishArchitectModelMesh() const {
     p_msg.header.stamp = {secs: 0, nsecs: 0};
     p_msg.header.seq = 0;
     mesh_pub_.publish(p_msg);
+}
+
+void ChangesRos::publishColorizedAssocTriangles(const Associations associations) const {
+    // get mesh and convert to redundant ProbabilisticMesh msg
+    cgal_msgs::TriangleMesh t_msg;
+    cgal_msgs::TriangleMesh t_red_msg;
+    cgal_msgs::ProbabilisticMesh p_red_msg; 
+    cgal::triangleMeshToMsg(mesh_model_.getMesh(), &t_msg);
+    cgal::createRedundantMsg(t_msg, &t_red_msg);
+    cgal::triToProbMsg(t_red_msg, &p_red_msg);
+
+    // add colors for individual triangles
+    // we have face ID and distance for each checked triangle in associations struct
+    // set not checked points in reading back to standard color
+
+    // set all vertex color to default color
+    for (uint i = 0; i < p_red_msg.mesh.vertices; ++i) {
+        p_red_msg.mesh.colors[i].r = 0.0;
+        p_red_msg.mesh.colors[i].g = 0.0;
+        p_red_msg.mesh.colors[i].b = 1.0;
+        p_red_msg.mesh.colors[i].a = 0.8;
+    }
+
+    // change color of associated triangles
+    for (uint i = 0; i < associations.triangles_to.size(); ++i) {
+        int id = associations.triangles_to[i];
+        int vertex_indices[3] = p_red_msg.mesh.triangles[id].vertex_indices;
+        for (auto vertex : vertex_indices) {
+            double length = associations.distances(i);
+            if (length > distance_threshold_) {
+                p_red_msg.mesh.colors[vertex].r = 1.0;
+                p_red_msg.mesh.colors[vertex].g = 0.0;
+                p_red_msg.mesh.colors[vertex].b = 0.0;
+                p_red_msg.mesh.colors[vertex].a = 0.8;
+            }
+            else {
+                p_red_msg.mesh.colors[vertex].r = 0.0;
+                p_red_msg.mesh.colors[vertex].g = 1.0;
+                p_red_msg.mesh.colors[vertex].b = 0.0;
+                p_red_msg.mesh.colors[vertex].a = 0.8;
+            }
+    }
+
+    distance_triangles_pub_.publish(p_red_msg);
 }
 
 }

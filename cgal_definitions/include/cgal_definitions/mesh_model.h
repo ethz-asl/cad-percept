@@ -56,6 +56,10 @@ class MeshModel {
    */
   Polyhedron getMesh() const;
 
+  /**
+   * Get facet iterator
+   */
+  Polyhedron::Facet_iterator getFacetIterator();
 
  private:
   Polyhedron P_;
