@@ -53,6 +53,6 @@ class ProbabilisticMeshVisual {
   Ogre::ColourValue surface_color_;
 };
 } // namespace visualizations
-}  // namespace cad-percept
+} // namespace cad-percept
 
 #endif  // CGAL_VISUALIZATIONS_PROBABILISTIC_MESH_VISUAL_H
