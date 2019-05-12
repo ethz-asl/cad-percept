@@ -97,18 +97,26 @@ void ProbabilisticMeshVisual::update() {
   ogre_object->estimateVertexCount(msg_->mesh.vertices.size());
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_TRIANGLE_LIST);
-
-  // get and set color of mesh object, otherwise keep values set at beginning
+  
+  // get and set color of mesh object if contained in message, otherwise keep values set at beginning or in rviz
+  if (msg_->mesh.color.r != 0 || msg_->mesh.color.g != 0 || msg_->mesh.color.b != 0 || msg_->mesh.color.a != 0) {
     surface_color_ = Ogre::ColourValue(msg_->mesh.color.r, msg_->mesh.color.g, msg_->mesh.color.b, msg_->mesh.color.a);
-
-  // Displaying Vertices
-  for (auto vrtx : msg_->mesh.vertices) {
-    ogre_object->position(vrtx.x, vrtx.y, vrtx.z);
-
-    ogre_object->colour(surface_color_); // here we can set different colour for each triangle
   }
 
-  // Displaying Triangles
+  // Displaying Vertices
+  for (uint i = 0; i < msg_->mesh.vertices.size(); ++i) {
+    ogre_object->position(msg_->mesh.vertices[i].x, msg_->mesh.vertices[i].y, msg_->mesh.vertices[i].z);
+
+    // set per-vertex color overwriting previous colors
+    if (msg_->mesh.colors.size() != 0) {
+      surface_color_ = Ogre::ColourValue(msg_->mesh.colors[i].r, msg_->mesh.colors[i].g, msg_->mesh.colors[i].b, msg_->mesh.colors[i].a);
+    }
+  
+    ogre_object->colour(surface_color_); // colour needs to be called for each position (vertex)
+    // faces can just be colored over vertex point color
+  }
+
+  // Displaying Triangles in color defined by 3 vertex points
   for (auto triangle : msg_->mesh.triangles) {
     ogre_object->triangle(triangle.vertex_indices[2],
                           triangle.vertex_indices[1],
@@ -124,7 +132,7 @@ void ProbabilisticMeshVisual::update() {
       const auto& vrtx_a = msg_->mesh.vertices[triangle.vertex_indices[i]];
       ogre_object->position(vrtx_a.x, vrtx_a.y, vrtx_a.z);
 
-      ogre_object->colour(edge_color_); // here we can set differen color for each triangle
+      ogre_object->colour(edge_color_); 
 
       const auto& vrtx_b =
           msg_->mesh.vertices[triangle.vertex_indices[(i + 1) % 3]];
