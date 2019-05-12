@@ -23,6 +23,11 @@ void probMsgToTriangleMesh(const cgal_msgs::ProbabilisticMesh &p_msg, Polyhedron
 void msgToTriangleMesh(const cgal_msgs::TriangleMesh &msg, Polyhedron *mesh);
 void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *msg);
 
+/**
+ * Converts TriangleMesh msg to a TriangleMesh msg with redundant vertex points per triangle (for visualization purposes)
+ */
+void createRedundantMsg(const cgal_msgs::TriangleMesh &msg, cgal_msgs::TriangleMesh *red_msg);
+
 template <class HDS>
 class BuildMesh : public CGAL::Modifier_base<HDS> {
  public:
