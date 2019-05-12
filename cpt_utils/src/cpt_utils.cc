@@ -3,7 +3,7 @@
 namespace cad_percept {
 namespace cpt_utils {
 
-Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel *mesh_model) {
+Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh_model) {
   // Convert point cloud msg
   std::cout << "Associating pointcloud of size " << pc_msg.width << " x "
             << pc_msg.height << std::endl;
@@ -19,6 +19,10 @@ Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel
                                         pc_msg[i].y,
                                         pc_msg[i].z);
     cgal::Point pt = ppid.first;
+
+    cgal::Polyhedron::Facet_iterator iterator = mesh_model->getFacetIterator();
+    int triangle_id = &(*ppid.second) - &(*iterator);
+
     associations.points_from(0, i) = pc_msg[i].x;
     associations.points_from(1, i) = pc_msg[i].y;
     associations.points_from(2, i) = pc_msg[i].z;
@@ -37,6 +41,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, const cgal::MeshModel
     associations.points_to(2, i) =
         associations.points_from(2, i) + direction(2);
     associations.distances(i) = direction.norm();
+    associations.triangles_to.push_back(triangle_id);
   }
   return associations;
 }

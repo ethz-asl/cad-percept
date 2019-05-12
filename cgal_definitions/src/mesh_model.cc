@@ -53,7 +53,7 @@ double MeshModel::getDistance(const Ray &query) const {
 }
 
 PointAndPrimitiveId MeshModel::getClosestTriangle(const Point &p) const {
-  return tree_->closest_point_and_primitive(p);
+  return tree_->closest_point_and_primitive(p); // primitive Id is position in input list of tree
 }
 
 PointAndPrimitiveId MeshModel::getClosestTriangle(const double x,
@@ -89,6 +89,10 @@ void MeshModel::transform(const Transformation &transform) {
 int MeshModel::size() const { return P_.size_of_facets(); }
 
 Polyhedron MeshModel::getMesh() const { return P_; }
+
+Polyhedron::Facet_iterator MeshModel::getFacetIterator() {
+  return P_.facets_begin();
+}
 
 }
 }
