@@ -61,6 +61,11 @@ class MeshModel {
    */
   Polyhedron::Facet_iterator getFacetIterator();
 
+  void initializeIndices();
+
+  int getIndex(Polyhedron::Facet_iterator &iterator);
+
+
  private:
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;

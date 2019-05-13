@@ -11,6 +11,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh
   associations.points_from.resize(3, pc_msg.width); //3 rows, width columns
   associations.points_to.resize(3, pc_msg.width);
   associations.distances.resize(pc_msg.width);
+  associations.triangles_to.resize(pc_msg.width);
   for (size_t i = 0u; i < pc_msg.width; ++i) {
     // loop through all points of point cloud
 
@@ -20,8 +21,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh
                                         pc_msg[i].z);
     cgal::Point pt = ppid.first;
 
-    cgal::Polyhedron::Facet_iterator iterator = mesh_model->getFacetIterator();
-    int triangle_id = &(*ppid.second) - &(*iterator);
+    int triangle_id = mesh_model->getIndex(ppid.second);
 
     associations.points_from(0, i) = pc_msg[i].x;
     associations.points_from(1, i) = pc_msg[i].y;
@@ -41,7 +41,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh
     associations.points_to(2, i) =
         associations.points_from(2, i) + direction(2);
     associations.distances(i) = direction.norm();
-    associations.triangles_to.push_back(triangle_id);
+    associations.triangles_to(i) = triangle_id;
   }
   return associations;
 }

@@ -21,7 +21,7 @@ struct Associations {
   Eigen::Matrix3Xd points_from; // dynamic, double
   Eigen::Matrix3Xd points_to;
   Eigen::VectorXd distances;
-  int triangles_to[]; // triangle ID association
+  Eigen::VectorXd triangles_to; // triangle ID association
 };
 
 // Associate point-cloud with architect model.

@@ -21,6 +21,8 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
   tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
                                                CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
+
+  initializeIndices();
 };
 
 Intersection MeshModel::getIntersection(const Ray &query) const {
@@ -92,6 +94,19 @@ Polyhedron MeshModel::getMesh() const { return P_; }
 
 Polyhedron::Facet_iterator MeshModel::getFacetIterator() {
   return P_.facets_begin();
+}
+
+void MeshModel::initializeIndices() {
+  std::size_t i = 0;
+  for (Polyhedron::Facet_iterator facet = P_.facets_begin(); facet != P_.facets_end(); ++facet) {
+    facet->id() = i++;
+  }
+}
+
+int MeshModel::getIndex(Polyhedron::Facet_iterator &iterator) {
+  int facet_id;
+  facet_id = iterator->id();
+  return facet_id;
 }
 
 }
