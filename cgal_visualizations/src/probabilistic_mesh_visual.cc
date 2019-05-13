@@ -112,8 +112,7 @@ void ProbabilisticMeshVisual::update() {
       surface_color_ = Ogre::ColourValue(msg_->mesh.colors[i].r, msg_->mesh.colors[i].g, msg_->mesh.colors[i].b, msg_->mesh.colors[i].a);
     }
   
-    ogre_object->colour(surface_color_); // colour needs to be called for each position (vertex)
-    // faces can just be colored over vertex point color
+    ogre_object->colour(surface_color_); // colour needs to be called for each position (vertex), faces can just be colored over vertex point color
   }
 
   // Displaying Triangles in color defined by 3 vertex points

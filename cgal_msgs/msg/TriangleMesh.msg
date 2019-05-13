@@ -4,5 +4,5 @@ shape_msgs/MeshTriangle[] triangles
 geometry_msgs/Point[] vertices
 # color of mesh object
 std_msgs/ColorRGBA color
-# per-vertex color defines face color
+# per-vertex color defines facet color
 std_msgs/ColorRGBA[] colors

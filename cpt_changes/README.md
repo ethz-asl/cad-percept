@@ -1,15 +1,18 @@
 # CPT Changes
 
 - Restored functionality from cadify ROS node integrated in cad-percept
+- Added visualization of distances (point-to-mesh) as colored triangles (discrete)
 
 ### To Do:
 
-- Decide whether using cpt_utils or MeshLocalizer -> it just one function now: associatePointcloud()
+- Add automatic gradient color of triangle distance
+- Add ray-casting from robot and not just to nearest facet
+- Decide whether using cpt_utils or MeshLocalizer -> it's just one function now: associatePointCloud()
 - Add gtests
-- Move visualization stuff in cgal_visualizations (if possible)
-- Visualization of triangles in color according to distance
+- If necessary make visualization subclass
 - start rviz from launch file and add default.rviz
 - check if current visualization result makes sense
+- Decide if additional rviz Display type is necessary
 
 ### Running cpt_changes:
 
