@@ -13,7 +13,8 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 		mesh_model_(nh_private.param<std::string>("off_model", "fail")),
 		map_frame_(nh_private.param<std::string>("map_frame", "fail")),
 		cad_frame_(nh_private.param<std::string>("cad_frame", "fail")),
-		distance_threshold_(nh_private.param<double>("distance_threshold", 0.2)){
+		distance_threshold_(nh_private.param<double>("distance_threshold", 0.2)),
+		discrete_color_(nh_private.param<bool>("discrete_color", false)){
 	if (!nh_private_.hasParam("off_model"))
 			std::cerr << "ERROR 'off_model' not set as parameter." << std::endl;
 	good_matches_pub_ =
@@ -192,22 +193,43 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
 
 		for (auto vertex : p_red_msg.mesh.triangles[id].vertex_indices) {
 			double length = associations.distances(i);
-			if (length > distance_threshold_) {
-				std_msgs::ColorRGBA c;
-				c.r = 1.0;
-				c.g = 0.0;
-				c.b = 0.0;
-				c.a = 0.8;
-				p_red_msg.mesh.colors[vertex] = c;
+			std_msgs::ColorRGBA c;
+			if (discrete_color_ == true) {
+				if (length > distance_threshold_) {
+					c.r = 1.0;
+					c.g = 0.0;
+					c.b = 0.0;
+					c.a = 0.8;
+				} 
+				else {
+					c.r = 0.0;
+					c.g = 1.0;
+					c.b = 0.0;
+					c.a = 0.8;
+				}
 			}
 			else {
-				std_msgs::ColorRGBA c;
-				c.r = 0.0;
-				c.g = 1.0;
-				c.b = 0.0;
-				c.a = 0.8;
-				p_red_msg.mesh.colors[vertex] = c;
+				if (length > 0.4) {
+					c.r = 1.0;
+					c.g = 0.0;
+					c.b = 0.0;
+					c.a = 0.8;
+				}
+				else {
+					// create a gradient
+					float g = length/0.4; // 1 for red, 0 for green
+					if (g > 0.5) {
+						c.r = 1.0;
+						c.g = 2.0 * (1 - g);
+					} else {
+						c.r = 2*g;
+						c.g = 1.0;
+					}
+					c.b = 0.0;
+					c.a = 0.8;
+				}
 			}
+			p_red_msg.mesh.colors[vertex] = c;
 		}
 	}
 

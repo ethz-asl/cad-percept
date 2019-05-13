@@ -54,6 +54,7 @@ class ChangesRos {
 		tf::TransformListener tf_listener_;
 		std::string map_frame_, cad_frame_;
 		double distance_threshold_;
+		bool discrete_color_;
 
 };     
 
