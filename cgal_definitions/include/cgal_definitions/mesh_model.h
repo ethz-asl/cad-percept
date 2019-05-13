@@ -61,10 +61,9 @@ class MeshModel {
    */
   Polyhedron::Facet_iterator getFacetIterator();
 
-  void initializeIndices();
+  void initializeFacetIndices();
 
-  int getIndex(Polyhedron::Facet_iterator &iterator);
-
+  int getFacetIndex(Polyhedron::Facet_handle &handle);
 
  private:
   Polyhedron P_;

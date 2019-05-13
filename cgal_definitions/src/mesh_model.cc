@@ -22,7 +22,7 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
                                                CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 
-  initializeIndices();
+  initializeFacetIndices(); // set fixed facet IDs for whole class
 };
 
 Intersection MeshModel::getIntersection(const Ray &query) const {
@@ -55,7 +55,7 @@ double MeshModel::getDistance(const Ray &query) const {
 }
 
 PointAndPrimitiveId MeshModel::getClosestTriangle(const Point &p) const {
-  return tree_->closest_point_and_primitive(p); // primitive Id is position in input list of tree
+  return tree_->closest_point_and_primitive(p); // primitive Id is Facet_handle
 }
 
 PointAndPrimitiveId MeshModel::getClosestTriangle(const double x,
@@ -96,16 +96,17 @@ Polyhedron::Facet_iterator MeshModel::getFacetIterator() {
   return P_.facets_begin();
 }
 
-void MeshModel::initializeIndices() {
+void MeshModel::initializeFacetIndices() {
+  // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for facets
   std::size_t i = 0;
   for (Polyhedron::Facet_iterator facet = P_.facets_begin(); facet != P_.facets_end(); ++facet) {
     facet->id() = i++;
   }
 }
 
-int MeshModel::getIndex(Polyhedron::Facet_iterator &iterator) {
+int MeshModel::getFacetIndex(Polyhedron::Facet_handle &handle) {
   int facet_id;
-  facet_id = iterator->id();
+  facet_id = handle->id();
   return facet_id;
 }
 

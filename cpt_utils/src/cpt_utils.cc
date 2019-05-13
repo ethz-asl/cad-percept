@@ -21,7 +21,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh
                                         pc_msg[i].z);
     cgal::Point pt = ppid.first;
 
-    int triangle_id = mesh_model->getIndex(ppid.second);
+    int triangle_id = mesh_model->getFacetIndex(ppid.second);
 
     associations.points_from(0, i) = pc_msg[i].x;
     associations.points_from(1, i) = pc_msg[i].y;
