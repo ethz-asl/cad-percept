@@ -29,7 +29,8 @@ class ChangesRos {
     // Associate point-cloud with architect model.
     void associatePointCloud(const PointCloud &pc_msg);
 
-    void ChangesRos::publishColorizedAssocMarkers(const Associations &associations) const;
+    void publishColorizedAssocMarkers(const cpt_utils::Associations &associations);
+
 
     // Service call to transform the architect model.
     bool transformModelCb(std_srvs::Empty::Request &request,
@@ -41,7 +42,7 @@ class ChangesRos {
     // Publishing of architect model as mesh
     void publishArchitectModelMesh() const;
 
-    void ChangesRos::publishColorizedAssocTriangles(const Associations associations) const;
+    void publishColorizedAssocTriangles(const cpt_utils::Associations associations) const;
 
     private:
      ros::NodeHandle &nh_, nh_private_;
