@@ -2,6 +2,7 @@
 
 - Restored functionality from cadify ROS node integrated in cad-percept
 - Added visualization of distances (point-to-mesh) as colored triangles (discrete)
+- Added "heatmap" visualization of distances with color gradient by setting ROS parameter "discrete_color" to "false"
 
 ### To Do:
 
