@@ -19,7 +19,4 @@
 - git:
     local-name: eigen_checks
     uri: git@github.com:ethz-asl/eigen_checks.git
-- git:
-    local-name: gmock_catkin
-    uri: git@github.com:ethz-asl/gmock_catkin.git
 
