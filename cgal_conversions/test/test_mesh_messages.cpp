@@ -1,5 +1,4 @@
 #include <gflags/gflags.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <cgal_conversions/mesh_conversions.h>
