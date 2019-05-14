@@ -109,7 +109,7 @@ TEST(CGALConversionsTest, msg_to_triangle_mesh) {
 }
 
 TEST(CGALConversionsTest, mesh_to_vertice_point_cloud) {
-  //generate test mesh
+  // generate test mesh
   Polyhedron m;
   TestingMesh<HalfedgeDS> testcase;
   m.delegate(testcase);
@@ -118,22 +118,22 @@ TEST(CGALConversionsTest, mesh_to_vertice_point_cloud) {
   PointCloud pc;
   meshToVerticePointCloud(m, &pc);
 
-  //check number of points
+  // check number of points
   EXPECT_TRUE(m.size_of_vertices() == pc.size());
 
-  //check coordinates of points
-  //order of vertex points and in p.c. stays the same, so:
+  // check coordinates of points
+  // order of vertex points and in p.c. stays the same, so:
   std::vector<int> vertices;
   std::vector<int> points;
 
-  for (auto vertex_point = m.points_begin(); 
-       vertex_point != m.points_end(); ++vertex_point) {
+  for (auto vertex_point = m.points_begin(); vertex_point != m.points_end();
+       ++vertex_point) {
     vertices.push_back(vertex_point->x());
     vertices.push_back(vertex_point->y());
     vertices.push_back(vertex_point->z());
   }
 
-  for (auto pc_points : pc.points){
+  for (auto pc_points : pc.points) {
     points.push_back(pc_points.x);
     points.push_back(pc_points.y);
     points.push_back(pc_points.z);
