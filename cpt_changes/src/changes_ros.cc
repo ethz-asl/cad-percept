@@ -155,7 +155,12 @@ void ChangesRos::publishArchitectModelMesh() const {
 	cgal_msgs::ProbabilisticMesh p_msg;
 	cgal::Polyhedron mesh;
 	mesh = mesh_model_.getMesh();
-	cgal::triangleMeshToProbMsg(mesh, &p_msg);
+	
+	// triangle mesh to prob. msg
+	cgal_msgs::TriangleMesh t_msg;
+	cgal::triangleMeshToMsg(mesh, &t_msg);
+	p_msg.mesh = t_msg;
+
 	p_msg.header.frame_id = map_frame_;
 	p_msg.header.stamp = {secs: 0, nsecs: 0};
 	p_msg.header.seq = 0;
@@ -171,7 +176,9 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
 	mesh = mesh_model_.getMesh();
 	cgal::triangleMeshToMsg(mesh, &t_msg);
 	cgal::createRedundantMsg(t_msg, &t_red_msg);
-	cgal::triToProbMsg(t_red_msg, &p_red_msg);
+
+	// triangle to prob. msg
+	p_red_msg.mesh = t_red_msg;
 
 	// set all vertex color to default color
 	std::cout << "No of vertices: " << p_red_msg.mesh.vertices.size() << std::endl;
