@@ -8,8 +8,6 @@
   <arg name="distance_threshold" default="0.2" />
   <arg name="discrete_color" default="false" />
 
-  <node pkg="robot_state_publisher" type="state_publisher" name="robot_state_publisher" />
-
   <!-- changes node -->
   <node name="cpt_changes"
         pkg="cpt_changes"
