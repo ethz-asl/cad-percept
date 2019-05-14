@@ -1,4 +1,4 @@
-#include <cgal_visualizations/probabilistic_mesh_visual.h>
+#include <cgal_visualizations/mesh_visual.h>
 
 #include <chrono>
 #include <limits>
@@ -14,14 +14,15 @@ namespace cad_percept {
 
 namespace visualizations {
 
-unsigned int ProbabilisticMeshVisual::instance_counter_ = 0;
+unsigned int MeshVisual::instance_counter_ = 0;
 
-ProbabilisticMeshVisual::ProbabilisticMeshVisual(
-    Ogre::SceneManager* scene_manager, Ogre::SceneNode* parent_node)
+MeshVisual::MeshVisual(Ogre::SceneManager* scene_manager,
+                       Ogre::SceneNode* parent_node)
     : visualize_covariances_(false),
       backface_culling_(false),
-      edge_color_(0.0, 0.0, 0.0, 0.8),
-      surface_color_(0.0, 0.0, 1.0, 0.8) {
+      per_vertex_color_(false),
+      std_edge_color_(0.0, 0.0, 0.0, 0.8),
+      std_surface_color_(0.0, 0.0, 1.0, 0.8) {
   scene_manager_ = scene_manager;
   frame_node_ = parent_node;
   instance_number_ = instance_counter_++;
@@ -35,7 +36,7 @@ ProbabilisticMeshVisual::ProbabilisticMeshVisual(
   object_name_ = std::to_string(ticks);
 }
 
-void ProbabilisticMeshVisual::initResourcePaths() {
+void MeshVisual::initResourcePaths() {
   // set up resource paths
   std::string rviz_path = ros::package::getPath("rviz");
 
@@ -75,14 +76,13 @@ void ProbabilisticMeshVisual::initResourcePaths() {
   }
 }
 
-void ProbabilisticMeshVisual::setMessage(
-    const cgal_msgs::ProbabilisticMesh::ConstPtr& msg) {
-  msg_ = msg;
+void MeshVisual::setMessage(const cgal_msgs::TriangleMesh& msg) {
+  triangle_mesh_msg_ = msg;
 }
 
-ProbabilisticMeshVisual::~ProbabilisticMeshVisual() {}
+MeshVisual::~MeshVisual() {}
 
-void ProbabilisticMeshVisual::update() {
+void MeshVisual::update() {
   Ogre::ManualObject* ogre_object;
 
   if (scene_manager_->hasManualObject(object_name_)) {
@@ -94,77 +94,45 @@ void ProbabilisticMeshVisual::update() {
   ogre_object->clear();
   assert(ogre_object != nullptr);
 
-  ogre_object->estimateVertexCount(msg_->mesh.vertices.size());
+  ogre_object->estimateVertexCount(3 * triangle_mesh_msg_.triangles.size());
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_TRIANGLE_LIST);
-  
-  // get and set color of mesh object if contained in message, otherwise keep values set at beginning or in rviz
-  if (msg_->mesh.color.r != 0 || msg_->mesh.color.g != 0 || msg_->mesh.color.b != 0 || msg_->mesh.color.a != 0) {
-    surface_color_ = Ogre::ColourValue(msg_->mesh.color.r, msg_->mesh.color.g, msg_->mesh.color.b, msg_->mesh.color.a);
-  }
-
-  // Displaying Vertices
-  for (uint i = 0; i < msg_->mesh.vertices.size(); ++i) {
-    ogre_object->position(msg_->mesh.vertices[i].x, msg_->mesh.vertices[i].y, msg_->mesh.vertices[i].z);
-
-    // set per-vertex color overwriting previous colors
-    if (msg_->mesh.colors.size() != 0) {
-      surface_color_ = Ogre::ColourValue(msg_->mesh.colors[i].r, msg_->mesh.colors[i].g, msg_->mesh.colors[i].b, msg_->mesh.colors[i].a);
-    }
-  
-    ogre_object->colour(surface_color_); // colour needs to be called for each position (vertex), faces can just be colored over vertex point color
-  }
 
   // Displaying Triangles in color defined by 3 vertex points
-  for (auto triangle : msg_->mesh.triangles) {
-    ogre_object->triangle(triangle.vertex_indices[2],
-                          triangle.vertex_indices[1],
-                          triangle.vertex_indices[0]);
+  uint vertex_count = 0;
+  uint triangle_count = 0;
+  for (auto triangle : triangle_mesh_msg_.triangles) {
+    // every triangle needs distinct vertices such that colors do not interfere
+    for (uint i = 0; i < 3; i++) {
+      ogre_object->position(
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].x,
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].y,
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].z);
+      if (per_vertex_color_)
+        ogre_object->colour(surface_colors_[triangle_count]);
+      else
+        ogre_object->colour(std_surface_color_);
+    }
+    ogre_object->triangle(vertex_count, vertex_count + 1, vertex_count + 2);
+    vertex_count += 3;
+    triangle_count++;
   }
   ogre_object->end();
 
   // Displaying Edges
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_LINE_LIST);
-  for (auto triangle : msg_->mesh.triangles) {
+  for (auto triangle : triangle_mesh_msg_.triangles) {
     for (int i = 0; i < 3; ++i) {
-      const auto& vrtx_a = msg_->mesh.vertices[triangle.vertex_indices[i]];
+      const auto& vrtx_a =
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]];
       ogre_object->position(vrtx_a.x, vrtx_a.y, vrtx_a.z);
 
-      ogre_object->colour(edge_color_); 
+      ogre_object->colour(std_edge_color_);
 
       const auto& vrtx_b =
-          msg_->mesh.vertices[triangle.vertex_indices[(i + 1) % 3]];
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[(i + 1) % 3]];
       ogre_object->position(vrtx_b.x, vrtx_b.y, vrtx_b.z);
-    }
-  }
-
-  // code to visualize covariances as lines. Disabled per default.
-  if (visualize_covariances_) {
-    for (size_t i = 0; i < msg_->mesh.vertices.size(); ++i) {
-      Ogre::Vector3 mean;
-      mean.x = msg_->mesh.vertices[i].x;
-      mean.y = msg_->mesh.vertices[i].y;
-      mean.z = msg_->mesh.vertices[i].z;
-
-      Ogre::Vector3 stdev;
-      stdev.x = sqrt(msg_->cov_vertices[i].x);
-      stdev.y = sqrt(msg_->cov_vertices[i].y);
-      stdev.z = sqrt(msg_->cov_vertices[i].z);
-
-      Ogre::Vector3 start = mean - stdev, end = mean + stdev;
-
-      // x cov
-      ogre_object->position(start.x, mean.y, mean.z);
-      ogre_object->position(end.x, mean.y, mean.z);
-
-      // y cov
-      ogre_object->position(mean.x, start.y, mean.z);
-      ogre_object->position(mean.x, end.y, mean.z);
-
-      // z cov
-      ogre_object->position(mean.x, mean.y, start.z);
-      ogre_object->position(mean.x, mean.y, end.z);
     }
   }
   Ogre::ManualObject::ManualObjectSection* section = ogre_object->end();
@@ -179,7 +147,7 @@ void ProbabilisticMeshVisual::update() {
                                         : Ogre::CullingMode::CULL_NONE);
 }
 
-void ProbabilisticMeshVisual::clear() {
+void MeshVisual::clear() {
   Ogre::ManualObject* ogre_object;
   if (scene_manager_->hasManualObject(object_name_)) {
     ogre_object = scene_manager_->getManualObject(object_name_);
@@ -187,12 +155,11 @@ void ProbabilisticMeshVisual::clear() {
   }
 }
 
-void ProbabilisticMeshVisual::setFramePosition(const Ogre::Vector3& position) {
+void MeshVisual::setFramePosition(const Ogre::Vector3& position) {
   frame_node_->setPosition(position);
 }
 
-void ProbabilisticMeshVisual::setFrameOrientation(
-    const Ogre::Quaternion& orientation) {
+void MeshVisual::setFrameOrientation(const Ogre::Quaternion& orientation) {
   frame_node_->setOrientation(orientation);
 }
 

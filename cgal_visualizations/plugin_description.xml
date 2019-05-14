@@ -1,8 +1,8 @@
 <library path="lib/libcgal_visualizations">
-  <class name="cgal_visualizations/ProbabilisticMeshDisplay"
-         type="cad_percept::visualizations::ProbabilisticMeshDisplay"
+  <class name="cgal_visualizations/TriangleMeshDisplay"
+         type="cad_percept::visualizations::TriangleMeshDisplay"
          base_class_type="rviz::Display">
-    <description>Displays Probabilistic Meshes from a cgal_msgs::ProbabilisticMesh message.</description>
-    <message_type>cgal_msgs/ProbabilisticMesh topic to subscribe to.</message_type>
+    <description>Displays Probabilistic Meshes from a cgal_msgs::TriangleMeshStamped message.</description>
+    <message_type>cgal_msgs/TriangleMeshStamped topic to subscribe to.</message_type>
   </class>
 </library>
