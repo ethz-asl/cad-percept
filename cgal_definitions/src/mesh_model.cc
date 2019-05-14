@@ -25,6 +25,18 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
   initializeFacetIndices(); // set fixed facet IDs for whole class
 };
 
+// checks if there is an intersection at all
+bool MeshModel::isIntersection(const Ray &query) const {
+  PolyhedronRayIntersection intersection = tree_->first_intersection(query);
+  if (intersection) {
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
+// this will throw an exception if there is no intersection, so check first by using function isIntersection()
 Intersection MeshModel::getIntersection(const Ray &query) const {
   if (verbose_) {
     std::cout << " %i intersections "
@@ -34,17 +46,19 @@ Intersection MeshModel::getIntersection(const Ray &query) const {
   // compute the closest intersection point and the distance
   PolyhedronRayIntersection intersection = tree_->first_intersection(query);
   Intersection intersection_result;
-  if (intersection) {
-    if (boost::get<Point>(&(intersection->first))) {
-      Point p = *boost::get<Point>(&(intersection->first));
-      intersection_result.intersected_point = p;
-      intersection_result.surface_normal = getNormal(intersection->second);
-    }
+  try {
+    Point p = *boost::get<Point>(&(intersection->first));
+    intersection_result.intersected_point = p;
+    intersection_result.surface_normal = getNormal(intersection->second);
   }
-  
+  catch(...) {
+    std::cout << "There is no intersection result. Use isIntersection() first." << std::endl;
+  }
+
   return intersection_result;
 }
 
+// check first if there is intersection with isIntersection()
 double MeshModel::getDistance(const Ray &query) const {
   // get the first intersection Point
   Point p = getIntersection(query).intersected_point;
@@ -91,10 +105,6 @@ void MeshModel::transform(const Transformation &transform) {
 int MeshModel::size() const { return P_.size_of_facets(); }
 
 Polyhedron MeshModel::getMesh() const { return P_; }
-
-Polyhedron::Facet_iterator MeshModel::getFacetIterator() {
-  return P_.facets_begin();
-}
 
 void MeshModel::initializeFacetIndices() {
   // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for facets

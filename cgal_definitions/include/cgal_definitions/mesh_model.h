@@ -20,6 +20,11 @@ class MeshModel {
   MeshModel(const std::string &off_pathm, bool verbose = false);
 
   /**
+   * Check if there is an intersection
+   */ 
+  bool isIntersection(const Ray &query) const;
+
+  /**
  * Get the intersection between the ray and the mesh model.
  */
   Intersection getIntersection(const Ray &query) const;
