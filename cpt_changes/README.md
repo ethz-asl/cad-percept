@@ -6,7 +6,6 @@
 
 ### To Do:
 
-- Add automatic gradient color of triangle distance
 - Add ray-casting from robot and not just to nearest facet
 - Decide whether using cpt_utils or MeshLocalizer -> it's just one function now: associatePointCloud()
 - Add gtests

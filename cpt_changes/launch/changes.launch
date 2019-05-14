@@ -8,10 +8,6 @@
   <arg name="distance_threshold" default="0.2" />
   <arg name="discrete_color" default="false" />
 
-  <!-- urdf model -->
-  <param name="robot_description" textfile="$(find cpt_changes)/launch/architect_model.urdf" />
-  <node pkg="robot_state_publisher" type="state_publisher" name="robot_state_publisher" />
-
   <!-- changes node -->
   <node name="cpt_changes"
         pkg="cpt_changes"
