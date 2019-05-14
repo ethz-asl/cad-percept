@@ -5,6 +5,7 @@ namespace cgal {
 
 MeshModel::MeshModel(const std::string &off_path, bool verbose)
     : verbose_(verbose) {
+  std::cout << "hello, this is a ci test" << std::endl;
   std::ifstream off_file(off_path.c_str(), std::ios::binary);
   if (!CGAL::read_off(off_file, P_)) {
     std::cerr << "Error: invalid STL file" << std::endl;
