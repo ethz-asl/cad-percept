@@ -107,26 +107,5 @@ void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *pc) {
   }
 }
 
-void createRedundantMsg(const cgal_msgs::TriangleMesh &msg, cgal_msgs::TriangleMesh *red_msg) {
-  int vertex_id = 0;
-  for (auto triangle : msg.triangles) {
-    shape_msgs::MeshTriangle red_triangle;
-    int i = 0;
-    for (auto vertice : triangle.vertex_indices) {
-      red_msg->vertices.push_back(msg.vertices[vertice]);
-      if (msg.colors.size() == msg.vertices.size()) {
-        red_msg->colors.push_back(msg.colors[vertice]);
-      }
-      red_triangle.vertex_indices[i] = vertex_id;
-      i++;
-      vertex_id++;
-    }
-    red_msg->triangles.push_back(red_triangle);
-  }
-  // copy rest
-  red_msg->color = msg.color;
-}
-
-
 }
 }

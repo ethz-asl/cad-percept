@@ -20,7 +20,7 @@ MeshVisual::MeshVisual(Ogre::SceneManager* scene_manager,
                        Ogre::SceneNode* parent_node)
     : visualize_covariances_(false),
       backface_culling_(false),
-      per_vertex_color_(false),
+      visualize_color_(false),
       std_edge_color_(0.0, 0.0, 0.0, 0.8),
       std_surface_color_(0.0, 0.0, 1.0, 0.8) {
   scene_manager_ = scene_manager;
@@ -76,8 +76,23 @@ void MeshVisual::initResourcePaths() {
   }
 }
 
-void MeshVisual::setMessage(const cgal_msgs::TriangleMesh& msg) {
-  triangle_mesh_msg_ = msg;
+// overloaded setMessage sets display mode
+void MeshVisual::setMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr &msg) {
+  triangle_mesh_msg_ = msg->mesh;
+}
+
+void MeshVisual::setMessage(const cgal_msgs::ColoredMesh::ConstPtr &msg) {
+  triangle_mesh_msg_ = msg->mesh;
+  mesh_color_msg_ = msg->color;
+  surface_colors_msg_ = msg->colors;
+  visualize_color_ = true;
+}
+
+void MeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr &msg) {
+  triangle_mesh_msg_ = msg->mesh;
+  normals_msg_ = msg->normals;
+  cov_vertices_msg_ = msg->cov_vertices;
+  visualize_covariances_ = true;
 }
 
 MeshVisual::~MeshVisual() {}
@@ -103,15 +118,30 @@ void MeshVisual::update() {
   uint triangle_count = 0;
   for (auto triangle : triangle_mesh_msg_.triangles) {
     // every triangle needs distinct vertices such that colors do not interfere
+    // possibility of color gradients over triangles is now removed
     for (uint i = 0; i < 3; i++) {
       ogre_object->position(
           triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].x,
           triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].y,
           triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].z);
-      if (per_vertex_color_)
-        ogre_object->colour(surface_colors_[triangle_count]);
-      else
+      if (visualize_color_) {
+        if (surface_colors_msg_.size() != 0) {
+          ogre_object->colour(Ogre::ColourValue(surface_colors_msg_[triangle_count].r,
+                              surface_colors_msg_[triangle_count].g,
+                              surface_colors_msg_[triangle_count].b,
+                              surface_colors_msg_[triangle_count].a));
+        }
+        else if (mesh_color_msg_.r != 0 || mesh_color_msg_.g != 0 || mesh_color_msg_.b != 0) {
+          ogre_object->colour(Ogre::ColourValue(mesh_color_msg_.r, mesh_color_msg_.g, 
+                              mesh_color_msg_.b, mesh_color_msg_.a));
+        }
+        else {
+          ogre_object->colour(std_surface_color_);
+        }
+      }
+      else {
         ogre_object->colour(std_surface_color_);
+      }
     }
     ogre_object->triangle(vertex_count, vertex_count + 1, vertex_count + 2);
     vertex_count += 3;
@@ -135,6 +165,36 @@ void MeshVisual::update() {
       ogre_object->position(vrtx_b.x, vrtx_b.y, vrtx_b.z);
     }
   }
+
+  // code to visualize covariances as lines. Disabled per default.
+  if (visualize_covariances_) {
+    for (size_t i = 0; i < triangle_mesh_msg_.vertices.size(); ++i) {
+      Ogre::Vector3 mean;
+      mean.x = triangle_mesh_msg_.vertices[i].x;
+      mean.y = triangle_mesh_msg_.vertices[i].y;
+      mean.z = triangle_mesh_msg_.vertices[i].z;
+
+      Ogre::Vector3 stdev;
+      stdev.x = sqrt(cov_vertices_msg_[i].x);
+      stdev.y = sqrt(cov_vertices_msg_[i].y);
+      stdev.z = sqrt(cov_vertices_msg_[i].z);
+
+      Ogre::Vector3 start = mean - stdev, end = mean + stdev;
+
+      // x cov
+      ogre_object->position(start.x, mean.y, mean.z);
+      ogre_object->position(end.x, mean.y, mean.z);
+
+      // y cov
+      ogre_object->position(mean.x, start.y, mean.z);
+      ogre_object->position(mean.x, end.y, mean.z);
+
+      // z cov
+      ogre_object->position(mean.x, mean.y, start.z);
+      ogre_object->position(mean.x, mean.y, end.z);
+    }
+  }
+
   Ogre::ManualObject::ManualObjectSection* section = ogre_object->end();
   const Ogre::MaterialPtr& mat = section->getMaterial();
 
@@ -155,11 +215,11 @@ void MeshVisual::clear() {
   }
 }
 
-void MeshVisual::setFramePosition(const Ogre::Vector3& position) {
+void MeshVisual::setFramePosition(const Ogre::Vector3 &position) {
   frame_node_->setPosition(position);
 }
 
-void MeshVisual::setFrameOrientation(const Ogre::Quaternion& orientation) {
+void MeshVisual::setFrameOrientation(const Ogre::Quaternion &orientation) {
   frame_node_->setOrientation(orientation);
 }
 

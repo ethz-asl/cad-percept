@@ -34,11 +34,17 @@ endif()
 add_definitions(-DQT_NO_KEYWORDS)
 
 set(HEADER_FILES
+    include/cgal_visualizations/mesh_visual.h
     include/cgal_visualizations/triangle_mesh_display.h
-    include/cgal_visualizations/mesh_visual.h)
+    include/cgal_visualizations/colored_mesh_display.h
+    include/cgal_visualizations/probabilistic_mesh_display.h
+    )
 
 set(SRC_FILES
-    src/triangle_mesh_display.cc src/mesh_visual.cc)
+    src/mesh_visual.cc
+    src/triangle_mesh_display.cc 
+    src/colored_mesh_display.cc
+    src/probabilistic_mesh_display.cc)
 
 cs_add_library(${PROJECT_NAME}
         ${SRC_FILES}
