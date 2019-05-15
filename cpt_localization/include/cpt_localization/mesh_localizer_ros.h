@@ -39,7 +39,6 @@ class MeshLocalizerRos {
   ros::NodeHandle &nh_, nh_private_;
   ros::Publisher good_matches_pub_, bad_matches_pub_, pose_pub_;
   ros::Subscriber pointcloud_sub_, icp_sub_;
-  visualization_msgs::Marker model_;
   ros::ServiceServer transformSrv_;
   tf::TransformListener tf_listener_;
   std::string map_frame_, cad_frame_, lidar_frame_;

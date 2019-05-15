@@ -14,15 +14,21 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
     : nh_(nh),
       nh_private_(nh_private),
       mesh_localizer_(std::make_shared<cgal::MeshModel>(cgal::MeshModel
-      (nh_private
-      .param<std::string>
-          ("off_model", "fail")))),
+                                                            (nh_private
+                                                                 .param<std::string>
+                                                                     ("off_model",
+                                                                      "fail")))),
       map_frame_(nh_private.param<std::string>("map_frame", "fail")),
       cad_frame_(nh_private.param<std::string>("cad_frame", "fail")),
       lidar_frame_(nh_private.param<std::string>("lidar_frame", "fail")),
       distance_threshold_(nh_private.param<double>("distance_threshold", 0.2)) {
   if (!nh_private_.hasParam("off_model"))
     std::cerr << "ERROR 'off_model' not set as parameter." << std::endl;
+  if (!nh_private_.hasParam("scan_topic"))
+    std::cerr << "ERROR 'scan_topic' not set as parameter." << std::endl;
+  if (!nh_private_.hasParam("localization_topic"))
+    std::cerr << "ERROR 'localization_topic' not set as parameter."
+              << std::endl;
   good_matches_pub_ =
       nh_.advertise<visualization_msgs::Marker>("good_cad_matches", 100);
   bad_matches_pub_ =
@@ -42,28 +48,6 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
                                    10,
                                    &MeshLocalizerRos::recordPose,
                                    this);
-  model_.type = visualization_msgs::Marker::MESH_RESOURCE;
-  model_.ns = "primitive_surfaces";
-  if (!nh_private_.hasParam("stl_model"))
-    std::cerr << "ERROR 'stl_model' not set as parameter." << std::endl;
-  model_.mesh_resource =
-      "file://" + nh_private_.param<std::string>("stl_model", "fail");
-  model_.header.frame_id = map_frame_;
-  model_.scale.x = 1.0;
-  model_.scale.y = 1.0;
-  model_.scale.z = 1.0;
-  model_.pose.position.x = 0;
-  model_.pose.position.y = 0;
-  model_.pose.position.z = 0;
-  model_.pose.orientation.x = 0.0;
-  model_.pose.orientation.y = 0.0;
-  model_.pose.orientation.z = 0.0;
-  model_.pose.orientation.w = 1.0;
-  model_.color.b = 0.0f;
-  model_.color.g = 0.0f;
-  model_.color.r = 1.0;
-  model_.color.a = 1.0;
-
   transformSrv_ =
       nh.advertiseService("transformModel",
                           &MeshLocalizerRos::transformModelCb, this);
