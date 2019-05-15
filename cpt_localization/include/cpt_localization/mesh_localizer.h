@@ -47,8 +47,8 @@ struct Associations {
 class MeshLocalizer {
  public:
   MeshLocalizer();
-  MeshLocalizer(const std::string &model_file);
   MeshLocalizer(const cgal::Polyhedron &mesh);
+  MeshLocalizer(std::shared_ptr<cgal::MeshModel> mesh);
 
   ~MeshLocalizer();
 
@@ -68,10 +68,10 @@ class MeshLocalizer {
    */
   void transformModel(const Eigen::Matrix4d &transformation);
 
-  void setMesh(const cgal::Polyhedron &mesh);
+  void setModel(std::shared_ptr<cgal::MeshModel> model);
 
  private:
-  cgal::MeshModel mesh_model_;
+  std::shared_ptr<cgal::MeshModel> mesh_model_;
   gtsam::NonlinearFactorGraph factor_graph_;
 };
 

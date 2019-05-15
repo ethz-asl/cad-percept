@@ -9,11 +9,13 @@ namespace localization {
 
 MeshLocalizer::MeshLocalizer() {}
 
-MeshLocalizer::MeshLocalizer(const std::string &model_file) : mesh_model_
-                                                                  (model_file) {}
-
 MeshLocalizer::MeshLocalizer(const cgal::Polyhedron &mesh) {
-  setMesh(mesh);
+  mesh_model_->setSurfaceMesh(mesh);
+}
+
+MeshLocalizer::MeshLocalizer(std::shared_ptr<cgal::MeshModel> mesh) {
+  CHECK_NOTNULL(mesh);
+  mesh_model_ = mesh;
 }
 
 MeshLocalizer::~MeshLocalizer() {}
@@ -27,7 +29,7 @@ Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const 
   for (size_t i = 0u; i < pc_msg.width; ++i) {
 
     cgal::PointAndPrimitiveId ppid =
-        mesh_model_.getClosestTriangle(pc_msg[i].x,
+        mesh_model_->getClosestTriangle(pc_msg[i].x,
                                        pc_msg[i].y,
                                        pc_msg[i].z);
     cgal::Point pt = ppid.first;
@@ -37,7 +39,7 @@ Associations MeshLocalizer::associatePointCloud(const PointCloud &pc_msg) const 
 
     // Raycast into direction of triangle normal.
     Eigen::Vector3d
-        normal = cgal::cgalVectorToEigenVector(mesh_model_.getNormal(ppid));
+        normal = cgal::cgalVectorToEigenVector(mesh_model_->getNormal(ppid));
     normal.normalize();
     associations.normals_to.block(0, i, 3, 1) = normal;
     Eigen::Vector3d relative = Eigen::Vector3d(pt.x(), pt.y(), pt.z())
@@ -93,7 +95,7 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
                                       E_T_W_A);
   factor_graph_.push_back(anchor);
 
-  for (int i = 0u; i < associations.points_from.cols(); ++i) {
+  for (int i = 0; i < associations.points_from.cols(); ++i) {
     // Reduce error with GTSAM.
     // Create expression factors from associations and add to factor graph.
     SE3::Position mu_W_SA = associations.points_to.block(0, i, 3, 1);
@@ -129,7 +131,6 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
   initial_estimate.insert(1, T_W_B);
   gtsam::LevenbergMarquardtParams params;
   params.setVerbosity("LINEAR"); // LINEAR - ERROR
-//    params.setMaxIterations(2);
   gtsam::LevenbergMarquardtOptimizer optimizer(factor_graph_,
                                                initial_estimate, params);
   gtsam::Values result = optimizer.optimize();
@@ -139,25 +140,13 @@ SE3 MeshLocalizer::icm(const PointCloud &pc_msg, const SE3 &initial_pose) {
 }
 
 void MeshLocalizer::transformModel(const Eigen::Matrix4d &transformation) {
-  cgal::Transformation
-      trans(transformation(0, 0),
-            transformation(0, 1),
-            transformation(0, 2),
-            transformation(0, 3),
-            transformation(1, 0),
-            transformation(1, 1),
-            transformation(1, 2),
-            transformation(1, 3),
-            transformation(2, 0),
-            transformation(2, 1),
-            transformation(2, 2),
-            transformation(2, 3),
-            1.0);
-  mesh_model_.transform(trans);
+  mesh_model_->transform(cgal::eigenTransformationToCgalTransformation
+  (transformation));
 }
 
-void MeshLocalizer::setMesh(const cgal::Polyhedron &mesh) {
-  mesh_model_.setSurfaceMesh(mesh);
+void MeshLocalizer::setModel(std::shared_ptr<cgal::MeshModel> model) {
+  CHECK_NOTNULL(model);
+  mesh_model_ = model;
 }
 
 }

@@ -23,15 +23,19 @@ class LocalizationTest : public ::testing::Test {
  protected:
   cad_percept::localization::MeshLocalizer mesh_localizer_;
   PointCloud point_cloud_;
-  LocalizationTest() {
+  cad_percept::cgal::Polyhedron sample_mesh_;
+  cad_percept::cgal::MeshModel model_;
+  LocalizationTest() : model_(sample_mesh_) {
     // Initiate simple tetrahedron mesh.
-    cad_percept::cgal::SurfaceMesh sample_mesh;
     cad_percept::cgal::Point vertex_a(-1.0, 1.0, 10.0);
     cad_percept::cgal::Point vertex_b(-1.0, 1.0, -1.0);
     cad_percept::cgal::Point vertex_c(10.0, 1.0, -1.0);
-    cad_percept::cgal::Point vertex_d(-1.0, -10.0, -1.0) ;
-    sample_mesh.make_tetrahedron(vertex_a, vertex_b, vertex_d, vertex_c);
-    mesh_localizer_.setMesh(sample_mesh);
+    cad_percept::cgal::Point vertex_d(-1.0, -10.0, -1.0);
+    sample_mesh_.make_tetrahedron(vertex_a, vertex_b, vertex_d, vertex_c);
+    cad_percept::cgal::MeshModel model(sample_mesh_);
+    model_.setSurfaceMesh(sample_mesh_);
+    mesh_localizer_.setModel(std::make_shared<cad_percept::cgal::MeshModel>
+                                 (model_));
 
     // Make point cloud.
     pcl::PointXYZ point_a, point_b, point_c, point_d, point_e, point_f;

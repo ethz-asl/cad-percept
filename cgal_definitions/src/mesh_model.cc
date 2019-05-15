@@ -3,9 +3,6 @@
 namespace cad_percept {
 namespace cgal {
 
-MeshModel::MeshModel(bool verbose)
-    : verbose_(verbose) {};
-
 MeshModel::MeshModel(const std::string &off_path, bool verbose)
     : verbose_(verbose) {
   std::ifstream off_file(off_path.c_str(), std::ios::binary);
@@ -25,6 +22,14 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
                                                CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 };
+
+MeshModel::MeshModel(const Polyhedron &mesh, bool verbose) : verbose_(verbose) {
+  P_ = mesh;
+  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
+                                               CGAL::faces(P_).second,
+                                               P_);
+  tree_->accelerate_distance_queries();
+}
 
 Intersection MeshModel::getIntersection(const Ray &query) const {
   if (verbose_) {

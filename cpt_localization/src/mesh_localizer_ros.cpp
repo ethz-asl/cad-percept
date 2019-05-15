@@ -13,7 +13,10 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
                                    ros::NodeHandle &nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      mesh_localizer_(nh_private.param<std::string>("off_model", "fail")),
+      mesh_localizer_(std::make_shared<cgal::MeshModel>(cgal::MeshModel
+      (nh_private
+      .param<std::string>
+          ("off_model", "fail")))),
       map_frame_(nh_private.param<std::string>("map_frame", "fail")),
       cad_frame_(nh_private.param<std::string>("cad_frame", "fail")),
       lidar_frame_(nh_private.param<std::string>("lidar_frame", "fail")),
