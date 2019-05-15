@@ -26,9 +26,9 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 	arch_pub_ =
 			nh_.advertise<PointCloud>("architect_model_pcl", 100, true); // latching to true (saves last messages and sends to future subscriber)
 	mesh_pub_ = 
-			nh_.advertise<cgal_msgs::ProbabilisticMesh>("mesh_model", 100, true); // latching to true
+			nh_.advertise<cgal_msgs::TriangleMeshStamped>("mesh_model", 100, true); // latching to true
 	distance_triangles_pub_ =
-			nh_.advertise<cgal_msgs::ProbabilisticMesh>("distance_mesh", 100, true);
+			nh_.advertise<cgal_msgs::ColoredMesh>("distance_mesh", 100, true);
 
 	pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10, &ChangesRos::associatePointCloud, this);
 	
@@ -152,7 +152,7 @@ void ChangesRos::publishArchitectModel() const {
 
 // publish architect model mesh as triangle mesh
 void ChangesRos::publishArchitectModelMesh() const {
-	cgal_msgs::ProbabilisticMesh p_msg;
+	cgal_msgs::TriangleMeshStamped p_msg;
 	cgal::Polyhedron mesh;
 	mesh = mesh_model_.getMesh();
 	
@@ -168,22 +168,19 @@ void ChangesRos::publishArchitectModelMesh() const {
 }
 
 void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations associations) const {
-	// get mesh and convert to redundant ProbabilisticMesh msg
 	cgal_msgs::TriangleMesh t_msg;
-	cgal_msgs::TriangleMesh t_red_msg;
-	cgal_msgs::ProbabilisticMesh p_red_msg; 
+	cgal_msgs::ColoredMesh c_msg; 
 	cgal::Polyhedron mesh;
 	mesh = mesh_model_.getMesh();
 	cgal::triangleMeshToMsg(mesh, &t_msg);
-	cgal::createRedundantMsg(t_msg, &t_red_msg);
 
-	// triangle to prob. msg
-	p_red_msg.mesh = t_red_msg;
+	// triangle to colored msg
+	c_msg.mesh = t_msg;
 
-	// set all vertex color to default color
-	std::cout << "No of vertices: " << p_red_msg.mesh.vertices.size() << std::endl;
+	std::cout << "No of triangles: " << c_msg.mesh.triangles.size() << std::endl;
 
-	for (uint i = 0; i < p_red_msg.mesh.vertices.size(); ++i) {
+	// set all facet colors to default color
+	for (uint i = 0; i < c_msg.mesh.triangles.size(); ++i) {
 		// can not access vector here with colors[i], because vector size needs to 
 		// be defined before assigning values/ has no elements yet
 		std_msgs::ColorRGBA c;
@@ -191,59 +188,59 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
 		c.g = 0.0;
 		c.b = 1.0;
 		c.a = 0.8;
-		p_red_msg.mesh.colors.push_back(c);
+		c_msg.colors.push_back(c);
 	}
 
 	// change color of associated triangles
+	// wip, overwrites color with last value of triangle and not average
 	for (uint i = 0; i < associations.triangles_to.rows(); ++i) {
 		int id = associations.triangles_to(i);
-
-		for (auto vertex : p_red_msg.mesh.triangles[id].vertex_indices) {
-			double length = associations.distances(i);
-			std_msgs::ColorRGBA c;
-			if (discrete_color_ == true) {
-				if (length > distance_threshold_) {
-					c.r = 1.0;
-					c.g = 0.0;
-					c.b = 0.0;
-					c.a = 0.8;
-				} 
-				else {
-					c.r = 0.0;
-					c.g = 1.0;
-					c.b = 0.0;
-					c.a = 0.8;
-				}
+		double length = associations.distances(i);
+		std_msgs::ColorRGBA c;
+		
+		if (discrete_color_ == true) {
+			if (length > distance_threshold_) {
+				c.r = 1.0;
+				c.g = 0.0;
+				c.b = 0.0;
+				c.a = 0.8;
+			} 
+			else {
+				c.r = 0.0;
+				c.g = 1.0;
+				c.b = 0.0;
+				c.a = 0.8;
+			}
+		}
+		else {
+			if (length > 0.4) {
+				c.r = 1.0;
+				c.g = 0.0;
+				c.b = 0.0;
+				c.a = 0.8;
 			}
 			else {
-				if (length > 0.4) {
+				// create a gradient
+				float g = length/0.4; // 1 for red, 0 for green
+				if (g > 0.5) {
 					c.r = 1.0;
-					c.g = 0.0;
-					c.b = 0.0;
-					c.a = 0.8;
+					c.g = 2.0 * (1 - g);
+				} else {
+					c.r = 2*g;
+					c.g = 1.0;
 				}
-				else {
-					// create a gradient
-					float g = length/0.4; // 1 for red, 0 for green
-					if (g > 0.5) {
-						c.r = 1.0;
-						c.g = 2.0 * (1 - g);
-					} else {
-						c.r = 2*g;
-						c.g = 1.0;
-					}
-					c.b = 0.0;
-					c.a = 0.8;
-				}
+				c.b = 0.0;
+				c.a = 0.8;
 			}
-			p_red_msg.mesh.colors[vertex] = c;
 		}
+		c_msg.colors[id] = c;
+		
 	}
 
-	p_red_msg.header.frame_id = map_frame_;
-	p_red_msg.header.stamp = {secs: 0, nsecs: 0};
-	p_red_msg.header.seq = 0;
-	distance_triangles_pub_.publish(p_red_msg);
+	c_msg.header.frame_id = map_frame_;
+	c_msg.header.stamp = {secs: 0, nsecs: 0};
+	c_msg.header.seq = 0;
+	distance_triangles_pub_.publish(c_msg);
 }
 
 }

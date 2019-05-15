@@ -7,6 +7,7 @@
   <author email="mpantic@ethz.ch">Michael Pantic</author>
   <author email="gawela@ethz.ch">Abel Gawel</author>
   <author email="hermann.blum@mavt.ethz.ch">Hermann Blum</author>
+  <author email="jstiefel@student.ethz.ch">Julian Stiefel</author>
   <maintainer email="michael.pantic@mavt.ethz.ch">Michael Pantic</maintainer>
 
   <!-- The base of this code is adapated from the Voxblox Visualizer -->
@@ -18,6 +19,8 @@
   <depend>roscpp</depend>
   <depend>cgal_catkin</depend>
   <depend>cgal_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>cgal_definitions</depend>
   <depend>rviz</depend>
   <depend>Eigen3</depend>

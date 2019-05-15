@@ -2,7 +2,19 @@
   <class name="cgal_visualizations/TriangleMeshDisplay"
          type="cad_percept::visualizations::TriangleMeshDisplay"
          base_class_type="rviz::Display">
-    <description>Displays Probabilistic Meshes from a cgal_msgs::TriangleMeshStamped message.</description>
+    <description>Displays Triangle Meshes from a cgal_msgs::TriangleMeshStamped message.</description>
     <message_type>cgal_msgs/TriangleMeshStamped topic to subscribe to.</message_type>
   </class>
+  <class name="cgal_visualizations/ColoredMeshDisplay"
+         type="cad_percept::visualizations::ColoredMeshDisplay"
+         base_class_type="rviz::Display">
+    <description>Displays Colored Triangle Meshes from a cgal_msgs::ColoredMesh message.</description>
+    <message_type>cgal_msgs/ColoredMesh topic to subscribe to.</message_type>
+  </class>
+  <class name="cgal_visualizations/ProbabilisticMeshDisplay"
+         type="cad_percept::visualizations::ProbabilisticMeshDisplay"
+         base_class_type="rviz::Display">
+    <description>Displays Probabilistic Triangle Meshes from a cgal_msgs::ProbabilisticMesh message.</description>
+    <message_type>cgal_msgs/ProbabilisticMesh topic to subscribe to.</message_type>
+  </class>    
 </library>

@@ -8,7 +8,8 @@
 #include <std_srvs/Empty.h>
 #include <tf/transform_listener.h>
 #include <visualization_msgs/Marker.h>
-#include <cgal_msgs/ProbabilisticMesh.h>
+#include <cgal_msgs/TriangleMeshStamped.h>
+#include <cgal_msgs/ColoredMesh.h>
 #include "cgal_conversions/mesh_conversions.h"
 #include "cgal_definitions/mesh_model.h"
 #include "cpt_utils/cpt_utils.h"

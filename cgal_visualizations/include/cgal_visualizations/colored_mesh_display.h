@@ -1,7 +1,7 @@
-#ifndef TRIANGLE_MESH_DISPLAY_VISUALIZATIONS_H
-#define TRIANGLE_MESH_DISPLAY_VISUALIZATIONS_H
+#ifndef COLORED_MESH_DISPLAY_VISUALIZATIONS_H
+#define COLORED_MESH_DISPLAY_VISUALIZATIONS_H
 
-#include <cgal_msgs/TriangleMeshStamped.h>
+#include <cgal_msgs/ColoredMesh.h>
 #include <rviz/message_filter_display.h>
 #include <rviz/properties/bool_property.h>
 #include <rviz/properties/color_property.h>
@@ -15,13 +15,13 @@ namespace visualizations {
 
 class MeshVisual;  // Forward definition
 
-class TriangleMeshDisplay
-    : public rviz::MessageFilterDisplay<cgal_msgs::TriangleMeshStamped> {
+class ColoredMeshDisplay
+    : public rviz::MessageFilterDisplay<cgal_msgs::ColoredMesh> {
   Q_OBJECT
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  TriangleMeshDisplay() {}
-  virtual ~TriangleMeshDisplay();
+  ColoredMeshDisplay() {}
+  virtual ~ColoredMeshDisplay();
 
   void initProperties();
 
@@ -35,7 +35,7 @@ class TriangleMeshDisplay
   virtual void reset();
 
  private:
-  void processMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr &msg);
+  void processMessage(const cgal_msgs::ColoredMesh::ConstPtr &msg);
 
   struct {
     rviz::BoolProperty* BackfaceCulling;
@@ -51,4 +51,4 @@ class TriangleMeshDisplay
 }  // namespace visualizations
 }  // namespace cad_percept
 
-#endif  // TRIANGLE_MESH_DISPLAY_VISUALIZATIONS_H
+#endif  // COLORED_MESH_DISPLAY_VISUALIZATIONS_H
