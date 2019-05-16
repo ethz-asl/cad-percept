@@ -20,6 +20,11 @@ class MeshModel {
   MeshModel(const std::string &off_pathm, bool verbose = false);
 
   /**
+   * Check if there is an intersection
+   */ 
+  bool isIntersection(const Ray &query) const;
+
+  /**
  * Get the intersection between the ray and the mesh model.
  */
   Intersection getIntersection(const Ray &query) const;
@@ -50,6 +55,20 @@ class MeshModel {
  * Return size of mesh (number of facet primitives).
  */
   int size() const;
+
+  /**
+   * Return mesh
+   */
+  Polyhedron getMesh() const;
+
+  /**
+   * Get facet iterator
+   */
+  Polyhedron::Facet_iterator getFacetIterator();
+
+  void initializeFacetIndices();
+
+  int getFacetIndex(Polyhedron::Facet_handle &handle);
 
  private:
   Polyhedron P_;
