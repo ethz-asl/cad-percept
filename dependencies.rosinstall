@@ -19,4 +19,6 @@
 - git:
     local-name: eigen_checks
     uri: git@github.com:ethz-asl/eigen_checks.git
-
+- git:
+    local-name: gtsam_catkin
+    uri: git@github.com:ethz-asl/gtsam_catkin.git
