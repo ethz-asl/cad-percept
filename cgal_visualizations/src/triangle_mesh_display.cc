@@ -1,4 +1,4 @@
-#include <cgal_visualizations/probabilistic_mesh_display.h>
+#include <cgal_visualizations/triangle_mesh_display.h>
 
 #include <OGRE/OgreSceneManager.h>
 #include <OGRE/OgreSceneNode.h>
@@ -10,14 +10,14 @@ namespace cad_percept {
 
 namespace visualizations {
 
-void ProbabilisticMeshDisplay::onInitialize() {
+void TriangleMeshDisplay::onInitialize() {
   MFDClass::onInitialize();
   initProperties();
 }
 
-ProbabilisticMeshDisplay::~ProbabilisticMeshDisplay() {}
+TriangleMeshDisplay::~TriangleMeshDisplay() {}
 
-void ProbabilisticMeshDisplay::reset() {
+void TriangleMeshDisplay::reset() {
   MFDClass::reset();
 
   if (visual_ != nullptr) {
@@ -26,7 +26,7 @@ void ProbabilisticMeshDisplay::reset() {
   visual_.reset();
 }
 
-void ProbabilisticMeshDisplay::initProperties() {
+void TriangleMeshDisplay::initProperties() {
   properties_.BackfaceCulling = new rviz::BoolProperty(
       "Backface Culling", false,
       "If backface culling is active, a surface is only visible from the front "
@@ -47,14 +47,14 @@ void ProbabilisticMeshDisplay::initProperties() {
   properties_.Alpha->setMin(0.0);
 }
 
-void ProbabilisticMeshDisplay::backfaceCullingPropertyChanged() {
+void TriangleMeshDisplay::backfaceCullingPropertyChanged() {
   if (visual_ != nullptr) {
     visual_->setBackFaceCulling(properties_.BackfaceCulling->getBool());
     visual_->update();
   }
 }
 
-void ProbabilisticMeshDisplay::appearencePropertyChanged() {
+void TriangleMeshDisplay::appearencePropertyChanged() {
   if (visual_ != nullptr) {
     visual_->setAppearance(properties_.EdgeColor->getOgreColor(),
                            properties_.SurfaceColor->getOgreColor(),
@@ -63,8 +63,8 @@ void ProbabilisticMeshDisplay::appearencePropertyChanged() {
   }
 }
 
-void ProbabilisticMeshDisplay::processMessage(
-    const cgal_msgs::ProbabilisticMesh::ConstPtr &msg) {
+void TriangleMeshDisplay::processMessage(
+    const cgal_msgs::TriangleMeshStamped::ConstPtr &msg) {
   // Here we call the rviz::FrameManager to get the transform from the
   // fixed frame to the frame in the header of this Imu message.  If
   // it fails, we can't do anything else so we return.
@@ -92,5 +92,5 @@ void ProbabilisticMeshDisplay::processMessage(
 }  // namespace cad_percept
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::ProbabilisticMeshDisplay,
+PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::TriangleMeshDisplay,
                        rviz::Display)
