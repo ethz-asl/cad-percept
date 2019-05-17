@@ -12,7 +12,7 @@ namespace visualizations {
 
 void ProbabilisticMeshDisplay::onInitialize() {
   MFDClass::onInitialize();
-  initProperties();
+    initProperties();
 }
 
 ProbabilisticMeshDisplay::~ProbabilisticMeshDisplay() {}
