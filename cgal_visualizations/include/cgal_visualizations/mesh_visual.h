@@ -1,18 +1,19 @@
 /**
- * This is a general class for all mesh visualizations and can be included into the rviz plugins.
- */ 
+ * This is a general class for all mesh visualizations and can be included into
+ * the rviz plugins.
+ */
 
 #ifndef TRIANGLE_MESH_VISUALIZATIONS_H
 #define TRIANGLE_MESH_VISUALIZATIONS_H
 
 #include <OGRE/OgreManualObject.h>
-#include <cgal_msgs/TriangleMesh.h>
-#include <cgal_msgs/TriangleMeshStamped.h>
 #include <cgal_msgs/ColoredMesh.h>
 #include <cgal_msgs/ProbabilisticMesh.h>
-#include <std_msgs/ColorRGBA.h>
+#include <cgal_msgs/TriangleMesh.h>
+#include <cgal_msgs/TriangleMeshStamped.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Vector3.h>
+#include <std_msgs/ColorRGBA.h>
 #include <QtGui/QColor>
 
 namespace cad_percept {
@@ -20,7 +21,7 @@ namespace visualizations {
 
 class MeshVisual {
  public:
-  MeshVisual(Ogre::SceneManager* scene_manager, Ogre::SceneNode* parent_node);
+  MeshVisual(Ogre::SceneManager *scene_manager, Ogre::SceneNode *parent_node);
   virtual ~MeshVisual();
 
   void initResourcePaths();
@@ -48,8 +49,8 @@ class MeshVisual {
   }
 
  private:
-  Ogre::SceneNode* frame_node_;
-  Ogre::SceneManager* scene_manager_;
+  Ogre::SceneNode *frame_node_;
+  Ogre::SceneManager *scene_manager_;
   std::string object_name_;
   cgal_msgs::TriangleMesh triangle_mesh_msg_;
   std_msgs::ColorRGBA mesh_color_msg_;
@@ -64,7 +65,6 @@ class MeshVisual {
   bool visualize_color_;
   Ogre::ColourValue std_edge_color_;
   Ogre::ColourValue std_surface_color_;
-
 };
 }  // namespace visualizations
 }  // namespace cad-percept

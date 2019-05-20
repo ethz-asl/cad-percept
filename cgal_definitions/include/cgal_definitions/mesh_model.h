@@ -21,7 +21,7 @@ class MeshModel {
 
   /**
    * Check if there is an intersection
-   */ 
+   */
   bool isIntersection(const Ray &query) const;
 
   /**

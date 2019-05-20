@@ -35,7 +35,7 @@ class TriangleMeshDisplay
   virtual void reset();
 
  private:
-  void processMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr &msg);
+  void processMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr& msg);
 
   struct {
     rviz::BoolProperty* BackfaceCulling;
