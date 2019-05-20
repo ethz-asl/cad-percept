@@ -35,7 +35,7 @@ class ColoredMeshDisplay
   virtual void reset();
 
  private:
-  void processMessage(const cgal_msgs::ColoredMesh::ConstPtr &msg);
+  void processMessage(const cgal_msgs::ColoredMesh::ConstPtr& msg);
 
   struct {
     rviz::BoolProperty* BackfaceCulling;
