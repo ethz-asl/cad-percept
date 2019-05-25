@@ -1,4 +1,4 @@
-#include <cgal_visualizations/probabilistic_mesh_display.h>
+#include <cgal_visualizations/colored_mesh_display.h>
 
 #include <OGRE/OgreSceneManager.h>
 #include <OGRE/OgreSceneNode.h>
@@ -10,14 +10,14 @@ namespace cad_percept {
 
 namespace visualizations {
 
-void ProbabilisticMeshDisplay::onInitialize() {
+void ColoredMeshDisplay::onInitialize() {
   MFDClass::onInitialize();
   initProperties();
 }
 
-ProbabilisticMeshDisplay::~ProbabilisticMeshDisplay() {}
+ColoredMeshDisplay::~ColoredMeshDisplay() {}
 
-void ProbabilisticMeshDisplay::reset() {
+void ColoredMeshDisplay::reset() {
   MFDClass::reset();
 
   if (visual_ != nullptr) {
@@ -26,16 +26,12 @@ void ProbabilisticMeshDisplay::reset() {
   visual_.reset();
 }
 
-void ProbabilisticMeshDisplay::initProperties() {
+void ColoredMeshDisplay::initProperties() {
   properties_.BackfaceCulling = new rviz::BoolProperty(
       "Backface Culling", false,
       "If backface culling is active, a surface is only visible from the front "
       "face defined by the normal",
       this, SLOT(backfaceCullingPropertyChanged()));
-
-  properties_.SurfaceColor = new rviz::ColorProperty(
-      "Surface Color", QColor(0, 0, 255), "Color of surfaces.", this,
-      SLOT(appearencePropertyChanged()));
 
   properties_.EdgeColor = new rviz::ColorProperty(
       "Edge Color", QColor(0, 0, 0), "Color of surfaces.", this,
@@ -47,24 +43,24 @@ void ProbabilisticMeshDisplay::initProperties() {
   properties_.Alpha->setMin(0.0);
 }
 
-void ProbabilisticMeshDisplay::backfaceCullingPropertyChanged() {
+void ColoredMeshDisplay::backfaceCullingPropertyChanged() {
   if (visual_ != nullptr) {
     visual_->setBackFaceCulling(properties_.BackfaceCulling->getBool());
     visual_->update();
   }
 }
 
-void ProbabilisticMeshDisplay::appearencePropertyChanged() {
+void ColoredMeshDisplay::appearencePropertyChanged() {
   if (visual_ != nullptr) {
     visual_->setAppearance(properties_.EdgeColor->getOgreColor(),
-                           properties_.SurfaceColor->getOgreColor(),
+                           Ogre::ColourValue(0.0, 0.0, 1.0, 0.8),
                            properties_.Alpha->getFloat());
     visual_->update();
   }
 }
 
-void ProbabilisticMeshDisplay::processMessage(
-    const cgal_msgs::ProbabilisticMesh::ConstPtr &msg) {
+void ColoredMeshDisplay::processMessage(
+    const cgal_msgs::ColoredMesh::ConstPtr &msg) {
   // Here we call the rviz::FrameManager to get the transform from the
   // fixed frame to the frame in the header of this Imu message.  If
   // it fails, we can't do anything else so we return.
@@ -92,5 +88,5 @@ void ProbabilisticMeshDisplay::processMessage(
 }  // namespace cad_percept
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::ProbabilisticMeshDisplay,
+PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::ColoredMeshDisplay,
                        rviz::Display)
