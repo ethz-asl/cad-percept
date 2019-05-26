@@ -22,3 +22,9 @@
 - git:
     local-name: gtsam_catkin
     uri: git@github.com:ethz-asl/gtsam_catkin.git
+- git:
+    local-name: metis_catkin
+    uri: git@github.com:ethz-asl/metis_catkin.git
+- git:
+    local-name: minkindr_gtsam
+    uri: git@github.com:ethz-asl/minkindr_gtsam.git
