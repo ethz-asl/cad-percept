@@ -70,6 +70,8 @@ class MeshLocalizer {
 
   void setModel(std::shared_ptr<cgal::MeshModel> model);
 
+  std::shared_ptr<cgal::MeshModel> getModel() const;
+
  private:
   std::shared_ptr<cgal::MeshModel> mesh_model_;
   gtsam::NonlinearFactorGraph factor_graph_;

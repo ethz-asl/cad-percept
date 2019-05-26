@@ -149,5 +149,9 @@ void MeshLocalizer::setModel(std::shared_ptr<cgal::MeshModel> model) {
   mesh_model_ = model;
 }
 
+std::shared_ptr<cgal::MeshModel> MeshLocalizer::getModel() const {
+  return mesh_model_;
+}
+
 }
 }

@@ -34,10 +34,14 @@ class MeshLocalizerRos {
   bool transformModelCb(std_srvs::Empty::Request &request,
                         std_srvs::Empty::Response &response);
 
+  // Publish the mesh model.
+  void publishMeshModel(cgal::Polyhedron &mesh) const;
+
  private:
   MeshLocalizer mesh_localizer_;
+  cgal::MeshModel mesh_model_;
   ros::NodeHandle &nh_, nh_private_;
-  ros::Publisher good_matches_pub_, bad_matches_pub_, pose_pub_;
+  ros::Publisher good_matches_pub_, bad_matches_pub_, pose_pub_, mesh_pub_;
   ros::Subscriber pointcloud_sub_, icp_sub_;
   ros::ServiceServer transformSrv_;
   tf::TransformListener tf_listener_;

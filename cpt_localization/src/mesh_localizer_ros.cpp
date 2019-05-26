@@ -1,3 +1,5 @@
+#include <cgal_conversions/mesh_conversions.h>
+#include <cgal_msgs/TriangleMeshStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <tf_conversions/tf_eigen.h>
@@ -13,15 +15,14 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
                                    ros::NodeHandle &nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      mesh_localizer_(std::make_shared<cgal::MeshModel>(cgal::MeshModel
-                                                            (nh_private
-                                                                 .param<std::string>
-                                                                     ("off_model",
-                                                                      "fail")))),
+      mesh_model_(nh_private.param<std::string>("off_model","fail")),
       map_frame_(nh_private.param<std::string>("map_frame", "fail")),
       cad_frame_(nh_private.param<std::string>("cad_frame", "fail")),
       lidar_frame_(nh_private.param<std::string>("lidar_frame", "fail")),
       distance_threshold_(nh_private.param<double>("distance_threshold", 0.2)) {
+  mesh_localizer_ = MeshLocalizer(std::make_shared<cgal::MeshModel>
+      (mesh_model_));
+
   if (!nh_private_.hasParam("off_model"))
     std::cerr << "ERROR 'off_model' not set as parameter." << std::endl;
   if (!nh_private_.hasParam("scan_topic"))
@@ -35,6 +36,8 @@ MeshLocalizerRos::MeshLocalizerRos(ros::NodeHandle &nh,
       nh_.advertise<visualization_msgs::Marker>("bad_cad_matches", 100);
   pose_pub_ = nh_.advertise<nav_msgs::Odometry>
       ("optimized_pose", 100, true);
+  mesh_pub_ = nh_.advertise<cgal_msgs::TriangleMeshStamped>
+      ("mesh_model", 100);
 
   pointcloud_sub_ =
       nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"),
@@ -150,5 +153,19 @@ bool MeshLocalizerRos::transformModelCb(std_srvs::Empty::Request &request,
   return true;
 }
 
+// publish polyhedron as triangle mesh
+void MeshLocalizerRos::publishMeshModel(cgal::Polyhedron &mesh) const {
+  cgal_msgs::TriangleMeshStamped p_msg;
+
+  // triangle mesh to prob. msg
+  cgal_msgs::TriangleMesh t_msg;
+  cgal::triangleMeshToMsg(mesh, &t_msg);
+  p_msg.mesh = t_msg;
+
+  p_msg.header.frame_id = map_frame_;
+  p_msg.header.stamp = {secs: 0, nsecs: 0};
+  p_msg.header.seq = 0;
+  mesh_pub_.publish(p_msg);
+}
 }
 }

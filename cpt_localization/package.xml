@@ -17,6 +17,7 @@
   <depend>cgal_catkin</depend>
   <depend>cgal_conversions</depend>
   <depend>cgal_definitions</depend>
+  <depend>cgal_msgs</depend>
   <depend>glog_catkin</depend>
   <depend>gtsam_catkin</depend>
   <depend>minkindr</depend>
