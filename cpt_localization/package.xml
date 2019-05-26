@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>cpt_localization</name>
+  <version>0.0.1</version>
+  <description>mesh localization</description>
+
+  <author email="gawela@ethz.ch">Abel Gawel</author>
+  <author email="mpantic@ethz.ch">Michael Pantic</author>
+  <author email="blumh@ethz.ch">Hermann Blum</author>
+  <maintainer email="gawela@ethz.ch">Abel Gawel</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>cgal_catkin</depend>
+  <depend>cgal_conversions</depend>
+  <depend>cgal_definitions</depend>
+  <depend>cgal_msgs</depend>
+  <depend>glog_catkin</depend>
+  <depend>gtsam_catkin</depend>
+  <depend>minkindr</depend>
+  <depend>minkindr_gtsam</depend>
+  <depend>nav_msgs</depend>
+  <depend>pcl_ros</depend>
+  <depend>roscpp</depend>
+  <depend>tf_conversions</depend>
+</package>

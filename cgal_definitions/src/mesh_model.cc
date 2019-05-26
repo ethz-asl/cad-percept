@@ -25,15 +25,13 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
   initializeFacetIndices(); // set fixed facet IDs for whole class
 };
 
-// checks if there is an intersection at all
-bool MeshModel::isIntersection(const Ray &query) const {
-  PolyhedronRayIntersection intersection = tree_->first_intersection(query);
-  if (intersection) {
-    return true;
-  }
-  else {
-    return false;
-  }
+MeshModel::MeshModel(const Polyhedron &mesh, bool verbose) : verbose_(verbose) {
+  P_ = mesh;
+  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
+                                               CGAL::faces(P_).second,
+                                               P_);
+  tree_->accelerate_distance_queries();
+  initializeFacetIndices();
 }
 
 // this will throw an exception if there is no intersection, so check first by using function isIntersection()
@@ -96,9 +94,16 @@ Vector MeshModel::getNormal(const PointAndPrimitiveId &ppid) const {
 void MeshModel::transform(const Transformation &transform) {
   std::transform(P_.points_begin(), P_.points_end(), P_.points_begin(),
                  transform);
-  // create updated AABBTree:
   tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
                                                CGAL::faces(P_).second, P_);
+  tree_->accelerate_distance_queries();
+}
+
+void MeshModel::setSurfaceMesh(const Polyhedron &mesh) {
+  P_ = mesh;
+  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
+                                               CGAL::faces(P_).second,
+                                               P_);
   tree_->accelerate_distance_queries();
 }
 

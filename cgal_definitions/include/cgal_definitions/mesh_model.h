@@ -19,11 +19,12 @@ class MeshModel {
  public:
   MeshModel(const std::string &off_pathm, bool verbose = false);
 
+  MeshModel(const Polyhedron &mesh, bool verbose = false);
+
   /**
    * Check if there is an intersection
    */ 
   bool isIntersection(const Ray &query) const;
-
   /**
  * Get the intersection between the ray and the mesh model.
  */
@@ -57,6 +58,11 @@ class MeshModel {
   int size() const;
 
   /**
+ * Set the mesh.
+ */
+  void setSurfaceMesh(const Polyhedron &mesh);
+
+ /**
    * Return mesh
    */
   Polyhedron getMesh() const;
