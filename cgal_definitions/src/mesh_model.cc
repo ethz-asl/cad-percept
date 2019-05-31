@@ -25,6 +25,15 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
   initializeFacetIndices(); // set fixed facet IDs for whole class
 };
 
+MeshModel::MeshModel(const Polyhedron &mesh, bool verbose) : verbose_(verbose) {
+  P_ = mesh;
+  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
+                                               CGAL::faces(P_).second,
+                                               P_);
+  tree_->accelerate_distance_queries();
+  initializeFacetIndices();
+}
+
 // checks if there is an intersection at all
 bool MeshModel::isIntersection(const Ray &query) const {
   PolyhedronRayIntersection intersection = tree_->first_intersection(query);
