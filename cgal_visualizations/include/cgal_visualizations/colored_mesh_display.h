@@ -1,7 +1,7 @@
-#ifndef PROBABILISTIC_MESH_DISPLAY_VISUALIZATIONS_H
-#define PROBABILISTIC_MESH_DISPLAY_VISUALIZATIONS_H
+#ifndef COLORED_MESH_DISPLAY_VISUALIZATIONS_H
+#define COLORED_MESH_DISPLAY_VISUALIZATIONS_H
 
-#include <cgal_msgs/ProbabilisticMesh.h>
+#include <cgal_msgs/ColoredMesh.h>
 #include <rviz/message_filter_display.h>
 #include <rviz/properties/bool_property.h>
 #include <rviz/properties/color_property.h>
@@ -15,13 +15,13 @@ namespace visualizations {
 
 class MeshVisual;  // Forward definition
 
-class ProbabilisticMeshDisplay
-    : public rviz::MessageFilterDisplay<cgal_msgs::ProbabilisticMesh> {
+class ColoredMeshDisplay
+    : public rviz::MessageFilterDisplay<cgal_msgs::ColoredMesh> {
   Q_OBJECT
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  ProbabilisticMeshDisplay() {}
-  virtual ~ProbabilisticMeshDisplay();
+  ColoredMeshDisplay() {}
+  virtual ~ColoredMeshDisplay();
 
   void initProperties();
 
@@ -35,7 +35,7 @@ class ProbabilisticMeshDisplay
   virtual void reset();
 
  private:
-  void processMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr &msg);
+  void processMessage(const cgal_msgs::ColoredMesh::ConstPtr &msg);
 
   struct {
     rviz::BoolProperty* BackfaceCulling;
@@ -51,4 +51,4 @@ class ProbabilisticMeshDisplay
 }  // namespace visualizations
 }  // namespace cad_percept
 
-#endif  // PROBABILISTIC_MESH_DISPLAY_VISUALIZATIONS_H
+#endif  // COLORED_MESH_DISPLAY_VISUALIZATIONS_H

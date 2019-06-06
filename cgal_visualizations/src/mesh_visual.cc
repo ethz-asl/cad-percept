@@ -1,4 +1,4 @@
-#include <cgal_visualizations/probabilistic_mesh_visual.h>
+#include <cgal_visualizations/mesh_visual.h>
 
 #include <chrono>
 #include <limits>
@@ -14,14 +14,15 @@ namespace cad_percept {
 
 namespace visualizations {
 
-unsigned int ProbabilisticMeshVisual::instance_counter_ = 0;
+unsigned int MeshVisual::instance_counter_ = 0;
 
-ProbabilisticMeshVisual::ProbabilisticMeshVisual(
-    Ogre::SceneManager* scene_manager, Ogre::SceneNode* parent_node)
+MeshVisual::MeshVisual(Ogre::SceneManager* scene_manager,
+                       Ogre::SceneNode* parent_node)
     : visualize_covariances_(false),
       backface_culling_(false),
-      edge_color_(0.0, 0.0, 0.0, 0.8),
-      surface_color_(0.0, 0.0, 1.0, 0.8) {
+      visualize_color_(false),
+      std_edge_color_(0.0, 0.0, 0.0, 0.8),
+      std_surface_color_(0.0, 0.0, 1.0, 0.8) {
   scene_manager_ = scene_manager;
   frame_node_ = parent_node;
   instance_number_ = instance_counter_++;
@@ -35,7 +36,7 @@ ProbabilisticMeshVisual::ProbabilisticMeshVisual(
   object_name_ = std::to_string(ticks);
 }
 
-void ProbabilisticMeshVisual::initResourcePaths() {
+void MeshVisual::initResourcePaths() {
   // set up resource paths
   std::string rviz_path = ros::package::getPath("rviz");
 
@@ -48,7 +49,7 @@ void ProbabilisticMeshVisual::initResourcePaths() {
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
       rviz_path + "/ogre_media/materials/scripts", "FileSystem",
       ROS_PACKAGE_NAME);
-  
+
   // Add paths exported to the "media_export" package.
   std::vector<std::string> media_paths;
   ros::package::getPlugins("media_export", "ogre_media_path", media_paths);
@@ -59,7 +60,7 @@ void ProbabilisticMeshVisual::initResourcePaths() {
       std::string path;
       int pos1 = 0;
       int pos2 = iter->find(delim);
-      while (pos2 != (int) std::string::npos) {
+      while (pos2 != (int)std::string::npos) {
         path = iter->substr(pos1, pos2 - pos1);
         ROS_DEBUG("adding resource location: '%s'\n", path.c_str());
         Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
@@ -75,14 +76,28 @@ void ProbabilisticMeshVisual::initResourcePaths() {
   }
 }
 
-void ProbabilisticMeshVisual::setMessage(
-    const cgal_msgs::ProbabilisticMesh::ConstPtr& msg) {
-  msg_ = msg;
+// overloaded setMessage sets display mode
+void MeshVisual::setMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr &msg) {
+  triangle_mesh_msg_ = msg->mesh;
 }
 
-ProbabilisticMeshVisual::~ProbabilisticMeshVisual() {}
+void MeshVisual::setMessage(const cgal_msgs::ColoredMesh::ConstPtr &msg) {
+  triangle_mesh_msg_ = msg->mesh;
+  mesh_color_msg_ = msg->color;
+  surface_colors_msg_ = msg->colors;
+  visualize_color_ = true;
+}
 
-void ProbabilisticMeshVisual::update() {
+void MeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr &msg) {
+  triangle_mesh_msg_ = msg->mesh;
+  normals_msg_ = msg->normals;
+  cov_vertices_msg_ = msg->cov_vertices;
+  visualize_covariances_ = true;
+}
+
+MeshVisual::~MeshVisual() {}
+
+void MeshVisual::update() {
   Ogre::ManualObject* ogre_object;
 
   if (scene_manager_->hasManualObject(object_name_)) {
@@ -94,52 +109,75 @@ void ProbabilisticMeshVisual::update() {
   ogre_object->clear();
   assert(ogre_object != nullptr);
 
-  ogre_object->estimateVertexCount(msg_->vertices.size());
+  ogre_object->estimateVertexCount(3 * triangle_mesh_msg_.triangles.size());
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
-  // Displaying Vertices
-  for (auto vrtx : msg_->vertices) {
-    ogre_object->position(vrtx.x, vrtx.y, vrtx.z);
-
-    ogre_object->colour(surface_color_);
-  }
-
-  // Displaying Triangles
-  for (auto triangle : msg_->triangles) {
-    ogre_object->triangle(triangle.vertex_indices[2],
-                          triangle.vertex_indices[1],
-                          triangle.vertex_indices[0]);
+  // Displaying Triangles in color defined by 3 vertex points
+  uint vertex_count = 0;
+  uint triangle_count = 0;
+  for (auto triangle : triangle_mesh_msg_.triangles) {
+    // every triangle needs distinct vertices such that colors do not interfere
+    // possibility of color gradients over triangles is now removed
+    for (uint i = 0; i < 3; i++) {
+      ogre_object->position(
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].x,
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].y,
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].z);
+      if (visualize_color_) {
+        if (surface_colors_msg_.size() != 0) {
+          ogre_object->colour(Ogre::ColourValue(surface_colors_msg_[triangle_count].r,
+                              surface_colors_msg_[triangle_count].g,
+                              surface_colors_msg_[triangle_count].b,
+                              surface_colors_msg_[triangle_count].a));
+        }
+        else if (mesh_color_msg_.r != 0 || mesh_color_msg_.g != 0 || mesh_color_msg_.b != 0) {
+          ogre_object->colour(Ogre::ColourValue(mesh_color_msg_.r, mesh_color_msg_.g, 
+                              mesh_color_msg_.b, mesh_color_msg_.a));
+        }
+        else {
+          ogre_object->colour(std_surface_color_);
+        }
+      }
+      else {
+        ogre_object->colour(std_surface_color_);
+      }
+    }
+    ogre_object->triangle(vertex_count, vertex_count + 1, vertex_count + 2);
+    vertex_count += 3;
+    triangle_count++;
   }
   ogre_object->end();
 
   // Displaying Edges
   ogre_object->begin("BaseWhiteNoLighting",
                      Ogre::RenderOperation::OT_LINE_LIST);
-  for (auto triangle : msg_->triangles) {
+  for (auto triangle : triangle_mesh_msg_.triangles) {
     for (int i = 0; i < 3; ++i) {
-      const auto& vrtx_a = msg_->vertices[triangle.vertex_indices[i]];
+      const auto& vrtx_a =
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]];
       ogre_object->position(vrtx_a.x, vrtx_a.y, vrtx_a.z);
 
-      ogre_object->colour(edge_color_);
+      ogre_object->colour(std_edge_color_);
 
-      const auto& vrtx_b = msg_->vertices[triangle.vertex_indices[(i + 1) % 3]];
+      const auto& vrtx_b =
+          triangle_mesh_msg_.vertices[triangle.vertex_indices[(i + 1) % 3]];
       ogre_object->position(vrtx_b.x, vrtx_b.y, vrtx_b.z);
     }
   }
 
   // code to visualize covariances as lines. Disabled per default.
   if (visualize_covariances_) {
-    for (size_t i = 0; i < msg_->vertices.size(); ++i) {
+    for (size_t i = 0; i < triangle_mesh_msg_.vertices.size(); ++i) {
       Ogre::Vector3 mean;
-      mean.x = msg_->vertices[i].x;
-      mean.y = msg_->vertices[i].y;
-      mean.z = msg_->vertices[i].z;
+      mean.x = triangle_mesh_msg_.vertices[i].x;
+      mean.y = triangle_mesh_msg_.vertices[i].y;
+      mean.z = triangle_mesh_msg_.vertices[i].z;
 
       Ogre::Vector3 stdev;
-      stdev.x = sqrt(msg_->cov_vertices[i].x);
-      stdev.y = sqrt(msg_->cov_vertices[i].y);
-      stdev.z = sqrt(msg_->cov_vertices[i].z);
+      stdev.x = sqrt(cov_vertices_msg_[i].x);
+      stdev.y = sqrt(cov_vertices_msg_[i].y);
+      stdev.z = sqrt(cov_vertices_msg_[i].z);
 
       Ogre::Vector3 start = mean - stdev, end = mean + stdev;
 
@@ -156,6 +194,7 @@ void ProbabilisticMeshVisual::update() {
       ogre_object->position(mean.x, mean.y, end.z);
     }
   }
+
   Ogre::ManualObject::ManualObjectSection* section = ogre_object->end();
   const Ogre::MaterialPtr& mat = section->getMaterial();
 
@@ -168,7 +207,7 @@ void ProbabilisticMeshVisual::update() {
                                         : Ogre::CullingMode::CULL_NONE);
 }
 
-void ProbabilisticMeshVisual::clear() {
+void MeshVisual::clear() {
   Ogre::ManualObject* ogre_object;
   if (scene_manager_->hasManualObject(object_name_)) {
     ogre_object = scene_manager_->getManualObject(object_name_);
@@ -176,14 +215,13 @@ void ProbabilisticMeshVisual::clear() {
   }
 }
 
-void ProbabilisticMeshVisual::setFramePosition(const Ogre::Vector3& position) {
+void MeshVisual::setFramePosition(const Ogre::Vector3 &position) {
   frame_node_->setPosition(position);
 }
 
-void ProbabilisticMeshVisual::setFrameOrientation(
-    const Ogre::Quaternion& orientation) {
+void MeshVisual::setFrameOrientation(const Ogre::Quaternion &orientation) {
   frame_node_->setOrientation(orientation);
 }
 
-}  // namespace visualization
+}  // namespace visualizations
 }  // namespace cad_percept
