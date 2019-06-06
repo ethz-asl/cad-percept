@@ -55,7 +55,7 @@ class CadPerceptMeshingNode {
 
     // publish mesh
     cgal_msgs::TriangleMesh msg;
-    cgal::triangleMeshToMsg(&mesh, &msg);
+    cgal::triangleMeshToMsg(mesh, &msg);
     pub_mesh_.publish(msg);
   }
 
