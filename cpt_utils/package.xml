@@ -1,28 +1,32 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>cgal_conversions</name>
+  <name>cpt_utils</name>
   <version>0.0.1</version>
-  <description>cgal_conversions</description>
+  <description>cpt_utils</description>
 
   <author email="mpantic@ethz.ch">Michael Pantic</author>
   <author email="gawela@ethz.ch">Abel Gawel</author>
-  <author email="blumh@ethz.ch">Hermann Blum</author>
+  <author email="hermann.blum@mavt.ethz.ch">Hermann Blum</author>
   <author email="jstiefel@student.ethz.ch">Julian Stiefel</author>
-  <maintainer email="michael.pantic@mavt.ethz.ch">Michael Pantic</maintainer>
+  <maintainer email="gawela@ethz.ch">Abel Gawel</maintainer>
 
   <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
 
-  <test_depend>rosunit</test_depend>
-
-  <depend>glog_catkin</depend>
-  <depend>cgal_catkin</depend>
   <depend>cgal_definitions</depend>
-  <depend>cgal_msgs</depend>
-  <depend>eigen_catkin</depend>
+  <depend>cgal_conversions</depend>
+  
+  <depend>cgal_catkin</depend>
+  <depend>glog_catkin</depend>
+  <depend>gtsam_catkin</depend>
+  <depend>minkindr</depend>
+  <depend>minkindr_gtsam</depend>
   <depend>pcl_ros</depend>
-  <depend>shape_msgs</depend>
   <depend>roscpp</depend>
+
+  <depend>geometric_shapes</depend>
+  <depend>tf_conversions</depend>
+
 </package>
