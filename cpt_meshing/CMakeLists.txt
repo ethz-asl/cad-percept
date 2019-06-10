@@ -16,14 +16,15 @@ cs_add_library(${PROJECT_NAME}
         src/meshing_node.cc
         )
 
+############
+# BINARIES #
+############
 cs_add_executable(cpt_meshing_node src/cpt_meshing_node.cpp)
 target_link_libraries(cpt_meshing_node ${PROJECT_NAME})
 
 
-############
-# BINARIES #
-############
-
+cs_add_executable(cpt_meshing_test_node src/cpt_meshing_test_node.cpp)
+target_link_libraries(cpt_meshing_test_node ${PROJECT_NAME})
 
 ##########
 # EXPORT #
