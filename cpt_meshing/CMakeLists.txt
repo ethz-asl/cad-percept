@@ -13,6 +13,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 cs_add_library(${PROJECT_NAME}
         src/mesher/delaunay_3d_mesher.cc
         src/preprocessing/pre_processing_filter.cc
+        src/meshing_node.cc
         )
 
 cs_add_executable(cpt_meshing_node src/cpt_meshing_node.cpp)
