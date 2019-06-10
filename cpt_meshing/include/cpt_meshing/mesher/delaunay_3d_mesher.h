@@ -48,6 +48,7 @@ class Delaunay3DMesher : public AbstractSimpleMesher {
     const DelaunayTriangulation& triangulation_;
   };
 
+  std::vector<cgal::Point> vertices_;
 };
 }
 }

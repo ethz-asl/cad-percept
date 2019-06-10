@@ -6,12 +6,16 @@
 namespace cad_percept {
 namespace meshing {
 
+PreProcessingFilter::PreProcessingFilter() :
+    normal_search_radius_(0.03) // set reasonable default
+{
+}
+
 void PreProcessingFilter::run(cad_percept::meshing::InputPointCloud::ConstPtr input,
                               cad_percept::meshing::InputPointCloud::Ptr output,
                               cad_percept::meshing::InputNormals::Ptr normals) {
   // run through filters naively
   pcl::copyPointCloud(*input, *output);
-
   for (auto filter : filter_list_) {
     // In place filter always creates a cache copy - maybe avoid in future.
     filter->setInputCloud(output);
@@ -20,7 +24,6 @@ void PreProcessingFilter::run(cad_percept::meshing::InputPointCloud::ConstPtr in
 
   // estimate normals
   estimateNormals(output, normals);
-
 }
 
 void PreProcessingFilter::addBoxFilter(const std::string& axis,
@@ -54,8 +57,7 @@ void PreProcessingFilter::estimateNormals(cad_percept::meshing::InputPointCloud:
       tree(new pcl::search::KdTree<InputPoint>());
   ne.setSearchMethod(tree);
 
-  // Use all neighbors in a sphere of radius 3cm
-  ne.setRadiusSearch(0.03);
+  ne.setRadiusSearch(normal_search_radius_);
   ne.compute(*normals);
 }
 
