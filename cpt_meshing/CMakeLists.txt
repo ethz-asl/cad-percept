@@ -3,6 +3,8 @@ project(cpt_meshing)
 
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
+find_package(CGAL QUIET COMPONENTS Core)
+include(${CGAL_USE_FILE})
 
 
 add_definitions(-std=c++11 -Wall -Wextra)
@@ -11,7 +13,6 @@ add_definitions(-std=c++11 -Wall -Wextra)
 # LIBRARIES #
 #############
 cs_add_library(${PROJECT_NAME}
-        src/mesher/delaunay_3d_mesher.cc
         src/preprocessing/pre_processing_filter.cc
         src/meshing_node.cc
         )

@@ -9,7 +9,7 @@ CadPerceptMeshingNode::CadPerceptMeshingNode(ros::NodeHandle nh,
     nh_private_(nh_private) {
 
   // only one meshing type at the moment.
-  mesher_ = std::make_shared<Delaunay3DMesher>();
+  mesher_ = std::make_shared<Delaunay2DMesher::Mesher>();
 
   // set up box filter if needed.
   if (nh_private_.param<bool>("box_filter/enable", false)) {
@@ -77,8 +77,12 @@ void CadPerceptMeshingNode::pointCoudCallback(const sensor_msgs::PointCloud2Cons
 
   // run through processing
   preprocessing_.run(input_cloud, cloud_filtered, normals);
+  std::cout << cloud_filtered->size() << std::endl;
   mesher_->addPointCloud(cloud_filtered, normals);
   mesher_->getMesh(&mesh);
+
+
+  std::cout << "SIZE "<< mesh.size_of_vertices() << " " << mesh.size_of_halfedges() << std::endl;
 
   // publish mesh
   cgal_msgs::TriangleMeshStamped msg;

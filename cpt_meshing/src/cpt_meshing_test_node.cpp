@@ -10,11 +10,13 @@ void createPublishPointCloud(cad_percept::meshing::CadPerceptMeshingNode& node,
   sensor_msgs::PointCloud2Ptr
       cloud_msg = boost::make_shared<sensor_msgs::PointCloud2>();
 
+  int width=3;
+  int height = 3;
   // set header
   cloud_msg->header.frame_id = "world";
   cloud_msg->header.stamp = ros::Time::now();
-  cloud_msg->width = 10;
-  cloud_msg->height = 10;
+  cloud_msg->width = width;
+  cloud_msg->height = height;
   cloud_msg->point_step = sizeof(float) * 3;
   cloud_msg->row_step = cloud_msg->point_step * cloud_msg->width;
   cloud_msg->is_dense = true;
@@ -26,12 +28,13 @@ void createPublishPointCloud(cad_percept::meshing::CadPerceptMeshingNode& node,
   sensor_msgs::PointCloud2Iterator<float> iter_y(*cloud_msg, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(*cloud_msg, "z");
 
+  int blub = 0;
   // generate points in xyz
-  for (unsigned int i = 0; i < 10; i++) {
-    for (unsigned int j = 0; j < 10; j++, ++iter_x, ++iter_y, ++iter_z) {
+  for (unsigned int i = 0; i < width; i++) {
+    for (unsigned int j = 0; j < height; j++, ++iter_x, ++iter_y, ++iter_z) {
       *iter_x = (float) i;
       *iter_y = (float) j;
-      *iter_z = 1.0;
+      *iter_z = (float)(blub++)*0.1;
     }
   }
   pub.publish(cloud_msg);
