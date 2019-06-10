@@ -1,5 +1,5 @@
 box_filter:
-    enable: true
+    enable: false
     x_min: -2.0
     x_max:  2.0
     y_min: -2.0
@@ -7,7 +7,7 @@ box_filter:
     z_min:  0.0
     z_max:  3.0
 voxel_filter:
-    enable: true
+    enable: false
     x_size: 0.02
     y_size: 0.02
     z_size: 0.02

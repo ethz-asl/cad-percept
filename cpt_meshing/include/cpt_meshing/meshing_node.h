@@ -4,7 +4,7 @@
 
 #ifndef CPT_MESHING_MESHING_NODE_H
 #define CPT_MESHING_MESHING_NODE_H
-#include <cpt_meshing/mesher/delaunay_3d_mesher.h>
+#include <cpt_meshing/mesher/delaunay_2d_mesher.h>
 #include <cpt_meshing/mesher_interface.h>
 #include <cpt_meshing/preprocessing/pre_processing_filter.h>
 #include <cpt_meshing/pcl_typedefs.h>
