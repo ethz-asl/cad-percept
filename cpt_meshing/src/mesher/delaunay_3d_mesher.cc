@@ -18,20 +18,23 @@ bool Delaunay3DMesher::getMesh(cad_percept::cgal::Polyhedron* output,
   DelaunayTriangulation::Vertex_handle vh;
   DelaunayTriangulation dt;
 
-  std::vector<cgal::Point> vertices;
-  vertices.resize(points_->size());
+
+  vertices_.resize(points_->size());
 
   // perform triangulation
   for (size_t i = 0; i < points_->size(); ++i) {
 
     // Create Point3 from pcl
     // Todo: Add PCL<->CGAL conversions to cgal_conversions
-    vertices[i] =
+    vertices_[i] =
         cgal::Point(points_->at(i).x, points_->at(i).y, points_->at(i).z);
 
-    vh = dt.insert(vertices[i]);
+    vh = dt.insert(vertices_[i]);
     vh->info() = i; // Assign index as info.
   }
+
+  std::cout <<"VERTICES_: "<< vertices_.size() << std::endl;
+
 
   // convert to SurfaceMesh
   output->erase_all();
@@ -53,42 +56,53 @@ void Delaunay3DMesher::Delaunay3DToPolyhedron<HDS>::operator()(HDS& hds) {
 
   size_t num_vertices = triangulation_.number_of_vertices();
   size_t num_facets = triangulation_.number_of_cells();
+  std::cout <<"NUM_VERTICES: "<< num_vertices << std::endl;
 
   //  Build a builder and begin construction
   CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
   B.begin_surface(num_vertices, num_facets);
 
   // add all vertices and check index
-  uint test_index = 0;
-  for (DelaunayTriangulation::Vertex_iterator
-           vit = triangulation_.vertices_begin();
-       vit != triangulation_.vertices_end(); ++vit) {
-    cgal::Point point = vit->point();
-    uint index = vit->info();
+  for (DelaunayTriangulation::Finite_vertices_iterator
+           vit = triangulation_.finite_vertices_begin();
+       vit != triangulation_.finite_vertices_end(); ++vit) {
 
-    // check assumption
-    if (index != test_index++) {
-      std::cout << "Warning, indexing error during conversion" << std::endl;
-    }
-
-    typename HDS::Vertex_handle vh = B.add_vertex(point);
-    vh->id() = index;
+    typename HDS::Vertex_handle vh_new = B.add_vertex(triangulation_.point(vit));
+    vh_new->id() = vit->info();
+    std::cout << vit->info() << std::endl;
   }
 
+  uint cells, facets;
+  int errors = 0;
+
   // Iterate through all triangles and add them
-  for (DelaunayTriangulation::Cell_iterator cit = triangulation_.cells_begin();
-       cit != triangulation_.cells_end(); ++cit) {
+  for (DelaunayTriangulation::Finite_cells_iterator cit = triangulation_.finite_cells_begin();
+       cit != triangulation_.finite_cells_end(); ++cit) {
 
     DelaunayTriangulation::Cell_handle cell = cit;
+
 
     // Create new facet and add vertices
     B.begin_facet();
     for (int i = 0; i < 3; ++i) {
       uint vertex_index = cell->vertex(i + 1)->info();
+    /*  if(vertex_index >= num_vertices){
+
+        std::cout << "VERTEX ERROR " << vertex_index << " " << num_vertices << std::endl;
+      }*/
+      if(vertex_index == 0){
+        std::cout << "VERTEX ERROR " << vertex_index << " " << num_vertices << std::endl;
+        errors++;
+      }
       B.add_vertex_to_facet(vertex_index);
+
+
     }
     B.end_facet();
   }
+
+  std::cout << "ERRORS = " << errors << std::endl;
+  B.remove_unconnected_vertices();
 
   B.end_surface();
 }
