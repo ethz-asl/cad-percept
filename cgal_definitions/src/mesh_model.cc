@@ -129,5 +129,27 @@ int MeshModel::getFacetIndex(Polyhedron::Facet_handle &handle) {
   return facet_id;
 }
 
+void MeshModel::computeNormals() {
+  std::map<face_descriptor, Vector> fnormals;
+  std::map<vertex_descriptor, Vector> vnormals;
+
+    CGAL::Polygon_mesh_processing::compute_normals(P_,
+                                                 boost::make_assoc_property_map(vnormals),
+                                                 boost::make_assoc_property_map(fnormals));
+  std::cout << "Face normals :" << std::endl;
+  for(face_descriptor fd: faces(P_)){
+    std::cout << fnormals[fd] << std::endl;
+  }
+  std::cout << "Vertex normals :" << std::endl;
+  for(vertex_descriptor vd: vertices(P_)){
+    std::cout << vnormals[vd] << std::endl;
+  }
+}
+
+void MeshModel::mergeCoplanarFacets() {
+  
+}
+
 }
 }
+

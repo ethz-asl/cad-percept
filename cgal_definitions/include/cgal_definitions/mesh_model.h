@@ -10,6 +10,10 @@
 namespace cad_percept {
 namespace cgal {
 
+// Static Deviations:
+typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
+typedef boost::graph_traits<Polyhedron>::face_descriptor   face_descriptor;
+
 struct Intersection {
   Point intersected_point;
   Vector surface_normal;
@@ -71,6 +75,10 @@ class MeshModel {
   void initializeFacetIndices();
 
   int getFacetIndex(Polyhedron::Facet_handle &handle);
+
+  void computeNormals();
+
+  void mergeCoplanarFacets();
 
  private:
   Polyhedron P_;
