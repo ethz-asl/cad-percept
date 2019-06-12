@@ -89,13 +89,15 @@ PointAndPrimitiveId MeshModel::getClosestTriangle(const double x,
 }
 
 // directed to positive side of h
-Vector MeshModel::getNormal(const Polyhedron::Face_handle &face_handle) const {
-  // introduce the triangle with 3 points:
+Vector MeshModel::getNormal(const Polyhedron::Face_handle &face_handle) const { //Polyhedron::Face_handle does not really exist?!
+  // introduce the triangle with 3 points, works with any 3 points of Polyhedron:
   Triangle intersected_triangle(
       face_handle->halfedge()->vertex()->point(),
       face_handle->halfedge()->next()->vertex()->point(),
       face_handle->halfedge()->next()->next()->vertex()->point());
-  return intersected_triangle.supporting_plane().orthogonal_vector();
+  Vector n = intersected_triangle.supporting_plane().orthogonal_vector();
+  n = n / sqrt(n.squared_length());
+  return n;
 }
 
 Vector MeshModel::getNormal(const PointAndPrimitiveId &ppid) const {
@@ -129,26 +131,68 @@ int MeshModel::getFacetIndex(Polyhedron::Facet_handle &handle) {
   return facet_id;
 }
 
-void MeshModel::computeNormals() {
+std::map<int, Vector> MeshModel::computeNormals() {
+  // computes all Polyhedron normals and return only normal map with ID
+  std::map<int, Vector> normals;
   std::map<face_descriptor, Vector> fnormals;
   std::map<vertex_descriptor, Vector> vnormals;
 
-    CGAL::Polygon_mesh_processing::compute_normals(P_,
-                                                 boost::make_assoc_property_map(vnormals),
-                                                 boost::make_assoc_property_map(fnormals));
+  CGAL::Polygon_mesh_processing::compute_normals(P_,
+                                                boost::make_assoc_property_map(vnormals),
+                                                boost::make_assoc_property_map(fnormals));
   std::cout << "Face normals :" << std::endl;
-  for(face_descriptor fd: faces(P_)){
+  for(face_descriptor fd: faces(P_)){ // faces returns iterator range over faces, range over all face indices
     std::cout << fnormals[fd] << std::endl;
+    std::cout << fd->id() << std::endl; // not sure why this even works
+    normals.insert(std::pair<int, Vector>(fd->id(), fnormals[fd]));
   }
   std::cout << "Vertex normals :" << std::endl;
   for(vertex_descriptor vd: vertices(P_)){
     std::cout << vnormals[vd] << std::endl;
   }
+
+  /* Just for testing - remove later */
+  Polyhedron::Facet_handle fh = P_.facets_begin();
+  fh++;
+  fh++;
+  fh++;
+  Vector test_normal;  
+  test_normal = getNormal(fh);
+  std::cout << "First normal with getNormal is: " << test_normal << std::endl;
+  test_normal = computeFaceNormal(fh);
+  std::cout << "First normal with descriptor is: " << test_normal << std::endl;
+  test_normal = computeFaceNormal2(fh);
+  std::cout << "First normal with cross product is: " << test_normal << std::endl;
+
+  // Polyhedron can save plane equation with operator:
+  // https://doc.cgal.org/latest/Polyhedron/Polyhedron_2polyhedron_prog_normals_8cpp-example.html
+
+  /***************************/
+
+  return normals;
 }
 
-void MeshModel::mergeCoplanarFacets() {
-  
+Vector MeshModel::computeFaceNormal(face_descriptor fd) {
+  // unclear how to get face descriptor from facet
+  Vector face_normal;
+  face_normal = CGAL::Polygon_mesh_processing::compute_face_normal(fd, P_); // not sure if this works properly with handle
+  return face_normal;
 }
+
+Vector MeshModel::computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle) {
+  Polyhedron::Halfedge_handle he = facet_handle->halfedge();
+  Point p0 = he->vertex()->point();
+  Point p1 = he->next()->vertex()->point();
+  Point p2 = he->next()->next()->vertex()->point();
+  // alternatively: Vector n = CGAL::normal(p0, p1, p2); check directions
+  Vector n = CGAL::cross_product(p0-p2, p1-p2);
+  n = n / sqrt(n.squared_length());
+  return n;
+}
+
+//void MeshModel::mergeCoplanarFacets() {
+  
+//}
 
 }
 }

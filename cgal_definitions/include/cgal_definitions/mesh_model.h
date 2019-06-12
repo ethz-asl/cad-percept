@@ -76,9 +76,13 @@ class MeshModel {
 
   int getFacetIndex(Polyhedron::Facet_handle &handle);
 
-  void computeNormals();
+  std::map<int, Vector> computeNormals();
 
-  void mergeCoplanarFacets();
+  Vector computeFaceNormal(face_descriptor fd);
+
+  Vector computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle);
+
+  //void mergeCoplanarFacets();
 
  private:
   Polyhedron P_;
