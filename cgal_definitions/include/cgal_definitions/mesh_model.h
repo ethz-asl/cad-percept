@@ -82,7 +82,11 @@ class MeshModel {
 
   Vector computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle);
 
-  //void mergeCoplanarFacets();
+  bool coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2, double eps);
+
+  void printFacetsOfHalfedges();
+
+  void mergeCoplanarFacets();
 
  private:
   Polyhedron P_;

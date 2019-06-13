@@ -190,9 +190,45 @@ Vector MeshModel::computeFaceNormal2(const Polyhedron::Facet_handle &facet_handl
   return n;
 }
 
-//void MeshModel::mergeCoplanarFacets() {
-  
-//}
+bool MeshModel::coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2, double eps) {
+  // get corresponding facet, alternatively could also do cross product here directly
+  Vector n1 = computeFaceNormal2(h1->facet());
+  Vector n2 = computeFaceNormal2(h2->facet());
+  // calculate angle between the two normal vectors
+  double phi = acos(CGAL::to_double(CGAL::scalar_product(n1, n2))); // rad
+  if(phi > eps)
+    return false;
+  else
+    return true;
+}
+
+void MeshModel::printFacetsOfHalfedges() {
+  for (Polyhedron::Halfedge_iterator j = P_.halfedges_begin(); j != P_.halfedges_end(); ++j) {
+    if(j->is_border_edge()) {
+      continue;
+    }
+    std::cout << "Facet is: " << j->facet()->id() << std::endl;
+  }
+}
+
+void MeshModel::mergeCoplanarFacets() {
+  // use Halfedge_iterator to check every single halfedge to be removed and increment by 2 if true
+  // alternatively use Edge_iterator and increment by 1
+  for (Polyhedron::Halfedge_iterator j = P_.halfedges_begin(); j != P_.halfedges_end(); ++j) {
+    Polyhedron::Halfedge_iterator i = j; // copy necessary for iterator to work after removing halfedges
+    if(i->is_border_edge()) // if halfedge is border, there is no neighbor facet
+      continue;
+    // check normals
+    if(coplanar(i, i->opposite(), 0.1)) {
+      if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3) { // check if this has at least three points
+        P_.join_facet(i);
+        ++j; // in total j is now incremented by two, check that order is 1. i 2. i->opposite
+      }
+      else
+        std::cerr << "Faces could not be joined" << std::endl;
+    }
+  }
+}
 
 }
 }
