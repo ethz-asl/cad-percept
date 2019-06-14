@@ -216,10 +216,13 @@ void MeshModel::mergeCoplanarFacets() {
   // alternatively use Edge_iterator and increment by 1
   for (Polyhedron::Halfedge_iterator j = P_.halfedges_begin(); j != P_.halfedges_end(); ++j) {
     Polyhedron::Halfedge_iterator i = j; // copy necessary for iterator to work after removing halfedges
-    if(i->is_border_edge()) // if halfedge is border, there is no neighbor facet
+    if(i->is_border_edge()) { // if halfedge is border, there is no neighbor facet
+      std::cout << "Border is edge" << std::endl;
       continue;
+    }
     // check normals
     if(coplanar(i, i->opposite(), 0.1)) {
+      std::cout << "Coplanar facet found" << std::endl;
       if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3) { // check if this has at least three points
         P_.join_facet(i);
         ++j; // in total j is now incremented by two, check that order is 1. i 2. i->opposite
