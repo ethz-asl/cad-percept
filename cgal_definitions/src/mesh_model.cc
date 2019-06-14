@@ -208,6 +208,7 @@ void MeshModel::printFacetsOfHalfedges() {
       continue;
     }
     std::cout << "Facet is: " << j->facet()->id() << std::endl;
+    std::cout << "Opposite facet is: " << j->opposite()->facet()->id() << std::endl;
   }
 }
 
@@ -224,7 +225,8 @@ void MeshModel::mergeCoplanarFacets() {
     if(coplanar(i, i->opposite(), 0.1)) {
       std::cout << "Coplanar facet found" << std::endl;
       if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3) { // check if this has at least three points
-        P_.join_facet(i);
+        std::cout << "Join facet " << i->facet()->id() << " with " << i->opposite()->facet()->id() << std::endl; // according to this, colinear faces are associated correctly
+        P_.join_facet(i); // works correctly according to .off files, but meshlab can not draw is correctly
         ++j; // in total j is now incremented by two, check that order is 1. i 2. i->opposite
       }
       else
