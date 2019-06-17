@@ -4,6 +4,7 @@
 #include <math.h>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 
 #include "cgal_typedefs.h"
 
@@ -17,6 +18,18 @@ typedef boost::graph_traits<Polyhedron>::face_descriptor   face_descriptor;
 struct Intersection {
   Point intersected_point;
   Vector surface_normal;
+};
+
+struct Plane_equation {
+    template <class Facet>
+    typename Facet::Plane_3 operator()( Facet& f) {
+        typename Facet::Halfedge_handle h = f.halfedge();
+        typedef typename Facet::Plane_3  Plane;
+        return Plane( h->vertex()->point(),
+                      h->next()->vertex()->point(),
+                      h->next()->next()->vertex()->point());
+                      // 3 points are enough for every (flat) polyhedron
+    }
 };
 
 class MeshModel {
@@ -42,8 +55,8 @@ class MeshModel {
   /**
  * Get closest point on surface and surface id to a given point.
  */
-  PointAndPrimitiveId getClosestTriangle(const Point &p) const;
-  PointAndPrimitiveId getClosestTriangle(const double x, const double y,
+  PointAndPrimitiveId getClosestPrimitive(const Point &p) const;
+  PointAndPrimitiveId getClosestPrimitive(const double x, const double y,
                                          const double z) const;
 
   /**
@@ -72,8 +85,6 @@ class MeshModel {
    */
   Polyhedron::Facet_iterator getFacetIterator();
 
-  void initializeFacetIndices();
-
   int getFacetIndex(Polyhedron::Facet_handle &handle);
 
   std::map<int, Vector> computeNormals();
@@ -86,12 +97,17 @@ class MeshModel {
 
   void printFacetsOfHalfedges();
 
-  void mergeCoplanarFacets();
+  Plane getPlane(Polyhedron::Facet_handle &f) const;
+
+  void mergeCoplanarFacets(Polyhedron *P_out);
+
 
  private:
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;
   bool verbose_;
+
+  void initializeFacetIndices();
 };
 }
 }
