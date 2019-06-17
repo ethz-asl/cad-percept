@@ -22,7 +22,7 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
                                                CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 
-  initializeFacetIndices(); // set fixed facet IDs for whole class
+  initializeFacetIndices(); // set fixed facet IDs for whole class, IMPORTANT: NEVER CHANGE ID'S IN THIS CLASS
 };
 
 MeshModel::MeshModel(const Polyhedron &mesh, bool verbose) : verbose_(verbose) {
@@ -77,15 +77,16 @@ double MeshModel::getDistance(const Ray &query) const {
   return sqrt(squared_distance);
 }
 
-PointAndPrimitiveId MeshModel::getClosestTriangle(const Point &p) const {
+// more general formulation
+PointAndPrimitiveId MeshModel::getClosestPrimitive(const Point &p) const {
   return tree_->closest_point_and_primitive(p); // primitive Id is Facet_handle
 }
 
-PointAndPrimitiveId MeshModel::getClosestTriangle(const double x,
+PointAndPrimitiveId MeshModel::getClosestPrimitive(const double x,
                                                   const double y,
                                                   const double z) const {
   Point pt = Point(x, y, z);
-  return getClosestTriangle(pt);
+  return getClosestPrimitive(pt);
 }
 
 // directed to positive side of h
@@ -212,10 +213,12 @@ void MeshModel::printFacetsOfHalfedges() {
   }
 }
 
-void MeshModel::mergeCoplanarFacets() {
+void MeshModel::mergeCoplanarFacets(Polyhedron *P_out) {
+  // this is the only "not-triangle-conform" function and will not change MeshModel
   // use Halfedge_iterator to check every single halfedge to be removed and increment by 2 if true
   // alternatively use Edge_iterator and increment by 1
-  for (Polyhedron::Halfedge_iterator j = P_.halfedges_begin(); j != P_.halfedges_end(); ++j) {
+  *P_out = P_; 
+  for (Polyhedron::Halfedge_iterator j = P_out->halfedges_begin(); j != P_out->halfedges_end(); ++j) {
     Polyhedron::Halfedge_iterator i = j; // copy necessary for iterator to work after removing halfedges
     if(i->is_border_edge()) { // if halfedge is border, there is no neighbor facet
       std::cout << "Border is edge" << std::endl;
@@ -226,13 +229,19 @@ void MeshModel::mergeCoplanarFacets() {
       std::cout << "Coplanar facet found" << std::endl;
       if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3) { // check if this has at least three points
         std::cout << "Join facet " << i->facet()->id() << " with " << i->opposite()->facet()->id() << std::endl; // according to this, colinear faces are associated correctly
-        P_.join_facet(i); // works correctly according to .off files, but meshlab can not draw is correctly
+        P_out->join_facet(i); // works correctly according to .off files, but meshlab can not draw is correctly
         ++j; // in total j is now incremented by two, check that order is 1. i 2. i->opposite
       }
       else
         std::cerr << "Faces could not be joined" << std::endl;
     }
   }
+}
+
+Plane MeshModel::getPlane(Polyhedron::Facet_handle &f) const {
+  return Plane(f->halfedge()->vertex()->point(),
+               f->halfedge()->next()->vertex()->point(),
+               f->halfedge()->next()->next()->vertex()->point());
 }
 
 }
