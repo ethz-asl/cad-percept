@@ -213,7 +213,8 @@ void MeshModel::printFacetsOfHalfedges() {
   }
 }
 
-void MeshModel::mergeCoplanarFacets(Polyhedron *P_out) {
+void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) {
+  // map saves which facets were merged according to old ID, new facet ID is the first element/ lowest
   // this is the only "not-triangle-conform" function and will not change MeshModel
   // use Halfedge_iterator to check every single halfedge to be removed and increment by 2 if true
   // alternatively use Edge_iterator and increment by 1
@@ -229,12 +230,23 @@ void MeshModel::mergeCoplanarFacets(Polyhedron *P_out) {
       std::cout << "Coplanar facet found" << std::endl;
       if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3) { // check if this has at least three points
         std::cout << "Join facet " << i->facet()->id() << " with " << i->opposite()->facet()->id() << std::endl; // according to this, colinear faces are associated correctly
+        // save associations to multimap:
+        merge_associations->insert(std::make_pair(i->facet()->id(), i->opposite()->facet()->id()));
         P_out->join_facet(i); // works correctly according to .off files, but meshlab can not draw is correctly
         ++j; // in total j is now incremented by two, check that order is 1. i 2. i->opposite
       }
       else
         std::cerr << "Faces could not be joined" << std::endl;
     }
+  }
+  // Print remaining facet ID's
+  for (Polyhedron::Facet_iterator j = P_out->facets_begin(); j != P_out->facets_end(); ++j) {
+    std::cout << "Remaining facet ID: " << j->id() << std::endl;
+  }
+  // Print map
+  std::multimap<int, int>::iterator it = merge_associations->begin();
+  for (; it != merge_associations->end(); ++it) {
+    std::cout << "Map: " << it->first << ", " << it->second << std::endl;
   }
 }
 
