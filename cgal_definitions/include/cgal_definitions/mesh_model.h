@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include <map>
 
 #include "cgal_typedefs.h"
 
@@ -18,18 +19,6 @@ typedef boost::graph_traits<Polyhedron>::face_descriptor   face_descriptor;
 struct Intersection {
   Point intersected_point;
   Vector surface_normal;
-};
-
-struct Plane_equation {
-    template <class Facet>
-    typename Facet::Plane_3 operator()( Facet& f) {
-        typename Facet::Halfedge_handle h = f.halfedge();
-        typedef typename Facet::Plane_3  Plane;
-        return Plane( h->vertex()->point(),
-                      h->next()->vertex()->point(),
-                      h->next()->next()->vertex()->point());
-                      // 3 points are enough for every (flat) polyhedron
-    }
 };
 
 class MeshModel {
@@ -99,7 +88,7 @@ class MeshModel {
 
   Plane getPlane(Polyhedron::Facet_handle &f) const;
 
-  void mergeCoplanarFacets(Polyhedron *P_out);
+  void mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations);
 
 
  private:
