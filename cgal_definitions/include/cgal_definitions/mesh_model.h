@@ -26,6 +26,12 @@ class MeshModel {
   MeshModel(const std::string &off_pathm, bool verbose = false);
 
   MeshModel(const Polyhedron &mesh, bool verbose = false);
+  
+  MeshModel();
+
+  void init(const std::string &off_path, bool verbose = false);
+
+  void init(const Polyhedron &mesh, bool verbose = false);
 
   /**
    * Check if there is an intersection
