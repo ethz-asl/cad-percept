@@ -3,8 +3,20 @@
 namespace cad_percept {
 namespace cgal {
 
-MeshModel::MeshModel(const std::string &off_path, bool verbose)
-    : verbose_(verbose) {
+MeshModel::MeshModel(const std::string &off_path, bool verbose) {
+  init(off_path, verbose);
+};
+
+MeshModel::MeshModel(const Polyhedron &mesh, bool verbose) {
+  init(mesh, verbose);
+}
+
+MeshModel::MeshModel() {
+  // for later initialization of global object
+}
+
+void MeshModel::init(const std::string &off_path, bool verbose) {
+  verbose_ = verbose;
   std::ifstream off_file(off_path.c_str(), std::ios::binary);
   if (!CGAL::read_off(off_file, P_)) {
     std::cerr << "Error: invalid STL file" << std::endl;
@@ -23,9 +35,10 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
   tree_->accelerate_distance_queries();
 
   initializeFacetIndices(); // set fixed facet IDs for whole class, IMPORTANT: NEVER CHANGE ID'S IN THIS CLASS
-};
+}
 
-MeshModel::MeshModel(const Polyhedron &mesh, bool verbose) : verbose_(verbose) {
+void MeshModel::init(const Polyhedron &mesh, bool verbose) {
+  verbose_ = verbose;
   P_ = mesh;
   tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
                                                CGAL::faces(P_).second,
