@@ -37,7 +37,7 @@ void MeshModel::init(const std::string &off_path, bool verbose) {
 
 void MeshModel::init(const Polyhedron &mesh, bool verbose) {
   verbose_ = verbose;
-  P_ = mesh;
+  P_ = mesh; // makes a copy
   tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
                                                CGAL::faces(P_).second,
                                                P_);
@@ -100,13 +100,12 @@ PointAndPrimitiveId MeshModel::getClosestPrimitive(const double x,
 }
 
 // directed to positive side of h
-//TODO: Is there a reason for "Face_handle"? Correct one would be rather "Facet_handle"
-Vector MeshModel::getNormal(const Polyhedron::Face_handle &face_handle) const {
+Vector MeshModel::getNormal(const Polyhedron::Facet_handle &facet_handle) const {
   // introduce the triangle with 3 points, works with any 3 points of Polyhedron:
   Triangle intersected_triangle(
-      face_handle->halfedge()->vertex()->point(),
-      face_handle->halfedge()->next()->vertex()->point(),
-      face_handle->halfedge()->next()->next()->vertex()->point());
+      facet_handle->halfedge()->vertex()->point(),
+      facet_handle->halfedge()->next()->vertex()->point(),
+      facet_handle->halfedge()->next()->next()->vertex()->point());
   Vector n = intersected_triangle.supporting_plane().orthogonal_vector();
   n = n / sqrt(n.squared_length());
   return n;
@@ -137,13 +136,13 @@ void MeshModel::initializeFacetIndices() {
   }
 }
 
-int MeshModel::getFacetIndex(Polyhedron::Facet_handle &handle) {
+int MeshModel::getFacetIndex(const Polyhedron::Facet_handle &handle) {
   int facet_id;
   facet_id = handle->id();
   return facet_id;
 }
 
-std::map<int, Vector> MeshModel::computeNormals() {
+std::map<int, Vector> MeshModel::computeNormals() const {
   // computes all Polyhedron normals and return only normal map with ID
   std::map<int, Vector> normals;
   std::map<face_descriptor, Vector> fnormals;
@@ -152,28 +151,28 @@ std::map<int, Vector> MeshModel::computeNormals() {
   CGAL::Polygon_mesh_processing::compute_normals(P_,
                                                 boost::make_assoc_property_map(vnormals),
                                                 boost::make_assoc_property_map(fnormals));
-  std::cout << "Face normals :" << std::endl;
+  //std::cout << "Face normals :" << std::endl;
   for(face_descriptor fd: faces(P_)){ // faces returns iterator range over faces, range over all face indices
-    std::cout << fnormals[fd] << std::endl;
-    std::cout << fd->id() << std::endl; // not sure why this even works, since not documented
+    //std::cout << fnormals[fd] << std::endl;
+    //std::cout << fd->id() << std::endl; // not sure why this even works, since not documented
     normals.insert(std::pair<int, Vector>(fd->id(), fnormals[fd]));
   }
-  std::cout << "Vertex normals :" << std::endl;
+  //std::cout << "Vertex normals :" << std::endl;
   for(vertex_descriptor vd: vertices(P_)){
-    std::cout << vnormals[vd] << std::endl;
+    //std::cout << vnormals[vd] << std::endl;
   }
 
   return normals;
 }
 
-Vector MeshModel::computeFaceNormal(face_descriptor fd) {
-  // unclear how to get face descriptor from facet
+Vector MeshModel::computeFaceNormal(face_descriptor &fd) const {
+  // unclear how to get face descriptor from facet, but works with Facet_handle
   Vector face_normal;
   face_normal = CGAL::Polygon_mesh_processing::compute_face_normal(fd, P_); // not sure if this works properly with handle
   return face_normal;
 }
 
-Vector MeshModel::computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle) {
+Vector MeshModel::computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle) const {
   Polyhedron::Halfedge_handle he = facet_handle->halfedge();
   Point p0 = he->vertex()->point();
   Point p1 = he->next()->vertex()->point();
@@ -184,8 +183,7 @@ Vector MeshModel::computeFaceNormal2(const Polyhedron::Facet_handle &facet_handl
   return n;
 }
 
-bool MeshModel::coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2, double eps) {
-  // get corresponding facet, alternatively could also do cross product here directly
+bool MeshModel::coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2, double eps) const {
   Vector n1 = computeFaceNormal2(h1->facet());
   Vector n2 = computeFaceNormal2(h2->facet());
   // calculate angle between the two normal vectors
@@ -206,11 +204,13 @@ void MeshModel::printFacetsOfHalfedges() {
   }
 }
 
-void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) {
-  // map saves which facets were merged according to old ID, new facet ID is the first element/ lowest
-  // this is the only "not-triangle-conform" function and will not change MeshModel
-  // use Halfedge_iterator to check every single halfedge to be removed and increment by 2 if true
-  // alternatively use Edge_iterator and increment by 1
+void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) const {
+  /**
+   * - map saves which facets were merged according to old ID, new facet ID is the first element/ lowest of all facets
+   * - this is the only "not-triangle-conform" function and will not change MeshModel
+   * - use Halfedge_iterator to check every single halfedge to be removed and increment by 2 if true
+   * - alternatively use Edge_iterator and increment by 1
+   */
   *P_out = P_; 
   for (Polyhedron::Halfedge_iterator j = P_out->halfedges_begin(); j != P_out->halfedges_end(); ++j) {
     Polyhedron::Halfedge_iterator i = j; // copy necessary for iterator to work after removing halfedges
@@ -222,11 +222,10 @@ void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *
     if(coplanar(i, i->opposite(), 0.1)) {
       std::cout << "Coplanar facet found" << std::endl;
       if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3) { // check if this has at least three points
-        std::cout << "Join facet " << i->facet()->id() << " with " << i->opposite()->facet()->id() << std::endl; // according to this, colinear faces are associated correctly
-        // save associations to multimap:
-        merge_associations->insert(std::make_pair(i->facet()->id(), i->opposite()->facet()->id()));
+        std::cout << "Join facet " << i->facet()->id() << " with " << i->opposite()->facet()->id() << std::endl;
+        merge_associations->insert(std::make_pair(i->facet()->id(), i->opposite()->facet()->id())); // save associations to multimap
         P_out->join_facet(i); // works correctly according to .off files, but meshlab can not draw is correctly
-        ++j; // in total j is now incremented by two, check that order is 1. i 2. i->opposite
+        ++j; // in total j is now incremented by two, check that order is 1. i 2. i->opposite (normally the case)
       }
       else
         std::cerr << "Faces could not be joined" << std::endl;
