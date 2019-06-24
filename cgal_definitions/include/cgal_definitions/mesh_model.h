@@ -53,11 +53,11 @@ class MeshModel {
   /**
    * Get normal (different implementations, same result)
    */
-  Vector getNormal(const Polyhedron::Face_handle &face_handle) const;
+  Vector getNormal(const Polyhedron::Facet_handle &facet_handle) const;
   Vector getNormal(const PointAndPrimitiveId &ppid) const;
-  std::map<int, Vector> computeNormals();
-  Vector computeFaceNormal(face_descriptor fd);
-  Vector computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle);
+  std::map<int, Vector> computeNormals() const;
+  Vector computeFaceNormal(face_descriptor &fd) const;
+  Vector computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle) const;
 
   /**
  * Transform the mesh model.
@@ -79,12 +79,12 @@ class MeshModel {
    */
   Polyhedron::Facet_iterator getFacetIterator();
 
-  int getFacetIndex(Polyhedron::Facet_handle &handle);
+  int getFacetIndex(const Polyhedron::Facet_handle &handle);
 
   /**
    * Check coplanarity of two facets described by halfedge handle h1 and h2
    */
-  bool coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2, double eps);
+  bool coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2, double eps) const;
 
   void printFacetsOfHalfedges();
 
@@ -98,7 +98,7 @@ class MeshModel {
    * associations. MeshModel class is kept as it is.
    */
 
-  void mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations);
+  void mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) const;
 
 
  private:
