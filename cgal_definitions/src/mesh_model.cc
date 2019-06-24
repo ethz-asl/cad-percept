@@ -11,9 +11,7 @@ MeshModel::MeshModel(const Polyhedron &mesh, bool verbose) {
   init(mesh, verbose);
 }
 
-MeshModel::MeshModel() {
-  // for later initialization of global object
-}
+MeshModel::MeshModel() {}
 
 void MeshModel::init(const std::string &off_path, bool verbose) {
   verbose_ = verbose;
@@ -90,7 +88,6 @@ double MeshModel::getDistance(const Ray &query) const {
   return sqrt(squared_distance);
 }
 
-// more general formulation
 PointAndPrimitiveId MeshModel::getClosestPrimitive(const Point &p) const {
   return tree_->closest_point_and_primitive(p); // primitive Id is Facet_handle
 }
@@ -103,7 +100,8 @@ PointAndPrimitiveId MeshModel::getClosestPrimitive(const double x,
 }
 
 // directed to positive side of h
-Vector MeshModel::getNormal(const Polyhedron::Face_handle &face_handle) const { //Polyhedron::Face_handle does not really exist?!
+//TODO: Is there a reason for "Face_handle"? Correct one would be rather "Facet_handle"
+Vector MeshModel::getNormal(const Polyhedron::Face_handle &face_handle) const {
   // introduce the triangle with 3 points, works with any 3 points of Polyhedron:
   Triangle intersected_triangle(
       face_handle->halfedge()->vertex()->point(),
@@ -157,31 +155,13 @@ std::map<int, Vector> MeshModel::computeNormals() {
   std::cout << "Face normals :" << std::endl;
   for(face_descriptor fd: faces(P_)){ // faces returns iterator range over faces, range over all face indices
     std::cout << fnormals[fd] << std::endl;
-    std::cout << fd->id() << std::endl; // not sure why this even works
+    std::cout << fd->id() << std::endl; // not sure why this even works, since not documented
     normals.insert(std::pair<int, Vector>(fd->id(), fnormals[fd]));
   }
   std::cout << "Vertex normals :" << std::endl;
   for(vertex_descriptor vd: vertices(P_)){
     std::cout << vnormals[vd] << std::endl;
   }
-
-  /* Just for testing - remove later */
-  Polyhedron::Facet_handle fh = P_.facets_begin();
-  fh++;
-  fh++;
-  fh++;
-  Vector test_normal;  
-  test_normal = getNormal(fh);
-  std::cout << "First normal with getNormal is: " << test_normal << std::endl;
-  test_normal = computeFaceNormal(fh);
-  std::cout << "First normal with descriptor is: " << test_normal << std::endl;
-  test_normal = computeFaceNormal2(fh);
-  std::cout << "First normal with cross product is: " << test_normal << std::endl;
-
-  // Polyhedron can save plane equation with operator:
-  // https://doc.cgal.org/latest/Polyhedron/Polyhedron_2polyhedron_prog_normals_8cpp-example.html
-
-  /***************************/
 
   return normals;
 }

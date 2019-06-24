@@ -20,12 +20,11 @@
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_tree.h>
 
-// shape detection
-#include <CGAL/Point_with_normal_3.h>
-#include <CGAL/Shape_detection_3.h>
-
 // normal computation
 #include <CGAL/Polygon_mesh_processing/compute_normal.h>
+
+// shape detection
+#include <CGAL/Shape_detection_3.h>
 
 namespace cad_percept {
 namespace cgal {
@@ -45,8 +44,7 @@ typedef CGAL::Aff_transformation_3<Kernel> Transformation;
 typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef std::shared_ptr<Polyhedron> PolyhedronPtr;
 
-// Shape detection
-// Type declarations
+// Shape detection typedefs
 typedef CGAL::Exact_predicates_inexact_constructions_kernel     ShapeKernel;
 typedef ShapeKernel::FT                                         FT;
 typedef std::pair<ShapeKernel::Point_3, ShapeKernel::Vector_3>  Point_with_normal;

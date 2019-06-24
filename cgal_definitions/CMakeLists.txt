@@ -19,6 +19,14 @@ cs_add_library(${PROJECT_NAME}
 # BINARIES #
 ############
 
+############
+#  TESTS   #
+############
+catkin_add_gtest(${PROJECT_NAME}_tests
+    test/test_main.cpp
+    test/test_mesh_model.cpp)
+target_link_libraries(${PROJECT_NAME}_tests ${PROJECT_NAME})
+
 
 ##########
 # EXPORT #
