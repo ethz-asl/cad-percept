@@ -32,6 +32,8 @@
 #include <CGAL/Timer.h>
 #include <CGAL/number_utils.h>
 
+#include <CGAL/point_generators_3.h>
+
 #include <map>
 #include <unordered_map>
 #include <queue>
@@ -73,6 +75,7 @@ struct polyhedron_plane {
   double match_score = 0; // match score for pc to mesh plane
 };
 
+typedef std::map<int,int>::iterator Miterator;
 typedef std::multimap<int,int>::iterator Mmiterator;
 typedef std::unordered_map<int,polyhedron_plane>::iterator Umiterator;
 typedef std::unordered_map<int,int>::iterator Umiterator2;
@@ -91,6 +94,7 @@ class Deviations {
 
   private:
     std::multimap<int, int> merge_associations;
+    std::map<int, int> merge_associations_inv;
     std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of merged plane associated to plane properties
     void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform) const;
     DP pointCloudToDP(const PointCloud &pointcloud) const;
@@ -126,12 +130,15 @@ class Deviations {
      * Initialize the plane map by correctly inserting new plane ID's associated to old triangle ID's,
      * triangle mesh IDs of all corresponding original triangles
      */
-    void updateAssociations(std::multimap<int, int> &merge_associations, std::multimap<int, int> *new_merge_associations) const;
+    void updateAssociations(std::multimap<int, int> &merge_associations_old);
     void initPlaneMap(const cgal::MeshModel &mesh_model);
     /**
      * Reset stuff after evaluation of current scan
      */
     void reset();
+    void extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, const std::unordered_set<int> &references, PointCloud *icp_pointcloud);
+    void ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, PointCloud *reading_cloud, PointCloud *pointcloud_out);
+    void selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, PointCloud *reading_cloud, const std::unordered_set<int> &references, PointCloud *pointcloud_out);
 };
 
 }

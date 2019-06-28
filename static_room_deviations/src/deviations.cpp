@@ -22,7 +22,7 @@ Deviations::Deviations() {
   std::multimap<int, int> old_merge_associations;
   reference_mesh.mergeCoplanarFacets(&old_P_merged, &old_merge_associations);
   reference_mesh_merged.init(old_P_merged); // attention, this initializes the facet ID's new (same order, but beginning from 0)
-  updateAssociations(old_merge_associations, &merge_associations);
+  updateAssociations(old_merge_associations);
   initPlaneMap(reference_mesh_merged);
 }
 
@@ -42,26 +42,21 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publ
    *  ICP
    */ 
 
-  // convert point clouds to DP
-  DP dppointcloud = pointCloudToDP(pointcloud);
-  DP dpref = pointCloudToDP(ref_pc);
-  // DP dppointcloud = PointMatcher_ros::rosMsgToPointMatcherCloud<double>(cloud);
-  // DP dpref(DP::load("P.pcd"));
-  // DP dppointcloud(DP::load("P_deviated_transformed.pcd"));
+  std::unordered_set<int> references({1,12,13});
 
-  loadICPConfig(ifs_icp_config, ifs_normal_filter);
-  // Compute the transformation to express data in ref
-  PM::TransformationParameters T = icp_(dppointcloud, dpref);
-  // Transform data to express it in ref
-  DP dppointcloud_out(dppointcloud);
-  icp_.transformations.apply(dppointcloud_out, T);
-  dppointcloud_out.save("/home/julian/cadify_ws/src/mt_utils/static_room_deviations/resources/P_icp.pcd");
-  std::cout << "Final ICP transformation: " << std::endl << T << std::endl;
+  PointCloud pointcloud_out;
+  if (references.empty() == 1) {
+    ICP(ifs_icp_config, ifs_normal_filter, reading_cloud, &pointcloud_out);
+  }
+  else {
+    int no_of_points = 800;
+    cgal::Polyhedron P = reference_mesh.getMesh();
+    selectiveICP(ifs_icp_config, ifs_normal_filter, no_of_points, P, reading_cloud, references, &pointcloud_out);
+  }
 
-  PointCloud pointcloud_out = dpToPointCloud(dppointcloud_out);
-  *reading_cloud = pointcloud;
   *icp_cloud = pointcloud_out;
-  getResidualError(dpref, dppointcloud_out);
+
+
 
   /**
    *  Planar Segmentation
@@ -109,24 +104,120 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publ
   reset();
 }
 
-void Deviations::updateAssociations(std::multimap<int, int> &merge_associations, std::multimap<int, int> *new_merge_associations) const {
+/**
+ * Takes list of given reference facet ID's and uses them with colinear facets to perform ICP,
+ * P is old (unmerged) Polyhedron,
+ * this function is a little bit overcomplicated since we can not directly sample points from
+ * polyhedron, but only from triangles
+ */
+void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, const std::unordered_set<int> &references, PointCloud *icp_pointcloud) {
+  // sample reference point cloud from mesh 
+
+  // create unordered set of all neighboring colinear facets
+  std::unordered_set<int> references_new;
+  for (auto reference : references) {
+    Miterator it = merge_associations_inv.find(reference);
+    auto iit = merge_associations.equal_range(it->second);
+    for (auto itr = iit.first; itr != iit.second; ++itr) {
+      if (references_new.find(itr->second) == references_new.end()) {
+        references_new.insert(itr->second);
+      }
+    }
+  }
+
+  // create sampled point cloud from reference_new
+  
+  // generated points
+  std::vector<cgal::Point> points;
+  // create input triangles
+  std::vector<cgal::Triangle> triangles;
+  for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
+    if (references_new.find(j->id()) != references_new.end()) {
+      triangles.push_back(cgal::Triangle(j->halfedge()->vertex()->point(),
+                                   j->halfedge()->next()->vertex()->point(),
+                                   j->halfedge()->next()->next()->vertex()->point()));
+    }
+  }
+
+  // Create the generator, input is the vector of Triangle
+  CGAL::Random_points_in_triangles_3<cgal::Point> g(triangles);
+  // Get no_of_points random points in cdt
+  CGAL::cpp11::copy_n(g, no_of_points, std::back_inserter(points));
+  // Check that we have really created no_of_points.
+  assert(points.size() == no_of_points);
+
+  for (auto point : points) {
+    pcl::PointXYZ cloudpoint;
+    cloudpoint.x = (float)point.x();
+    cloudpoint.y = (float)point.y();
+    cloudpoint.z = (float)point.z();
+    icp_pointcloud->push_back(cloudpoint);
+  }
+}
+
+void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, PointCloud *reading_cloud, const std::unordered_set<int> &references, PointCloud *pointcloud_out) {
+  PointCloud icp_pointcloud;
+  extractReferenceFacets(no_of_points, P, references, &icp_pointcloud);
+  // convert point clouds to DP
+  DP dppointcloud = pointCloudToDP(pointcloud);
+  DP dpref = pointCloudToDP(icp_pointcloud);
+
+  loadICPConfig(ifs_icp_config, ifs_normal_filter);
+  // Compute the transformation to express data in ref
+  PM::TransformationParameters T = icp_(dppointcloud, dpref);
+  // Transform data to express it in ref
+  DP dppointcloud_out(dppointcloud);
+  icp_.transformations.apply(dppointcloud_out, T);
+
+  *pointcloud_out = dpToPointCloud(dppointcloud_out);
+  *reading_cloud = pointcloud;
+  getResidualError(dpref, dppointcloud_out);
+}
+
+void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, PointCloud *reading_cloud, PointCloud *pointcloud_out) {
+  // convert point clouds to DP
+  DP dppointcloud = pointCloudToDP(pointcloud);
+  DP dpref = pointCloudToDP(ref_pc);
+  // DP dppointcloud = PointMatcher_ros::rosMsgToPointMatcherCloud<double>(cloud);
+  // DP dpref(DP::load("P.pcd"));
+  // DP dppointcloud(DP::load("P_deviated_transformed.pcd"));
+
+  loadICPConfig(ifs_icp_config, ifs_normal_filter);
+  // Compute the transformation to express data in ref
+  PM::TransformationParameters T = icp_(dppointcloud, dpref);
+  // Transform data to express it in ref
+  DP dppointcloud_out(dppointcloud);
+  icp_.transformations.apply(dppointcloud_out, T);
+  dppointcloud_out.save("/home/julian/cadify_ws/src/mt_utils/static_room_deviations/resources/P_icp.pcd");
+  std::cout << "Final ICP transformation: " << std::endl << T << std::endl;
+
+  *pointcloud_out = dpToPointCloud(dppointcloud_out);
+  *reading_cloud = pointcloud;
+  getResidualError(dpref, dppointcloud_out);
+}
+
+// merge_associations: Polyhedron ID to old facet ID
+// merge_associations_inv: Old facet ID to Polyhedron ID 
+void Deviations::updateAssociations(std::multimap<int, int> &merge_associations_old) {
   int i = 0;
-  for(Mmiterator it = merge_associations.begin(); it != merge_associations.end(); it = merge_associations.upper_bound(it->first)) {
+  for(Mmiterator it = merge_associations_old.begin(); it != merge_associations_old.end(); it = merge_associations_old.upper_bound(it->first)) {
     int key = it->first;
     std::cout << "Key: " << key << std::endl;
 
-    auto iit = merge_associations.equal_range(key);
-    new_merge_associations->insert(std::make_pair(i, it->first));
+    auto iit = merge_associations_old.equal_range(key);
+    merge_associations.insert(std::make_pair(i, it->first));
+    merge_associations_inv.insert(std::make_pair(it->first, i));
     for (auto itr = iit.first; itr != iit.second; ++itr) {
-      new_merge_associations->insert(std::make_pair(i, itr->second));
+      merge_associations.insert(std::make_pair(i, itr->second));
+      merge_associations_inv.insert(std::make_pair(itr->second, i));
     }
     ++i; // since merge_associations is an ordered list according to facet order
   }
 
   // Print map
-  for (Mmiterator it = new_merge_associations->begin(); it != new_merge_associations->end(); it = new_merge_associations->upper_bound(it->first)) {
+  for (Mmiterator it = merge_associations.begin(); it != merge_associations.end(); it = merge_associations.upper_bound(it->first)) {
     std::cout << "Merge Association Map: " << it->first << ": ";
-    auto iit = new_merge_associations->equal_range(it->first);
+    auto iit = merge_associations.equal_range(it->first);
     for (auto itr = iit.first; itr != iit.second; ++itr) {
       std::cout << itr->second << ", ";
     }

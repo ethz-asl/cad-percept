@@ -206,6 +206,7 @@ void MeshModel::printFacetsOfHalfedges() {
 
 void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) const {
   /**
+   * - merge_associations associates old facet IDs to merged facet ID (first)
    * - map saves which facets were merged according to old ID, new facet ID is the first element/ lowest of all facets
    * - this is the only "not-triangle-conform" function and will not change MeshModel
    * - use Halfedge_iterator to check every single halfedge to be removed and increment by 2 if true
