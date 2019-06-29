@@ -4,6 +4,7 @@
 
   <arg name="map_frame" default="/map" />
   <arg name="icp_configuration_file" default="$(find static_room_deviations)/launch/icp_configuration.yaml" />
+  <arg name="selective_icp_configuration_file" default="$(find static_room_deviations)/launch/selective_icp_configuration.yaml" />
   <arg name="normal_filter_file" default="$(find static_room_deviations)/launch/normal_filter.yaml" />
 
 
@@ -15,6 +16,7 @@
         respawn="true">
     <param name="map_frame" value="$(arg map_frame)" />
     <param name="icp_configuration_file" value="$(arg icp_configuration_file)" />
+    <param name="selective_icp_configuration_file" value="$(arg selective_icp_configuration_file)" />
     <param name="normal_filter_file" value="$(arg normal_filter_file)" />
   </node>
 

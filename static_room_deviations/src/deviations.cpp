@@ -28,7 +28,7 @@ Deviations::Deviations() {
 
 Deviations::~Deviations() {}
 
-void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, PointCloud *reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter) {
+void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, PointCloud *reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config) {
   // transform reading pointcloud a little bit to test ICP
   Eigen::Affine3f transform = Eigen::Affine3f::Identity();
   transform.translation() << 0.5, 0.1, 0.2;
@@ -42,16 +42,19 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publ
    *  ICP
    */ 
 
-  std::unordered_set<int> references({1,12,13});
+  //std::unordered_set<int> references;
+  std::unordered_set<int> references({0,11,13});
 
   PointCloud pointcloud_out;
   if (references.empty() == 1) {
+    std::cout << "Entered normal ICP" << std::endl;
     ICP(ifs_icp_config, ifs_normal_filter, reading_cloud, &pointcloud_out);
   }
   else {
+    std::cout << "Entered selectiveICP" << std::endl;
     int no_of_points = 800;
     cgal::Polyhedron P = reference_mesh.getMesh();
-    selectiveICP(ifs_icp_config, ifs_normal_filter, no_of_points, P, reading_cloud, references, &pointcloud_out);
+    selectiveICP(ifs_selective_icp_config, ifs_normal_filter, no_of_points, P, reading_cloud, references, &pointcloud_out);
   }
 
   *icp_cloud = pointcloud_out;
@@ -110,11 +113,25 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publ
  * this function is a little bit overcomplicated since we can not directly sample points from
  * polyhedron, but only from triangles
  */
-void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, const std::unordered_set<int> &references, PointCloud *icp_pointcloud) {
+void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud) {
+  std::cout << "Choosen reference facets:" << std::endl;
+  std::unordered_set<int>::iterator uitr;
+  for (uitr = references.begin(); uitr != references.end(); uitr++) {
+    std::cout << *uitr << std::endl;
+  }
+  
   // sample reference point cloud from mesh 
+
+  // not sure if it makes sense to use whole colinear plane or just the given facets with a very small filter ratio
+  // -> balance between how many points we can match from reading vs. misorientation due to errors in colinear facets
+  // find better filter 
 
   // create unordered set of all neighboring colinear facets
   std::unordered_set<int> references_new;
+  // references_new = references; // with trimmed dist outlier filter ratio 0.2
+
+  // with trimmed dist outlier filter ratio 0.3 , this ratio can be as small as possible, but depends on how many associations we have
+  // with reference vs. total associations (we only want to keep the correct associations)
   for (auto reference : references) {
     Miterator it = merge_associations_inv.find(reference);
     auto iit = merge_associations.equal_range(it->second);
@@ -123,6 +140,11 @@ void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron
         references_new.insert(itr->second);
       }
     }
+  }
+
+  std::cout << "Computed reference facets:" << std::endl;
+  for (uitr = references_new.begin(); uitr != references_new.end(); uitr++) {
+    std::cout << *uitr << std::endl;
   }
 
   // create sampled point cloud from reference_new
@@ -155,7 +177,7 @@ void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron
   }
 }
 
-void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, PointCloud *reading_cloud, const std::unordered_set<int> &references, PointCloud *pointcloud_out) {
+void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, PointCloud *reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out) {
   PointCloud icp_pointcloud;
   extractReferenceFacets(no_of_points, P, references, &icp_pointcloud);
   // convert point clouds to DP
