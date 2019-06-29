@@ -90,7 +90,7 @@ class Deviations {
     /**
      * Read-in reading pc and execute detection
      */
-    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, PointCloud *reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter);
+    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, PointCloud *reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config);
 
   private:
     std::multimap<int, int> merge_associations;
@@ -136,9 +136,9 @@ class Deviations {
      * Reset stuff after evaluation of current scan
      */
     void reset();
-    void extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, const std::unordered_set<int> &references, PointCloud *icp_pointcloud);
+    void extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud);
     void ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, PointCloud *reading_cloud, PointCloud *pointcloud_out);
-    void selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, PointCloud *reading_cloud, const std::unordered_set<int> &references, PointCloud *pointcloud_out);
+    void selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, PointCloud *reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out);
 };
 
 }

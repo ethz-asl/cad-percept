@@ -26,8 +26,9 @@ void StaticRoomDeviations::readingCallback() {
   PointCloud reading_cloud;
   PointCloud icp_cloud;
   std::ifstream ifs_icp_config(nh_private_.param<std::string>("icp_configuration_file", "fail").c_str());
+  std::ifstream ifs_selective_icp_config(nh_private_.param<std::string>("selective_icp_configuration_file", "fail").c_str());
   std::ifstream ifs_normal_filter(nh_private_.param<std::string>("normal_filter_file", "fail").c_str());
-  deviations.detectChanges(&rec_planes, &reading_cloud, &icp_cloud, ifs_icp_config, ifs_normal_filter);
+  deviations.detectChanges(&rec_planes, &reading_cloud, &icp_cloud, ifs_icp_config, ifs_normal_filter, ifs_selective_icp_config);
   publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
   //cgal::Polyhedron P = deviations.reference_mesh_merged.getMesh();
   //publishPolyhedron(P);
