@@ -14,25 +14,47 @@ StaticRoomDeviations::StaticRoomDeviations(ros::NodeHandle &nh, ros::NodeHandle 
   reconstructed_planes_pub_ = nh_.advertise<ColoredPointCloud>("reconstructed_planes_pub", 1, true);
   polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("polygon_pub", 1, true);
 
-  // manually calling callback for now
-  readingCallback();
+  // manually starting test case
+  if (nh_private_.param<bool>("test", "fail") == 1) {
+    cgal::PointCloud reading_pc;
+    createTestCase(&reading_pc);
+    deviations.init(nh_private_.param<std::string>("reference_model_file", "fail").c_str());
+    readingCallback(reading_pc);
+  }
+  else {
+    deviations.init(nh_private_.param<std::string>("reference_model_file", "fail").c_str());
+  }
 }
 
 StaticRoomDeviations::~StaticRoomDeviations() {}
 
-void StaticRoomDeviations::readingCallback() {
+void StaticRoomDeviations::createTestCase(cgal::PointCloud *reading_pc) {
+  cgal::Polyhedron P;
+  cgal::Polyhedron P_deviated;
+  cgal::build_sample_polyhedrons(&P, &P_deviated);
+  cgal::sample_pc_from_mesh(P_deviated, 3000, 0.01, reading_pc, "reading_pc"); 
+
+  // transform reading pointcloud a little bit to test ICP
+  Eigen::Affine3f transform = Eigen::Affine3f::Identity();
+  transform.translation() << 0.5, 0.1, 0.2;
+  float theta = M_PI*0.01;
+  transform.rotate (Eigen::AngleAxisf (theta, Eigen::Vector3f::UnitZ()));
+  deviations.transformPointCloud(reading_pc, transform);
+  pcl::io::savePCDFileASCII("/home/julian/cadify_ws/src/mt_utils/static_room_deviations/resources/deviated_reading_pc.pcd", *reading_pc);
+}
+
+void StaticRoomDeviations::readingCallback(cgal::PointCloud &reading_pc) {
   publishMesh(deviations.reference_mesh, &ref_mesh_pub_);
   std::vector<reconstructed_plane> rec_planes;
-  PointCloud reading_cloud;
   PointCloud icp_cloud;
   std::ifstream ifs_icp_config(nh_private_.param<std::string>("icp_configuration_file", "fail").c_str());
   std::ifstream ifs_selective_icp_config(nh_private_.param<std::string>("selective_icp_configuration_file", "fail").c_str());
   std::ifstream ifs_normal_filter(nh_private_.param<std::string>("normal_filter_file", "fail").c_str());
-  deviations.detectChanges(&rec_planes, &reading_cloud, &icp_cloud, ifs_icp_config, ifs_normal_filter, ifs_selective_icp_config);
+  deviations.detectChanges(&rec_planes, reading_pc, &icp_cloud, ifs_icp_config, ifs_normal_filter, ifs_selective_icp_config);
   publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
   //cgal::Polyhedron P = deviations.reference_mesh_merged.getMesh();
   //publishPolyhedron(P);
-  publishCloud<PointCloud>(&reading_cloud, &reading_pc_pub_);
+  publishCloud<PointCloud>(&reading_pc, &reading_pc_pub_);
   publishCloud<PointCloud>(&icp_cloud, &icp_pc_pub_);
 }
 

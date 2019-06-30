@@ -90,13 +90,15 @@ class Deviations {
     /**
      * Read-in reading pc and execute detection
      */
-    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, PointCloud *reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config);
+    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config);
+    void init(const std::string &off_pathm);
+    void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform) const;
 
   private:
+    PointCloud ref_pc;
     std::multimap<int, int> merge_associations;
     std::map<int, int> merge_associations_inv;
     std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of merged plane associated to plane properties
-    void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform) const;
     DP pointCloudToDP(const PointCloud &pointcloud) const;
     PointCloud dpToPointCloud(const DP &dppointcloud) const;
     /**
@@ -106,8 +108,6 @@ class Deviations {
     PM::ICP icp_;
     PM::DataPointsFilters normal_filter_;
     void getResidualError(const DP &dpref, const DP &dppointcloud_out);
-    PointCloud pointcloud;
-    PointCloud ref_pc;
     void planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes) const;
     void planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes) const;
     template <typename ShapeDetection>
@@ -137,8 +137,8 @@ class Deviations {
      */
     void reset();
     void extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud);
-    void ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, PointCloud *reading_cloud, PointCloud *pointcloud_out);
-    void selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, PointCloud *reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out);
+    void ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const PointCloud &reading_cloud, PointCloud *pointcloud_out);
+    void selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, const PointCloud &reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out);
 };
 
 }

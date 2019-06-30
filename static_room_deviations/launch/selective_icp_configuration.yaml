@@ -16,7 +16,7 @@ matcher:
 # applying TrimmedDistOutlierFilter and lowering ratio leads to better fit at correct walls
 outlierFilters:
   - TrimmedDistOutlierFilter:
-      ratio: 0.3 #can we set this dynamically depending on number of points?
+      ratio: 0.35 #can we set this dynamically depending on number of points?
 
 errorMinimizer:
   PointToPlaneErrorMinimizer
