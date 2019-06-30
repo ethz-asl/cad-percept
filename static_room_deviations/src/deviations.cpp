@@ -3,18 +3,19 @@
 namespace cad_percept {
 namespace room_deviations {
 
-Deviations::Deviations() {
-  // process model here, what stays the same between scans
-  cgal::Polyhedron P;
-  cgal::Polyhedron P_deviated;
-  cgal::build_sample_polyhedrons(&P, &P_deviated);
-  cgal::sample_pc_from_mesh(P_deviated, 3000, 0.01, &pointcloud, "P_deviated");
+Deviations::Deviations() {}
 
+Deviations::~Deviations() {}
+
+void Deviations::init(const std::string &off_pathm) {
   // create MeshModel of reference
-  reference_mesh.init(P);
+  reference_mesh.init(off_pathm);
+  int n_points = reference_mesh.getArea() * 100;
+  std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
+  cgal::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, &ref_pc, "P");
 
-  // get ref_pc from model mesh for ICP
-  cgal::sample_pc_from_mesh(P, pointcloud.points.size(), 0.0, &ref_pc, "P");
+
+  // process model here, what stays the same between scans
 
   // Merge coplanar facets and create plane_map
   // Since we want to keep initial MeshModel, get Polyhedron and initialize a new one
@@ -26,22 +27,12 @@ Deviations::Deviations() {
   initPlaneMap(reference_mesh_merged);
 }
 
-Deviations::~Deviations() {}
-
-void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, PointCloud *reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config) {
-  // transform reading pointcloud a little bit to test ICP
-  Eigen::Affine3f transform = Eigen::Affine3f::Identity();
-  transform.translation() << 0.5, 0.1, 0.2;
-  float theta = M_PI*0.01;
-  transform.rotate (Eigen::AngleAxisf (theta, Eigen::Vector3f::UnitZ()));
-  transformPointCloud(&pointcloud, transform);
-  pcl::io::savePCDFileASCII("/home/julian/cadify_ws/src/mt_utils/static_room_deviations/resources/P_deviated_transformed.pcd", pointcloud);
-
-
+void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config) {
   /**
    *  ICP
    */ 
 
+  // where will these task references be saved?
   //std::unordered_set<int> references;
   std::unordered_set<int> references({0,11,13});
 
@@ -177,11 +168,11 @@ void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron
   }
 }
 
-void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, PointCloud *reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out) {
+void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, const PointCloud &reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out) {
   PointCloud icp_pointcloud;
   extractReferenceFacets(no_of_points, P, references, &icp_pointcloud);
   // convert point clouds to DP
-  DP dppointcloud = pointCloudToDP(pointcloud);
+  DP dppointcloud = pointCloudToDP(reading_cloud);
   DP dpref = pointCloudToDP(icp_pointcloud);
 
   loadICPConfig(ifs_icp_config, ifs_normal_filter);
@@ -192,13 +183,12 @@ void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_
   icp_.transformations.apply(dppointcloud_out, T);
 
   *pointcloud_out = dpToPointCloud(dppointcloud_out);
-  *reading_cloud = pointcloud;
   getResidualError(dpref, dppointcloud_out);
 }
 
-void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, PointCloud *reading_cloud, PointCloud *pointcloud_out) {
+void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const PointCloud &reading_cloud, PointCloud *pointcloud_out) {
   // convert point clouds to DP
-  DP dppointcloud = pointCloudToDP(pointcloud);
+  DP dppointcloud = pointCloudToDP(reading_cloud);
   DP dpref = pointCloudToDP(ref_pc);
   // DP dppointcloud = PointMatcher_ros::rosMsgToPointMatcherCloud<double>(cloud);
   // DP dpref(DP::load("P.pcd"));
@@ -214,7 +204,6 @@ void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_fi
   std::cout << "Final ICP transformation: " << std::endl << T << std::endl;
 
   *pointcloud_out = dpToPointCloud(dppointcloud_out);
-  *reading_cloud = pointcloud;
   getResidualError(dpref, dppointcloud_out);
 }
 

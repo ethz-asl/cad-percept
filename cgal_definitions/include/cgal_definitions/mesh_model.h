@@ -100,6 +100,8 @@ class MeshModel {
 
   void mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) const;
 
+  double getArea() const;
+
 
  private:
   Polyhedron P_;

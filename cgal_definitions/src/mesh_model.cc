@@ -249,6 +249,12 @@ Plane MeshModel::getPlane(Polyhedron::Facet_handle &f) const {
                f->halfedge()->next()->next()->vertex()->point());
 }
 
+double MeshModel::getArea() const {
+  FT area;
+  area = CGAL::Polygon_mesh_processing::area(P_);
+  return CGAL::to_double(area);
+}
+
 }
 }
 

@@ -26,6 +26,8 @@
 // shape detection
 #include <CGAL/Shape_detection_3.h>
 
+#include <CGAL/Polygon_mesh_processing/measure.h>
+
 namespace cad_percept {
 namespace cgal {
 

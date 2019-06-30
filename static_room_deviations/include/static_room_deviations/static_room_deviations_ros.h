@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <glog/logging.h>
 #include "static_room_deviations/deviations.h"
+#include "static_room_deviations/pc_mesh_creator.h"
 #include <cgal_definitions/cgal_typedefs.h>
 #include <pcl_ros/point_cloud.h>
 #include <cgal_msgs/ColoredMesh.h>
@@ -37,7 +38,8 @@ class StaticRoomDeviations {
      */
     void publishReconstructedPlanes(const std::vector<reconstructed_plane> &rec_planes, ros::Publisher *publisher) const;
     void publishPolyhedron(cgal::Polyhedron &P);
-    void readingCallback();
+    void readingCallback(cgal::PointCloud &reading_pc);
+    void createTestCase(cgal::PointCloud *reading_pc);
 };
 
 }
