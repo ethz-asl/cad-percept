@@ -6,7 +6,8 @@ namespace room_deviations {
 StaticRoomDeviations::StaticRoomDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   : nh_(nh),
     nh_private_(nh_private),
-    map_frame_(nh_private.param<std::string>("map_frame", "fail")) {
+    map_frame_(nh_private.param<std::string>("map_frame", "fail")),
+    cb(10) { // use 10 latest scans for detection
 
   ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 100, true); // latching to true
   reading_pc_pub_ = nh_.advertise<PointCloud>("reading_pc_pub", 1, true);
@@ -56,6 +57,17 @@ void StaticRoomDeviations::readingCallback(cgal::PointCloud &reading_pc) {
   //publishPolyhedron(P);
   publishCloud<PointCloud>(&reading_pc, &reading_pc_pub_);
   publishCloud<PointCloud>(&icp_cloud, &icp_pc_pub_);
+}
+
+void StaticRoomDeviations::bufferCallback(cgal::PointCloud &reading_pc) {
+  // insert reading_pc in buffer
+  // the reading_pc should be pre-aligned with model here before continueing
+  cb.push_back(reading_pc);
+  if (cb.full()) {
+    cgal::PointCloud aligned_pc;
+    align_sequence(cb, &aligned_pc);
+    readingCallback(aligned_pc);
+  }
 }
 
 void StaticRoomDeviations::publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const {

@@ -97,7 +97,6 @@ class MeshModel {
    * Merge coplanar facets of MeshModel variable P_ and return new Polyhedron P_out and ID
    * associations. MeshModel class is kept as it is.
    */
-
   void mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) const;
 
   double getArea() const;
