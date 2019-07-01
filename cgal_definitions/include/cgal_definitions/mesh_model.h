@@ -102,6 +102,8 @@ class MeshModel {
 
   double getArea() const;
 
+  double squaredDistance(const Point &point) const;
+
 
  private:
   Polyhedron P_;

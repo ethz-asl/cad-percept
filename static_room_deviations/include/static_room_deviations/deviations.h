@@ -139,6 +139,17 @@ class Deviations {
     void extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud);
     void ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const PointCloud &reading_cloud, PointCloud *pointcloud_out);
     void selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, const PointCloud &reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out);
+    /**
+     * Get some sort of residual error, but only for points associated to our references.
+     * Apply threshold first to avoid taking into account points from other walls.
+     */
+    double getICPError(const PointCloud &aligned_pc, const std::unordered_set<int> &references);
+    /**
+     * Get some sort of residual error
+     * Apply threshold first to avoid taking into account points from other walls/ assuming we have a certain
+     * initial transformation... check what distance is appropriate max after initial transformation
+     */
+    double getICPError(const PointCloud &aligned_pc);
 };
 
 }
