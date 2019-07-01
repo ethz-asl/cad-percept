@@ -5,11 +5,14 @@
 #include <glog/logging.h>
 #include "static_room_deviations/deviations.h"
 #include "static_room_deviations/pc_mesh_creator.h"
+#include "static_room_deviations/pc_processing.h"
 #include <cgal_definitions/cgal_typedefs.h>
 #include <pcl_ros/point_cloud.h>
 #include <cgal_msgs/ColoredMesh.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <geometry_msgs/PolygonStamped.h>
+
+#include <boost/circular_buffer.hpp>
 
 #include <map>
 #include <unordered_map>
@@ -40,6 +43,10 @@ class StaticRoomDeviations {
     void publishPolyhedron(cgal::Polyhedron &P);
     void readingCallback(cgal::PointCloud &reading_pc);
     void createTestCase(cgal::PointCloud *reading_pc);
+    // create a circular_buffer to store reading pointclouds for alignment
+    boost::circular_buffer<cgal::PointCloud> cb; 
+    void bufferCallback(cgal::PointCloud &reading_pc);
+
 };
 
 }
