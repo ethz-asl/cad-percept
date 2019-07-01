@@ -184,6 +184,7 @@ void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_
 
   *pointcloud_out = dpToPointCloud(dppointcloud_out);
   getResidualError(dpref, dppointcloud_out);
+  double error = getICPError(*pointcloud_out, references);
 }
 
 void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const PointCloud &reading_cloud, PointCloud *pointcloud_out) {
@@ -205,6 +206,7 @@ void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_fi
 
   *pointcloud_out = dpToPointCloud(dppointcloud_out);
   getResidualError(dpref, dppointcloud_out);
+  double error = getICPError(*pointcloud_out);
 }
 
 // merge_associations: Polyhedron ID to old facet ID
@@ -706,6 +708,35 @@ void Deviations::initPlaneMap(const cgal::MeshModel &mesh_model) {
     polyhedron_plane plane;
     plane_map.insert(std::make_pair(j, plane));
   }
+}
+
+double Deviations::getICPError(const PointCloud &aligned_pc, const std::unordered_set<int> &references) {
+  int point_count = 0;
+  double result = 0;
+  for (auto point : aligned_pc) {
+    cgal::PointAndPrimitiveId ppid = reference_mesh.getClosestPrimitive(point.x, point.y, point.z);
+    double squared_distance = reference_mesh.squaredDistance(cgal::Point(point.x, point.y, point.z));
+    if (references.find(reference_mesh.getFacetIndex(ppid.second)) != references.end() && sqrt(squared_distance) < 0.5) {
+      ++point_count;
+      result += sqrt(squared_distance);
+    }
+  }
+  std::cout << "Approximation of ICP error is: " << result/point_count << std::endl;
+  return result/point_count;
+}
+
+double Deviations::getICPError(const PointCloud &aligned_pc) {
+  int point_count = 0;
+  double result = 0;
+  for (auto point : aligned_pc) {
+    double squared_distance = reference_mesh.squaredDistance(cgal::Point(point.x, point.y, point.z));
+    if (sqrt(squared_distance) < 2) {
+      ++point_count;
+      result += sqrt(squared_distance);
+    }
+  }
+  std::cout << "Approximation of ICP error is: " << result/point_count << std::endl;
+  return result/point_count;
 }
 
 }

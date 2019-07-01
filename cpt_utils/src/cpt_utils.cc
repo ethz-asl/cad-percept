@@ -16,7 +16,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh
     // loop through all points of point cloud
 
     cgal::PointAndPrimitiveId ppid =
-        mesh_model->getClosestTriangle(pc_msg[i].x,
+        mesh_model->getClosestPrimitive(pc_msg[i].x,
                                         pc_msg[i].y,
                                         pc_msg[i].z);
     cgal::Point pt = ppid.first;

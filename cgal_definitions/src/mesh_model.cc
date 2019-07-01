@@ -255,6 +255,14 @@ double MeshModel::getArea() const {
   return CGAL::to_double(area);
 }
 
+double MeshModel::squaredDistance(const Point &point) const {
+  /**
+   * Compute squared distance from point to closest mesh facet
+   */
+  FT sqd = tree_->squared_distance(point);
+  return CGAL::to_double(sqd);
+}
+
 }
 }
 
