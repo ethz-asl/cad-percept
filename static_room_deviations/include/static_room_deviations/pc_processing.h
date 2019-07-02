@@ -3,6 +3,7 @@
 
 #include <glog/logging.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl/common/transforms.h>
 #include <boost/circular_buffer.hpp>
 
 #include "pointmatcher/PointMatcher.h"
@@ -27,6 +28,8 @@ void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *po
 PointCloud dpToPointCloud(const DP &dppointcloud);
 
 DP pointCloudToDP(const PointCloud &pointcloud);
+
+void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform);
 
 }
 }

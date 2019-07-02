@@ -10,7 +10,6 @@
 #include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <pcl_ros/point_cloud.h>
-#include <pcl/common/transforms.h>
 #include "pointmatcher/PointMatcher.h"
 
 // Planar segmentation:
@@ -93,7 +92,6 @@ class Deviations {
      */
     void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config);
     void init(const std::string &off_pathm);
-    void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform) const;
 
   private:
     PointCloud ref_pc;
