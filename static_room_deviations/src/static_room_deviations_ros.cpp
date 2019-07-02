@@ -40,7 +40,7 @@ void StaticRoomDeviations::createTestCase(cgal::PointCloud *reading_pc) {
   transform.translation() << 0.5, 0.1, 0.2;
   float theta = M_PI*0.01;
   transform.rotate (Eigen::AngleAxisf (theta, Eigen::Vector3f::UnitZ()));
-  deviations.transformPointCloud(reading_pc, transform);
+  transformPointCloud(reading_pc, transform);
   pcl::io::savePCDFileASCII("/home/julian/cadify_ws/src/mt_utils/static_room_deviations/resources/deviated_reading_pc.pcd", *reading_pc);
 }
 

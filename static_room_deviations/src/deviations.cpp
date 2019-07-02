@@ -238,11 +238,6 @@ void Deviations::updateAssociations(std::multimap<int, int> &merge_associations_
   }
 }
 
-void Deviations::transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform) const {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ> ());
-  pcl::transformPointCloud (*pointcloud, *pointcloud, transform);
-}
-
 void Deviations::loadICPConfig(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter) {
   if (ifs_icp_config.good()) {
     LOG(INFO) << "Loading ICP configurations";

@@ -107,5 +107,10 @@ DP pointCloudToDP(const PointCloud &pointcloud) {
   return dppointcloud;
 }
 
+void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform) {
+  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ> ());
+  pcl::transformPointCloud (*pointcloud, *pointcloud, transform);
+}
+
 }
 }
