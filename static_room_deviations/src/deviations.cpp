@@ -243,43 +243,6 @@ void Deviations::transformPointCloud(PointCloud *pointcloud, const Eigen::Affine
   pcl::transformPointCloud (*pointcloud, *pointcloud, transform);
 }
 
-DP Deviations::pointCloudToDP(const PointCloud &pointcloud) const {
-  // alternatively use matrix3dEigenToPointMatcher (octomap_compare)
-  // or rosMsgToPointMatcherCloud (libpointmatcher_ros)
-  const int dimFeatures = 4;
-
-  PM::Matrix feat(dimFeatures, pointcloud.points.size());
-  for (uint i = 0; i < pointcloud.points.size(); ++i) {
-    feat(0, i) = pointcloud[i].x;
-    feat(1, i) = pointcloud[i].y;
-    feat(2, i) = pointcloud[i].z;
-    feat(3, i) = 1.0;
-  }
-
-  DP::Labels featLabels;
-  featLabels.push_back(DP::Label("x", 1));
-  featLabels.push_back(DP::Label("y", 1));
-  featLabels.push_back(DP::Label("z", 1));
-  featLabels.push_back(DP::Label("pad", 1));
-
-  DP dppointcloud = DP(feat, featLabels); // construct a point cloud from existing features without any descriptor
-
-  return dppointcloud;
-}
-
-PointCloud Deviations::dpToPointCloud(const DP &dppointcloud) const {
-  const size_t n_points = dppointcloud.getNbPoints();
-  PointCloud cloud;
-  for (uint i = 0; i < n_points; ++i) {
-    pcl::PointXYZ point;
-    point.x = dppointcloud.features(0, i);
-    point.y = dppointcloud.features(1, i);
-    point.z = dppointcloud.features(2, i);
-    cloud.push_back(point);
-  }
-  return cloud;
-}
-
 void Deviations::loadICPConfig(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter) {
   if (ifs_icp_config.good()) {
     LOG(INFO) << "Loading ICP configurations";

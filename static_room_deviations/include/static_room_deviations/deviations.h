@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <glog/logging.h>
 #include "static_room_deviations/pc_mesh_creator.h"
+#include "static_room_deviations/pc_processing.h"
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_conversions/eigen_conversions.h>
@@ -99,8 +100,6 @@ class Deviations {
     std::multimap<int, int> merge_associations;
     std::map<int, int> merge_associations_inv;
     std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of merged plane associated to plane properties
-    DP pointCloudToDP(const PointCloud &pointcloud) const;
-    PointCloud dpToPointCloud(const DP &dppointcloud) const;
     /**
      * Load the ICP configuration
      */
