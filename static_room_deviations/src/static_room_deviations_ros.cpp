@@ -56,8 +56,10 @@ void StaticRoomDeviations::readingCallback(cgal::PointCloud &reading_pc) {
   std::vector<reconstructed_plane> remaining_cloud_vector;
   deviations.detectChanges(&rec_planes, reading_pc, &icp_cloud, ifs_icp_config, ifs_normal_filter, ifs_selective_icp_config, &remaining_cloud_vector);
   publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
+  
   //cgal::Polyhedron P = deviations.reference_mesh_merged.getMesh();
   //publishPolyhedron(P);
+
   publishCloud<PointCloud>(&reading_pc, &reading_pc_pub_);
   publishCloud<PointCloud>(&icp_cloud, &icp_pc_pub_);
   publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_cloud_vector);
@@ -179,7 +181,18 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
   // overwrite color of associated planes/triangles
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
-      uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;    
+      uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;   
+
+      // marker connecting points and polyhedrons in corresponding random color
+      // make marker array of points per reconstructed plane and publish
+      /**
+       * 1. from plane_map get pointclouds -> make a function which takes pointcloud and outputs association struct, then iterate thorugh plane_map and put these in marker array with corresponding color here!
+       * 2. get intersection point with polyhedron
+       * 3. put points in vector of structs
+       * 4. 
+       */
+      prepareColorizedAssocMarkers(r, g, b, umit->second, marker);
+
 
       auto iit = deviations.merge_associations.equal_range(umit->first);
       for (auto itr = iit.first; itr != iit.second; ++itr) {
@@ -192,18 +205,20 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
 
       pcl::copyPointCloud(umit->second.rec_plane.pointcloud, pointcloud_plane_rgb);
       uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
-      for (uint i = 0; i < pointcloud_plane_rgb.points.size(); ++i) {
-        pointcloud_plane_rgb.points[i].rgb = *reinterpret_cast<float*>(&rgb);
+      for (auto point : pointcloud_plane_rgb) {
+        point.rgb = *reinterpret_cast<float*>(&rgb);
       }
       pointcloud_rgb += pointcloud_plane_rgb;
-
-      // marker connecting points and polyhedrons
-
     }
   }
 
   publishCloud<ColoredPointCloud>(&pointcloud_rgb, &assoc_pc_pub_);
+  //TODO: Backface culling should be turned on, but is somehow not activated after new msg
   assoc_mesh_pub_.publish(c_msg);
+}
+
+void StaticRoomDeviations::publishColorizedAssocMarkers(const uint8_t r, const uint8_t g, const uint8_t b, const pcl::PointXYZRGB &point) {
+  visualization_msgs::Marker marker;
 }
 
 }
