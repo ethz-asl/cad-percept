@@ -27,7 +27,7 @@ void Deviations::init(const std::string &off_pathm) {
   initPlaneMap(reference_mesh_merged);
 }
 
-void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config) {
+void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config, std::vector<reconstructed_plane> *remaining_cloud_vector) {
   /**
    *  ICP
    */ 
@@ -86,7 +86,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publ
    *  Plane association
    */
 
-  findBestPlaneAssociation(rec_planes, reference_mesh_merged);
+  findBestPlaneAssociation(rec_planes, reference_mesh_merged, remaining_cloud_vector);
 
   /**
    *  Find tranformation
@@ -95,7 +95,6 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publ
   computeFacetNormals(reference_mesh_merged);
   std::unordered_map<int, transformation> transformation_map;
   findPlaneDeviation(reference_mesh_merged, &transformation_map);
-  reset();
 }
 
 /**
@@ -575,7 +574,7 @@ void Deviations::associatePlane(const cgal::MeshModel &mesh_model, const PointCl
   }
 }
 
-void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, const cgal::MeshModel &mesh_model) {
+void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, const cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_cloud_vector) {
   cgal::Polyhedron P = mesh_model.getMesh();
 
   // create queue
@@ -597,6 +596,10 @@ void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane>
       cloud_queue.push(plane_map[id].rec_plane); // re-add pointcloud to queue
       plane_map[id].rec_plane = cloud_queue.front();
       plane_map[id].match_score = match_score_new;
+    }
+    else {
+      // non associated clouds
+      remaining_cloud_vector->push_back(cloud_queue.front());
     }
     cloud_queue.pop(); // remove tested element from queue
   }

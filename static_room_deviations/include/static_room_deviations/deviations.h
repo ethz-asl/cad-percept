@@ -90,14 +90,17 @@ class Deviations {
     /**
      * Read-in reading pc and execute detection
      */
-    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config);
+    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config, std::vector<reconstructed_plane> *remaining_cloud_vector);
     void init(const std::string &off_pathm);
+    std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of merged plane associated to plane properties
+
+    std::multimap<int, int> merge_associations; // polyhedron to triangle mesh
+    std::map<int, int> merge_associations_inv; // triangle mesh to polyhedron
+    void reset();
 
   private:
     PointCloud ref_pc;
-    std::multimap<int, int> merge_associations;
-    std::map<int, int> merge_associations_inv;
-    std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of merged plane associated to plane properties
+
     /**
      * Load the ICP configuration
      */
@@ -120,7 +123,7 @@ class Deviations {
      * This function finds best association between all p.c. planes and facets based on match_score from associatePlane().
      * Could additionally output non associated facets and point clouds.
      */
-    void findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, const cgal::MeshModel &mesh_model);
+    void findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, const cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_cloud_vector);
     void computeFacetNormals(const cgal::MeshModel &mesh_model);
     void findPlaneDeviation(const cgal::MeshModel &mesh_model, std::unordered_map<int, transformation> *transformation_map);
     /**
@@ -132,7 +135,6 @@ class Deviations {
     /**
      * Reset stuff after evaluation of current scan
      */
-    void reset();
     void extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud);
     void ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const PointCloud &reading_cloud, PointCloud *pointcloud_out);
     void selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, const PointCloud &reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out);

@@ -10,6 +10,8 @@ Panels:
         - /PointCloud22
         - /PointCloud23
         - /Polygon1
+        - /PointCloud24
+        - /ColoredMeshDisplay2
       Splitter Ratio: 0.5
     Tree Height: 752
   - Class: rviz/Selection
@@ -135,7 +137,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -152,13 +154,52 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/Polygon
       Color: 25; 255; 0
-      Enabled: true
+      Enabled: false
       Name: Polygon
       Topic: /polygon_pub
+      Unreliable: false
+      Value: false
+    - Alpha: 0.800000012
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.00999999978
+      Style: Points
+      Topic: /assoc_pc_pub
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 0.800000012
+      Backface Culling: true
+      Class: cgal_visualizations/ColoredMeshDisplay
+      Edge Color: 0; 0; 0
+      Enabled: true
+      Name: ColoredMeshDisplay
+      Topic: /assoc_mesh
       Unreliable: false
       Value: true
   Enabled: true

@@ -14,6 +14,8 @@ StaticRoomDeviations::StaticRoomDeviations(ros::NodeHandle &nh, ros::NodeHandle 
   icp_pc_pub_ = nh_.advertise<PointCloud>("icp_pc_pub", 1, true);
   reconstructed_planes_pub_ = nh_.advertise<ColoredPointCloud>("reconstructed_planes_pub", 1, true);
   polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("polygon_pub", 1, true);
+  assoc_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("assoc_mesh", 100, true); 
+  assoc_pc_pub_ = nh_.advertise<ColoredPointCloud>("assoc_pc_pub", 1, true);
 
   // manually starting test case
   if (nh_private_.param<bool>("test", "fail") == 1) {
@@ -51,12 +53,15 @@ void StaticRoomDeviations::readingCallback(cgal::PointCloud &reading_pc) {
   std::ifstream ifs_icp_config(nh_private_.param<std::string>("icp_configuration_file", "fail").c_str());
   std::ifstream ifs_selective_icp_config(nh_private_.param<std::string>("selective_icp_configuration_file", "fail").c_str());
   std::ifstream ifs_normal_filter(nh_private_.param<std::string>("normal_filter_file", "fail").c_str());
-  deviations.detectChanges(&rec_planes, reading_pc, &icp_cloud, ifs_icp_config, ifs_normal_filter, ifs_selective_icp_config);
+  std::vector<reconstructed_plane> remaining_cloud_vector;
+  deviations.detectChanges(&rec_planes, reading_pc, &icp_cloud, ifs_icp_config, ifs_normal_filter, ifs_selective_icp_config, &remaining_cloud_vector);
   publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
   //cgal::Polyhedron P = deviations.reference_mesh_merged.getMesh();
   //publishPolyhedron(P);
   publishCloud<PointCloud>(&reading_pc, &reading_pc_pub_);
   publishCloud<PointCloud>(&icp_cloud, &icp_pc_pub_);
+  publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_cloud_vector);
+  deviations.reset();
 }
 
 void StaticRoomDeviations::bufferCallback(cgal::PointCloud &reading_pc) {
@@ -133,6 +138,72 @@ void StaticRoomDeviations::publishReconstructedPlanes(const std::vector<reconstr
     pointcloud_rgb += pointcloud_plane_rgb;
   }
   publishCloud<ColoredPointCloud>(&pointcloud_rgb, publisher);
+}
+
+void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, const std::vector<reconstructed_plane> &remaining_cloud_vector) {
+  ColoredPointCloud pointcloud_rgb;
+  ColoredPointCloud pointcloud_plane_rgb;
+  
+  cgal::Polyhedron P;
+  P = model.getMesh();
+  cgal_msgs::TriangleMesh t_msg;
+  cgal_msgs::ColoredMesh c_msg;
+  cgal::triangleMeshToMsg(P, &t_msg);
+  c_msg.mesh = t_msg;
+  c_msg.header.frame_id = map_frame_;
+  c_msg.header.stamp = {secs: 0, nsecs: 0};
+  c_msg.header.seq = 0;
+
+  // add non associated rec. planes in blue
+  for (auto plane : remaining_cloud_vector) {
+    pcl::copyPointCloud(plane.pointcloud, pointcloud_plane_rgb);
+    uint8_t r = 0, g = 0, b = 255;    
+    uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+    for (uint i = 0; i < pointcloud_plane_rgb.points.size(); ++i) {
+      pointcloud_plane_rgb.points[i].rgb = *reinterpret_cast<float*>(&rgb);
+    }
+    pointcloud_rgb += pointcloud_plane_rgb;
+  }
+
+  std_msgs::ColorRGBA c;
+
+  // set all facet colors to blue, non-associated stay blue
+  for (uint i = 0; i < c_msg.mesh.triangles.size(); ++i) {
+    c.r = 0.0;
+    c.g = 0.0;
+    c.b = 1.0;
+    c.a = 0.4;
+    c_msg.colors.push_back(c);  
+  }
+  
+  // overwrite color of associated planes/triangles
+  for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
+    if (umit->second.match_score != 0) {
+      uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;    
+
+      auto iit = deviations.merge_associations.equal_range(umit->first);
+      for (auto itr = iit.first; itr != iit.second; ++itr) {
+        c.r = r/255.;
+        c.g = g/255.;
+        c.b = b/255.;
+        c.a = 0.4;
+        c_msg.colors[itr->second] = c;
+      }
+
+      pcl::copyPointCloud(umit->second.rec_plane.pointcloud, pointcloud_plane_rgb);
+      uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+      for (uint i = 0; i < pointcloud_plane_rgb.points.size(); ++i) {
+        pointcloud_plane_rgb.points[i].rgb = *reinterpret_cast<float*>(&rgb);
+      }
+      pointcloud_rgb += pointcloud_plane_rgb;
+
+      // marker connecting points and polyhedrons
+
+    }
+  }
+
+  publishCloud<ColoredPointCloud>(&pointcloud_rgb, &assoc_pc_pub_);
+  assoc_mesh_pub_.publish(c_msg);
 }
 
 }
