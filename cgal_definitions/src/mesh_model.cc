@@ -173,13 +173,26 @@ Vector MeshModel::computeFaceNormal(face_descriptor &fd) const {
 }
 
 Vector MeshModel::computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle) const {
+  std::cout << "DEBUG 10.1" << std::endl;
   Polyhedron::Halfedge_handle he = facet_handle->halfedge();
+    std::cout << "DEBUG 10.2" << std::endl;
+
   Point p0 = he->vertex()->point();
+    std::cout << "DEBUG 10.3" << std::endl;
+
   Point p1 = he->next()->vertex()->point();
+    std::cout << "DEBUG 10.4" << std::endl;
+
   Point p2 = he->next()->next()->vertex()->point();
+    std::cout << "DEBUG 10.5" << std::endl;
+
   // alternatively: Vector n = CGAL::normal(p0, p1, p2); check directions
   Vector n = CGAL::cross_product(p0-p2, p1-p2);
+    std::cout << "DEBUG 10.6" << std::endl;
+
   n = n / sqrt(n.squared_length());
+    std::cout << "DEBUG 10.7" << std::endl;
+
   return n;
 }
 
@@ -256,11 +269,36 @@ double MeshModel::getArea() const {
 }
 
 double MeshModel::squaredDistance(const Point &point) const {
-  /**
-   * Compute squared distance from point to closest mesh facet
-   */
   FT sqd = tree_->squared_distance(point);
   return CGAL::to_double(sqd);
+}
+
+void MeshModel::intersection(const Plane plane, const Line line, Point *point) {
+  std::cout << "DEBUG 1" << std::endl;
+  CGAL::cpp11::result_of<Intersect(Line, Plane)>::type
+    result = CGAL::intersection(line, plane);
+  if (result) {
+    if (const Point* p = boost::get<Point>(&*result)) {
+      *point = *p;
+      std::cout << "Intersection Point: " << *p << std::endl;
+    } else {
+      const Line* l = boost::get<Line>(&*result);
+      std::cout << "Intersection is a line: " << *l << std::endl;
+    }
+  }
+}
+
+Point MeshModel::closestPointOnFacetPlane(Polyhedron::Facet_handle &f, const Point point) {
+  // Raycast into direction of triangle normal
+  std::cout << "DEBUG 4" << std::endl;
+  cgal::Vector cnormal = computeFaceNormal2(f);
+
+  Line line(point, cnormal);
+  Point intersec_point;
+  std::cout << "DEBUG 5" << std::endl;
+  intersection(getPlane(f), line, &intersec_point);
+  std::cout << "DEBUG 6" << std::endl;
+  return intersec_point;
 }
 
 }

@@ -101,7 +101,15 @@ class MeshModel {
 
   double getArea() const;
 
+  /**
+   * Compute squared distance from point to closest mesh facet
+   */
   double squaredDistance(const Point &point) const;
+
+  /**
+   * Computes closest Point on Plane through chosen Facet for a given point
+   */
+  Point closestPointOnFacetPlane(Polyhedron::Facet_handle &f, const Point point);
 
 
  private:
@@ -110,6 +118,12 @@ class MeshModel {
   bool verbose_;
 
   void initializeFacetIndices();
+
+  /**
+   * Computes intersection point between a plane and a line
+   */
+  void intersection(const Plane plane, const Line line, Point *point);
+
 };
 }
 }

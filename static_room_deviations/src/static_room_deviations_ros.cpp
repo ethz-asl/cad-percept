@@ -9,13 +9,14 @@ StaticRoomDeviations::StaticRoomDeviations(ros::NodeHandle &nh, ros::NodeHandle 
     map_frame_(nh_private.param<std::string>("map_frame", "fail")),
     cb(10) { // use 10 latest scans for detection
 
-  ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 100, true); // latching to true
+  ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true); // latching to true
   reading_pc_pub_ = nh_.advertise<PointCloud>("reading_pc_pub", 1, true);
   icp_pc_pub_ = nh_.advertise<PointCloud>("icp_pc_pub", 1, true);
   reconstructed_planes_pub_ = nh_.advertise<ColoredPointCloud>("reconstructed_planes_pub", 1, true);
   polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("polygon_pub", 1, true);
-  assoc_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("assoc_mesh", 100, true); 
+  assoc_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("assoc_mesh", 1, true); 
   assoc_pc_pub_ = nh_.advertise<ColoredPointCloud>("assoc_pc_pub", 1, true);
+  assoc_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("assoc_marker_pub", 1, true);
 
   // manually starting test case
   if (nh_private_.param<bool>("test", "fail") == 1) {
@@ -179,8 +180,11 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
   }
   
   // overwrite color of associated planes/triangles
+  visualization_msgs::MarkerArray marker_array;
+  visualization_msgs::Marker marker;
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
+      std::cout << "Visualize Facet: " << umit->first << std::endl;
       uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;   
 
       // marker connecting points and polyhedrons in corresponding random color
@@ -191,8 +195,30 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
        * 3. put points in vector of structs
        * 4. 
        */
-      prepareColorizedAssocMarkers(r, g, b, umit->second, marker);
-
+      marker.header.frame_id = map_frame_;
+	    marker.ns = "semantic_graph_matches";
+	    marker.type = visualization_msgs::Marker::LINE_LIST;
+	    marker.action = visualization_msgs::Marker::ADD;
+	    marker.id = 0;
+      marker.color.r = r/255.;
+      marker.color.g = g/255.;
+      marker.color.b = b/255.;
+      marker.color.a = 0.7f;
+      geometry_msgs::Point p_from, p_to;
+      std::cout << "DEBUG 2" << std::endl;
+      for (auto point : umit->second.rec_plane.pointcloud) {
+        std::cout << "DEBUG 3" << std::endl;
+        p_from.x = point.x;
+        p_from.y = point.y;
+        p_from.z = point.z;
+        cgal::Point p = deviations.reference_mesh_merged.closestPointOnFacetPlane(umit->second.facet_handle, cgal::Point(point.x, point.y, point.z));
+        p_to.x = p.x();
+        p_to.y = p.y();
+        p_to.z = p.z();
+        marker.points.push_back(p_from);
+        marker.points.push_back(p_to);
+      }
+      marker_array.markers.push_back(marker);
 
       auto iit = deviations.merge_associations.equal_range(umit->first);
       for (auto itr = iit.first; itr != iit.second; ++itr) {
@@ -215,11 +241,9 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
   publishCloud<ColoredPointCloud>(&pointcloud_rgb, &assoc_pc_pub_);
   //TODO: Backface culling should be turned on, but is somehow not activated after new msg
   assoc_mesh_pub_.publish(c_msg);
+  assoc_marker_pub_.publish(marker_array);
 }
 
-void StaticRoomDeviations::publishColorizedAssocMarkers(const uint8_t r, const uint8_t g, const uint8_t b, const pcl::PointXYZRGB &point) {
-  visualization_msgs::Marker marker;
-}
 
 }
 }

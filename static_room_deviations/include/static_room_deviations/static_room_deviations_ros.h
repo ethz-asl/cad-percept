@@ -11,6 +11,9 @@
 #include <cgal_msgs/ColoredMesh.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <geometry_msgs/PolygonStamped.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
+#include <geometry_msgs/Point.h>
 
 #include <boost/circular_buffer.hpp>
 
@@ -34,7 +37,7 @@ class StaticRoomDeviations {
     void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
     template <class T>
     void publishCloud(T *cloud, ros::Publisher *publisher) const;
-    ros::Publisher ref_mesh_pub_, reading_pc_pub_, icp_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_, assoc_pc_pub_;
+    ros::Publisher ref_mesh_pub_, reading_pc_pub_, icp_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_, assoc_pc_pub_, assoc_marker_pub_;
     std::string map_frame_;
     /**
      * Publish point cloud of segmented planes
