@@ -24,6 +24,18 @@ struct Associations {
   Eigen::VectorXd triangles_to; // triangle ID association
 };
 
+/**
+ * Computes closest Point on Plane for a given point
+ */
+cgal::Point closestPointOnPlane(const cgal::Plane &plane, const cgal::Point &point);
+
+/**
+ * Computes intersection point between a plane and a line
+ */
+void intersection(const cgal::Plane &plane, const cgal::Line &line, cgal::Point *point);
+
+cgal::Vector getNormalFromPlane(const cgal::Plane &plane);
+
 // Associate point-cloud with architect model.
 Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh_model);
 

@@ -184,34 +184,8 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
   int marker_id = 0;
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
-      visualization_msgs::Marker marker;
       std::cout << "Visualize Facet: " << umit->first << std::endl;
       uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;   
-
-      // marker connecting points and polyhedrons in corresponding random color
-      marker.header.frame_id = map_frame_;
-	    marker.ns = "semantic_graph_matches";
-	    marker.type = visualization_msgs::Marker::LINE_LIST;
-	    marker.action = visualization_msgs::Marker::ADD;
-	    marker.id = marker_id;
-      marker.scale.x = 0.01f;
-      marker.color.r = r/255.;
-      marker.color.g = g/255.;
-      marker.color.b = b/255.;
-      marker.color.a = 0.7f;
-      geometry_msgs::Point p_from, p_to;
-      for (auto point : umit->second.rec_plane.pointcloud) {
-        p_from.x = point.x;
-        p_from.y = point.y;
-        p_from.z = point.z;
-        cgal::Point p = deviations.reference_mesh_merged.closestPointOnPlane(umit->second.plane, cgal::Point(point.x, point.y, point.z));
-        p_to.x = p.x();
-        p_to.y = p.y();
-        p_to.z = p.z();
-        marker.points.push_back(p_from);
-        marker.points.push_back(p_to);
-      }
-      marker_array.markers.push_back(marker);
 
       auto iit = deviations.merge_associations.equal_range(umit->first);
       for (auto itr = iit.first; itr != iit.second; ++itr) {
@@ -228,6 +202,32 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
         pointcloud_plane_rgb.points[i].rgb = *reinterpret_cast<float*>(&rgb);      
       }
       pointcloud_rgb += pointcloud_plane_rgb;
+
+      // marker connecting points and polyhedrons in corresponding random color
+      visualization_msgs::Marker marker;
+      marker.header.frame_id = map_frame_;
+	    marker.ns = "semantic_graph_matches";
+	    marker.type = visualization_msgs::Marker::LINE_LIST;
+	    marker.action = visualization_msgs::Marker::ADD;
+	    marker.id = marker_id;
+      marker.scale.x = 0.01f;
+      marker.color.r = r/255.;
+      marker.color.g = g/255.;
+      marker.color.b = b/255.;
+      marker.color.a = 0.7f;
+      geometry_msgs::Point p_from, p_to;
+      for (auto point : umit->second.rec_plane.pointcloud) {
+        p_from.x = point.x;
+        p_from.y = point.y;
+        p_from.z = point.z;
+        cgal::Point p = cpt_utils::closestPointOnPlane(umit->second.plane, cgal::Point(point.x, point.y, point.z));
+        p_to.x = p.x();
+        p_to.y = p.y();
+        p_to.z = p.z();
+        marker.points.push_back(p_from);
+        marker.points.push_back(p_to);
+      }
+      marker_array.markers.push_back(marker);
     }
     ++marker_id;
   }
@@ -237,7 +237,6 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
   assoc_mesh_pub_.publish(c_msg);
   assoc_marker_pub_.publish(marker_array);
 }
-
 
 }
 }
