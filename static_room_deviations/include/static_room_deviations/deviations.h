@@ -70,6 +70,7 @@ struct reconstructed_plane {
  *  ID of merged facet is given in map.
  */ 
 struct polyhedron_plane {
+  cgal::Polyhedron::Facet_handle facet_handle;
   reconstructed_plane rec_plane; // associated point cloud
   Eigen::Vector3d normal;
   double match_score = 0; // match score for pc to mesh plane

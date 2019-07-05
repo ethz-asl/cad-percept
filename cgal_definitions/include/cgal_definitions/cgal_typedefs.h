@@ -28,6 +28,8 @@
 
 #include <CGAL/Polygon_mesh_processing/measure.h>
 
+#include <CGAL/intersections.h>
+
 namespace cad_percept {
 namespace cgal {
 
@@ -41,6 +43,8 @@ typedef Kernel::Segment_3 Segment;
 typedef Kernel::Segment_2 Segment_2;
 typedef Kernel::Triangle_3 Triangle;
 typedef Kernel::Vector_3 Vector;
+typedef Kernel::Line_3 Line;
+typedef Kernel::Intersect_3 Intersect;
 typedef CGAL::Aff_transformation_3<Kernel> Transformation;
 
 typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
