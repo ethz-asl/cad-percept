@@ -260,35 +260,6 @@ double MeshModel::squaredDistance(const Point &point) const {
   return CGAL::to_double(sqd);
 }
 
-void MeshModel::intersection(const Plane &plane, const Line &line, Point *point) {
-  CGAL::cpp11::result_of<Intersect(Line, Plane)>::type
-    result = CGAL::intersection(line, plane);
-  if (result) {
-    if (const Point* p = boost::get<Point>(&*result)) {
-      *point = *p;
-      std::cout << "Intersection Point: " << *p << std::endl;
-    } else {
-      const Line* l = boost::get<Line>(&*result);
-      std::cout << "Intersection is a line: " << *l << std::endl;
-    }
-  }
-}
-
-Point MeshModel::closestPointOnPlane(const Plane &plane, const Point &point) {
-  // Raycast into direction of triangle normal
-  Vector normal = getNormalFromPlane(plane);
-  Line line(point, normal);
-  Point intersec_point;
-  intersection(plane, line, &intersec_point);
-  return intersec_point;
-}
-
-Vector MeshModel::getNormalFromPlane(const Plane &plane) {
-  Vector normal(plane.a(), plane.b(), plane.c());
-  normal = normal / sqrt(normal.squared_length());
-  return normal;
-}
-
 }
 }
 

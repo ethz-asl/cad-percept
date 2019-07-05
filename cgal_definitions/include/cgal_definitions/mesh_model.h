@@ -106,11 +106,6 @@ class MeshModel {
    */
   double squaredDistance(const Point &point) const;
 
-  /**
-   * Computes closest Point on Plane through chosen Facet for a given point
-   */
-  Point closestPointOnPlane(const Plane &plane, const Point &point);
-
 
  private:
   Polyhedron P_;
@@ -118,13 +113,6 @@ class MeshModel {
   bool verbose_;
 
   void initializeFacetIndices();
-
-  /**
-   * Computes intersection point between a plane and a line
-   */
-  void intersection(const Plane &plane, const Line &line, Point *point);
-
-  Vector getNormalFromPlane(const Plane &plane);
 
 };
 }

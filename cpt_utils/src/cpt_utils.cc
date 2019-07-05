@@ -3,6 +3,35 @@
 namespace cad_percept {
 namespace cpt_utils {
 
+void intersection(const cgal::Plane &plane, const cgal::Line &line, cgal::Point *point) {
+  CGAL::cpp11::result_of<cgal::Intersect(cgal::Line, cgal::Plane)>::type
+    result = CGAL::intersection(line, plane);
+  if (result) {
+    if (const cgal::Point* p = boost::get<cgal::Point>(&*result)) {
+      *point = *p;
+      //std::cout << "Intersection Point: " << *p << std::endl;
+    } else {
+      const cgal::Line* l = boost::get<cgal::Line>(&*result);
+      //std::cout << "Intersection is a line: " << *l << std::endl;
+    }
+  }
+}
+
+cgal::Point closestPointOnPlane(const cgal::Plane &plane, const cgal::Point &point) {
+  // Raycast into direction of triangle normal
+  cgal::Vector normal = getNormalFromPlane(plane);
+  cgal::Line line(point, normal);
+  cgal::Point intersec_point;
+  intersection(plane, line, &intersec_point);
+  return intersec_point;
+}
+
+cgal::Vector getNormalFromPlane(const cgal::Plane &plane) {
+  cgal::Vector normal(plane.a(), plane.b(), plane.c());
+  normal = normal / sqrt(normal.squared_length());
+  return normal;
+}
+
 Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh_model) {
   // Convert point cloud msg
   std::cout << "Associating pointcloud of size " << pc_msg.width << " x "
