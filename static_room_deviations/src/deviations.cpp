@@ -665,10 +665,9 @@ void Deviations::reset() {
 
 void Deviations::initPlaneMap(const cgal::MeshModel &mesh_model) {
   cgal::Polyhedron P = mesh_model.getMesh();
-  int i = 0;
   for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
     polyhedron_plane plane;
-    plane.facet_handle = j;
+    plane.plane = mesh_model.getPlane(j);
     plane_map.insert(std::make_pair(j->id(), plane));
   }
 }
