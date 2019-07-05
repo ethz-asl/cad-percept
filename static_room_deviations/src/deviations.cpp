@@ -27,7 +27,7 @@ void Deviations::init(const std::string &off_pathm) {
   initPlaneMap(reference_mesh_merged);
 }
 
-void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config, std::vector<reconstructed_plane> *remaining_cloud_vector) {
+void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map) {
   /**
    *  ICP
    */ 
@@ -93,8 +93,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publ
    */
 
   computeFacetNormals(reference_mesh_merged);
-  std::unordered_map<int, transformation> transformation_map;
-  findPlaneDeviation(reference_mesh_merged, &transformation_map);
+  findPlaneDeviation(reference_mesh_merged, transformation_map);
 }
 
 /**

@@ -14,6 +14,7 @@ Panels:
         - /ColoredMeshDisplay2
         - /MarkerArray1
         - /MarkerArray1/Namespaces1
+        - /ColoredMeshDisplay3
       Splitter Ratio: 0.5
     Tree Height: 752
   - Class: rviz/Selection
@@ -199,18 +200,27 @@ Visualization Manager:
       Backface Culling: true
       Class: cgal_visualizations/ColoredMeshDisplay
       Edge Color: 0; 0; 0
-      Enabled: true
+      Enabled: false
       Name: ColoredMeshDisplay
       Topic: /assoc_mesh
       Unreliable: false
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /assoc_marker_pub
       Name: MarkerArray
       Namespaces:
-        semantic_graph_matches: true
+        {}
       Queue Size: 100
+      Value: false
+    - Alpha: 0.800000012
+      Backface Culling: false
+      Class: cgal_visualizations/ColoredMeshDisplay
+      Edge Color: 0; 0; 0
+      Enabled: true
+      Name: ColoredMeshDisplay
+      Topic: /deviations_mesh_pub
+      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
