@@ -38,7 +38,7 @@ class StaticRoomDeviations {
     void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
     template <class T>
     void publishCloud(T *cloud, ros::Publisher *publisher) const;
-    ros::Publisher ref_mesh_pub_, reading_pc_pub_, icp_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_, assoc_pc_pub_, assoc_marker_pub_;
+    ros::Publisher ref_mesh_pub_, reading_pc_pub_, icp_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_, assoc_pc_pub_, assoc_marker_pub_, deviations_mesh_pub_;
     std::string map_frame_;
     /**
      * Publish point cloud of segmented planes
@@ -52,6 +52,8 @@ class StaticRoomDeviations {
     void bufferCallback(cgal::PointCloud &reading_pc);
 
     void publishAssociations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, const std::vector<reconstructed_plane> &remaining_cloud_vector);
+
+    void publishDeviations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, std::unordered_map<int, transformation> &transformation_map);
 
 };
 
