@@ -12,6 +12,8 @@ Panels:
         - /Polygon1
         - /PointCloud24
         - /ColoredMeshDisplay2
+        - /MarkerArray1
+        - /MarkerArray1/Namespaces1
       Splitter Ratio: 0.5
     Tree Height: 752
   - Class: rviz/Selection
@@ -201,6 +203,14 @@ Visualization Manager:
       Name: ColoredMeshDisplay
       Topic: /assoc_mesh
       Unreliable: false
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /assoc_marker_pub
+      Name: MarkerArray
+      Namespaces:
+        semantic_graph_matches: true
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:

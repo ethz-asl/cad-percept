@@ -109,7 +109,7 @@ class MeshModel {
   /**
    * Computes closest Point on Plane through chosen Facet for a given point
    */
-  Point closestPointOnFacetPlane(Polyhedron::Facet_handle &f, const Point point);
+  Point closestPointOnPlane(const Plane &plane, const Point &point);
 
 
  private:
@@ -122,7 +122,9 @@ class MeshModel {
   /**
    * Computes intersection point between a plane and a line
    */
-  void intersection(const Plane plane, const Line line, Point *point);
+  void intersection(const Plane &plane, const Line &line, Point *point);
+
+  Vector getNormalFromPlane(const Plane &plane);
 
 };
 }

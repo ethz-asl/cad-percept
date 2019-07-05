@@ -16,7 +16,7 @@ StaticRoomDeviations::StaticRoomDeviations(ros::NodeHandle &nh, ros::NodeHandle 
   polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("polygon_pub", 1, true);
   assoc_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("assoc_mesh", 1, true); 
   assoc_pc_pub_ = nh_.advertise<ColoredPointCloud>("assoc_pc_pub", 1, true);
-  assoc_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("assoc_marker_pub", 1, true);
+  assoc_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("assoc_marker_pub", 100, true);
 
   // manually starting test case
   if (nh_private_.param<bool>("test", "fail") == 1) {
@@ -181,37 +181,30 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
   
   // overwrite color of associated planes/triangles
   visualization_msgs::MarkerArray marker_array;
-  visualization_msgs::Marker marker;
+  int marker_id = 0;
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
+      visualization_msgs::Marker marker;
       std::cout << "Visualize Facet: " << umit->first << std::endl;
       uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;   
 
       // marker connecting points and polyhedrons in corresponding random color
-      // make marker array of points per reconstructed plane and publish
-      /**
-       * 1. from plane_map get pointclouds -> make a function which takes pointcloud and outputs association struct, then iterate thorugh plane_map and put these in marker array with corresponding color here!
-       * 2. get intersection point with polyhedron
-       * 3. put points in vector of structs
-       * 4. 
-       */
       marker.header.frame_id = map_frame_;
 	    marker.ns = "semantic_graph_matches";
 	    marker.type = visualization_msgs::Marker::LINE_LIST;
 	    marker.action = visualization_msgs::Marker::ADD;
-	    marker.id = 0;
+	    marker.id = marker_id;
+      marker.scale.x = 0.01f;
       marker.color.r = r/255.;
       marker.color.g = g/255.;
       marker.color.b = b/255.;
       marker.color.a = 0.7f;
       geometry_msgs::Point p_from, p_to;
-      std::cout << "DEBUG 2" << std::endl;
       for (auto point : umit->second.rec_plane.pointcloud) {
-        std::cout << "DEBUG 3" << std::endl;
         p_from.x = point.x;
         p_from.y = point.y;
         p_from.z = point.z;
-        cgal::Point p = deviations.reference_mesh_merged.closestPointOnFacetPlane(umit->second.facet_handle, cgal::Point(point.x, point.y, point.z));
+        cgal::Point p = deviations.reference_mesh_merged.closestPointOnPlane(umit->second.plane, cgal::Point(point.x, point.y, point.z));
         p_to.x = p.x();
         p_to.y = p.y();
         p_to.z = p.z();
@@ -231,11 +224,12 @@ void StaticRoomDeviations::publishAssociations(const cgal::MeshModel &model, std
 
       pcl::copyPointCloud(umit->second.rec_plane.pointcloud, pointcloud_plane_rgb);
       uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
-      for (auto point : pointcloud_plane_rgb) {
-        point.rgb = *reinterpret_cast<float*>(&rgb);
+      for (uint i = 0; i < pointcloud_plane_rgb.points.size(); ++i) {
+        pointcloud_plane_rgb.points[i].rgb = *reinterpret_cast<float*>(&rgb);      
       }
       pointcloud_rgb += pointcloud_plane_rgb;
     }
+    ++marker_id;
   }
 
   publishCloud<ColoredPointCloud>(&pointcloud_rgb, &assoc_pc_pub_);
