@@ -7,6 +7,8 @@ StaticRoomDeviations::StaticRoomDeviations(ros::NodeHandle &nh, ros::NodeHandle 
   : nh_(nh),
     nh_private_(nh_private),
     map_frame_(nh_private.param<std::string>("map_frame", "fail")),
+    discrete_color_(nh_private.param<bool>("discrete_color", false)),
+    score_threshold_(nh_private.param<float>("score_threshold", 0.01)),
     cb(10) { // use 10 latest scans for detection
 
   ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true); // latching to true
@@ -263,18 +265,57 @@ void StaticRoomDeviations::publishDeviations(const cgal::MeshModel &model, std::
     c_msg.colors.push_back(c);  
   }
 
-  // overwrite color of associated planes/triangles
+  // - overwrite color of associated planes/triangles with deviation gradient based on e.g. distance score,
+  // because distance score includes both angle deviation and distance deviation
+  // - set threshold for ok walls
+
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
-      std::cout << "Visualize Facet: " << umit->first << std::endl;
-      uint8_t r = 255, g = 0, b = 0;   
+      std::cout << "Visualize Deviation of Facet: " << umit->first << std::endl;
+      
+      //std::unordered_map<int,transformation>::const_iterator it = transformation_map.find(umit->first);
+      transformation trafo = transformation_map[umit->first];
+      double score = trafo.distance_score;
+
+      if (score < score_threshold_) {
+        c.r = 0.0;
+        c.g = 1.0;
+        c.b = 0.0;
+        c.a = 0.4;   
+      }
+      else {
+        // make gradient based on score here
+        if (discrete_color_ == true) {
+          c.r = 1.0;
+          c.g = 0.0;
+          c.b = 0.0;
+          c.a = 0.4;
+        }
+        else {
+          if (score > 0.75) {
+            c.r = 1.0;
+            c.g = 0.0;
+            c.b = 0.0;
+            c.a = 0.4;
+          }
+          else {
+            // create a gradient
+            float g = score/0.75; // 1 for red, 0 for green
+            if (g > 0.5) {
+              c.r = 1.0;
+              c.g = 2.0 * (1 - g);
+            } else {
+              c.r = 2*g;
+              c.g = 1.0;
+            }
+            c.b = 0.0;
+            c.a = 0.4;
+          }
+        }
+      }
 
       auto iit = deviations.merge_associations.equal_range(umit->first);
       for (auto itr = iit.first; itr != iit.second; ++itr) {
-        c.r = r/255.;
-        c.g = g/255.;
-        c.b = b/255.;
-        c.a = 0.4;
         c_msg.colors[itr->second] = c;
       }
     }
