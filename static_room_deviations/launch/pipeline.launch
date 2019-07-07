@@ -8,6 +8,8 @@
   <arg name="normal_filter_file" default="$(find static_room_deviations)/launch/normal_filter.yaml" />
   <arg name="reference_model_file" default="$(find static_room_deviations)/resources/room.off" />
   <arg name="test" default="1" />
+  <arg name="discrete_color" default="false" />
+  <arg name="score_threshold" default="0.015" />
 
   <!-- node -->
   <node name="static_room_dev"
@@ -21,7 +23,9 @@
     <param name="icp_configuration_file" value="$(arg icp_configuration_file)" />
     <param name="selective_icp_configuration_file" value="$(arg selective_icp_configuration_file)" />
     <param name="normal_filter_file" value="$(arg normal_filter_file)" />
+    <param name="discrete_color" value="$(arg discrete_color)" />
+    <param name="score_threshold" value="$(arg score_threshold)" />
   </node>
 
-   <node type="rviz" name="rviz" pkg="rviz" args="-d $(find static_room_deviations)/launch/pipeline.rviz" />
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find static_room_deviations)/launch/pipeline.rviz" />
 </launch>

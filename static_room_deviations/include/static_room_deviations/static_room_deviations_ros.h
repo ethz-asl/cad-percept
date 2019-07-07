@@ -40,6 +40,8 @@ class StaticRoomDeviations {
     void publishCloud(T *cloud, ros::Publisher *publisher) const;
     ros::Publisher ref_mesh_pub_, reading_pc_pub_, icp_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_, assoc_pc_pub_, assoc_marker_pub_, deviations_mesh_pub_;
     std::string map_frame_;
+    bool discrete_color_;
+    float score_threshold_;
     /**
      * Publish point cloud of segmented planes
      */
