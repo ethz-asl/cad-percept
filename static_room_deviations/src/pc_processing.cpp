@@ -67,7 +67,7 @@ void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *po
     mapPointCloud = maxDensitySubsample->filter(mapPointCloud);
   }
   *pointcloud_out = dpToPointCloud(mapPointCloud);
-  mapPointCloud.save("/home/julian/cadify_ws/src/mt_utils/static_room_deviations/resources/pc_align_sequence.pcd");
+  mapPointCloud.save("/home/julian/cadify_ws/src/cad-percept/static_room_deviations/resources/pc_align_sequence.pcd");
 }
 
 PointCloud dpToPointCloud(const DP &dppointcloud) {
