@@ -57,9 +57,18 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
 	transformSrv_ =
 			nh.advertiseService("transformModel", &ChangesRos::transformModelCb, this);
+	
+	associatePCDCloud();
 }
 
 ChangesRos::~ChangesRos() {}
+
+// manually start test
+void ChangesRos::associatePCDCloud() {
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::io::loadPCDFile<pcl::PointXYZ> ("/home/julian/cadify_ws/src/cad-percept/cpt_changes/resources/P_deviated.pcd", *cloud);
+	associatePointCloud(*cloud);
+}
 
 // callback for each p.c. scan topic
 void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
@@ -193,6 +202,16 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
 
 	// change color of associated triangles
 	// wip, overwrites color with last value of triangle and not average
+
+	struct Visualization {
+		double r;
+		double g;
+		double b;
+		int no_of_points;
+	}; 
+
+	std::unordered_map<int,Visualization> color_map;
+
 	for (uint i = 0; i < associations.triangles_to.rows(); ++i) {
 		int id = associations.triangles_to(i);
 		double length = associations.distances(i);
@@ -233,9 +252,40 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
 				c.a = 0.8;
 			}
 		}
-		c_msg.colors[id] = c;
-		
+
+		// average color
+		std::unordered_map<int,Visualization>::iterator it = color_map.find(id);
+		if (it == color_map.end()) {
+			// add it to map
+			Visualization vis;
+			vis.r = c.r;
+			vis.g = c.g;
+			vis.b = c.b;
+			vis.no_of_points = 1;
+			color_map[id] = vis;
+		}
+		else {
+			Visualization vis;
+			vis.r = it->second.r + c.r;
+			vis.g = it->second.g + c.g;
+			vis.b = it->second.b + c.b;
+			vis.no_of_points = it->second.no_of_points + 1;
+			it->second = vis;
+		}	
 	}
+
+	// iterate through map to set colors
+	std::unordered_map<int,Visualization>::iterator it = color_map.begin();
+	while(it != color_map.end()) {
+		std_msgs::ColorRGBA color;
+		color.r = (it->second.r)/(it->second.no_of_points);
+		color.g = (it->second.g)/(it->second.no_of_points);
+		color.b = (it->second.b)/(it->second.no_of_points);
+		color.a = 0.8;
+
+		c_msg.colors[it->first] = color;
+		it++;
+	}	
 
 	c_msg.header.frame_id = map_frame_;
 	c_msg.header.stamp = {secs: 0, nsecs: 0};

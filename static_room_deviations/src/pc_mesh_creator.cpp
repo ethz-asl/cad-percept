@@ -185,8 +185,12 @@ class SamplePolyhedronDeviated : public CGAL::Modifier_base<HDS> {
     Point p9(5, 1.5, 2);
     Point p10(6, 4, 2);    
     Point p11(0, 3, 2);
+    
+    // adding a wrong wall:
+    Point p12(4, 0.75, 0);
+    Point p13(4, 0.75, 2);
 
-    P.begin_surface(12, 20);
+    P.begin_surface(16, 22);
 
     P.add_vertex(p0);
     P.add_vertex(p1);
@@ -200,6 +204,10 @@ class SamplePolyhedronDeviated : public CGAL::Modifier_base<HDS> {
     P.add_vertex(p9);
     P.add_vertex(p10);
     P.add_vertex(p11);
+    P.add_vertex(p12);
+    P.add_vertex(p13);
+    P.add_vertex(p0);
+    P.add_vertex(p6);
 
     P.begin_facet();
     P.add_vertex_to_facet(0);
@@ -319,6 +327,18 @@ class SamplePolyhedronDeviated : public CGAL::Modifier_base<HDS> {
     P.add_vertex_to_facet(10);
     P.add_vertex_to_facet(8);
     P.add_vertex_to_facet(9);
+    P.end_facet();
+
+    P.begin_facet();
+    P.add_vertex_to_facet(14);
+    P.add_vertex_to_facet(13);
+    P.add_vertex_to_facet(15);
+    P.end_facet();
+
+    P.begin_facet();
+    P.add_vertex_to_facet(14);
+    P.add_vertex_to_facet(12);
+    P.add_vertex_to_facet(13);
     P.end_facet();
 
     P.end_surface();
@@ -337,10 +357,10 @@ void build_sample_polyhedrons(Polyhedron *P, Polyhedron *P_deviated) {
     std::cout << "P_deviated is valid" << std::endl;
   }
 
-  std::ofstream off_file1("/home/julian/cadify_ws/src/mt_utils/static_room_deviations/resources/room.off", std::ios::binary);
+  std::ofstream off_file1("/home/julian/cadify_ws/src/cad-percept/static_room_deviations/resources/room.off", std::ios::binary);
   CGAL::write_off(off_file1, *P);
 
-  std::ofstream off_file2("/home/julian/cadify_ws/src/mt_utils/static_room_deviations/resources/room_deviated.off", std::ios::binary);
+  std::ofstream off_file2("/home/julian/cadify_ws/src/cad-percept/static_room_deviations/resources/room_deviated.off", std::ios::binary);
   CGAL::write_off(off_file2, *P_deviated);
 }
 
@@ -389,7 +409,7 @@ void sample_pc_from_mesh(const Polyhedron &P,
   }
 
   std::stringstream ss;
-  ss << "/home/julian/cadify_ws/src/mt_utils/static_room_deviations/resources/" << file_name << ".pcd";
+  ss << "/home/julian/cadify_ws/src/cad-percept/static_room_deviations/resources/" << file_name << ".pcd";
   pcl::io::savePCDFileASCII(ss.str(), *pointcloud);
   std::cerr << "Saved " << pointcloud->points.size() << " data points to pcd" << std::endl;
 }
