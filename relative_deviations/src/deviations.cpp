@@ -541,8 +541,8 @@ void Deviations::associatePlane(const cgal::MeshModel &mesh_model, const PointCl
     d = d/cloud.size();
     std::cout << "Cloud size is: " << cloud.size() << std::endl;
     match_score_new = sqrt(CGAL::to_double(d));
-    std::cout << "Match score new is: " << match_score_new << std::endl;
-    std::cout << "Match score before is: " << *match_score << std::endl;
+    //std::cout << "Match score new is: " << match_score_new << std::endl;
+    //std::cout << "Match score before is: " << *match_score << std::endl;
 
     // comparing normals -> association rather based on distance since angle is rather
     // a deviation and it's hard to take 2 arguments into account
@@ -558,7 +558,7 @@ void Deviations::associatePlane(const cgal::MeshModel &mesh_model, const PointCl
         std::cerr << "Pointcloud with same match score. Keeping preceding result." << std::endl;
       }
       else if (match_score_new < plane_map[j->id()].match_score || plane_map[j->id()].match_score == 0) {
-        std::cout << "Replacing score by new score" << std::endl;
+        //std::cout << "Replacing score by new score" << std::endl;
         *id = j->id();
         *match_score = match_score_new;
       }
@@ -587,13 +587,14 @@ void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane>
       plane_map[id].rec_plane = cloud_queue.front();
       plane_map[id].match_score = match_score_new;
     }
-    else if (match_score_new < plane_map[id].match_score) {
+    else if (match_score_new < plane_map[id].match_score && match_score_new != 0) {
       cloud_queue.push(plane_map[id].rec_plane); // re-add pointcloud to queue
       plane_map[id].rec_plane = cloud_queue.front();
       plane_map[id].match_score = match_score_new;
     }
     else {
       // non associated clouds
+      std::cout << "Added an unassociated cloud" << std::endl;
       remaining_cloud_vector->push_back(cloud_queue.front());
     }
     cloud_queue.pop(); // remove tested element from queue
