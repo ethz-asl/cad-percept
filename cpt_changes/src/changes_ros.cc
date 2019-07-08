@@ -29,8 +29,6 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 			nh_.advertise<cgal_msgs::TriangleMeshStamped>("mesh_model", 100, true); // latching to true
 	distance_triangles_pub_ =
 			nh_.advertise<cgal_msgs::ColoredMesh>("distance_mesh", 100, true);
-
-	pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10, &ChangesRos::associatePointCloud, this);
 	
 	// start defining visualization_msgs Marker, this is just a block, right?
 	model_.type = visualization_msgs::Marker::MESH_RESOURCE;
@@ -58,19 +56,23 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 	transformSrv_ =
 			nh.advertiseService("transformModel", &ChangesRos::transformModelCb, this);
 	
-	associatePCDCloud();
+	// manually starting test case
+	if (nh_private_.param<bool>("test", "fail") == 1) {
+		associatePCDCloud();
+	}
+	else {
+		pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10, &ChangesRos::associatePointCloud, this);
+	}
 }
 
 ChangesRos::~ChangesRos() {}
 
-// manually start test
 void ChangesRos::associatePCDCloud() {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::io::loadPCDFile<pcl::PointXYZ> ("/home/julian/cadify_ws/src/cad-percept/cpt_changes/resources/P_deviated.pcd", *cloud);
+	pcl::io::loadPCDFile<pcl::PointXYZ> ("/home/julian/cadify_ws/src/cad-percept/cpt_changes/resources/demo_reading_pc_additional_wall.pcd", *cloud);
 	associatePointCloud(*cloud);
 }
 
-// callback for each p.c. scan topic
 void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
 	cpt_utils::Associations associations = cpt_utils::associatePointCloud(pc_msg, &mesh_model_);
 	CHECK_EQ(associations.points_from.cols(), pc_msg.width); // glog, checks equality
@@ -150,7 +152,6 @@ bool ChangesRos::transformModelCb(std_srvs::Empty::Request &request,
 	return true;
 }
 
-// publishes architect model mesh as point cloud of vertices
 void ChangesRos::publishArchitectModel() const {
 	PointCloud pc_msg;
 	cgal::meshToVerticePointCloud(mesh_model_.getMesh(), &pc_msg);
@@ -159,7 +160,6 @@ void ChangesRos::publishArchitectModel() const {
 	arch_pub_.publish(pc_msg);
 }
 
-// publish architect model mesh as triangle mesh
 void ChangesRos::publishArchitectModelMesh() const {
 	cgal_msgs::TriangleMeshStamped p_msg;
 	cgal::Polyhedron mesh;
@@ -201,8 +201,6 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
 	}
 
 	// change color of associated triangles
-	// wip, overwrites color with last value of triangle and not average
-
 	struct Visualization {
 		double r;
 		double g;
