@@ -4,6 +4,8 @@
 - Added visualization of distances (point-to-mesh) as colored triangles (discrete)
 - Added "heatmap" visualization of distances with color gradient by setting ROS parameter "discrete_color" to "false"
 
+![Result](resources/20190513_gradient_color_distance_visualization.png)
+
 ### To Do:
 
 - Add ray-casting from robot and not just to nearest facet
@@ -39,4 +41,21 @@ roslaunch cpt_changes changes.launch
 ##### Terminal E:
 ```
 rosservice call /transformModel
+```
+
+### Running the "Static Room Deviations" Test Case:
+
+##### Terminal A:
+```
+roscore
+```
+
+##### Terminal B:
+```
+rosrun rviz rviz
+```
+
+##### Terminal C:
+```
+roslaunch cpt_changes demo_changes.launch
 ```

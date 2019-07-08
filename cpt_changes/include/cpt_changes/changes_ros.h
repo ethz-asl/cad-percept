@@ -28,9 +28,15 @@ class ChangesRos {
 		ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
 		~ChangesRos();
 
+		/**
+		 * Manually start test
+		 */
 		void associatePCDCloud();
 
-		// Associate point-cloud with architect model.
+		/**
+		 * Associate point-cloud with architect model.
+		 * Callback for each p.c. scan topic
+		 */
 		void associatePointCloud(const PointCloud &pc_msg);
 
 		// Publishing of colorized association markers
@@ -40,10 +46,10 @@ class ChangesRos {
 		bool transformModelCb(std_srvs::Empty::Request &request,
 													std_srvs::Empty::Response &response);
 
-		// Publishing of architect model as point cloud.
+		// Publishing of architect model as point cloud of vertices.
 		void publishArchitectModel() const;
 
-		// Publishing of architect model as mesh
+		// Publishing of architect model as triangle mesh
 		void publishArchitectModelMesh() const;
 
 		// Publishing of colorized association triangles
