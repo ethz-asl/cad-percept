@@ -41,3 +41,48 @@ catkin run_tests <package_name>
 ## Issues
 
 Un-tick and tick backface culling for correct visualization.
+
+## Installation 
+
+```
+source /opt/ros/kinetic/setup.bash
+echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc
+```
+
+```
+mkdir -p ~/megabot_ws/src
+cd ~/megabot_ws
+catkin init
+catkin config --extend /opt/ros/kinetic
+catkin config --merge-devel
+catkin config -DCMAKE_BUILD_TYPE=Release
+```
+
+```
+cd ~/megabot_ws/src/
+git clone git@github.com:ethz-asl/cad-percept.git
+wstool init
+wstool merge cad-percept/dependencies.rosinstall
+wstool merge cad-percept/relative_deviations/dependencies.rosinstall
+wstool update
+wstool merge eth_robotics_summer_school_2019/dependencies.rosinstall
+wstool update
+```
+
+```
+cd ~/megabot_ws/
+catkin build relative_deviations
+```
+
+```
+source devel/setup.bash
+echo "source ~/megabot_ws/devel/setup.bash" >> ~/.bashrc
+```
+
+Currently, from summer school only following packages and dependencies needed:
+
+```
+catkin build ethzasl_icp_mapper smb_tf_publisher smb_state_estimator 
+```
+
+If necessary install other dependencies of summer school by apt.
