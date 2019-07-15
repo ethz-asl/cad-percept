@@ -44,6 +44,7 @@ Un-tick and tick backface culling for correct visualization.
 
 ## Installation 
 
+Pay attention not to overlay or chain other workspaces by sourcing ROS installation first:
 ```
 source /opt/ros/kinetic/setup.bash
 echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc
