@@ -1,1 +1,3 @@
-min_reading_point_count: 2000
+minReadingPointCount: 1000
+inputQueueSize: 1
+mapSamplingDensity: 100

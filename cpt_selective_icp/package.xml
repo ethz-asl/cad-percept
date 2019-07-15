@@ -25,5 +25,8 @@
   <depend>sensor_msgs</depend>
   <depend>cgal_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>cgal_definitions</depend>
+  <depend>message_generation</depend>
+  <depend>relative_deviations</depend>
 
 </package>

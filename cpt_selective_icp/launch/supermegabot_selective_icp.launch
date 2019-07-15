@@ -7,7 +7,8 @@ Launch file for Selective ICP
 
 	<node name="mapper" type="mapper_node" pkg="cpt_selective_icp" output="screen" >
     <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
-
+    <param name="scanTopic" value="/rslidar_points" />
+    <param name="referenceMesh" value="$(find cpt_selective_icp)/resources/reference_mesh.off" />
 		<param name="icpConfig"
 			   value="$(find cpt_selective_icp)/config/icp_dynamic.yaml" />
 		<param name="inputFiltersConfig"
