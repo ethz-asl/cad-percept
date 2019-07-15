@@ -232,8 +232,9 @@ void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *
         std::cerr << "Faces could not be joined" << std::endl;
     }
   }
-  // Print remaining facet ID's
+  // Add remaining associations and print facet ID's
   for (Polyhedron::Facet_iterator j = P_out->facets_begin(); j != P_out->facets_end(); ++j) {
+    merge_associations->insert(std::make_pair(j->id(), j->id()));
     std::cout << "Remaining facet ID: " << j->id() << std::endl;
   }
   // Print map

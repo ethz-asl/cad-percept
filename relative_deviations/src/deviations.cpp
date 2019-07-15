@@ -77,7 +77,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publ
   // reference_mesh.printFacetsOfHalfedges();
   cgal::Polyhedron P_merged = reference_mesh_merged.getMesh();
   // CGAL::draw(P_merged); // requires Qt5
-  std::ofstream off_file("/home/julian/cadify_ws/src/cad-percept/relative_deviations/resources/merged.off", std::ios::binary);
+  std::ofstream off_file("/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/merged.off", std::ios::binary);
   if(CGAL::write_off(off_file, P_merged)) {
     std::cout << "Merged Mash written to file" << std::endl;
   }
@@ -193,7 +193,7 @@ void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_fi
   // Transform data to express it in ref
   DP dppointcloud_out(dppointcloud);
   icp_.transformations.apply(dppointcloud_out, T);
-  dppointcloud_out.save("/home/julian/cadify_ws/src/cad-percept/relative_deviations/resources/P_icp.pcd");
+  dppointcloud_out.save("/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/P_icp.pcd");
   std::cout << "Final ICP transformation: " << std::endl << T << std::endl;
 
   *pointcloud_out = dpToPointCloud(dppointcloud_out);
@@ -205,13 +205,11 @@ void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_fi
 // merge_associations_inv: Old facet ID to Polyhedron ID 
 void Deviations::updateAssociations(std::multimap<int, int> &merge_associations_old) {
   int i = 0;
-  for(Mmiterator it = merge_associations_old.begin(); it != merge_associations_old.end(); it = merge_associations_old.upper_bound(it->first)) {
+  for (Mmiterator it = merge_associations_old.begin(); it != merge_associations_old.end(); it = merge_associations_old.upper_bound(it->first)) {
     int key = it->first;
     std::cout << "Key: " << key << std::endl;
 
     auto iit = merge_associations_old.equal_range(key);
-    merge_associations.insert(std::make_pair(i, it->first));
-    merge_associations_inv.insert(std::make_pair(it->first, i));
     for (auto itr = iit.first; itr != iit.second; ++itr) {
       merge_associations.insert(std::make_pair(i, itr->second));
       merge_associations_inv.insert(std::make_pair(itr->second, i));
@@ -289,7 +287,7 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<r
 
   // Write the downsampled version to disk
   pcl::PCDWriter writer;
-  writer.write<pcl::PointXYZ> ("/home/julian/cadify_ws/src/cad-percept/relative_deviations/resources/downsampled.pcd", *cloud_filtered, false);
+  writer.write<pcl::PointXYZ> ("/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/downsampled.pcd", *cloud_filtered, false);
 
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients ()); // estimated plane parameters
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices ());
@@ -344,7 +342,7 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<r
 
     /*
     std::stringstream ss;
-    ss << "/home/julian/cadify_ws/src/cad-percept/relative_deviations/resources/plane_" << i << ".pcd";
+    ss << "/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/plane_" << i << ".pcd";
     writer.write<pcl::PointXYZ> (ss.str(), *cloud_p, false);
     */
 

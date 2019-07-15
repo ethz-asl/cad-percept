@@ -357,10 +357,10 @@ void build_sample_polyhedrons(Polyhedron *P, Polyhedron *P_deviated) {
     std::cout << "P_deviated is valid" << std::endl;
   }
 
-  std::ofstream off_file1("/home/julian/cadify_ws/src/cad-percept/relative_deviations/resources/room.off", std::ios::binary);
+  std::ofstream off_file1("/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/room.off", std::ios::binary);
   CGAL::write_off(off_file1, *P);
 
-  std::ofstream off_file2("/home/julian/cadify_ws/src/cad-percept/relative_deviations/resources/room_deviated.off", std::ios::binary);
+  std::ofstream off_file2("/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/room_deviated.off", std::ios::binary);
   CGAL::write_off(off_file2, *P_deviated);
 }
 
@@ -409,7 +409,7 @@ void sample_pc_from_mesh(const Polyhedron &P,
   }
 
   std::stringstream ss;
-  ss << "/home/julian/cadify_ws/src/cad-percept/relative_deviations/resources/" << file_name << ".pcd";
+  ss << "/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/" << file_name << ".pcd";
   pcl::io::savePCDFileASCII(ss.str(), *pointcloud);
   std::cerr << "Saved " << pointcloud->points.size() << " data points to pcd" << std::endl;
 }
