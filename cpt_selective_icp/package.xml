@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>cpt_selective_icp</name>
+  <version>0.1.0</version>
+  <description>
+    ROS package to perform selective ICP between reading point cloud and a mesh model with given references.
+  </description>
+
+  <author email="jstiefel@student.ethz.ch">Julian Stiefel</author>
+  <maintainer email="jstiefel@student.ethz.ch">Julian Stiefel</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <test_depend>rosunit</test_depend>
+
+  <depend>cgal_catkin</depend>
+  <depend>pcl_ros</depend>
+  <depend>roscpp</depend>
+  <depend>eigen_catkin</depend>
+  <depend>libpointmatcher</depend>
+  <depend>libnabo</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cgal_msgs</depend>
+  <depend>geometry_msgs</depend>
+
+</package>
