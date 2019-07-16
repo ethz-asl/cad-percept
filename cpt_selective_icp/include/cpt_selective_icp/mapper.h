@@ -8,12 +8,16 @@
 #include <cgal_definitions/mesh_model.h>
 #include <pcl/point_types.h>
 #include "relative_deviations/pc_mesh_creator.h"
+#include "pointmatcher/PointMatcher.h"
+#include <unordered_set>
+
 
 #include "cpt_selective_icp/References.h"
+#include <std_srvs/Empty.h>
 
 
 namespace cad_percept {
-namespace mapper {
+namespace selective_icp {
 
 typedef PointMatcher<float> PM;
 
@@ -30,18 +34,14 @@ class Mapper {
 
   private:
     ros::NodeHandle &nh_, &nh_private_;
+    tf::TransformListener tf_listener_;
     MapperParameters parameters_;
     cgal::MeshModel reference_mesh_;
-    bool setReferenceFacets(cad_percept::mapper::References &req,
-                            cad_percept::mapper::Response &res);
+    void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
+    bool setReferenceFacets(cpt_selective_icp::References::Request &req,
+                            cpt_selective_icp::References::Response &res);
     PointCloud ref_pointcloud;
-
-
-
-    int odom_received_;
-    tf::TransformListener tf_listener_;
-
-    PM::TransformationParameters T_scanner_to_map_;
+    void extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh, std::unordered_set<int> &references, PointCloud *pointcloud);
 
     void loadReferenceMap();
 
@@ -50,7 +50,7 @@ class Mapper {
      */
     void loadICPConfig();
     bool reloadICPConfig(std_srvs::Empty::Request &req,
-                      std_srvs::Empty::Response &res);
+                         std_srvs::Empty::Response &res);
 
     // Subscribers
     ros::Subscriber cloud_sub_;
@@ -60,6 +60,16 @@ class Mapper {
 
     // Services
     ros::ServiceServer set_ref_srv_;
+    ros::ServiceServer reload_icp_config_srv_;
+
+    // libpointmatcher
+    PM::ICP icp_;
+    PM::DataPointsFilters input_filters_;
+    PM::DataPointsFilters map_pre_filters_;
+    PM::DataPointsFilters map_post_filters_;
+
+
+
 
 
 };

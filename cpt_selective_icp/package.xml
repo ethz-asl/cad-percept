@@ -21,6 +21,7 @@
   <depend>roscpp</depend>
   <depend>eigen_catkin</depend>
   <depend>libpointmatcher</depend>
+  <depend>libpointmatcher_ros</depend>
   <depend>libnabo</depend>
   <depend>sensor_msgs</depend>
   <depend>cgal_msgs</depend>
@@ -28,5 +29,6 @@
   <depend>cgal_definitions</depend>
   <depend>message_generation</depend>
   <depend>relative_deviations</depend>
+  <depend>std_msgs</depend>
 
 </package>
