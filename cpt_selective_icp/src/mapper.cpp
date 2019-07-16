@@ -1,13 +1,12 @@
 #include "cpt_selective_icp/mapper.h"
 
 namespace cad_percept {
-namespace mapper {
+namespace selective_icp {
 
 Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   : nh_(nh),
     nh_private_(nh_private),
-    tf_listener_(ros::Duration(30)),
-    odom_received_(0) {
+    tf_listener_(ros::Duration(30)) {
 
   loadICPConfig();
   loadReferenceMap();
@@ -18,6 +17,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
                                      this);
 
   set_ref_srv_ = nh_private_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
+  reload_icp_config_srv_ = nh_private_.advertiseService("reload_icp_config", &Mapper::reloadICPConfig, this);
 }
 
 Mapper::~Mapper() {
@@ -25,44 +25,18 @@ Mapper::~Mapper() {
 }
 
 void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
-  if (odom_received_ < 3) { // why?
-    try {
-      tf::StampedTransform transform;
-      tf_listener_.lookupTransform(parameters_.tf_map_frame, // destination
-                                  parameters_.lidar_frame,  // original
-                                  cloud_msg_in.header.stamp, // take transform corresponding to p.c. time
-                                  transform);
-      odom_received_++;
-    } catch (tf::TransformException ex) {
-      ROS_WARN_STREAM("Transformations still initializing.");
-      pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped // why do we publish identity matrix?
-                            <float>(
-          T_scanner_to_map_.inverse(), // transform to save
-          parameters_.lidar_frame, // target, child frame
-          parameters_.tf_map_frame, // source
-          cloud_msg_in.header.stamp));
-      odom_received_++;
-    }
-  } else {
-    unique_ptr<DP> cloud
-        (new DP(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(
-            cloud_msg_in)));
-
-    processCloud(move(cloud),
-                parameters_.lidar_frame,
-                cloud_msg_in.header.stamp,
-                cloud_msg_in.header.seq, false);
-  }
+  std::cout << "Hi" << std::endl;
 }
 
 void Mapper::loadReferenceMap() {
   reference_mesh_.init(parameters_.reference_mesh.c_str());
   // first extract whole ref_pointcloud, ref_pointcloud will be changed later according to references
-  extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, std::unordered_set<int> references, &ref_pointcloud) {
+  std::unordered_set<int> references; // empty
+  extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &ref_pointcloud);
 }
 
-bool Mapper::setReferenceFacets(cad_percept::mapper::References &req,
-                                cad_percept::mapper::Response &res) {
+bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
+                                cpt_selective_icp::References::Response &res) {
   std::unordered_set<int> references;
   for (auto id : req.data) {
     references.insert(id);
@@ -97,7 +71,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
 
     // create the inverse map
     for (Mmiterator it = merge_associations.begin(); it != merge_associations.end(); it = merge_associations.upper_bound(it->first)) {
-      auto iit = merge_associations_old.equal_range(it->first);
+      auto iit = merge_associations.equal_range(it->first);
       for (auto itr = iit.first; itr != iit.second; ++itr) {
         merge_associations_inv.insert(std::make_pair(itr->second, itr->first));
       }
@@ -115,19 +89,52 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
       }
     }
 
-    // continue here by getting point clouds of references with density
+    std::cout << "Computed reference facets:" << std::endl;
+    for (uitr = references_new.begin(); uitr != references_new.end(); uitr++) {
+      std::cout << *uitr << std::endl;
+    }
 
+    // create sampled point cloud from reference_new
+    
+    // generated points
+    std::vector<cgal::Point> points;
+    // create input triangles
+    std::vector<cgal::Triangle> triangles;
+    double reference_area = 0;
+    cgal::Polyhedron P = reference_mesh.getMesh();
+    for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
+      if (references_new.find(j->id()) != references_new.end()) {
+        cgal::Triangle t(j->halfedge()->vertex()->point(),
+                         j->halfedge()->next()->vertex()->point(),
+                         j->halfedge()->next()->next()->vertex()->point());
+        reference_area += CGAL::to_double(sqrt(t.squared_area()));
+        triangles.push_back(t);
+      }
+    }
 
+    // Create the generator, input is the vector of Triangle
+    CGAL::Random_points_in_triangles_3<cgal::Point> g(triangles);
+    // Get no_of_points random points in cdt
+    int no_of_points = reference_area * density;
+    CGAL::cpp11::copy_n(g, no_of_points, std::back_inserter(points));
+    // Check that we have really created no_of_points.
+    assert(points.size() == no_of_points);
 
+    for (auto point : points) {
+      pcl::PointXYZ cloudpoint;
+      cloudpoint.x = (float)point.x();
+      cloudpoint.y = (float)point.y();
+      cloudpoint.z = (float)point.z();
+      pointcloud->push_back(cloudpoint);
+    }
   }
 }
 
-
 void Mapper::loadICPConfig() {
   // Load configs.
-  string config_file_name;
+  std::string config_file_name;
   if (ros::param::get("~icpConfig", config_file_name)) {
-    ifstream ifs(config_file_name.c_str());
+    std::ifstream ifs(config_file_name.c_str());
     if (ifs.good()) {
       icp_.loadFromYaml(ifs);
     } else {
@@ -141,7 +148,7 @@ void Mapper::loadICPConfig() {
   }
 
   if (ros::param::get("~inputFiltersConfig", config_file_name)) {
-    ifstream ifs(config_file_name.c_str());
+    std::ifstream ifs(config_file_name.c_str());
     if (ifs.good()) {
       input_filters_ = PM::DataPointsFilters(ifs);
     } else {
@@ -155,7 +162,7 @@ void Mapper::loadICPConfig() {
   }
 
   if (ros::param::get("~mapPreFiltersConfig", config_file_name)) {
-    ifstream ifs(config_file_name.c_str());
+    std::ifstream ifs(config_file_name.c_str());
     if (ifs.good()) {
       map_pre_filters_ = PM::DataPointsFilters(ifs);
     } else {
@@ -168,7 +175,7 @@ void Mapper::loadICPConfig() {
   }
 
   if (ros::param::get("~mapPostFiltersConfig", config_file_name)) {
-    ifstream ifs(config_file_name.c_str());
+    std::ifstream ifs(config_file_name.c_str());
     if (ifs.good()) {
       map_post_filters_ = PM::DataPointsFilters(ifs);
     } else {

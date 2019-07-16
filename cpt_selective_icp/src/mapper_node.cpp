@@ -7,7 +7,7 @@ int main(int argc, char **argv) {
   ros::init(argc, argv, "mapper");
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
-  cad_percept::mapper::Mapper mapper(nh, nh_private);
+  cad_percept::selective_icp::Mapper mapper(nh, nh_private);
   ros::spin();
 
   return 0;
