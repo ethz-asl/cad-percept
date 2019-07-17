@@ -19,6 +19,7 @@ struct MapperParameters {
   int min_reading_point_coun;
   int input_queue_size;
   int map_sampling_density; // Points per square meter
+  std::string tf_map_frame;
 };
 
 }
