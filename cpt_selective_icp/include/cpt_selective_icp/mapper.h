@@ -44,6 +44,8 @@ class Mapper {
     bool setReferenceFacets(cpt_selective_icp::References::Request &req,
                             cpt_selective_icp::References::Response &res);
     void publishReferenceMesh(cgal::MeshModel &reference_mesh, std::unordered_set<int> &references);
+    template <class T>
+    void publishCloud(T *cloud, ros::Publisher *publisher) const;
     PointCloud ref_pointcloud;
     void extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh, std::unordered_set<int> &references, PointCloud *pointcloud);
 
@@ -61,6 +63,7 @@ class Mapper {
 
     // Publishers
     ros::Publisher ref_mesh_pub_;
+    ros::Publisher ref_pc_pub_;
 
     // Services
     ros::ServiceServer set_ref_srv_;
