@@ -16,6 +16,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   set_ref_srv_ = nh_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
   reload_icp_config_srv_ = nh_.advertiseService("reload_icp_config", &Mapper::reloadICPConfig, this);
   ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true);
+  ref_pc_pub_ = nh_.advertise<PointCloud>("ref_pc", 1, true);
   
   sleep(5); // wait to set up stuff
 
@@ -104,7 +105,15 @@ void Mapper::publishReferenceMesh(cgal::MeshModel &reference_mesh, std::unordere
   ref_mesh_pub_.publish(c_msg);
 }
 
+template <class T>
+void Mapper::publishCloud(T *cloud, ros::Publisher *publisher) const {
+  cloud->header.frame_id = parameters_.tf_map_frame;
+  pcl_conversions::toPCL(ros::Time(0), cloud->header.stamp);
+  publisher->publish(*cloud);
+}
+
 void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh, std::unordered_set<int> &references, PointCloud *pointcloud) {
+  pointcloud->clear();
   // if reference set is empty, extract whole point cloud
   if (references.empty() == 1) {
     std::cout << "Extract whole point cloud (normal ICP)" << std::endl;
@@ -190,6 +199,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
       pointcloud->push_back(cloudpoint);
     }
   }
+  publishCloud<PointCloud>(pointcloud, &ref_pc_pub_);
 }
 
 void Mapper::loadICPConfig() {
