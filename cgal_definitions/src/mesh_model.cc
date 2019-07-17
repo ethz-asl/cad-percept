@@ -17,7 +17,7 @@ void MeshModel::init(const std::string &off_path, bool verbose) {
   verbose_ = verbose;
   std::ifstream off_file(off_path.c_str(), std::ios::binary);
   if (!CGAL::read_off(off_file, P_)) {
-    std::cerr << "Error: invalid STL file" << std::endl;
+    std::cerr << "Error: Invalid STL file" << std::endl;
   }
 
   if (!P_.is_valid() || P_.empty()) {
@@ -184,14 +184,25 @@ Vector MeshModel::computeFaceNormal2(const Polyhedron::Facet_handle &facet_handl
 }
 
 bool MeshModel::coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2, double eps) const {
-  Vector n1 = computeFaceNormal2(h1->facet());
-  Vector n2 = computeFaceNormal2(h2->facet());
-  // calculate angle between the two normal vectors
-  double phi = acos(CGAL::to_double(CGAL::scalar_product(n1, n2))); // rad
-  if(phi > eps)
-    return false;
-  else
-    return true;
+  // not sure about rounding errors when computing normals, so for eps = 0 use:
+  if (eps == 0) {
+    // check coplanarity of at least three points from the new triangle
+    if (CGAL::coplanar(h1->vertex()->point(), h1->next()->vertex()->point(), h1->next()->next()->vertex()->point(), h2->vertex()->point())
+        && CGAL::coplanar(h1->vertex()->point(), h1->next()->vertex()->point(), h1->next()->next()->vertex()->point(), h2->next()->vertex()->point())
+        && CGAL::coplanar(h1->vertex()->point(), h1->next()->vertex()->point(), h1->next()->next()->vertex()->point(), h2->next()->next()->vertex()->point()))
+          return true;
+    else
+      return false;
+  } else {
+    Vector n1 = computeFaceNormal2(h1->facet());
+    Vector n2 = computeFaceNormal2(h2->facet());
+    // calculate angle between the two normal vectors
+    double phi = acos(CGAL::to_double(CGAL::scalar_product(n1, n2))); // rad
+    if(phi > eps)
+      return false;
+    else
+      return true;
+  }
 }
 
 void MeshModel::printFacetsOfHalfedges() {
@@ -210,23 +221,23 @@ void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *
    * - map saves which facets were merged according to old ID, new facet ID is the first element/ lowest of all facets
    * - this is the only "not-triangle-conform" function and will not change MeshModel
    * - use Halfedge_iterator to check every single halfedge to be removed and increment by 2 if true
-   * - alternatively use Edge_iterator and increment by 1
+   * - alternatively use Halfedge_iterator and increment by 2 according to commit bf2e255
    */
   *P_out = P_; 
-  for (Polyhedron::Halfedge_iterator j = P_out->halfedges_begin(); j != P_out->halfedges_end(); ++j) {
-    Polyhedron::Halfedge_iterator i = j; // copy necessary for iterator to work after removing halfedges
+  for (Polyhedron::Edge_iterator j = P_out->edges_begin(); j != P_out->edges_end(); ++j) {
+    Polyhedron::Edge_iterator i = j; // copy necessary for iterator to work after removing halfedges
     if(i->is_border_edge()) { // if halfedge is border, there is no neighbor facet
       std::cout << "Border is edge" << std::endl;
       continue;
     }
     // check normals
-    if(coplanar(i, i->opposite(), 0.1)) {
+    if(coplanar(i, i->opposite(), 0)) {
       std::cout << "Coplanar facet found" << std::endl;
-      if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3) { // check if this has at least three points
+      if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3
+        && i->facet()->id() != i->opposite()->facet()->id()) { // check if this has at least three points and not same facet ID
         std::cout << "Join facet " << i->facet()->id() << " with " << i->opposite()->facet()->id() << std::endl;
         merge_associations->insert(std::make_pair(i->facet()->id(), i->opposite()->facet()->id())); // save associations to multimap
         P_out->join_facet(i); // works correctly according to .off files, but meshlab can not draw is correctly
-        ++j; // in total j is now incremented by two, check that order is 1. i 2. i->opposite (normally the case)
       }
       else
         std::cerr << "Faces could not be joined" << std::endl;

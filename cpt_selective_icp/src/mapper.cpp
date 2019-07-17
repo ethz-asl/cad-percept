@@ -8,16 +8,19 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     nh_private_(nh_private),
     tf_listener_(ros::Duration(30)) {
 
-  loadICPConfig();
-  loadReferenceMap();
-
-  cloud_sub_ = nh_private_.subscribe(parameters_.scan_topic,
+  cloud_sub_ = nh_.subscribe(parameters_.scan_topic,
                                      parameters_.input_queue_size,
                                      &Mapper::gotCloud,
                                      this);
 
-  set_ref_srv_ = nh_private_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
-  reload_icp_config_srv_ = nh_private_.advertiseService("reload_icp_config", &Mapper::reloadICPConfig, this);
+  set_ref_srv_ = nh_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
+  reload_icp_config_srv_ = nh_.advertiseService("reload_icp_config", &Mapper::reloadICPConfig, this);
+  ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true);
+  
+  sleep(5); // wait to set up stuff
+
+  loadICPConfig();
+  loadReferenceMap();
 }
 
 Mapper::~Mapper() {
@@ -30,6 +33,29 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
 void Mapper::loadReferenceMap() {
   reference_mesh_.init(parameters_.reference_mesh.c_str());
+  cgal::Polyhedron P = reference_mesh_.getMesh();
+
+  // Make some checks:
+  if (P.is_valid()) {
+    std::cout << "P is valid" << std::endl;
+  }
+  else {
+    std::cerr << "P is not valid" << std::endl;
+  }
+  if (P.is_pure_triangle()) {
+    std::cout << "P is pure triangle" << std::endl;
+  }
+  else {
+    std::cerr << "P is not pure triangle" << std::endl;
+  }
+  if (P.is_closed()) {
+    std::cout << "P is closed" << std::endl;
+  }
+  else {
+    std::cerr << "P is not closed" << std::endl;
+  }
+
+
   // first extract whole ref_pointcloud, ref_pointcloud will be changed later according to references
   std::unordered_set<int> references; // empty
   extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &ref_pointcloud);
@@ -45,12 +71,46 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
   return true;
 }
 
+void Mapper::publishReferenceMesh(cgal::MeshModel &reference_mesh, std::unordered_set<int> &references) {
+  cgal::Polyhedron P;
+  P = reference_mesh.getMesh();
+  cgal_msgs::TriangleMesh t_msg;
+  cgal_msgs::ColoredMesh c_msg;
+  cgal::triangleMeshToMsg(P, &t_msg);
+  c_msg.mesh = t_msg;
+  c_msg.header.frame_id = parameters_.tf_map_frame;
+  c_msg.header.stamp = {secs: 0, nsecs: 0};
+  c_msg.header.seq = 0;
+
+  std_msgs::ColorRGBA c;
+  
+  // set al facet colors to blue
+  for (uint i = 0; i < c_msg.mesh.triangles.size(); ++i) {
+    c.r = 0.0;
+    c.g = 0.0;
+    c.b = 1.0;
+    c.a = 0.4;
+    c_msg.colors.push_back(c);  
+  }
+
+  // set reference facets to red
+  for (auto reference : references) {
+    c.r = 1.0;
+    c.g = 0.0;
+    c.b = 0.0;
+    c.a = 0.4;
+    c_msg.colors[reference] = c;
+  }
+  ref_mesh_pub_.publish(c_msg);
+}
+
 void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh, std::unordered_set<int> &references, PointCloud *pointcloud) {
   // if reference set is empty, extract whole point cloud
   if (references.empty() == 1) {
     std::cout << "Extract whole point cloud (normal ICP)" << std::endl;
     int n_points = reference_mesh.getArea() * density;
     cgal::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, pointcloud, "ref_pointcloud");
+    publishReferenceMesh(reference_mesh, references);
   }
   else {
     std::cout << "Extract selected reference point clouds (selective ICP)" << std::endl;
@@ -93,6 +153,8 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
     for (uitr = references_new.begin(); uitr != references_new.end(); uitr++) {
       std::cout << *uitr << std::endl;
     }
+
+    publishReferenceMesh(reference_mesh, references_new);
 
     // create sampled point cloud from reference_new
     

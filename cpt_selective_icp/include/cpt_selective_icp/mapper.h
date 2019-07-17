@@ -4,16 +4,19 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include "cpt_selective_icp/mapper_parameters.h"
-#include <cgal_definitions/cgal_typedefs.h>
-#include <cgal_definitions/mesh_model.h>
+#include "cgal_definitions/cgal_typedefs.h"
+#include "cgal_definitions/mesh_model.h"
 #include <pcl/point_types.h>
 #include "relative_deviations/pc_mesh_creator.h"
 #include "pointmatcher/PointMatcher.h"
 #include <unordered_set>
-
+#include "cgal_conversions/mesh_conversions.h"
 
 #include "cpt_selective_icp/References.h"
 #include <std_srvs/Empty.h>
+#include <cgal_msgs/TriangleMesh.h>
+#include <cgal_msgs/ColoredMesh.h>
+#include <std_msgs/ColorRGBA.h>
 
 
 namespace cad_percept {
@@ -40,6 +43,7 @@ class Mapper {
     void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
     bool setReferenceFacets(cpt_selective_icp::References::Request &req,
                             cpt_selective_icp::References::Response &res);
+    void publishReferenceMesh(cgal::MeshModel &reference_mesh, std::unordered_set<int> &references);
     PointCloud ref_pointcloud;
     void extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh, std::unordered_set<int> &references, PointCloud *pointcloud);
 
@@ -55,8 +59,8 @@ class Mapper {
     // Subscribers
     ros::Subscriber cloud_sub_;
 
-
     // Publishers
+    ros::Publisher ref_mesh_pub_;
 
     // Services
     ros::ServiceServer set_ref_srv_;
