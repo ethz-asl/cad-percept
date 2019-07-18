@@ -233,45 +233,38 @@ void MeshModel::printFacetsOfHalfedges() {
 
 void MeshModel::findAndMergeCoplanarFacets(Polyhedron *P_out, uint facet_id, std::unordered_set<int> *set) {
   // get Facet_handle if ID still exists
-  std::cout << "DEBUG 1" << std::endl;
   Polyhedron::Facet_iterator iterator = P_out->facets_begin();
-  std::cout << "DEBUG 2" << std::endl;
   while (iterator->id() != facet_id) {
     ++iterator;
     if (iterator == P_out->facets_end()) {
+      std::cout << "Facet ID not found" << std::endl;
       return; // in this case there is nothing to merge and we can return 
     }
   }
 
-  std::cout << "DEBUG 4" << std::endl;
   set->insert(facet_id);
   bool merge = true;
+  Polyhedron::Halfedge_handle new_handle;
   while (merge == true) {
     Polyhedron::Halfedge_around_facet_circulator hit = iterator->facet_begin();
-    std::unordered_set<Polyhedron::Halfedge_handle> handles;
-    handles.clear();
     merge = false;
     do {
-      std::cout << "DEBUG o1" << std::endl;
-      std::cout << "DEBUG o2" << std::endl;
+      std::cout << "Do it" << std::endl;
       if(!(hit->is_border_edge())) {
         std::cout << "Is not border edge" << std::endl;
         if (coplanar(hit, hit->opposite(), 0.0)) {
           if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(hit->vertex_begin()) >= 3) {
             std::cout << "Opposite facet " << hit->opposite()->facet()->id() << " is coplanar facet" << std::endl;
             set->insert(hit->opposite()->facet()->id());
-            handles.insert(hit->opposite());
-            merge = true;
+            Polyhedron::Halfedge_handle hit2 = hit;
+            P_out->join_facet(hit2);
+            //merge = true;
           }
         }
       }
       std::cout << "DEBUG 6.1" << std::endl;
     } while (++hit != iterator->facet_begin());
-    std::cout << "Join facet " << hit->facet()->id() << " with:" << std::endl;
-    for (auto handle : handles) {
-      std::cout << handle->facet()->id() << std::endl;
-      P_out->join_facet(handle);
-    }
+    //hit = new_handle->facet()->facet_begin(); // get the new facet handle iterator
     std::cout << "DEBUg 6.2" << std::endl;
   }
   std::cout << "DEBUG 7" << std::endl;
