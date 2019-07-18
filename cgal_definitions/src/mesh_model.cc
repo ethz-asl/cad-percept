@@ -142,6 +142,22 @@ int MeshModel::getFacetIndex(const Polyhedron::Facet_handle &handle) {
   return facet_id;
 }
 
+Polyhedron::Facet_handle MeshModel::getFacetHandle(const uint facet_id) {
+  Polyhedron::Facet_iterator iterator = P_.facets_begin();
+  while (iterator->id() != facet_id) {
+    ++iterator;
+  }
+  return iterator;
+}
+
+Polyhedron::Facet_handle MeshModel::getFacetHandle(Polyhedron &P, const uint facet_id) {
+  Polyhedron::Facet_iterator iterator = P.facets_begin();
+  while (iterator->id() != facet_id) {
+    ++iterator;
+  }
+  return iterator;
+}
+
 std::map<int, Vector> MeshModel::computeNormals() const {
   // computes all Polyhedron normals and return only normal map with ID
   std::map<int, Vector> normals;
@@ -215,6 +231,49 @@ void MeshModel::printFacetsOfHalfedges() {
   }
 }
 
+void MeshModel::findAndMergeCoplanarFacets(Polyhedron *P_out, uint facet_id, std::unordered_set<int> *set) {
+  // get Facet_handle if ID still exists
+  std::cout << "DEBUG 1" << std::endl;
+  Polyhedron::Facet_iterator iterator = P_out->facets_begin();
+  std::cout << "DEBUG 2" << std::endl;
+  while (iterator->id() != facet_id) {
+    std::cout << "DEBUG 3" << std::endl;
+    ++iterator;
+    if (iterator == P_out->facets_end()) {
+      return; // in this case there is nothing to merge and we can return 
+    }
+  }
+
+  std::cout << "DEBUG 4" << std::endl;
+  set->insert(facet_id);
+  bool merge = true;
+  while (merge == true) {
+    Polyhedron::Halfedge_around_facet_circulator hit_orig = iterator->facet_begin();
+    merge = false;
+    do {
+      std::cout << "DEBUG o1" << std::endl;
+      Polyhedron::Halfedge_around_facet_circulator hit = hit_orig;
+      std::cout << "DEBUG o2" << std::endl;
+      if(!(hit->is_border_edge())) {
+        std::cout << "Is not border edge" << std::endl;
+        if (coplanar(hit, hit->opposite(), 0.0)) {
+          if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(hit->vertex_begin()) >= 3) {
+            std::cout << "Opposite facet " << hit->opposite()->facet()->id() << " is coplanar facet" << std::endl;
+            set->insert(hit->opposite()->facet()->id());
+            
+            P_out->join_facet(hit);
+            merge = true;
+          }
+        }
+      }
+      std::cout << "DEBUG 6.1" << std::endl;
+    } while (++hit_orig != iterator->facet_begin());
+    std::cout << "DEBUg 6.2" << std::endl;
+  }
+  std::cout << "DEBUG 7" << std::endl;
+}
+
+
 void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) const {
   /**
    * - merge_associations associates old facet IDs to merged facet ID (first)
@@ -231,7 +290,7 @@ void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *
       continue;
     }
     // check normals
-    if(coplanar(i, i->opposite(), 0)) {
+    if(coplanar(i, i->opposite(), 0.0)) {
       std::cout << "Coplanar facet found" << std::endl;
       if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3
         && i->facet()->id() != i->opposite()->facet()->id()) { // check if this has at least three points and not same facet ID
@@ -246,12 +305,12 @@ void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *
   // Add remaining associations and print facet ID's
   for (Polyhedron::Facet_iterator j = P_out->facets_begin(); j != P_out->facets_end(); ++j) {
     merge_associations->insert(std::make_pair(j->id(), j->id()));
-    std::cout << "Remaining facet ID: " << j->id() << std::endl;
+    //std::cout << "Remaining facet ID: " << j->id() << std::endl;
   }
   // Print map
   std::multimap<int, int>::iterator it = merge_associations->begin();
   for (; it != merge_associations->end(); ++it) {
-    std::cout << "Map: " << it->first << ", " << it->second << std::endl;
+    //std::cout << "Map: " << it->first << ", " << it->second << std::endl;
   }
 }
 
@@ -271,6 +330,7 @@ double MeshModel::squaredDistance(const Point &point) const {
   FT sqd = tree_->squared_distance(point);
   return CGAL::to_double(sqd);
 }
+
 
 }
 }
