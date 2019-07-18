@@ -237,7 +237,6 @@ void MeshModel::findAndMergeCoplanarFacets(Polyhedron *P_out, uint facet_id, std
   Polyhedron::Facet_iterator iterator = P_out->facets_begin();
   std::cout << "DEBUG 2" << std::endl;
   while (iterator->id() != facet_id) {
-    std::cout << "DEBUG 3" << std::endl;
     ++iterator;
     if (iterator == P_out->facets_end()) {
       return; // in this case there is nothing to merge and we can return 
@@ -248,11 +247,12 @@ void MeshModel::findAndMergeCoplanarFacets(Polyhedron *P_out, uint facet_id, std
   set->insert(facet_id);
   bool merge = true;
   while (merge == true) {
-    Polyhedron::Halfedge_around_facet_circulator hit_orig = iterator->facet_begin();
+    Polyhedron::Halfedge_around_facet_circulator hit = iterator->facet_begin();
+    std::unordered_set<Polyhedron::Halfedge_handle> handles;
+    handles.clear();
     merge = false;
     do {
       std::cout << "DEBUG o1" << std::endl;
-      Polyhedron::Halfedge_around_facet_circulator hit = hit_orig;
       std::cout << "DEBUG o2" << std::endl;
       if(!(hit->is_border_edge())) {
         std::cout << "Is not border edge" << std::endl;
@@ -260,14 +260,18 @@ void MeshModel::findAndMergeCoplanarFacets(Polyhedron *P_out, uint facet_id, std
           if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(hit->vertex_begin()) >= 3) {
             std::cout << "Opposite facet " << hit->opposite()->facet()->id() << " is coplanar facet" << std::endl;
             set->insert(hit->opposite()->facet()->id());
-            
-            P_out->join_facet(hit);
+            handles.insert(hit->opposite());
             merge = true;
           }
         }
       }
       std::cout << "DEBUG 6.1" << std::endl;
-    } while (++hit_orig != iterator->facet_begin());
+    } while (++hit != iterator->facet_begin());
+    std::cout << "Join facet " << hit->facet()->id() << " with:" << std::endl;
+    for (auto handle : handles) {
+      std::cout << handle->facet()->id() << std::endl;
+      P_out->join_facet(handle);
+    }
     std::cout << "DEBUg 6.2" << std::endl;
   }
   std::cout << "DEBUG 7" << std::endl;
