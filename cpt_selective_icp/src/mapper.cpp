@@ -123,39 +123,18 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
   }
   else {
     std::cout << "Extract selected reference point clouds (selective ICP)" << std::endl;
-    
+
+    // sample reference point cloud from mesh
+
+    // use FindAndMergeCoplanarFacets to get coplanar facets
+    cgal::Polyhedron P_merged = reference_mesh.getMesh();
+    std::unordered_set<int> references_new;
+
     std::cout << "Choosen reference facets:" << std::endl;
     std::unordered_set<int>::iterator uitr;
     for (uitr = references.begin(); uitr != references.end(); uitr++) {
       std::cout << *uitr << std::endl;
-    }
-
-    // sample reference point cloud from mesh
-
-    // use mergeCoplanarFacets to get coplanar facets
-    cgal::Polyhedron P_merged; // not used
-    std::multimap<int, int> merge_associations; // new ID to old ID
-    std::map<int, int> merge_associations_inv; // old ID to new ID
-    reference_mesh.mergeCoplanarFacets(&P_merged, &merge_associations);
-
-    // create the inverse map
-    for (Mmiterator it = merge_associations.begin(); it != merge_associations.end(); it = merge_associations.upper_bound(it->first)) {
-      auto iit = merge_associations.equal_range(it->first);
-      for (auto itr = iit.first; itr != iit.second; ++itr) {
-        merge_associations_inv.insert(std::make_pair(itr->second, itr->first));
-      }
-    }
-
-    // create unordered set of all neighboring colinear facets
-    std::unordered_set<int> references_new;
-    for (auto reference : references) {
-      Miterator it = merge_associations_inv.find(reference);
-      auto iit = merge_associations.equal_range(it->second);
-      for (auto itr = iit.first; itr != iit.second; ++itr) {
-        if (references_new.find(itr->second) == references_new.end()) {
-          references_new.insert(itr->second);
-        }
-      }
+      reference_mesh.findAndMergeCoplanarFacets(&P_merged, *uitr, &references_new);
     }
 
     std::cout << "Computed reference facets:" << std::endl;
