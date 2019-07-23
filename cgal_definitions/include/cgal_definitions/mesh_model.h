@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <map>
 #include <unordered_set>
+#include <queue>
 
 #include "cgal_typedefs.h"
 
@@ -95,7 +96,7 @@ class MeshModel {
    */
   Plane getPlane(Polyhedron::Facet_handle &f) const;
 
-  void findAndMergeCoplanarFacets(Polyhedron *P_out, uint facet_id, std::unordered_set<int> *set);
+  void findCoplanarFacets(uint facet_id, std::unordered_set<int> *result);
 
   /**
    * Merge coplanar facets of MeshModel variable P_ and return new Polyhedron P_out and ID
