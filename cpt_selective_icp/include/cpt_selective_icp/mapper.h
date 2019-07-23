@@ -11,6 +11,9 @@
 #include "pointmatcher/PointMatcher.h"
 #include <unordered_set>
 #include "cgal_conversions/mesh_conversions.h"
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
+#include <boost/bimap/unordered_multiset_of.hpp>
 
 #include "cpt_selective_icp/References.h"
 #include <std_srvs/Empty.h>
@@ -21,6 +24,9 @@
 
 namespace cad_percept {
 namespace selective_icp {
+
+typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::unordered_multiset_of<int>> association_bimap;
+typedef association_bimap::value_type bi_association;
 
 typedef PointMatcher<float> PM;
 

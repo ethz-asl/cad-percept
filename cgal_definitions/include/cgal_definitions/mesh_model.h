@@ -8,11 +8,17 @@
 #include <map>
 #include <unordered_set>
 #include <queue>
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
+#include <boost/bimap/unordered_multiset_of.hpp>
 
 #include "cgal_typedefs.h"
 
 namespace cad_percept {
 namespace cgal {
+
+typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::unordered_multiset_of<int>> association_bimap;
+typedef association_bimap::value_type bi_association;
 
 struct Intersection {
   Point intersected_point;
@@ -97,6 +103,8 @@ class MeshModel {
   Plane getPlane(Polyhedron::Facet_handle &f) const;
 
   void findCoplanarFacets(uint facet_id, std::unordered_set<int> *result);
+
+  void findAllCoplanarFacets(association_bimap *bimap);
 
   /**
    * Merge coplanar facets of MeshModel variable P_ and return new Polyhedron P_out and ID
