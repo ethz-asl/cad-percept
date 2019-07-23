@@ -245,7 +245,7 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
     Polyhedron::Halfedge_around_facet_circulator hit = handle->facet_begin();
     do {
       if (!(hit->is_border_edge())) {
-        if (coplanar(hit, hit->opposite(), 0.0)) {
+        if (coplanar(hit, hit->opposite(), 0.0)) { // play with eps to get whole plane
           if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3 
               && CGAL::circulator_size(hit->vertex_begin()) >= 3
               && hit->facet()->id() != hit->opposite()->facet()->id()) {
@@ -257,6 +257,22 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
         }
       }
     } while (++hit != handle->facet_begin());
+  }
+}
+
+void MeshModel::findAllCoplanarFacets(association_bimap *bimap) {
+int plane_id; // arbitrary plane_id associated to found coplanar facets
+  for (uint id = 0; id < P_.size_of_facets(); ++id) {
+    if (bimap->left.find(id) == bimap->left.end()) { // only find Coplanar Facets if Facet is not already associated to plane
+      std::unordered_set<int> current_result;
+      findCoplanarFacets(id, &current_result);
+
+      // iterate over current_result and add this to bimap as current_result<->plane_id
+      for (auto current_id : current_result) {
+        bimap->insert(bi_association(current_id, plane_id));
+      }
+      plane_id++;
+    }
   }
 }
 
