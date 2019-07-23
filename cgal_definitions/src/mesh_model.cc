@@ -231,45 +231,34 @@ void MeshModel::printFacetsOfHalfedges() {
   }
 }
 
-void MeshModel::findAndMergeCoplanarFacets(Polyhedron *P_out, uint facet_id, std::unordered_set<int> *set) {
-  // get Facet_handle if ID still exists
-  Polyhedron::Facet_iterator iterator = P_out->facets_begin();
-  while (iterator->id() != facet_id) {
-    ++iterator;
-    if (iterator == P_out->facets_end()) {
-      std::cout << "Facet ID not found" << std::endl;
-      return; // in this case there is nothing to merge and we can return 
-    }
-  }
+void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *result) {
+  // we can use the "result" pointer here directly even if there are already results there, because
+  // they are coplanar and we check results, there is no need to check again
+  std::queue<Polyhedron::Facet_handle> coplanar_to_check; // queue of coplanar facets of which we need to check the neighbors
+  Polyhedron::Facet_handle start_handle = getFacetHandle(facet_id);
+  coplanar_to_check.push(start_handle);
+  result->insert(facet_id);
 
-  set->insert(facet_id);
-  bool merge = true;
-  while (merge == true) {
-    Polyhedron::Halfedge_around_facet_circulator hit = iterator->facet_begin();
-    merge = false;
+  while(!coplanar_to_check.empty()) {
+    Polyhedron::Facet_handle handle = coplanar_to_check.front();
+    coplanar_to_check.pop();
+    Polyhedron::Halfedge_around_facet_circulator hit = handle->facet_begin();
     do {
-      std::cout << "Do it" << std::endl;
-      if(!(hit->is_border_edge())) {
-        std::cout << "Is not border edge" << std::endl;
+      if (!(hit->is_border_edge())) {
         if (coplanar(hit, hit->opposite(), 0.0)) {
-          if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(hit->vertex_begin()) >= 3) {
-            std::cout << "Opposite facet " << hit->opposite()->facet()->id() << " is coplanar facet" << std::endl;
-            set->insert(hit->opposite()->facet()->id());
-            Polyhedron::Halfedge_handle handle2 = hit;
-            P_out->join_facet(handle2);
-            //merge = true;
+          if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3 
+              && CGAL::circulator_size(hit->vertex_begin()) >= 3
+              && hit->facet()->id() != hit->opposite()->facet()->id()) {
+            if (result->find(hit->opposite()->facet()->id()) == result->end()) {
+              result->insert(hit->opposite()->facet()->id());
+              coplanar_to_check.push(hit->opposite()->facet());
+            }
           }
         }
       }
-      hit = ++hit;
-      std::cout << "Next facet to check " << hit->facet()->id() << std::endl;
-      std::cout << "Facet begin is: " << iterator->facet_begin()->facet()->id() << std::endl;
-    } while (hit != iterator->facet_begin());
-    std::cout << "DEBUg 6.2" << std::endl;
+    } while (++hit != handle->facet_begin());
   }
-  std::cout << "DEBUG 7" << std::endl;
 }
-
 
 void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) const {
   /**
