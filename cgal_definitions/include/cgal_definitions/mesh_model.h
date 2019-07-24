@@ -10,14 +10,14 @@
 #include <queue>
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
-#include <boost/bimap/unordered_multiset_of.hpp>
+#include <boost/bimap/multiset_of.hpp>
 
 #include "cgal_typedefs.h"
 
 namespace cad_percept {
 namespace cgal {
 
-typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::unordered_multiset_of<int>> association_bimap;
+typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::multiset_of<int>> association_bimap;
 typedef association_bimap::value_type bi_association;
 
 struct Intersection {
@@ -100,17 +100,15 @@ class MeshModel {
   /**
    * Compute Plane from facet_handle
    */
-  Plane getPlane(Polyhedron::Facet_handle &f) const;
+  Plane getPlaneFromHandle(Polyhedron::Facet_handle &f) const;
+  Plane getPlaneFromID(uint facet_id);
 
   void findCoplanarFacets(uint facet_id, std::unordered_set<int> *result);
-
-  void findAllCoplanarFacets(association_bimap *bimap);
-
+  
   /**
-   * Merge coplanar facets of MeshModel variable P_ and return new Polyhedron P_out and ID
-   * associations. MeshModel class is kept as it is.
+   * This function is super slow. Only execute it once in beginning.
    */
-  void mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) const;
+  void findAllCoplanarFacets(association_bimap *bimap);
 
   double getArea() const;
 

@@ -144,6 +144,7 @@ int MeshModel::getFacetIndex(const Polyhedron::Facet_handle &handle) {
 
 Polyhedron::Facet_handle MeshModel::getFacetHandle(const uint facet_id) {
   Polyhedron::Facet_iterator iterator = P_.facets_begin();
+  // TODO: This could be faster if we just increment pointer by facet_id number
   while (iterator->id() != facet_id) {
     ++iterator;
   }
@@ -261,7 +262,7 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
 }
 
 void MeshModel::findAllCoplanarFacets(association_bimap *bimap) {
-int plane_id; // arbitrary plane_id associated to found coplanar facets
+int plane_id = 0; // arbitrary plane_id associated to found coplanar facets
   for (uint id = 0; id < P_.size_of_facets(); ++id) {
     if (bimap->left.find(id) == bimap->left.end()) { // only find Coplanar Facets if Facet is not already associated to plane
       std::unordered_set<int> current_result;
@@ -274,52 +275,18 @@ int plane_id; // arbitrary plane_id associated to found coplanar facets
       plane_id++;
     }
   }
+  std::cout << plane_id << " coplanar facets found." << std::endl;
 }
 
-void MeshModel::mergeCoplanarFacets(Polyhedron *P_out, std::multimap<int, int> *merge_associations) const {
-  /**
-   * - merge_associations associates old facet IDs to merged facet ID (first)
-   * - map saves which facets were merged according to old ID, new facet ID is the first element/ lowest of all facets
-   * - this is the only "not-triangle-conform" function and will not change MeshModel
-   * - use Halfedge_iterator to check every single halfedge to be removed and increment by 2 if true
-   * - alternatively use Halfedge_iterator and increment by 2 according to commit bf2e255
-   */
-  *P_out = P_; 
-  for (Polyhedron::Edge_iterator j = P_out->edges_begin(); j != P_out->edges_end(); ++j) {
-    Polyhedron::Edge_iterator i = j; // copy necessary for iterator to work after removing halfedges
-    if(i->is_border_edge()) { // if halfedge is border, there is no neighbor facet
-      std::cout << "Border is edge" << std::endl;
-      continue;
-    }
-    // check normals
-    if(coplanar(i, i->opposite(), 0.0)) {
-      std::cout << "Coplanar facet found" << std::endl;
-      if(CGAL::circulator_size(i->opposite()->vertex_begin()) >= 3 && CGAL::circulator_size(i->vertex_begin()) >= 3
-        && i->facet()->id() != i->opposite()->facet()->id()) { // check if this has at least three points and not same facet ID
-        std::cout << "Join facet " << i->facet()->id() << " with " << i->opposite()->facet()->id() << std::endl;
-        merge_associations->insert(std::make_pair(i->facet()->id(), i->opposite()->facet()->id())); // save associations to multimap
-        P_out->join_facet(i); // works correctly according to .off files, but meshlab can not draw is correctly
-      }
-      else
-        std::cerr << "Faces could not be joined" << std::endl;
-    }
-  }
-  // Add remaining associations and print facet ID's
-  for (Polyhedron::Facet_iterator j = P_out->facets_begin(); j != P_out->facets_end(); ++j) {
-    merge_associations->insert(std::make_pair(j->id(), j->id()));
-    //std::cout << "Remaining facet ID: " << j->id() << std::endl;
-  }
-  // Print map
-  std::multimap<int, int>::iterator it = merge_associations->begin();
-  for (; it != merge_associations->end(); ++it) {
-    //std::cout << "Map: " << it->first << ", " << it->second << std::endl;
-  }
-}
-
-Plane MeshModel::getPlane(Polyhedron::Facet_handle &f) const {
+Plane MeshModel::getPlaneFromHandle(Polyhedron::Facet_handle &f) const {
   return Plane(f->halfedge()->vertex()->point(),
                f->halfedge()->next()->vertex()->point(),
                f->halfedge()->next()->next()->vertex()->point());
+}
+
+Plane MeshModel::getPlaneFromID(uint facet_id) {
+  Polyhedron::Facet_handle handle = getFacetHandle(facet_id);
+  return getPlaneFromHandle(handle);
 }
 
 double MeshModel::getArea() const {

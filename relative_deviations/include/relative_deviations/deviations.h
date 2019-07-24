@@ -38,6 +38,10 @@
 #include <unordered_map>
 #include <queue>
 
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
+#include <boost/bimap/multiset_of.hpp>
+
 namespace cad_percept {
 namespace deviations {
 
@@ -45,6 +49,9 @@ typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
 typedef PM::Parameters Parameters;
+
+typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::multiset_of<int>> association_bimap;
+typedef association_bimap::value_type bi_association;
 
 // Concurrency
 #ifdef CGAL_LINKED_WITH_TBB
@@ -87,16 +94,18 @@ class Deviations {
     ~Deviations();
 
     cgal::MeshModel reference_mesh;
-    cgal::MeshModel reference_mesh_merged;
     /**
      * Read-in reading pc and execute detection
      */
     void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map);
     void init(const std::string &off_pathm);
-    std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of merged plane associated to plane properties
+    std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of coplanar plane associated to plane properties
 
-    std::multimap<int, int> merge_associations; // polyhedron to triangle mesh
-    std::map<int, int> merge_associations_inv; // triangle mesh to polyhedron
+    /**
+     * Bimap saving associations between triangles and planes: Facet ID <-> Plane ID (arbitrary iterated)
+    */
+    association_bimap bimap;
+    
     /**
      * Reset stuff after evaluation of current scan
      */
@@ -122,20 +131,16 @@ class Deviations {
      * every cloud point is associated to the same Polyhedron while testing
      * and then a score is evaluated.
      */
-    void associatePlane(const cgal::MeshModel &mesh_model, const PointCloud &cloud, int *id, double *match_score);
+    void associatePlane(cgal::MeshModel &mesh_model, const PointCloud &cloud, int *id, double *match_score);
     /**
      * This function finds best association between all p.c. planes and facets based on match_score from associatePlane().
      * Could additionally output non associated facets and point clouds.
      */
-    void findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, const cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_cloud_vector);
-    void computeFacetNormals(const cgal::MeshModel &mesh_model);
-    void findPlaneDeviation(const cgal::MeshModel &mesh_model, std::unordered_map<int, transformation> *transformation_map);
-    /**
-     * Initialize the plane map by correctly inserting new plane ID's associated to old triangle ID's,
-     * triangle mesh IDs of all corresponding original triangles
-     */
-    void updateAssociations(std::multimap<int, int> &merge_associations_old);
-    void initPlaneMap(const cgal::MeshModel &mesh_model);
+    void findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_cloud_vector);
+    void computeFacetNormals(cgal::MeshModel &mesh_model);
+    void findPlaneDeviation(std::unordered_map<int, transformation> *transformation_map);
+
+    void initPlaneMap();
     /**
      * Takes list of given reference facet ID's and uses them with colinear facets to perform ICP,
      * P is old (unmerged) Polyhedron.
