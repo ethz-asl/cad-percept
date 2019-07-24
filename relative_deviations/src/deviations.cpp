@@ -17,14 +17,9 @@ void Deviations::init(const std::string &off_pathm) {
 
   // process model here, what stays the same between scans
 
-  // Merge coplanar facets and create plane_map
-  // Since we want to keep initial MeshModel, get Polyhedron and initialize a new one
-  cgal::Polyhedron old_P_merged; // can not be published anymore, since it is not a triangle mesh
-  std::multimap<int, int> old_merge_associations;
-  reference_mesh.mergeCoplanarFacets(&old_P_merged, &old_merge_associations);
-  reference_mesh_merged.init(old_P_merged); // attention, this initializes the facet ID's new (same order, but beginning from 0)
-  updateAssociations(old_merge_associations);
-  initPlaneMap(reference_mesh_merged);
+  // Find coplanar facets and create bimap Facet ID <-> Plane ID (arbitrary iterated)
+  reference_mesh.findAllCoplanarFacets(&bimap);
+  initPlaneMap();
 }
 
 void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map) {
@@ -74,26 +69,19 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publ
   }
   */
 
-  // reference_mesh.printFacetsOfHalfedges();
-  cgal::Polyhedron P_merged = reference_mesh_merged.getMesh();
-  // CGAL::draw(P_merged); // requires Qt5
-  std::ofstream off_file("/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/merged.off", std::ios::binary);
-  if(CGAL::write_off(off_file, P_merged)) {
-    std::cout << "Merged Mash written to file" << std::endl;
-  }
 
   /**
    *  Plane association
    */
 
-  findBestPlaneAssociation(rec_planes, reference_mesh_merged, remaining_cloud_vector);
+  findBestPlaneAssociation(rec_planes, reference_mesh, remaining_cloud_vector);
 
   /**
    *  Find tranformation
    */
 
-  computeFacetNormals(reference_mesh_merged);
-  findPlaneDeviation(reference_mesh_merged, transformation_map);
+  computeFacetNormals(reference_mesh);
+  findPlaneDeviation(transformation_map);
 }
 
 void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud) {
@@ -116,13 +104,8 @@ void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron
   // with trimmed dist outlier filter ratio 0.3 , this ratio can be as small as possible, but depends on how many associations we have
   // with reference vs. total associations (we only want to keep the correct associations)
   for (auto reference : references) {
-    Miterator it = merge_associations_inv.find(reference);
-    auto iit = merge_associations.equal_range(it->second);
-    for (auto itr = iit.first; itr != iit.second; ++itr) {
-      if (references_new.find(itr->second) == references_new.end()) {
-        references_new.insert(itr->second);
-      }
-    }
+    std::cout << reference << std::endl;
+    reference_mesh.findCoplanarFacets(reference, &references_new);
   }
 
   std::cout << "Computed reference facets:" << std::endl;
@@ -199,33 +182,6 @@ void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_fi
   *pointcloud_out = dpToPointCloud(dppointcloud_out);
   getResidualError(dpref, dppointcloud_out);
   double error = getICPError(*pointcloud_out);
-}
-
-// merge_associations: Polyhedron ID to old facet ID
-// merge_associations_inv: Old facet ID to Polyhedron ID 
-void Deviations::updateAssociations(std::multimap<int, int> &merge_associations_old) {
-  int i = 0;
-  for (Mmiterator it = merge_associations_old.begin(); it != merge_associations_old.end(); it = merge_associations_old.upper_bound(it->first)) {
-    int key = it->first;
-    std::cout << "Key: " << key << std::endl;
-
-    auto iit = merge_associations_old.equal_range(key);
-    for (auto itr = iit.first; itr != iit.second; ++itr) {
-      merge_associations.insert(std::make_pair(i, itr->second));
-      merge_associations_inv.insert(std::make_pair(itr->second, i));
-    }
-    ++i; // since merge_associations is an ordered list according to facet order
-  }
-
-  // Print map
-  for (Mmiterator it = merge_associations.begin(); it != merge_associations.end(); it = merge_associations.upper_bound(it->first)) {
-    std::cout << "Merge Association Map: " << it->first << ": ";
-    auto iit = merge_associations.equal_range(it->first);
-    for (auto itr = iit.first; itr != iit.second; ++itr) {
-      std::cout << itr->second << ", ";
-    }
-    std::cout << std::endl;
-  }
 }
 
 void Deviations::loadICPConfig(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter) {
@@ -525,16 +481,16 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
   }
 }
 
-void Deviations::associatePlane(const cgal::MeshModel &mesh_model, const PointCloud &cloud, int *id, double *match_score) {
-  cgal::Polyhedron P = mesh_model.getMesh();
+void Deviations::associatePlane(cgal::MeshModel &mesh_model, const PointCloud &cloud, int *id, double *match_score) {
   *match_score = 0;
-  for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
+  for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); i = bimap.right.upper_bound(i->first)) {
     double match_score_new = 0;
     // calculate a score from squared distances
-    std::cout << "Checking facet ID: " << j->id() << std::endl;
+    std::cout << "Checking Plane ID: " << i->first << std::endl;
+    uint facet_id = i->second;
     cgal::FT d = 0;
     for (auto point : cloud.points) {
-      d += CGAL::squared_distance(cgal::Point(point.x, point.y, point.z), mesh_model.getPlane(j));
+      d += CGAL::squared_distance(cgal::Point(point.x, point.y, point.z), mesh_model.getPlaneFromID(facet_id));
     }
     d = d/cloud.size();
     std::cout << "Cloud size is: " << cloud.size() << std::endl;
@@ -551,13 +507,13 @@ void Deviations::associatePlane(const cgal::MeshModel &mesh_model, const PointCl
     // detect if there is no fit (too large deviation)
 
     if (match_score_new < *match_score || *match_score == 0) {
-      if (match_score_new == plane_map[j->id()].match_score) {
-        std::cout << "Match score new is: " << match_score_new << ", map score is: " << plane_map[j->id()].match_score << std::endl;
+      if (match_score_new == plane_map[i->first].match_score) {
+        std::cout << "Match score new is: " << match_score_new << ", map score is: " << plane_map[i->first].match_score << std::endl;
         std::cerr << "Pointcloud with same match score. Keeping preceding result." << std::endl;
       }
-      else if (match_score_new < plane_map[j->id()].match_score || plane_map[j->id()].match_score == 0) {
+      else if (match_score_new < plane_map[i->first].match_score || plane_map[i->first].match_score == 0) {
         //std::cout << "Replacing score by new score" << std::endl;
-        *id = j->id();
+        *id = i->first;
         *match_score = match_score_new;
       }
     }
@@ -567,9 +523,7 @@ void Deviations::associatePlane(const cgal::MeshModel &mesh_model, const PointCl
   }
 }
 
-void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, const cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_cloud_vector) {
-  cgal::Polyhedron P = mesh_model.getMesh();
-
+void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_cloud_vector) {
   // create queue
   std::queue<reconstructed_plane> cloud_queue;
   for (auto cloud : cloud_vector) {
@@ -599,17 +553,15 @@ void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane>
   }
 }
 
-void Deviations::computeFacetNormals(const cgal::MeshModel &mesh_model) {
-  cgal::Polyhedron P = mesh_model.getMesh();
-  for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
-    cgal::Vector cnormal = mesh_model.computeFaceNormal2(j);
+void Deviations::computeFacetNormals(cgal::MeshModel &mesh_model) {
+  for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); i = bimap.right.upper_bound(i->first)) {
+    cgal::Vector cnormal = mesh_model.computeFaceNormal2(mesh_model.getFacetHandle(i->first));
     Eigen::Vector3d normal = cgal::cgalVectorToEigenVector(cnormal);
-    plane_map[j->id()].normal = normal;
+    plane_map[i->first].normal = normal;
   }
 }
 
-void Deviations::findPlaneDeviation(const cgal::MeshModel &mesh_model, std::unordered_map<int, transformation> *transformation_map) {
-  cgal::Polyhedron P = mesh_model.getMesh();
+void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *transformation_map) {
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
       std::cout << "Process plane ID: " << umit->first << std::endl;
@@ -657,12 +609,22 @@ void Deviations::reset() {
   }
 }
 
-void Deviations::initPlaneMap(const cgal::MeshModel &mesh_model) {
-  cgal::Polyhedron P = mesh_model.getMesh();
-  for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
+void Deviations::initPlaneMap() {
+  std::cout << "Size of bimap is: " << bimap.size() << std::endl;
+  for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); ) {
+    //std::cout << "First element is: " << i->first << std::endl;
+
     polyhedron_plane plane;
-    plane.plane = mesh_model.getPlane(j);
-    plane_map.insert(std::make_pair(j->id(), plane));
+    plane.plane = reference_mesh.getPlaneFromID(i->second); // getPlane from the first facet of this plane (arbitrary)
+    plane_map.insert(std::make_pair(i->first, plane));
+
+    // TODO: Decide if using this while-loop or upper_bound as in other functions
+    // https://stackoverflow.com/questions/9371236/is-there-an-iterator-across-unique-keys-in-a-stdmultimap
+    // Advance to next non-duplicate entry.
+    int key = i->first;
+    do {
+      ++i;
+    } while (i != bimap.right.end() && key == i->first);
   }
 }
 

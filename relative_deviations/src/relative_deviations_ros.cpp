@@ -192,7 +192,7 @@ void RelativeDeviations::publishAssociations(const cgal::MeshModel &model, std::
       std::cout << "Visualize Facet: " << umit->first << std::endl;
       uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;   
 
-      auto iit = deviations.merge_associations.equal_range(umit->first);
+      auto iit = deviations.bimap.right.equal_range(umit->first);
       for (auto itr = iit.first; itr != iit.second; ++itr) {
         c.r = r/255.;
         c.g = g/255.;
@@ -314,7 +314,7 @@ void RelativeDeviations::publishDeviations(const cgal::MeshModel &model, std::un
         }
       }
 
-      auto iit = deviations.merge_associations.equal_range(umit->first);
+      auto iit = deviations.bimap.right.equal_range(umit->first);
       for (auto itr = iit.first; itr != iit.second; ++itr) {
         c_msg.colors[itr->second] = c;
       }

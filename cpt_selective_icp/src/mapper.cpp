@@ -126,7 +126,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
 
     // sample reference point cloud from mesh
 
-    // use FindAndMergeCoplanarFacets to get coplanar facets
+    // get coplanar facets
     std::unordered_set<int> references_new;
 
     std::cout << "Choosen reference facets:" << std::endl;
