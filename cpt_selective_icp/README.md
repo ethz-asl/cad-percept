@@ -10,3 +10,29 @@ rosservice call /set_ref "data:
 - 14
 - 1"
 ```
+
+## Launch
+
+Terminal A:
+```
+roscore
+```
+
+Terminal B:
+
+```
+rosparam set use_sim_time true
+rosbag play --clock <path_to_bag_file>/cla_garage_slam_1.bag
+```
+
+Terminal C:
+
+```
+roslaunch smb_state_estimator smb_state_estimator_standalone.launch
+```
+
+Terminal D:
+
+```
+roslaunch cpt_selective_icp supermegabot_selective_icp.launch
+```

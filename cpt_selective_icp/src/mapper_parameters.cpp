@@ -8,10 +8,13 @@ namespace selective_icp {
 MapperParameters::MapperParameters() :
   scan_topic(getParam<std::string>("scanTopic", "fail")),
   reference_mesh(getParam<std::string>("referenceMesh", "fail")),
-  min_reading_point_coun(getParam<int>("minReadingPointCount", 2000)),
+  min_reading_point_count(getParam<int>("minReadingPointCount", 2000)),
   input_queue_size(getParam<int>("inputQueueSize", 10)),
   map_sampling_density(getParam<int>("mapSamplingDensity", 100)), // Points per square meter
-  tf_map_frame(getParam<std::string>("tfMapFrame", "/map"))
+  tf_map_frame(getParam<std::string>("tfMapFrame", "/map")),
+  lidar_frame(getParam<std::string>("lidarFrame", "lidar")),
+  sensor_frame(getParam<std::string>("sensorFrame", "")),
+  min_overlap(getParam<double>("minOverlap", 0.5))
 {}
 MapperParameters::~MapperParameters() {}
 

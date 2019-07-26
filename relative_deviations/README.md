@@ -25,6 +25,7 @@ RD is not implemented yet.
 ## Status
 
 - [x] SRD tested and working
+- [x] Adapted to new findCoplanarFacets
 
 ## Dependencies
 
