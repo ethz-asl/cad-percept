@@ -1,12 +1,18 @@
+# these are only used for ICP and reading and reference DP are not changed
+
 readingDataPointsFilters:
   - RandomSamplingDataPointsFilter:
       prob: 1.0
+  - SamplingSurfaceNormalDataPointsFilter:
+      knn: 10
 
 referenceDataPointsFilters:
 #  - MaxDistDataPointsFilter:
 #      maxDist: 20.0
   - RandomSamplingDataPointsFilter:
       prob: 0.8
+  - SamplingSurfaceNormalDataPointsFilter:
+      knn: 10
 
 matcher:
   KDTreeMatcher:
@@ -19,9 +25,6 @@ outlierFilters:
      ratio: 0.8
   - SurfaceNormalOutlierFilter:
      maxAngle: 1.57
-  - GenericDescriptorOutlierFilter:
-     source: reference
-     descName: probabilityStatic
 
 errorMinimizer:
   PointToPlaneErrorMinimizer

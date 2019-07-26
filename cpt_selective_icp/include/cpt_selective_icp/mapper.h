@@ -8,6 +8,7 @@
 #include "cgal_definitions/mesh_model.h"
 #include <pcl/point_types.h>
 #include "relative_deviations/pc_mesh_creator.h"
+#include "relative_deviations/pc_processing.h"
 #include "pointmatcher/PointMatcher.h"
 #include <unordered_set>
 #include "cgal_conversions/mesh_conversions.h"
@@ -21,6 +22,9 @@
 #include <cgal_msgs/ColoredMesh.h>
 #include <std_msgs/ColorRGBA.h>
 
+#include <pointmatcher_ros/point_cloud.h>
+#include <pointmatcher_ros/transform.h>
+#include <pointmatcher/Timer.h>
 
 namespace cad_percept {
 namespace selective_icp {
@@ -29,12 +33,12 @@ typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::unorde
 typedef association_bimap::value_type bi_association;
 
 typedef PointMatcher<float> PM;
+typedef PM::DataPoints DP;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 typedef std::map<int,int>::iterator Miterator;
 typedef std::multimap<int,int>::iterator Mmiterator;
-
 
 class Mapper {
   public:
@@ -47,6 +51,9 @@ class Mapper {
     MapperParameters parameters_;
     cgal::MeshModel reference_mesh_;
     void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
+    void processCloud(DP &point_cloud,
+                          const ros::Time &stamp,
+                          uint32_t seq);
     bool setReferenceFacets(cpt_selective_icp::References::Request &req,
                             cpt_selective_icp::References::Response &res);
     void publishReferenceMesh(cgal::MeshModel &reference_mesh, std::unordered_set<int> &references);
@@ -70,6 +77,9 @@ class Mapper {
     // Publishers
     ros::Publisher ref_mesh_pub_;
     ros::Publisher ref_pc_pub_;
+    ros::Publisher pose_pub_;
+    ros::Publisher odom_pub_;
+    ros::Publisher scan_pub_;
 
     // Services
     ros::ServiceServer set_ref_srv_;
@@ -80,10 +90,16 @@ class Mapper {
     PM::DataPointsFilters input_filters_;
     PM::DataPointsFilters map_pre_filters_;
     PM::DataPointsFilters map_post_filters_;
+    PM::TransformationParameters T_scanner_to_map_;
+    PM::TransformationParameters T_local_map_to_map_;
+    std::shared_ptr<PM::Transformation> transformation_;
+    DP ref_dp;
 
+    // Time
+    ros::Time last_poin_cloud_time_;
+    uint32_t last_point_cloud_seq_;
 
-
-
+    int odom_received_;
 
 };
 

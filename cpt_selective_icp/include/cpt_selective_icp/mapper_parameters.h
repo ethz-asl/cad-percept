@@ -16,10 +16,13 @@ struct MapperParameters {
 
   std::string scan_topic;
   std::string reference_mesh;
-  int min_reading_point_coun;
+  int min_reading_point_count;
   int input_queue_size;
   int map_sampling_density; // Points per square meter
   std::string tf_map_frame;
+  std::string lidar_frame;
+  std::string sensor_frame;
+  double min_overlap;
 };
 
 }
