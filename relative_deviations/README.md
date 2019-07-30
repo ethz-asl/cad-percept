@@ -1,4 +1,4 @@
-*This package corresponds to the SRD pipeline. RD pipeline is implemented in separate package.*
+*SRD pipeline is implemented in separate package.*
 
 # Relative Deviations
 
@@ -13,7 +13,7 @@ To package "Relative Deviations" implements the necessary tools and pipeline to 
 "srd.launch" launches a demonstration of the pipeline. A mesh model and a corresponding deviated reading pointcloud is created. The pipeline is executed just once on this static data. Parameter "test" is set to "true".
 
 ```
-roslaunch relative_deviations srd.launch
+roslaunch srd_relative_deviations srd.launch
 ```
 
 ![Result](resources/discrete_deviation_threshold_15mm_2.png)
@@ -21,8 +21,6 @@ roslaunch relative_deviations srd.launch
 ### Relative Deviations (RD)
 
 "Relative Deviations" describes the real, online scenario. The ROS node subscribes to the robot point cloud and pose estimation. It acts itself as a mapper by using a sliding window of several scans, matching it to the mesh model by ICP and returning the updated state estimation to the estimator. 
-
-RD is not implemented in this package.
 
 ## Status
 

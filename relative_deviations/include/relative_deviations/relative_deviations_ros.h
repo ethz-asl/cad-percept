@@ -14,6 +14,7 @@
 #include <visualization_msgs/Marker.h>
 #include <geometry_msgs/Point.h>
 #include <cpt_utils/cpt_utils.h>
+#include <cpt_utils/pc_processing.h>
 
 #include <boost/circular_buffer.hpp>
 

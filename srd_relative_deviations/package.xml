@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>srd_relative_deviations</name>
+  <version>0.1.0</version>
+  <description>
+    ROS package to detect and evaluate deviations from building (as-built) to a mesh model.
+  </description>
+
+  <author email="jstiefel@student.ethz.ch">Julian Stiefel</author>
+  <maintainer email="jstiefel@student.ethz.ch">Julian Stiefel</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <test_depend>rosunit</test_depend>
+
+  <depend>cgal_catkin</depend>
+  <depend>geometric_shapes</depend>
+  <depend>glog_catkin</depend>
+  <depend>gtsam_catkin</depend>
+  <depend>pcl_ros</depend>
+  <depend>roscpp</depend>
+  <depend>tf_conversions</depend>
+  <depend>cgal_definitions</depend>
+  <depend>eigen_catkin</depend>
+  <depend>libpointmatcher</depend>
+  <depend>libnabo</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cgal_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>cgal_conversions</depend>
+  <depend>cgal_visualizations</depend>
+  <depend>visualization_msgs</depend>
+  <depend>cpt_utils</depend>
+
+</package>
