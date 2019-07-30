@@ -3,10 +3,10 @@
 <launch>
 
   <arg name="map_frame" default="/map" />
-  <arg name="icp_configuration_file" default="$(find relative_deviations)/launch/icp_configuration.yaml" />
-  <arg name="selective_icp_configuration_file" default="$(find relative_deviations)/launch/selective_icp_configuration.yaml" />
-  <arg name="normal_filter_file" default="$(find relative_deviations)/launch/normal_filter.yaml" />
-  <arg name="reference_model_file" default="$(find relative_deviations)/resources/room.off" />
+  <arg name="icp_configuration_file" default="$(find srd_relative_deviations)/launch/icp_configuration.yaml" />
+  <arg name="selective_icp_configuration_file" default="$(find srd_relative_deviations)/launch/selective_icp_configuration.yaml" />
+  <arg name="normal_filter_file" default="$(find srd_relative_deviations)/launch/normal_filter.yaml" />
+  <arg name="reference_model_file" default="$(find srd_relative_deviations)/resources/room.off" />
   <arg name="test" default="1" />
   <arg name="discrete_color" default="false" />
   <arg name="score_threshold" default="0.015" />
