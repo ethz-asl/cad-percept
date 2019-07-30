@@ -5,7 +5,6 @@
 #include <glog/logging.h>
 #include "relative_deviations/deviations.h"
 #include "relative_deviations/pc_mesh_creator.h"
-#include "relative_deviations/pc_processing.h"
 #include <cgal_definitions/cgal_typedefs.h>
 #include <pcl_ros/point_cloud.h>
 #include <cgal_msgs/ColoredMesh.h>
@@ -14,7 +13,7 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
 #include <geometry_msgs/Point.h>
-#include "cpt_utils/cpt_utils.h"
+#include <cpt_utils/cpt_utils.h>
 
 #include <boost/circular_buffer.hpp>
 

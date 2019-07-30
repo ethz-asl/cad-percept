@@ -9,7 +9,7 @@
 #include "pointmatcher/PointMatcher.h"
 
 namespace cad_percept {
-namespace deviations {
+namespace cpt_utils {
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 

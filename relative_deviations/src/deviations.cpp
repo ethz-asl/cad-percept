@@ -1,3 +1,11 @@
+/**
+ * Static Room Deviations (SRD)
+ * This is a first version which uses a static test mesh and directly does ICP.
+ * Many of these functions are duplicated in deviations.cpp, which also replaces
+ * some functions by using cpt_selective_icp. 
+ * 
+ * This class is just for testing purposes.
+ */
 #include "relative_deviations/deviations.h"
 
 namespace cad_percept {
@@ -147,8 +155,8 @@ void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_
   PointCloud icp_pointcloud;
   extractReferenceFacets(no_of_points, P, references, &icp_pointcloud);
   // convert point clouds to DP
-  DP dppointcloud = pointCloudToDP(reading_cloud);
-  DP dpref = pointCloudToDP(icp_pointcloud);
+  DP dppointcloud = cpt_utils::pointCloudToDP(reading_cloud);
+  DP dpref = cpt_utils::pointCloudToDP(icp_pointcloud);
 
   loadICPConfig(ifs_icp_config, ifs_normal_filter);
   // Compute the transformation to express data in ref
@@ -157,15 +165,15 @@ void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_
   DP dppointcloud_out(dppointcloud);
   icp_.transformations.apply(dppointcloud_out, T);
 
-  *pointcloud_out = dpToPointCloud(dppointcloud_out);
+  *pointcloud_out = cpt_utils::dpToPointCloud(dppointcloud_out);
   getResidualError(dpref, dppointcloud_out);
   double error = getICPError(*pointcloud_out, references);
 }
 
 void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const PointCloud &reading_cloud, PointCloud *pointcloud_out) {
   // convert point clouds to DP
-  DP dppointcloud = pointCloudToDP(reading_cloud);
-  DP dpref = pointCloudToDP(ref_pc);
+  DP dppointcloud = cpt_utils::pointCloudToDP(reading_cloud);
+  DP dpref = cpt_utils::pointCloudToDP(ref_pc);
   // DP dppointcloud = PointMatcher_ros::rosMsgToPointMatcherCloud<double>(cloud);
   // DP dpref(DP::load("P.pcd"));
   // DP dppointcloud(DP::load("P_deviated_transformed.pcd"));
@@ -179,7 +187,7 @@ void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_fi
   dppointcloud_out.save("/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/P_icp.pcd");
   std::cout << "Final ICP transformation: " << std::endl << T << std::endl;
 
-  *pointcloud_out = dpToPointCloud(dppointcloud_out);
+  *pointcloud_out = cpt_utils::dpToPointCloud(dppointcloud_out);
   getResidualError(dpref, dppointcloud_out);
   double error = getICPError(*pointcloud_out);
 }

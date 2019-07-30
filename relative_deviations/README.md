@@ -1,3 +1,5 @@
+*This package corresponds to the SRD pipeline. RD pipeline is implemented in separate package.*
+
 # Relative Deviations
 
 To package "Relative Deviations" implements the necessary tools and pipeline to detect deviations between a mesh model and a building (as-built). Currently, this tool focuses on flat walls (planes in general), but will be extended by other geometric primitives. Deviations are computed relatively to given references for a task. This is realized by doing "Selective ICP". The computed transformation from ICP can be used to update the pose estimation from the robot.
@@ -20,7 +22,7 @@ roslaunch relative_deviations srd.launch
 
 "Relative Deviations" describes the real, online scenario. The ROS node subscribes to the robot point cloud and pose estimation. It acts itself as a mapper by using a sliding window of several scans, matching it to the mesh model by ICP and returning the updated state estimation to the estimator. 
 
-RD is not implemented yet.
+RD is not implemented in this package.
 
 ## Status
 

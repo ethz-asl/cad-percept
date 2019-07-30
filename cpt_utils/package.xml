@@ -25,6 +25,7 @@
   <depend>minkindr_gtsam</depend>
   <depend>pcl_ros</depend>
   <depend>roscpp</depend>
+  <depend>libpointmatcher</depend>
 
   <depend>geometric_shapes</depend>
   <depend>tf_conversions</depend>
