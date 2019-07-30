@@ -1,3 +1,6 @@
+/**
+ * Creating a sample Polyhedron and PointCloud for testing purposes.
+ */
 #include "relative_deviations/pc_mesh_creator.h"
 
 namespace cad_percept {

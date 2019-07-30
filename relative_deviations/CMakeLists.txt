@@ -15,7 +15,6 @@ cs_add_library(${PROJECT_NAME}
         src/relative_deviations_ros.cpp
         src/deviations.cpp
         src/pc_mesh_creator.cpp
-        src/pc_processing.cpp
         )
 
 ############

@@ -46,7 +46,7 @@ void RelativeDeviations::createTestCase(cgal::PointCloud *reading_pc) {
   transform.translation() << 0.5, 0.1, 0.2;
   float theta = M_PI*0.01;
   transform.rotate (Eigen::AngleAxisf (theta, Eigen::Vector3f::UnitZ()));
-  transformPointCloud(reading_pc, transform);
+  cpt_utils::transformPointCloud(reading_pc, transform);
   pcl::io::savePCDFileASCII("/home/julian/cadify_ws/src/cad-percept/relative_deviations/resources/deviated_reading_pc.pcd", *reading_pc);
 }
 
@@ -78,7 +78,7 @@ void RelativeDeviations::bufferCallback(cgal::PointCloud &reading_pc) {
   cb.push_back(reading_pc);
   if (cb.full()) {
     cgal::PointCloud aligned_pc;
-    align_sequence(cb, &aligned_pc);
+    cpt_utils::align_sequence(cb, &aligned_pc);
     readingCallback(aligned_pc);
   }
 }

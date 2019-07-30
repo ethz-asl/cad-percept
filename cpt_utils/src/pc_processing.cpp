@@ -1,7 +1,7 @@
-#include "relative_deviations/pc_processing.h"
+#include "cpt_utils/pc_processing.h"
 
 namespace cad_percept {
-namespace deviations {
+namespace cpt_utils {
 
 void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *pointcloud_out) {
   PM::ICP icp;

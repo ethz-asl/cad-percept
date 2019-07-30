@@ -4,13 +4,13 @@
 #include <unistd.h>
 #include <glog/logging.h>
 #include "relative_deviations/pc_mesh_creator.h"
-#include "relative_deviations/pc_processing.h"
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include "pointmatcher/PointMatcher.h"
+#include <cpt_utils/pc_processing.h>
 
 // Planar segmentation:
 #include <iostream>
