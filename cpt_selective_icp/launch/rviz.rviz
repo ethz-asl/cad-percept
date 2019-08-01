@@ -10,6 +10,8 @@ Panels:
         - /PointCloud21
         - /PointCloud22
         - /PointCloud23
+        - /InteractiveMarkers1
+        - /TriangleMeshDisplay1
       Splitter Ratio: 0.5
     Tree Height: 749
   - Class: rviz/Selection
@@ -59,19 +61,9 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        base:
-          Value: true
-        base_odom:
-          Value: true
-        body:
-          Value: true
-        imu:
-          Value: true
-        lidar:
-          Value: true
         map:
           Value: true
-        world:
+        marker2:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -79,16 +71,8 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        world:
-          base_odom:
-            {}
-          imu:
-            base:
-              {}
-            body:
-              lidar:
-                {}
-          map:
+        map:
+          marker2:
             {}
       Update Interval: 0
       Value: true
@@ -113,7 +97,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -130,7 +114,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -143,7 +127,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 226
@@ -160,7 +144,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -173,7 +157,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 119
@@ -190,6 +174,25 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
+      Value: false
+    - Class: rviz/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Name: InteractiveMarkers
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: false
+      Update Topic: /interactive_cloud_marker_controls/update
+      Value: true
+    - Alpha: 0.800000012
+      Backface Culling: false
+      Class: cgal_visualizations/TriangleMeshDisplay
+      Edge Color: 0; 0; 0
+      Enabled: true
+      Name: TriangleMeshDisplay
+      Surface Color: 0; 0; 255
+      Topic: /cad_interface_node/cad_model
+      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
@@ -216,25 +219,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 63.0573997
+      Distance: 27.4841404
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -2.92986178
-        Y: -0.581418991
-        Z: 4.46696377
+        X: -5.37638617
+        Y: 1.37717271
+        Z: -1.82472348
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.524797022
+      Pitch: 0.894796133
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.73674488
+      Yaw: 2.68674064
     Saved: ~
 Window Geometry:
   Displays:

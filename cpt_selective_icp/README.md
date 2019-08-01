@@ -28,10 +28,16 @@ rosbag play --clock <path_to_bag_file>/cla_garage_slam_1.bag
 Terminal C:
 
 ```
-roslaunch smb_state_estimator smb_state_estimator_standalone.launch
+roslaunch cad_interface cad_interface.launch
 ```
 
 Terminal D:
+
+```
+roslaunch smb_state_estimator smb_state_estimator_standalone.launch
+```
+
+Terminal E:
 
 ```
 roslaunch cpt_selective_icp supermegabot_selective_icp.launch
