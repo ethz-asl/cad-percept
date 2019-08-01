@@ -7,6 +7,7 @@ namespace selective_icp {
 
 MapperParameters::MapperParameters() :
   scan_topic(getParam<std::string>("scanTopic", "fail")),
+  cad_topic(getParam<std::string>("cadTopic", "fail")),
   reference_mesh(getParam<std::string>("referenceMesh", "fail")),
   min_reading_point_count(getParam<int>("minReadingPointCount", 2000)),
   input_queue_size(getParam<int>("inputQueueSize", 10)),

@@ -10,15 +10,22 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     odom_received_(0),
     T_scanner_to_map_(PM::TransformationParameters::Identity(4, 4)),
     T_local_map_to_map_(PM::TransformationParameters::Identity(4,4)),
-    transformation_(PM::get().REG(Transformation).create("RigidTransformation")) {
+    transformation_(PM::get().REG(Transformation).create("RigidTransformation")),
+    cad_trigger(false) {
 
   cloud_sub_ = nh_.subscribe(parameters_.scan_topic,
-                                     parameters_.input_queue_size,
-                                     &Mapper::gotCloud,
-                                     this);
+                             parameters_.input_queue_size,
+                             &Mapper::gotCloud,
+                             this);
+  cad_sub_ = nh_.subscribe(parameters_.cad_topic,
+                           parameters_.input_queue_size,
+                           &Mapper::gotCAD,
+                           this);
 
+  load_published_map_srv_ = nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
   set_ref_srv_ = nh_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
   reload_icp_config_srv_ = nh_.advertiseService("reload_icp_config", &Mapper::reloadICPConfig, this);
+
   ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true);
   ref_pc_pub_ = nh_.advertise<PointCloud>("ref_pc", 1, true);
   pose_pub_ = nh_.advertise<geometry_msgs::TransformStamped>("icp_pose", 50, true);
@@ -29,14 +36,74 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
   loadICPConfig();
   loadReferenceMap();
+
+  //TODO: create both ICPSequences and load the different configs
 }
 
 Mapper::~Mapper() {
 
 }
 
+bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req,
+                              std_srvs::Empty::Response &res) {
+// Since CAD is published all the time, we need a trigger when to load it
+  cad_trigger = true;
+}
+
+void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
+  if (cad_trigger) {
+    std::cout << "Processing CAD mesh" << std::endl;
+    std::string frame_id = cad_mesh_in.header.frame_id; // should be "marker2" 
+    cad_percept::cgal::Polyhedron P;
+    cad_percept::cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
+
+    // Make some checks:
+    if (P.is_valid()) {
+      std::cout << "P is valid" << std::endl;
+    }
+    else {
+      std::cerr << "P is not valid" << std::endl;
+    }
+    if (P.is_pure_triangle()) {
+      std::cout << "P is pure triangle" << std::endl;
+    }
+    else {
+      std::cerr << "P is not pure triangle" << std::endl;
+    }
+    if (P.is_closed()) {
+      std::cout << "P is closed" << std::endl;
+    }
+    else {
+      std::cerr << "P is not closed" << std::endl;
+    }
+
+    reference_mesh_.init(P);
+
+    tf::StampedTransform transform;
+    tf_listener_.lookupTransform(parameters_.tf_map_frame, frame_id, ros::Time(0), transform); // from tf_map_frame to "marker2"
+    Eigen::Matrix3d rotation;
+    tf::matrixTFToEigen(transform.getBasis(), rotation);
+    Eigen::Vector3d translation;
+    tf::vectorTFToEigen(transform.getOrigin(), translation);
+    Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
+    transformation.block(0, 0, 3, 3) = rotation;
+    transformation.block(0, 3, 3, 1) = translation;
+    cad_percept::cgal::Transformation ctransformation;
+    cad_percept::cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
+    reference_mesh_.transform(ctransformation);
+
+    std::unordered_set<int> references;
+    publishReferenceMesh(reference_mesh_, references);
+
+    //TODO: extract reference facets of all facets ==> get complete point cloud, then do p.c. pre-processing, then set as map in ICPSeq
+
+    cad_trigger = false;
+  }
+}
+
 void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
-  //TODO: why are we doing this if (odom_received_ < 3)?
+  //TODO: use a bool flag to decide if selectiveICP or normal ICP, set this flag as soon as setRef service is called.
+  // Create a second service to unset selective ICP flag, since we can not send empty reference service call.
   if (odom_received_ < 3) {
     try {
       // what do we do with transform? Just a check if it already gets one?
@@ -64,7 +131,10 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
                   cloud_msg_in.header.stamp,
                   cloud_msg_in.header.seq);
   }
+  //TODO: replace processCloud by p.c. pre-processing 
 }
+
+//TODO: separate process Cloud in pre-processing, selectiveICP and ICP
 
 void Mapper::processCloud(DP &point_cloud,
                           const ros::Time &stamp,
@@ -258,31 +328,13 @@ void Mapper::loadReferenceMap() {
   reference_mesh_.init(parameters_.reference_mesh.c_str());
   cgal::Polyhedron P = reference_mesh_.getMesh();
 
-  // Make some checks:
-  if (P.is_valid()) {
-    std::cout << "P is valid" << std::endl;
-  }
-  else {
-    std::cerr << "P is not valid" << std::endl;
-  }
-  if (P.is_pure_triangle()) {
-    std::cout << "P is pure triangle" << std::endl;
-  }
-  else {
-    std::cerr << "P is not pure triangle" << std::endl;
-  }
-  if (P.is_closed()) {
-    std::cout << "P is closed" << std::endl;
-  }
-  else {
-    std::cerr << "P is not closed" << std::endl;
-  }
+
 
 
   // first extract whole ref_pointcloud, ref_pointcloud will be changed later according to references
   std::unordered_set<int> references; // empty
   extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &ref_pointcloud);
-  ref_dp = deviations::pointCloudToDP(ref_pointcloud);
+  ref_dp = cpt_utils::pointCloudToDP(ref_pointcloud);
 }
 
 bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
@@ -292,6 +344,8 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
     references.insert(id);
   }
   extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &ref_pointcloud);
+
+  //TODO: do same pre-processing as with complete p.c., then set in selective ICPSeq
   return true;
 }
 

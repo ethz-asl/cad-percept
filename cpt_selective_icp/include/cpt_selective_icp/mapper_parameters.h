@@ -15,6 +15,7 @@ struct MapperParameters {
   // Parameters
 
   std::string scan_topic;
+  std::string cad_topic;
   std::string reference_mesh;
   int min_reading_point_count;
   int input_queue_size;

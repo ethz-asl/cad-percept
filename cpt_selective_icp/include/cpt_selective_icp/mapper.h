@@ -4,23 +4,26 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include "cpt_selective_icp/mapper_parameters.h"
-#include "cgal_definitions/cgal_typedefs.h"
-#include "cgal_definitions/mesh_model.h"
+#include <cgal_definitions/cgal_typedefs.h>
+#include <cgal_definitions/mesh_model.h>
 #include <pcl/point_types.h>
-#include "relative_deviations/pc_mesh_creator.h"
-#include "relative_deviations/pc_processing.h"
-#include "pointmatcher/PointMatcher.h"
+#include <relative_deviations/pc_mesh_creator.h>
+#include <cpt_utils/pc_processing.h>
+#include <pointmatcher/PointMatcher.h>
 #include <unordered_set>
-#include "cgal_conversions/mesh_conversions.h"
+#include <cgal_conversions/eigen_conversions.h>
+#include <cgal_conversions/mesh_conversions.h>
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
 #include <boost/bimap/unordered_multiset_of.hpp>
+#include <tf_conversions/tf_eigen.h>
 
 #include "cpt_selective_icp/References.h"
 #include <std_srvs/Empty.h>
 #include <cgal_msgs/TriangleMesh.h>
 #include <cgal_msgs/ColoredMesh.h>
 #include <std_msgs/ColorRGBA.h>
+#include <cgal_msgs/TriangleMeshStamped.h>
 
 #include <pointmatcher_ros/point_cloud.h>
 #include <pointmatcher_ros/transform.h>
@@ -51,6 +54,7 @@ class Mapper {
     MapperParameters parameters_;
     cgal::MeshModel reference_mesh_;
     void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
+    void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
     void processCloud(DP &point_cloud,
                           const ros::Time &stamp,
                           uint32_t seq);
@@ -62,6 +66,7 @@ class Mapper {
     PointCloud ref_pointcloud;
     void extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh, std::unordered_set<int> &references, PointCloud *pointcloud);
 
+    bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
     void loadReferenceMap();
 
     /**
@@ -73,6 +78,7 @@ class Mapper {
 
     // Subscribers
     ros::Subscriber cloud_sub_;
+    ros::Subscriber cad_sub_;
 
     // Publishers
     ros::Publisher ref_mesh_pub_;
@@ -82,8 +88,12 @@ class Mapper {
     ros::Publisher scan_pub_;
 
     // Services
+    ros::ServiceServer load_published_map_srv_;
     ros::ServiceServer set_ref_srv_;
     ros::ServiceServer reload_icp_config_srv_;
+
+    int odom_received_;
+
 
     // libpointmatcher
     PM::ICP icp_;
@@ -99,7 +109,7 @@ class Mapper {
     ros::Time last_poin_cloud_time_;
     uint32_t last_point_cloud_seq_;
 
-    int odom_received_;
+    bool cad_trigger;
 
 };
 
