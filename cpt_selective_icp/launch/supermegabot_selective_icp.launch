@@ -12,6 +12,8 @@ Launch file for Selective ICP
     <param name="referenceMesh" value="$(find cpt_selective_icp)/resources/cla_updated.off" />
 		<param name="icpConfig"
 			   value="$(find cpt_selective_icp)/config/icp_dynamic.yaml" />
+		<param name="selectiveIcpConfig"
+			   value="$(find cpt_selective_icp)/config/selective_icp.yaml" />
 		<param name="inputFiltersConfig"
 			   value="$(find cpt_selective_icp)/config/input_filters.yaml" />
 	</node>
