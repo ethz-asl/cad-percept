@@ -22,7 +22,6 @@ struct MapperParameters {
   int map_sampling_density; // Points per square meter
   std::string tf_map_frame;
   std::string lidar_frame;
-  std::string sensor_frame;
   double min_overlap;
 };
 

@@ -9,9 +9,9 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     tf_listener_(ros::Duration(30)),
     odom_received_(0),
     T_scanner_to_map_(PM::TransformationParameters::Identity(4, 4)),
-    T_local_map_to_map_(PM::TransformationParameters::Identity(4,4)),
     transformation_(PM::get().REG(Transformation).create("RigidTransformation")),
-    cad_trigger(false) {
+    cad_trigger(false),
+    selective_icp_trigger(false) {
 
   cloud_sub_ = nh_.subscribe(parameters_.scan_topic,
                              parameters_.input_queue_size,
@@ -24,7 +24,8 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
   load_published_map_srv_ = nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
   set_ref_srv_ = nh_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
-  reload_icp_config_srv_ = nh_.advertiseService("reload_icp_config", &Mapper::reloadICPConfig, this);
+  set_normal_icp_srv_ = nh_.advertiseService("normal_icp", &Mapper::setNormalICP, this);
+  reload_icp_config_srv_ = nh_.advertiseService("reload_icp_config", &Mapper::reloadConfig, this);
 
   ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true);
   ref_pc_pub_ = nh_.advertise<PointCloud>("ref_pc", 1, true);
@@ -34,10 +35,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
   sleep(5); // wait to set up stuff
 
-  loadICPConfig();
-  loadReferenceMap();
-
-  //TODO: create both ICPSequences and load the different configs
+  loadConfig();
 }
 
 Mapper::~Mapper() {
@@ -48,6 +46,7 @@ bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req,
                               std_srvs::Empty::Response &res) {
 // Since CAD is published all the time, we need a trigger when to load it
   cad_trigger = true;
+  return true;
 }
 
 void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
@@ -92,10 +91,20 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     cad_percept::cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
     reference_mesh_.transform(ctransformation);
 
-    std::unordered_set<int> references;
-    publishReferenceMesh(reference_mesh_, references);
-
     //TODO: extract reference facets of all facets ==> get complete point cloud, then do p.c. pre-processing, then set as map in ICPSeq
+
+    // first extract whole pointcloud
+    std::unordered_set<int> references; // empty
+    PointCloud pointcloud;
+    extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &pointcloud);
+
+    DP dpcloud = cpt_utils::pointCloudToDP(pointcloud);
+    processCloud(&dpcloud, ros::Time(0));
+
+    // set the map
+    icp_.clearMap();
+    icp_.setMap(dpcloud);
+
 
     cad_trigger = false;
   }
@@ -125,40 +134,204 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       odom_received_++;
     }
   } else {
-    DP cloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(cloud_msg_in));
+    ros::Time stamp = cloud_msg_in.header.stamp;
 
-    processCloud(cloud,
-                  cloud_msg_in.header.stamp,
-                  cloud_msg_in.header.seq);
+    if(!icp_.hasMap()) {
+      std::cout << "ICP not initialized yet" << std::endl;
+      
+      // Publish identity matrix as long as no map to avoid drift from IMU during alignment
+      // Publish odometry.
+      if (odom_pub_.getNumSubscribers()) {
+        odom_pub_.publish(PointMatcher_ros::eigenMatrixToOdomMsg<float>(
+            T_scanner_to_map_,
+            parameters_.tf_map_frame,
+            stamp));
+      }
+      // Publish pose. Same as odometry, but different msg type.
+      if (pose_pub_.getNumSubscribers()) {
+        pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+            T_scanner_to_map_,
+            parameters_.lidar_frame,
+            parameters_.tf_map_frame,
+            stamp));
+      }
+
+
+      return; // cancel if icp_ was not initialized yet
+    }
+
+    DP cloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(cloud_msg_in));
+    
+    PointMatcherSupport::timer t;
+    processCloud(&cloud,
+                  cloud_msg_in.header.stamp);
+
+    // Cloud specific ICP preparation:
+      
+    const int dimp1(cloud.features.rows());
+    // Ensure a minimum amount of points, otherwise cancel ICP
+    int pts_count = cloud.getNbPoints();
+    if (pts_count < parameters_.min_reading_point_count) {
+      ROS_ERROR_STREAM(
+          "[ICP] Not enough points in reading pointcloud: only " << pts_count
+                                                            << " pts.");
+      return;
+    }
+
+    uint32_t seq = cloud_msg_in.header.seq;
+
+    try {
+      T_scanner_to_map_ = PointMatcher_ros::eigenMatrixToDim<float>(
+          PointMatcher_ros::transformListenerToEigenMatrix<float>(
+              tf_listener_,
+              parameters_.tf_map_frame, // to
+              parameters_.lidar_frame, // from
+              stamp
+          ), dimp1);
+    } catch (tf::ExtrapolationException e) {
+      ROS_ERROR_STREAM("Extrapolation Exception. stamp = " << stamp << " now = "
+                                                          << ros::Time::now()
+                                                          << " delta = "
+                                                          << ros::Time::now()
+                                                              - stamp << std::endl
+                                                          << e.what());
+      return;
+    } catch (...) {
+      // Everything else.
+      ROS_ERROR_STREAM("Unexpected exception... ignoring scan.");
+      return;
+    }
+    ROS_DEBUG_STREAM(
+        "[ICP] T_scanner_to_map (" << parameters_.lidar_frame << " to "
+                                  << parameters_.tf_map_frame << "):\n"
+                                  << T_scanner_to_map_);
+
+    // correctParameters: force orthogonality of rotation matrix
+    T_scanner_to_map_ = transformation_->correctParameters(T_scanner_to_map_);
+
+    pts_count = cloud.getNbPoints(); // because filter between
+    if (pts_count < parameters_.min_reading_point_count) {
+      ROS_ERROR_STREAM(
+          "[ICP] Not enough points in newPointCloud: only " << pts_count
+                                                            << " pts.");
+      return;
+    }
+
+    // Check dimension
+    if (cloud.getEuclideanDim()
+        != icp_.getPrefilteredInternalMap().getEuclideanDim()) { // icp_ and selective_icp_ give same here
+      ROS_ERROR_STREAM("[ICP] Dimensionality missmatch: incoming cloud is "
+                          << cloud.getEuclideanDim()
+                          << " while map is "
+                          << icp_.getPrefilteredInternalMap().getEuclideanDim());
+      return;
+    }
+
+    if (selective_icp_trigger == true) {
+      std::cout << "Perform selective ICP" << std::endl;
+      //selectiveICP();
+    }
+    else {
+      std::cout << "Perform normal ICP" << std::endl;
+      try {
+        PM::TransformationParameters T_updated_scanner_to_map;
+
+        ROS_DEBUG_STREAM(
+            "[ICP] Computing - reading: " << cloud.getNbPoints()
+                                          << ", reference: "
+                                          << icp_.getInternalMap().getNbPoints());
+
+        // Do ICP
+        T_updated_scanner_to_map = icp_(cloud, T_scanner_to_map_);
+
+        ROS_DEBUG_STREAM(
+            "[ICP] T_updated_scanner_to_map:\n" << T_updated_scanner_to_map);
+
+        // Ensure minimum overlap between scans.
+        const double estimated_overlap = icp_.errorMinimizer->getOverlap();
+        ROS_DEBUG_STREAM("[ICP] Overlap: " << estimated_overlap);
+        if (estimated_overlap < parameters_.min_overlap) {
+          ROS_ERROR_STREAM(
+              "[ICP] Estimated overlap too small, ignoring ICP correction!");
+          return;
+        }
+
+        // Publish odometry.
+        if (odom_pub_.getNumSubscribers()) {
+          odom_pub_.publish(PointMatcher_ros::eigenMatrixToOdomMsg<float>(
+              T_updated_scanner_to_map,
+              parameters_.tf_map_frame,
+              stamp));
+        }
+        // Publish pose. Same as odometry, but different msg type.
+        if (pose_pub_.getNumSubscribers()) {
+          pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+              T_updated_scanner_to_map,
+              parameters_.lidar_frame,
+              parameters_.tf_map_frame,
+              stamp));
+        }
+
+        // Publish the corrected scan point cloud
+        DP pc = transformation_->compute(cloud,
+                                        T_updated_scanner_to_map);
+        map_post_filters_.apply(pc); // not there atm
+
+        if (scan_pub_.getNumSubscribers()) {
+          ROS_DEBUG_STREAM(
+              "Corrected scan publishing " << pc.getNbPoints() << " points");
+          scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc,
+                                                                              parameters_.tf_map_frame,
+                                                                              stamp));
+        }
+
+      } catch (PM::ConvergenceError error) {
+        ROS_ERROR_STREAM("[ICP] failed to converge: " << error.what());
+        return;
+      } catch(const std::exception &ex) {
+        std::cerr << "Error occured: " << ex.what() << std::endl;
+      } catch (...) {
+        // everything else.
+        ROS_ERROR_STREAM("Unen XZ");
+        return;
+      }
+      // Statistics about time and real-time capability.
+      int real_time_ratio =
+          100 * t.elapsed() / (stamp.toSec() - last_poin_cloud_time_.toSec());
+      real_time_ratio *= seq - last_point_cloud_seq_;
+
+      ROS_INFO_STREAM("[TIME] Total ICP took: " << t.elapsed() << " [s]");
+      if (real_time_ratio < 80)
+        ROS_INFO_STREAM("[TIME] Real-time capability: " << real_time_ratio <<
+                                                        "%");
+      else
+        ROS_WARN_STREAM("[TIME] Real-time capability: " << real_time_ratio << "%");
+
+      last_poin_cloud_time_ = stamp;
+      last_point_cloud_seq_ = seq;
+    }              
   }
   //TODO: replace processCloud by p.c. pre-processing 
 }
 
 //TODO: separate process Cloud in pre-processing, selectiveICP and ICP
 
-void Mapper::processCloud(DP &point_cloud,
-                          const ros::Time &stamp,
-                          uint32_t seq) {
-
-  if (parameters_.sensor_frame == "") {
-    parameters_.sensor_frame = parameters_.lidar_frame;
-  }
-
-  PointMatcherSupport::timer t;
-
-  const size_t good_count(point_cloud.features.cols());
+// this is general pre-processing of dpcloud for map and reading cloud
+void Mapper::processCloud(DP *point_cloud,
+                          const ros::Time &stamp) {
+  const size_t good_count(point_cloud->features.cols());
   if (good_count == 0) {
     ROS_ERROR("[ICP] I found no good points in the cloud");
     return;
   }
 
   // Dimension of the point cloud, important since we handle 2D and 3D.
-  const int dimp1(point_cloud.features.rows());
+  const int dimp1(point_cloud->features.rows());
 
   // This need to be depreciated, there is addTime for those field in pm.
-  if (!(point_cloud.descriptorExists("stamps_Msec")
-      && point_cloud.descriptorExists("stamps_sec")
-      && point_cloud.descriptorExists("stamps_nsec"))) {
+  if (!(point_cloud->descriptorExists("stamps_Msec")
+      && point_cloud->descriptorExists("stamps_sec")
+      && point_cloud->descriptorExists("stamps_nsec"))) {
     const float Msec = round(stamp.sec / 1e6);
     const float sec = round(stamp.sec - Msec * 1e6);
     const float nsec = round(stamp.nsec);
@@ -166,186 +339,66 @@ void Mapper::processCloud(DP &point_cloud,
     const PM::Matrix desc_Msec = PM::Matrix::Constant(1, good_count, Msec);
     const PM::Matrix desc_sec = PM::Matrix::Constant(1, good_count, sec);
     const PM::Matrix desc_nsec = PM::Matrix::Constant(1, good_count, nsec);
-    point_cloud.addDescriptor("stamps_Msec", desc_Msec);
-    point_cloud.addDescriptor("stamps_sec", desc_sec);
-    point_cloud.addDescriptor("stamps_nsec", desc_nsec);
+    point_cloud->addDescriptor("stamps_Msec", desc_Msec);
+    point_cloud->addDescriptor("stamps_sec", desc_sec);
+    point_cloud->addDescriptor("stamps_nsec", desc_nsec);
   }
 
-  int pts_count = point_cloud.getNbPoints();
+  int pts_count = point_cloud->getNbPoints();
   if (pts_count < parameters_.min_reading_point_count) {
     ROS_ERROR_STREAM(
         "[ICP] Not enough points in new PointCloud: only " << pts_count
                                                           << " pts.");
-    return;
   }
 
   //TODO: remove if not needed (do it in icp config anyway)
-  input_filters_.apply(point_cloud);
+  input_filters_.apply(*point_cloud);
 
-  try {
-    T_scanner_to_map_ = PointMatcher_ros::eigenMatrixToDim<float>(
-        PointMatcher_ros::transformListenerToEigenMatrix<float>(
-            tf_listener_,
-            parameters_.tf_map_frame, // to
-            parameters_.lidar_frame, // from
-            stamp
-        ), dimp1);
-  } catch (tf::ExtrapolationException e) {
-    ROS_ERROR_STREAM("Extrapolation Exception. stamp = " << stamp << " now = "
-                                                         << ros::Time::now()
-                                                         << " delta = "
-                                                         << ros::Time::now()
-                                                             - stamp << std::endl
-                                                         << e.what());
-    return;
-  } catch (...) {
-    // Everything else.
-    ROS_ERROR_STREAM("Unexpected exception... ignoring scan.");
-    return;
-  }
-  ROS_DEBUG_STREAM(
-      "[ICP] T_scanner_to_map (" << parameters_.lidar_frame << " to "
-                                 << parameters_.tf_map_frame << "):\n"
-                                 << T_scanner_to_map_);
-
-  // correctParameters: force orthogonality of rotation matrix
-  // what is meaning of local_map?
-  const PM::TransformationParameters T_scanner_to_local_map =
-      transformation_->correctParameters(
-          T_local_map_to_map_.inverse() * T_scanner_to_map_);
-
-  pts_count = point_cloud.getNbPoints(); // because filter between
+  // Ensure a minimum amount of point after filtering
+  pts_count = point_cloud->getNbPoints();
   if (pts_count < parameters_.min_reading_point_count) {
     ROS_ERROR_STREAM(
         "[ICP] Not enough points in newPointCloud: only " << pts_count
                                                           << " pts.");
-    return;
   }
-
-  if (point_cloud.getEuclideanDim()
-      != ref_dp.getEuclideanDim()) {
-    ROS_ERROR_STREAM("[ICP] Dimensionality missmatch: incoming cloud is "
-                         << point_cloud.getEuclideanDim()
-                         << " while reference is "
-                         << ref_dp.getEuclideanDim());
-    return;
-  }
-
-  try {
-    PM::TransformationParameters T_updated_scanner_to_map;
-    PM::TransformationParameters T_updated_scanner_to_local_map;
-
-    std::cout << "DEBUG 1" << std::endl;
-
-    ROS_DEBUG_STREAM(
-        "[ICP] Computing - reading: " << point_cloud.getNbPoints()
-                                      << ", reference: "
-                                      << ref_dp.getNbPoints());
-
-    // Do ICP
-    std::cout << "DEBUG 2" << std::endl;
-    T_updated_scanner_to_local_map = icp_(point_cloud, ref_dp,
-                                          T_scanner_to_local_map);
-
-    std::cout << "DEBUG 2.1" << std::endl;
-    T_updated_scanner_to_map = T_local_map_to_map_ *
-        T_updated_scanner_to_local_map;
-
-    ROS_DEBUG_STREAM(
-        "[ICP] T_updatedScanner_to_map:\n" << T_updated_scanner_to_map);
-    ROS_DEBUG_STREAM("[ICP] T_updatedScanner_to_localMap:\n"
-                         << T_updated_scanner_to_local_map);
-
-    // Ensure minimum overlap between scans.
-    std::cout << "DEBUG 3" << std::endl;
-    const double estimated_overlap = icp_.errorMinimizer->getOverlap();
-    ROS_DEBUG_STREAM("[ICP] Overlap: " << estimated_overlap);
-    if (estimated_overlap < parameters_.min_overlap) {
-      ROS_ERROR_STREAM(
-          "[ICP] Estimated overlap too small, ignoring ICP correction!");
-      return;
-    }
-
-    // Publish odometry.
-    std::cout << "DEBUG 4" << std::endl;
-    if (odom_pub_.getNumSubscribers()) {
-      odom_pub_.publish(PointMatcher_ros::eigenMatrixToOdomMsg<float>(
-          T_updated_scanner_to_map,
-          parameters_.tf_map_frame,
-          stamp));
-    }
-    // Publish pose. Same as odometry, but different msg type.
-    if (pose_pub_.getNumSubscribers()) {
-      pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
-          T_updated_scanner_to_map,
-          parameters_.lidar_frame,
-          parameters_.tf_map_frame,
-          stamp));
-    }
-
-    // Publish the corrected scan point cloud
-    std::cout << "DEBUG 5" << std::endl;
-    DP pc = transformation_->compute(point_cloud,
-                                     T_updated_scanner_to_map);
-    map_post_filters_.apply(pc); // not there atm
-
-    if (scan_pub_.getNumSubscribers()) {
-      ROS_DEBUG_STREAM(
-          "Corrected scan publishing " << pc.getNbPoints() << " points");
-      scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc,
-                                                                           parameters_.tf_map_frame,
-                                                                           stamp));
-    }
-    std::cout << "DEBUG 6" << std::endl;
-
-  } catch (PM::ConvergenceError error) {
-    ROS_ERROR_STREAM("[ICP] failed to converge: " << error.what());
-    return;
-  } catch(const std::exception &ex) {
-    std::cerr << "Error occured: " << ex.what() << std::endl;
-  } catch (...) {
-    // everything else.
-    ROS_ERROR_STREAM("Unen XZ");
-    return;
-  }
-  // Statistics about time and real-time capability.
-  int real_time_ratio =
-      100 * t.elapsed() / (stamp.toSec() - last_poin_cloud_time_.toSec());
-  real_time_ratio *= seq - last_point_cloud_seq_;
-
-  ROS_INFO_STREAM("[TIME] Total ICP took: " << t.elapsed() << " [s]");
-  if (real_time_ratio < 80)
-    ROS_INFO_STREAM("[TIME] Real-time capability: " << real_time_ratio <<
-                                                    "%");
-  else
-    ROS_WARN_STREAM("[TIME] Real-time capability: " << real_time_ratio << "%");
-
-  last_poin_cloud_time_ = stamp;
-  last_point_cloud_seq_ = seq;
-}
-
-void Mapper::loadReferenceMap() {
-  reference_mesh_.init(parameters_.reference_mesh.c_str());
-  cgal::Polyhedron P = reference_mesh_.getMesh();
-
-
-
-
-  // first extract whole ref_pointcloud, ref_pointcloud will be changed later according to references
-  std::unordered_set<int> references; // empty
-  extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &ref_pointcloud);
-  ref_dp = cpt_utils::pointCloudToDP(ref_pointcloud);
 }
 
 bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
                                 cpt_selective_icp::References::Response &res) {
+  
+  selective_icp_trigger = true; // use selective ICP now
+  std::cout << "Mode set to selective ICP" << std::endl;
+
   std::unordered_set<int> references;
   for (auto id : req.data) {
     references.insert(id);
   }
-  extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &ref_pointcloud);
+  PointCloud pointcloud;
+  extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &pointcloud);
+
+
+  DP dpcloud = cpt_utils::pointCloudToDP(pointcloud);
+  processCloud(&dpcloud, ros::Time(0));
+
+  // set the map
+  selective_icp_.clearMap();
+  selective_icp_.setMap(dpcloud);
 
   //TODO: do same pre-processing as with complete p.c., then set in selective ICPSeq
+  return true;
+}
+
+bool Mapper::setNormalICP(std_srvs::Empty::Request &req,
+                          std_srvs::Empty::Response &res) {
+  
+  selective_icp_trigger = false;
+  std::cout << "Mode set to normal ICP" << std::endl;
+
+  // just called to publish ref mesh and p.c. again:
+  std::unordered_set<int> references; // empty
+  PointCloud pointcloud;
+  extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &pointcloud);
+
   return true;
 }
 
@@ -457,8 +510,10 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
   publishCloud<PointCloud>(pointcloud, &ref_pc_pub_);
 }
 
-void Mapper::loadICPConfig() {
+void Mapper::loadConfig() {
   // Load configs.
+
+  // normal ICP
   std::string config_file_name;
   if (ros::param::get("~icpConfig", config_file_name)) {
     std::ifstream ifs(config_file_name.c_str());
@@ -471,6 +526,21 @@ void Mapper::loadICPConfig() {
     }
   } else {
     ROS_INFO_STREAM("No ICP config file given, using default");
+    icp_.setDefault();
+  }
+
+  // selective ICP
+  if (ros::param::get("~selectiveIcpConfig", config_file_name)) {
+    std::ifstream ifs(config_file_name.c_str());
+    if (ifs.good()) {
+      selective_icp_.loadFromYaml(ifs);
+    } else {
+      ROS_ERROR_STREAM(
+          "Cannot load selective ICP config from YAML file " << config_file_name);
+      selective_icp_.setDefault();
+    }
+  } else {
+    ROS_INFO_STREAM("No selective ICP config file given, using default");
     icp_.setDefault();
   }
 
@@ -515,9 +585,9 @@ void Mapper::loadICPConfig() {
   }
 }
 
-bool Mapper::reloadICPConfig(std_srvs::Empty::Request &req,
-                           std_srvs::Empty::Response &res) {
-  loadICPConfig();
+bool Mapper::reloadConfig(std_srvs::Empty::Request &req,
+                          std_srvs::Empty::Response &res) {
+  loadConfig();
   ROS_INFO_STREAM("Parameters reloaded");
 
   return true;

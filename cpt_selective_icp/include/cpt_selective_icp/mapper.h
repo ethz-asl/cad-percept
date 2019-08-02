@@ -55,25 +55,24 @@ class Mapper {
     cgal::MeshModel reference_mesh_;
     void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
     void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
-    void processCloud(DP &point_cloud,
-                          const ros::Time &stamp,
-                          uint32_t seq);
+    void processCloud(DP *point_cloud,
+                      const ros::Time &stamp);
     bool setReferenceFacets(cpt_selective_icp::References::Request &req,
                             cpt_selective_icp::References::Response &res);
+    bool setNormalICP(std_srvs::Empty::Request &req,
+                              std_srvs::Empty::Response &res);
     void publishReferenceMesh(cgal::MeshModel &reference_mesh, std::unordered_set<int> &references);
     template <class T>
     void publishCloud(T *cloud, ros::Publisher *publisher) const;
-    PointCloud ref_pointcloud;
     void extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh, std::unordered_set<int> &references, PointCloud *pointcloud);
 
     bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
-    void loadReferenceMap();
 
     /**
      * Load parameters for libpointmatcher from yaml
      */
-    void loadICPConfig();
-    bool reloadICPConfig(std_srvs::Empty::Request &req,
+    void loadConfig();
+    bool reloadConfig(std_srvs::Empty::Request &req,
                          std_srvs::Empty::Response &res);
 
     // Subscribers
@@ -90,18 +89,19 @@ class Mapper {
     // Services
     ros::ServiceServer load_published_map_srv_;
     ros::ServiceServer set_ref_srv_;
+    ros::ServiceServer set_normal_icp_srv_;
     ros::ServiceServer reload_icp_config_srv_;
 
     int odom_received_;
 
 
     // libpointmatcher
-    PM::ICP icp_;
+    PM::ICPSequence icp_;
+    PM::ICPSequence selective_icp_;
     PM::DataPointsFilters input_filters_;
     PM::DataPointsFilters map_pre_filters_;
     PM::DataPointsFilters map_post_filters_;
     PM::TransformationParameters T_scanner_to_map_;
-    PM::TransformationParameters T_local_map_to_map_;
     std::shared_ptr<PM::Transformation> transformation_;
     DP ref_dp;
 
@@ -110,6 +110,7 @@ class Mapper {
     uint32_t last_point_cloud_seq_;
 
     bool cad_trigger;
+    bool selective_icp_trigger;
 
 };
 
