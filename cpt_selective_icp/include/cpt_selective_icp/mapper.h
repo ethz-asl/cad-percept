@@ -94,6 +94,7 @@ class Mapper {
     ros::ServiceServer load_published_map_srv_;
     ros::ServiceServer set_ref_srv_;
     ros::ServiceServer set_normal_icp_srv_;
+    ros::ServiceServer set_selective_icp_srv_;
     ros::ServiceServer reload_icp_config_srv_;
 
     int odom_received_;
