@@ -28,17 +28,32 @@ rosbag play --clock <path_to_bag_file>/cla_garage_slam_1.bag
 Terminal C:
 
 ```
-roslaunch cad_interface cad_interface.launch
+roslaunch smb_state_estimator smb_state_estimator_standalone.launch
 ```
 
 Terminal D:
 
 ```
-roslaunch smb_state_estimator smb_state_estimator_standalone.launch
+roslaunch cpt_selective_icp supermegabot_selective_icp.launch
 ```
 
 Terminal E:
+** Why is Marker and Model only shown when rosbag is playing?**
 
 ```
-roslaunch cpt_selective_icp supermegabot_selective_icp.launch
+roslaunch cad_interface cad_interface.launch
 ```
+
+Now align /velodyne_points and then right-click on Marker and "Load CAD".
+Now observe /corrected_scan and /ref_corrected_scan (only for selective ICP)
+
+Hint:
+For better alignment of Marker, deactivate Mesh Model.
+
+## Issues
+
+[] Check real-time capability and which processes take too much time.
+
+## To Do Notes
+
+- Check that ICP filter and Input Filter do not the same twice
