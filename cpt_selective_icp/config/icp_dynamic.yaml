@@ -19,9 +19,6 @@ outlierFilters:
      ratio: 0.8
   - SurfaceNormalOutlierFilter:
      maxAngle: 1.57
-  - GenericDescriptorOutlierFilter:
-     source: reference
-     descName: probabilityStatic
 
 errorMinimizer:
   PointToPlaneErrorMinimizer

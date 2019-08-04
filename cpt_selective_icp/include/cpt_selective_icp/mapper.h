@@ -20,6 +20,7 @@
 
 #include "cpt_selective_icp/References.h"
 #include <std_srvs/Empty.h>
+#include <std_srvs/SetBool.h>
 #include <cgal_msgs/TriangleMesh.h>
 #include <cgal_msgs/ColoredMesh.h>
 #include <std_msgs/ColorRGBA.h>
@@ -59,8 +60,10 @@ class Mapper {
                       const ros::Time &stamp);
     bool setReferenceFacets(cpt_selective_icp::References::Request &req,
                             cpt_selective_icp::References::Response &res);
-    bool setNormalICP(std_srvs::Empty::Request &req,
-                              std_srvs::Empty::Response &res);
+    bool setNormalICP(std_srvs::SetBool::Request &req,
+                      std_srvs::SetBool::Response &res);
+    bool setSelectiveICP(std_srvs::SetBool::Request &req,
+                         std_srvs::SetBool::Response &res);
     void publishReferenceMesh(cgal::MeshModel &reference_mesh, std::unordered_set<int> &references);
     template <class T>
     void publishCloud(T *cloud, ros::Publisher *publisher) const;
@@ -85,6 +88,7 @@ class Mapper {
     ros::Publisher pose_pub_;
     ros::Publisher odom_pub_;
     ros::Publisher scan_pub_;
+    ros::Publisher selective_icp_scan_pub_;
 
     // Services
     ros::ServiceServer load_published_map_srv_;
@@ -106,11 +110,12 @@ class Mapper {
     DP ref_dp;
 
     // Time
-    ros::Time last_poin_cloud_time_;
+    ros::Time last_point_cloud_time_;
     uint32_t last_point_cloud_seq_;
 
     bool cad_trigger;
     bool selective_icp_trigger;
+    bool normal_icp_trigger;
 
 };
 
