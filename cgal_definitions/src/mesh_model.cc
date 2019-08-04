@@ -232,9 +232,13 @@ void MeshModel::printFacetsOfHalfedges() {
   }
 }
 
-void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *result) {
+void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *result, const double eps) {
   // we can use the "result" pointer here directly even if there are already results there, because
   // they are coplanar and we check results, there is no need to check again
+  if (facet_id > P_.size_of_facets()) {
+    std::cerr << "Facet ID not part of facets." << std::endl;
+    return;
+  }
   std::queue<Polyhedron::Facet_handle> coplanar_to_check; // queue of coplanar facets of which we need to check the neighbors
   Polyhedron::Facet_handle start_handle = getFacetHandle(facet_id);
   coplanar_to_check.push(start_handle);
@@ -246,7 +250,7 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
     Polyhedron::Halfedge_around_facet_circulator hit = handle->facet_begin();
     do {
       if (!(hit->is_border_edge())) {
-        if (coplanar(hit, hit->opposite(), 0.0)) { // play with eps to get whole plane
+        if (coplanar(hit, hit->opposite(), eps)) { // play with eps to get whole plane
           if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3 
               && CGAL::circulator_size(hit->vertex_begin()) >= 3
               && hit->facet()->id() != hit->opposite()->facet()->id()) {
@@ -261,12 +265,12 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
   }
 }
 
-void MeshModel::findAllCoplanarFacets(association_bimap *bimap) {
+void MeshModel::findAllCoplanarFacets(association_bimap *bimap, const double eps) {
 int plane_id = 0; // arbitrary plane_id associated to found coplanar facets
   for (uint id = 0; id < P_.size_of_facets(); ++id) {
     if (bimap->left.find(id) == bimap->left.end()) { // only find Coplanar Facets if Facet is not already associated to plane
       std::unordered_set<int> current_result;
-      findCoplanarFacets(id, &current_result);
+      findCoplanarFacets(id, &current_result, eps);
 
       // iterate over current_result and add this to bimap as current_result<->plane_id
       for (auto current_id : current_result) {

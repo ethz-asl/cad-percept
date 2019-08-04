@@ -103,12 +103,12 @@ class MeshModel {
   Plane getPlaneFromHandle(Polyhedron::Facet_handle &f) const;
   Plane getPlaneFromID(uint facet_id);
 
-  void findCoplanarFacets(uint facet_id, std::unordered_set<int> *result);
+  void findCoplanarFacets(uint facet_id, std::unordered_set<int> *result, const double eps);
   
   /**
    * This function is super slow. Only execute it once in beginning.
    */
-  void findAllCoplanarFacets(association_bimap *bimap);
+  void findAllCoplanarFacets(association_bimap *bimap, const double eps);
 
   double getArea() const;
 

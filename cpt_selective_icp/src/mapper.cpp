@@ -26,6 +26,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   load_published_map_srv_ = nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
   set_ref_srv_ = nh_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
   set_normal_icp_srv_ = nh_.advertiseService("normal_icp", &Mapper::setNormalICP, this);
+  set_selective_icp_srv_ = nh_.advertiseService("selective_icp", &Mapper::setSelectiveICP, this);
   reload_icp_config_srv_ = nh_.advertiseService("reload_icp_config", &Mapper::reloadConfig, this);
 
   ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true);
@@ -265,6 +266,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         return;
       } catch(const std::exception &ex) {
         std::cerr << "Error occured: " << ex.what() << std::endl;
+        return;
       } catch (...) {
         // everything else.
         ROS_ERROR_STREAM("Unen XZ");
@@ -314,15 +316,23 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
       } catch (PM::ConvergenceError error) {
         ROS_ERROR_STREAM("[Selective ICP] failed to converge: " << error.what());
-        if (normal_icp_trigger == true) {
-          ROS_ERROR_STREAM("Using result from normal ICP");
+        if (normal_icp_trigger == false) {
+          return;
         }
+        ROS_ERROR_STREAM("[Selective ICP] Using result from normal ICP");
       } catch(const std::exception &ex) {
         std::cerr << "Error occured: " << ex.what() << std::endl;
+        if (normal_icp_trigger == false) {
+          return;
+        }
+        ROS_ERROR_STREAM("[Selective ICP] Using result from normal ICP");
       } catch (...) {
         // everything else.
         ROS_ERROR_STREAM("Unen XZ");
-        return;
+        if (normal_icp_trigger == false) {
+          return;
+        }
+        ROS_ERROR_STREAM("[Selective ICP] Using result from normal ICP");
       }
     }
 
@@ -457,6 +467,7 @@ bool Mapper::setSelectiveICP(std_srvs::SetBool::Request &req,
   if (req.data == true) {
     if (!selective_icp_.hasMap()) {
       std::cerr << "Please set reference facets first." << std::endl;
+      res.success = false;
       return true;
     }
     selective_icp_trigger = true;
@@ -466,6 +477,7 @@ bool Mapper::setSelectiveICP(std_srvs::SetBool::Request &req,
     else
       std::cerr << "Can not turn both ICP methods off. Ignoring command." << std::endl;
   }
+  res.success = true;
   return true;
 }
 
@@ -487,6 +499,7 @@ bool Mapper::setNormalICP(std_srvs::SetBool::Request &req,
       std::cerr << "Can not turn both ICP methods off. Ignoring command." << std::endl;
   }
 
+  res.success = true;
   return true;
 }
 
@@ -551,7 +564,11 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
     std::unordered_set<int>::iterator uitr;
     for (uitr = references.begin(); uitr != references.end(); uitr++) {
       std::cout << *uitr << std::endl;
-      reference_mesh.findCoplanarFacets(*uitr, &references_new);
+      reference_mesh.findCoplanarFacets(*uitr, &references_new, 0.01);
+    }
+
+    if (references_new.empty()) {
+      return;
     }
 
     std::cout << "Computed reference facets:" << std::endl;

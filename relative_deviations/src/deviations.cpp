@@ -26,7 +26,7 @@ void Deviations::init(const std::string &off_pathm) {
   // process model here, what stays the same between scans
 
   // Find coplanar facets and create bimap Facet ID <-> Plane ID (arbitrary iterated)
-  reference_mesh.findAllCoplanarFacets(&bimap);
+  reference_mesh.findAllCoplanarFacets(&bimap, 0.01);
   initPlaneMap();
 }
 
@@ -113,7 +113,7 @@ void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron
   // with reference vs. total associations (we only want to keep the correct associations)
   for (auto reference : references) {
     std::cout << reference << std::endl;
-    reference_mesh.findCoplanarFacets(reference, &references_new);
+    reference_mesh.findCoplanarFacets(reference, &references_new, 0.01);
   }
 
   std::cout << "Computed reference facets:" << std::endl;
