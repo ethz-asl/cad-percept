@@ -12,6 +12,8 @@ Panels:
         - /PointCloud23
         - /InteractiveMarkers1
         - /TriangleMeshDisplay1
+        - /InteractiveMarkers2
+        - /PointStamped1
       Splitter Ratio: 0.5
     Tree Height: 749
   - Class: rviz/Selection
@@ -32,7 +34,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: ""
 Toolbars:
   toolButtonStyle: 2
 Visualization Manager:
@@ -61,21 +63,9 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        base:
-          Value: true
-        base_odom:
-          Value: true
-        body:
-          Value: true
-        imu:
-          Value: true
-        lidar:
-          Value: true
         map:
           Value: true
         marker2:
-          Value: true
-        world:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -86,15 +76,6 @@ Visualization Manager:
         map:
           marker2:
             {}
-        world:
-          base_odom:
-            {}
-          imu:
-            base:
-              {}
-            body:
-              lidar:
-                {}
       Update Interval: 0
       Value: true
     - Alpha: 0.800000012
@@ -215,6 +196,25 @@ Visualization Manager:
       Topic: /cad_interface_node/cad_model
       Unreliable: false
       Value: true
+    - Class: rviz/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Name: InteractiveMarkers
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: false
+      Update Topic: /facet_selector/update
+      Value: true
+    - Alpha: 1
+      Class: rviz/PointStamped
+      Color: 255; 0; 255
+      Enabled: true
+      History Length: 1
+      Name: PointStamped
+      Radius: 0.100000001
+      Topic: /point_pub_
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -240,25 +240,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 36.6697731
+      Distance: 22.8057938
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 4.32618952
-        Y: -2.64416814
-        Z: -5.41311741
+        X: -0.337186337
+        Y: 1.51247811
+        Z: 1.72915637
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.724796176
+      Pitch: 0.409797847
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.7117455
+      Yaw: 2.24990869
     Saved: ~
 Window Geometry:
   Displays:
