@@ -19,6 +19,7 @@
 #include <tf_conversions/tf_eigen.h>
 
 #include "cpt_selective_icp/References.h"
+#include "cpt_selective_icp/FacetID.h"
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
 #include <cgal_msgs/TriangleMesh.h>
@@ -70,7 +71,8 @@ class Mapper {
     void extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh, std::unordered_set<int> &references, PointCloud *pointcloud);
 
     bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
-
+    bool getClosestFacet(cpt_selective_icp::FacetID::Request &req,
+                         cpt_selective_icp::FacetID::Response &res);
     /**
      * Load parameters for libpointmatcher from yaml
      */
@@ -89,9 +91,11 @@ class Mapper {
     ros::Publisher odom_pub_;
     ros::Publisher scan_pub_;
     ros::Publisher selective_icp_scan_pub_;
+    ros::Publisher point_pub_;
 
     // Services
     ros::ServiceServer load_published_map_srv_;
+    ros::ServiceServer get_closest_facet_srv_;
     ros::ServiceServer set_ref_srv_;
     ros::ServiceServer set_normal_icp_srv_;
     ros::ServiceServer set_selective_icp_srv_;
@@ -117,6 +121,8 @@ class Mapper {
     bool cad_trigger;
     bool selective_icp_trigger;
     bool normal_icp_trigger;
+    bool ref_mesh_ready;
+    int projection_count;
 
 };
 

@@ -12,7 +12,9 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     transformation_(PM::get().REG(Transformation).create("RigidTransformation")),
     cad_trigger(false),
     selective_icp_trigger(false),
-    normal_icp_trigger(true) {
+    normal_icp_trigger(true),
+    ref_mesh_ready(false),
+    projection_count(0) {
 
   cloud_sub_ = nh_.subscribe(parameters_.scan_topic,
                              parameters_.input_queue_size,
@@ -24,6 +26,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
                            this);
 
   load_published_map_srv_ = nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
+  get_closest_facet_srv_ = nh_private_.advertiseService("get_closest_facet", &Mapper::getClosestFacet, this);
   set_ref_srv_ = nh_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
   set_normal_icp_srv_ = nh_.advertiseService("normal_icp", &Mapper::setNormalICP, this);
   set_selective_icp_srv_ = nh_.advertiseService("selective_icp", &Mapper::setSelectiveICP, this);
@@ -35,8 +38,11 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   odom_pub_ = nh_.advertise<nav_msgs::Odometry>("icp_odom", 50, true);
   scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("corrected_scan", 2, true);
   selective_icp_scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("ref_corrected_scan", 2, true);
+  point_pub_ = nh_.advertise<geometry_msgs::PointStamped>("point_pub_", 2, true);
 
+  std::cout << "Wait for start-up" << std::endl;
   sleep(5); // wait to set up stuff
+  std::cout << "Ready!" << std::endl;
 
   loadConfig();
 }
@@ -49,6 +55,32 @@ bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req,
                               std_srvs::Empty::Response &res) {
 // Since CAD is published all the time, we need a trigger when to load it
   cad_trigger = true;
+  return true;
+}
+
+bool Mapper::getClosestFacet(cpt_selective_icp::FacetID::Request &req,
+                             cpt_selective_icp::FacetID::Response &res) {
+  if (ref_mesh_ready == false) {
+    std::cerr << "Reference mesh not loaded yet or not ready!" << std::endl;
+  }
+  else {
+    cgal::PointAndPrimitiveId ppid = 
+      reference_mesh_.getClosestPrimitive((double)req.point.x, (double)req.point.y, (double)req.point.z);
+    cgal::Point pt = ppid.first;
+    int facet_id = reference_mesh_.getFacetIndex(ppid.second);
+    res.facet_id = facet_id;
+
+    // project this point on corresponding facet
+    geometry_msgs::Point msg;
+    geometry_msgs::PointStamped smsg;
+    cgal::pointToMsg(pt, &msg);
+    smsg.point = msg;
+    smsg.header.seq = projection_count;
+    smsg.header.frame_id = parameters_.tf_map_frame;
+    smsg.header.stamp = ros::Time(0);
+    point_pub_.publish(smsg);
+    projection_count++;
+  }
   return true;
 }
 
@@ -93,6 +125,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     cad_percept::cgal::Transformation ctransformation;
     cad_percept::cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
     reference_mesh_.transform(ctransformation);
+    ref_mesh_ready = true;
 
     //TODO: extract reference facets of all facets ==> get complete point cloud, then do p.c. pre-processing, then set as map in ICPSeq
 
