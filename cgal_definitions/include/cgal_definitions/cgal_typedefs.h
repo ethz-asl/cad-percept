@@ -29,6 +29,7 @@
 #include <CGAL/Polygon_mesh_processing/measure.h>
 
 #include <CGAL/intersections.h>
+#include <CGAL/Polygon_mesh_processing/stitch_borders.h>
 
 namespace cad_percept {
 namespace cgal {
