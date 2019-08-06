@@ -16,7 +16,6 @@ struct MapperParameters {
 
   std::string scan_topic;
   std::string cad_topic;
-  std::string reference_mesh;
   int min_reading_point_count;
   int input_queue_size;
   int map_sampling_density; // Points per square meter

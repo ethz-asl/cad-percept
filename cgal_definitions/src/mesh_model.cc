@@ -17,8 +17,14 @@ void MeshModel::init(const std::string &off_path, bool verbose) {
   verbose_ = verbose;
   std::ifstream off_file(off_path.c_str(), std::ios::binary);
   if (!CGAL::read_off(off_file, P_)) {
-    std::cerr << "Error: Invalid STL file" << std::endl;
+    std::cerr << "Error: Invalid OFF file" << std::endl;
   }
+
+  if (!P_.is_valid() || P_.empty()) {
+    std::cerr << "Error: Invalid facegraph" << std::endl;
+  }
+
+  CGAL::Polygon_mesh_processing::stitch_borders(P_); // necessary to remove duplicated vertices
 
   if (!P_.is_valid() || P_.empty()) {
     std::cerr << "Error: Invalid facegraph" << std::endl;

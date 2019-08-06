@@ -76,7 +76,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
       std::cout << "P is closed" << std::endl;
     }
     else {
-      std::cerr << "P is not closed" << std::endl;
+      std::cerr << "P is not closed => no consistent normal directions" << std::endl;
     }
 
     reference_mesh_.init(P);
