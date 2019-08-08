@@ -31,6 +31,8 @@
 #include <pointmatcher_ros/transform.h>
 #include <pointmatcher/Timer.h>
 
+#include <boost/thread.hpp>
+
 namespace cad_percept {
 namespace selective_icp {
 
