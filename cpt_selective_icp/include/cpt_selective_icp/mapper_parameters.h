@@ -22,6 +22,8 @@ struct MapperParameters {
   std::string tf_map_frame;
   std::string lidar_frame;
   double min_overlap;
+  bool mapping_trigger;
+  bool update_icp_ref_trigger;
 };
 
 }

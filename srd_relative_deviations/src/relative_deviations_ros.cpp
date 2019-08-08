@@ -9,6 +9,7 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
     map_frame_(nh_private.param<std::string>("map_frame", "fail")),
     discrete_color_(nh_private.param<bool>("discrete_color", false)),
     score_threshold_(nh_private.param<float>("score_threshold", 0.01)),
+    path_(nh_private.param<std::string>("path", "fail")),
     cb(10) { // use 10 latest scans for detection
 
   ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true); // latching to true
@@ -25,11 +26,11 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   if (nh_private_.param<bool>("test", "fail") == 1) {
     cgal::PointCloud reading_pc;
     createTestCase(&reading_pc);
-    deviations.init(nh_private_.param<std::string>("reference_model_file", "fail").c_str());
+    deviations.init(nh_private_.param<std::string>("reference_model_file", "fail").c_str(), path_);
     readingCallback(reading_pc);
   }
   else {
-    deviations.init(nh_private_.param<std::string>("reference_model_file", "fail").c_str());
+    deviations.init(nh_private_.param<std::string>("reference_model_file", "fail").c_str(), path_);
   }
 }
 
@@ -47,7 +48,7 @@ void RelativeDeviations::createTestCase(cgal::PointCloud *reading_pc) {
   float theta = M_PI*0.01;
   transform.rotate (Eigen::AngleAxisf (theta, Eigen::Vector3f::UnitZ()));
   cpt_utils::transformPointCloud(reading_pc, transform);
-  pcl::io::savePCDFileASCII("/home/julian/megabot_ws/src/cad-percept/srd_relative_deviations/resources/deviated_reading_pc.pcd", *reading_pc);
+  pcl::io::savePCDFileASCII(path_ + "/resources/deviated_reading_pc.pcd", *reading_pc);
 }
 
 void RelativeDeviations::readingCallback(cgal::PointCloud &reading_pc) {

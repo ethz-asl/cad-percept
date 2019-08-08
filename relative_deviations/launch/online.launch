@@ -10,6 +10,7 @@
   <arg name="test" default="1" />
   <arg name="discrete_color" default="false" />
   <arg name="score_threshold" default="0.015" />
+  <arg name="path" default="$(find relative_deviations)" />
 
   <!-- node -->
   <node name="relative_dev"
@@ -25,6 +26,7 @@
     <param name="normal_filter_file" value="$(arg normal_filter_file)" />
     <param name="discrete_color" value="$(arg discrete_color)" />
     <param name="score_threshold" value="$(arg score_threshold)" />
+    <param name="path" value="$(arg path)" />
   </node>
 
   <node type="rviz" name="rviz" pkg="rviz" args="-d $(find relative_deviations)/launch/online.rviz" />

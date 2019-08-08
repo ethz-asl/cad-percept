@@ -13,7 +13,9 @@ MapperParameters::MapperParameters() :
   map_sampling_density(getParam<int>("mapSamplingDensity", 100)), // Points per square meter
   tf_map_frame(getParam<std::string>("tfMapFrame", "/map")),
   lidar_frame(getParam<std::string>("lidarFrame", "lidar")),
-  min_overlap(getParam<double>("minOverlap", 0.5))
+  min_overlap(getParam<double>("minOverlap", 0.5)),
+  mapping_trigger(getParam<bool>("mappingTrigger", true)),
+  update_icp_ref_trigger(getParam<bool>("updateICPRefTrigger", false))
 {}
 MapperParameters::~MapperParameters() {}
 

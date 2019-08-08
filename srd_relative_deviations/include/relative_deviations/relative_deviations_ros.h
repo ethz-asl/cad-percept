@@ -51,6 +51,7 @@ class RelativeDeviations {
     void createTestCase(cgal::PointCloud *reading_pc);
     // create a circular_buffer to store reading pointclouds for alignment
     boost::circular_buffer<cgal::PointCloud> cb; 
+    std::string path_;
     void bufferCallback(cgal::PointCloud &reading_pc);
 
     void publishAssociations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, const std::vector<reconstructed_plane> &remaining_cloud_vector);
