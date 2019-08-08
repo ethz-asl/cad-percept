@@ -338,7 +338,8 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
                                         T_updated_scanner_to_map);
 
         if (parameters_.mapping_trigger == true) {
-          addScanToMap(pc, stamp);      
+          boost::thread t(&Mapper::addScanToMap, this, pc, stamp);
+          t.detach();
         }
 
         if (selective_icp_scan_pub_.getNumSubscribers()) {
@@ -491,11 +492,14 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
                                                                         stamp));
   }
 
+  std::cout << "New map created" << std::endl;
+
   if (parameters_.update_icp_ref_trigger == true) {
     DP ref_pc = mapPointCloud; // add references 
     ref_pc.concatenate(dpcloud);
     selective_icp_.clearMap();
     selective_icp_.setMap(ref_pc);
+    std::cout << "New map set" << std::endl;
   }    
 }
 
