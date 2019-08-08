@@ -39,6 +39,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("corrected_scan", 2, true);
   selective_icp_scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("ref_corrected_scan", 2, true);
   point_pub_ = nh_.advertise<geometry_msgs::PointStamped>("point_pub_", 2, true);
+  map_pub_ = nh_.advertise<PointCloud>("map", 1, true);
 
   std::cout << "Wait for start-up" << std::endl;
   sleep(5); // wait to set up stuff
@@ -199,8 +200,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
             parameters_.tf_map_frame,
             stamp));
       }
-
-
       return; // cancel if icp_ was not initialized yet
     }
 
@@ -337,7 +336,10 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         // Publish the selective ICP exclusive transformed cloud for deviation analysis
         DP pc = transformation_->compute(cloud,
                                         T_updated_scanner_to_map);
-        map_post_filters_.apply(pc); // not there atm
+
+        if (parameters_.mapping_trigger == true) {
+          addScanToMap(pc, stamp);      
+        }
 
         if (selective_icp_scan_pub_.getNumSubscribers()) {
           ROS_DEBUG_STREAM(
@@ -397,7 +399,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     // Publish the corrected scan point cloud
     DP pc = transformation_->compute(cloud,
                                     T_updated_scanner_to_map);
-    map_post_filters_.apply(pc); // not there atm
 
     if (scan_pub_.getNumSubscribers()) {
       ROS_DEBUG_STREAM(
@@ -470,6 +471,34 @@ void Mapper::processCloud(DP *point_cloud,
   }
 }
 
+void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
+  // Preparation of cloud for inclusion in map
+  map_pre_filters_.apply(corrected_cloud);
+  // Merge cloud to map
+  const size_t good_count(mapPointCloud.features.cols());
+  if (good_count == 0) {
+    mapPointCloud = corrected_cloud;
+  }
+  else {
+    mapPointCloud.concatenate(corrected_cloud);
+  }
+  // Map maintenance
+  map_post_filters_.apply(mapPointCloud);
+
+  if (map_pub_.getNumSubscribers()) {
+    map_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(mapPointCloud,
+                                                                        parameters_.tf_map_frame,
+                                                                        stamp));
+  }
+
+  if (parameters_.update_icp_ref_trigger == true) {
+    DP ref_pc = mapPointCloud; // add references 
+    ref_pc.concatenate(dpcloud);
+    selective_icp_.clearMap();
+    selective_icp_.setMap(ref_pc);
+  }    
+}
+
 bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
                                 cpt_selective_icp::References::Response &res) {
   
@@ -483,15 +512,17 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
   PointCloud pointcloud;
   extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &pointcloud);
 
-
-  DP dpcloud = cpt_utils::pointCloudToDP(pointcloud);
+  dpcloud = cpt_utils::pointCloudToDP(pointcloud);
   processCloud(&dpcloud, ros::Time(0));
 
   // set the map
   selective_icp_.clearMap();
   selective_icp_.setMap(dpcloud);
 
-  //TODO: do same pre-processing as with complete p.c., then set in selective ICPSeq
+  // clear mapPointCloud
+  DP new_cloud;
+  mapPointCloud = new_cloud;
+
   return true;
 }
 

@@ -15,7 +15,8 @@ Deviations::Deviations() {}
 
 Deviations::~Deviations() {}
 
-void Deviations::init(const std::string &off_pathm) {
+void Deviations::init(const std::string &off_pathm, const std::string &path) {
+  path_ = path;
   // create MeshModel of reference
   reference_mesh.init(off_pathm);
   int n_points = reference_mesh.getArea() * 100;
@@ -184,7 +185,7 @@ void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_fi
   // Transform data to express it in ref
   DP dppointcloud_out(dppointcloud);
   icp_.transformations.apply(dppointcloud_out, T);
-  dppointcloud_out.save("/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/P_icp.pcd");
+  dppointcloud_out.save(path_ + "/resources/P_icp.pcd");
   std::cout << "Final ICP transformation: " << std::endl << T << std::endl;
 
   *pointcloud_out = cpt_utils::dpToPointCloud(dppointcloud_out);
@@ -251,7 +252,7 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<r
 
   // Write the downsampled version to disk
   pcl::PCDWriter writer;
-  writer.write<pcl::PointXYZ> ("/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/downsampled.pcd", *cloud_filtered, false);
+  writer.write<pcl::PointXYZ> (path_ + "/resources/downsampled.pcd", *cloud_filtered, false);
 
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients ()); // estimated plane parameters
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices ());

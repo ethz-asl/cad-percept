@@ -80,6 +80,8 @@ class Mapper {
     bool reloadConfig(std_srvs::Empty::Request &req,
                          std_srvs::Empty::Response &res);
 
+    void addScanToMap(DP &corrected_cloud, ros::Time &stamp);
+
     // Subscribers
     ros::Subscriber cloud_sub_;
     ros::Subscriber cad_sub_;
@@ -92,6 +94,7 @@ class Mapper {
     ros::Publisher scan_pub_;
     ros::Publisher selective_icp_scan_pub_;
     ros::Publisher point_pub_;
+    ros::Publisher map_pub_;
 
     // Services
     ros::ServiceServer load_published_map_srv_;
@@ -112,7 +115,6 @@ class Mapper {
     PM::DataPointsFilters map_post_filters_;
     PM::TransformationParameters T_scanner_to_map_;
     std::shared_ptr<PM::Transformation> transformation_;
-    DP ref_dp;
 
     // Time
     ros::Time last_point_cloud_time_;
@@ -123,6 +125,11 @@ class Mapper {
     bool normal_icp_trigger;
     bool ref_mesh_ready;
     int projection_count;
+    DP mapPointCloud;
+    bool mapping_trigger;
+    bool update_icp_ref_trigger;
+
+    DP dpcloud;
 
 };
 

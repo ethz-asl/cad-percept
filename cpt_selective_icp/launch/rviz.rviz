@@ -34,7 +34,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
 Toolbars:
   toolButtonStyle: 2
 Visualization Manager:
@@ -63,9 +63,21 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        base:
+          Value: true
+        base_odom:
+          Value: true
+        body:
+          Value: true
+        imu:
+          Value: true
+        lidar:
+          Value: true
         map:
           Value: true
         marker2:
+          Value: true
+        world:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -76,6 +88,15 @@ Visualization Manager:
         map:
           marker2:
             {}
+        world:
+          base_odom:
+            {}
+          imu:
+            base:
+              {}
+            body:
+              lidar:
+                {}
       Update Interval: 0
       Value: true
     - Alpha: 0.800000012
@@ -162,7 +183,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 151
+      Max Intensity: 227
       Min Color: 0; 0; 0
       Min Intensity: 1
       Name: PointCloud2
@@ -190,12 +211,12 @@ Visualization Manager:
       Backface Culling: false
       Class: cgal_visualizations/TriangleMeshDisplay
       Edge Color: 0; 0; 0
-      Enabled: true
+      Enabled: false
       Name: TriangleMeshDisplay
       Surface Color: 0; 0; 255
       Topic: /cad_interface_node/cad_model
       Unreliable: false
-      Value: true
+      Value: false
     - Class: rviz/InteractiveMarkers
       Enable Transparency: true
       Enabled: true
@@ -214,6 +235,36 @@ Visualization Manager:
       Radius: 0.100000001
       Topic: /point_pub_
       Unreliable: false
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 232
+      Min Color: 0; 0; 0
+      Min Intensity: 1
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.00999999978
+      Style: Flat Squares
+      Topic: /map
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
       Value: true
   Enabled: true
   Global Options:
@@ -240,25 +291,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 22.8057938
+      Distance: 46.8479271
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.337186337
-        Y: 1.51247811
-        Z: 1.72915637
+        X: 4.24822998
+        Y: 0.580353975
+        Z: -3.9246912
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.409797847
+      Pitch: 0.964796782
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.24990869
+      Yaw: 3.61309958
     Saved: ~
 Window Geometry:
   Displays:
