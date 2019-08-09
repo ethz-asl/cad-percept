@@ -3,16 +3,16 @@
 readingDataPointsFilters:
   - RandomSamplingDataPointsFilter:
       prob: 1.0
-  - SamplingSurfaceNormalDataPointsFilter:
-      knn: 10
+#  - SamplingSurfaceNormalDataPointsFilter:
+#      knn: 10
 
 referenceDataPointsFilters:
 #  - MaxDistDataPointsFilter:
 #      maxDist: 20.0
   - RandomSamplingDataPointsFilter:
       prob: 0.8
-  - SamplingSurfaceNormalDataPointsFilter:
-      knn: 10
+#  - SamplingSurfaceNormalDataPointsFilter:
+#      knn: 10
 
 matcher:
   KDTreeMatcher:

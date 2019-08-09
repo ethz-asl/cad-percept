@@ -175,6 +175,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       odom_received_++;
     }
   } else {
+    boost::thread map_thread;
     ros::Time stamp = cloud_msg_in.header.stamp;
     uint32_t seq = cloud_msg_in.header.seq;
 
@@ -338,8 +339,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
                                         T_updated_scanner_to_map);
 
         if (parameters_.mapping_trigger == true) {
-          boost::thread t(&Mapper::addScanToMap, this, pc, stamp);
-          t.detach();
+          map_thread = boost::thread(&Mapper::addScanToMap, this, pc, stamp);
         }
 
         if (selective_icp_scan_pub_.getNumSubscribers()) {
@@ -408,6 +408,8 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
                                                                           parameters_.tf_map_frame,
                                                                           stamp));
     }
+
+    map_thread.join();
     
     /** 
      * Statistics about time and real-time capability.
@@ -617,7 +619,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
   if (references.empty() == 1) {
     std::cout << "Extract whole point cloud (normal ICP)" << std::endl;
     int n_points = reference_mesh.getArea() * density;
-    cgal::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, pointcloud, "ref_pointcloud");
+    cpt_utils::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, pointcloud, "ref_pointcloud");
     publishReferenceMesh(reference_mesh, references);
   }
   else {

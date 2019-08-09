@@ -2,9 +2,24 @@
 
 Package replacing ethzasl_icp_mapper by a selective ICP algorithm taking a reference map (mesh) and a list of references as input for better alignment.
 
+## About
+
+This package is a complete alternative to ethzasl_icp_mapper. Instead of a point cloud reference, a mesh model is loaded and used for proper localization. For this reason, a point cloud is sampled at the beginning. In this default case, the package offers the same performance as ethzasl_icp_mapper.
+
+Furthermore, this package offers selective ICP, i.e. only using chosen reference facets and their coplanar neighbors for localization. On a construction site with as-built deviations, this should offer proper localization based on known references. However, it is a trade-off between the chosen reference facets (number of facets, visibility, angle) and the advantage of only using correct references. The references need to be chosen smartly, because otherwise selective ICP can fail if the robot is moving. In the worst case, selective ICP gives worse results than normal ICP because of missing visibility of references or ambiguous reference facets. 
+
+A package containing both ICP and selective ICP has the advantage that we can continuously and automatically switch between the two ICP methods. Both ICP methods are initialized separately. Normal ICP is set-up completely at the beginning, while selective ICP is set-up whenever reference facets are changed. Normal ICP and selective ICP can run in parallel. In this case selective ICP uses normal ICP as a primer. Assuming selective ICP gives a better result, this is always sent to the position estimator. However, each methods can be turned on and off separately by a service and in this case the corresponding output is sent to the estimator.
+There are situations where only selective ICP corrected scans are of interest (deviation analysis). Therefore, there is a separate scan topic only published in the case of selective ICP. 
+
+If selective ICP fails with a convergence error, the package automatically uses the result from normal ICP (if any). However, a known limitation is the case where selective ICP gives a completely wrong transformation, without a convergence error. Selective ICP is more prone to this error than normal ICP due to limited points for alignment. If the deviation is too large, this can break the position estimate completely.
+
+Real-time capability is important, because if ICP takes too long, the estimator can break. In this case the estimator already moved to far away from the model using the other informations (IMU, odometry) that ICP can not correct it anymore.
+
+The node also offers a mapping thread based only on selective ICP references. However, during testing the CPU often got overloaded, eventhough the pose estimation worked fine. The built reference map can further be used for selective ICP avoiding the low number of references when moving around.
+
 ## Instructions
 
-Use service to set reference facets, otherwise whole model is used:
+Use service to set reference facets, otherwise whole model is used with normal ICP:
 ```
 rosservice call /set_ref "data:
 - 14
@@ -54,6 +69,7 @@ Hint:
 ## Issues
 
 [] Check real-time capability and which processes take too much time.
+[] Although threading is used, if mapping_trigger is set to true, everything becomes very slow and the system crashes.
 
 ## To Do Notes
 

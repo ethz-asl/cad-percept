@@ -14,7 +14,7 @@ MapperParameters::MapperParameters() :
   tf_map_frame(getParam<std::string>("tfMapFrame", "/map")),
   lidar_frame(getParam<std::string>("lidarFrame", "lidar")),
   min_overlap(getParam<double>("minOverlap", 0.5)),
-  mapping_trigger(getParam<bool>("mappingTrigger", true)),
+  mapping_trigger(getParam<bool>("mappingTrigger", false)),
   update_icp_ref_trigger(getParam<bool>("updateICPRefTrigger", false))
 {}
 MapperParameters::~MapperParameters() {}

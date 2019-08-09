@@ -367,55 +367,5 @@ void build_sample_polyhedrons(Polyhedron *P, Polyhedron *P_deviated) {
   CGAL::write_off(off_file2, *P_deviated);
 }
 
-void sample_pc_from_mesh(const Polyhedron &P, 
-                         const int no_of_points,
-                         const double stddev,
-                         PointCloud *pointcloud,
-                         std::string file_name) {
-  // generate random point sets on triangle mesh
-  std::vector<Point> points;
-  // Create the generator, input is the Polyhedron P
-  CGAL::Random_points_in_triangle_mesh_3<Polyhedron> g(P);
-  // Get no_of_points random points in cdt
-  CGAL::cpp11::copy_n(g, no_of_points, std::back_inserter(points));
-  // Check that we have really created no_of_points points.
-  assert(points.size() == no_of_points);
-  // print the first point that was generated
-  //std::cout << points[0] << std::endl;  
-
-  // add random noise with Gaussian distribution
-  const double mean = 0.0;
-  std::default_random_engine generator;
-  std::normal_distribution<double> dist(mean, stddev);
-
-  std::vector<Point> points_noise;
-  for (auto point : points) {
-    Point p_noise;
-    p_noise = Point(point.x() + dist(generator),
-                    point.y() + dist(generator),
-                    point.z() + dist(generator));
-    points_noise.push_back(p_noise);
-  }
-
-  // save as pcd
-  pointcloud->width = points_noise.size();
-  pointcloud->height = 1;
-  pointcloud->header.frame_id = "mesh";
-  pointcloud->is_dense = false;
-
-  for (auto point : points_noise) {
-    pcl::PointXYZ cloudpoint;
-    cloudpoint.x = (float)point.x();
-    cloudpoint.y = (float)point.y();
-    cloudpoint.z = (float)point.z();
-    pointcloud->push_back(cloudpoint);
-  }
-
-  std::stringstream ss;
-  ss << "/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/" << file_name << ".pcd";
-  pcl::io::savePCDFileASCII(ss.str(), *pointcloud);
-  std::cerr << "Saved " << pointcloud->points.size() << " data points to pcd" << std::endl;
-}
-
 }
 }
