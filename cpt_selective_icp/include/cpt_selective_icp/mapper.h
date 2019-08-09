@@ -7,7 +7,6 @@
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <pcl/point_types.h>
-#include <relative_deviations/pc_mesh_creator.h>
 #include <cpt_utils/pc_processing.h>
 #include <pointmatcher/PointMatcher.h>
 #include <unordered_set>

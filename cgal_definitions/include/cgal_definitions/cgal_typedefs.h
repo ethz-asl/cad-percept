@@ -14,6 +14,7 @@
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 #include <CGAL/property_map.h>
+#include <CGAL/point_generators_3.h>
 
 // tree typdefs
 #include <CGAL/AABB_face_graph_triangle_primitive.h>

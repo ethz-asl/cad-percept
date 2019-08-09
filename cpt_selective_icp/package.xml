@@ -28,7 +28,6 @@
   <depend>geometry_msgs</depend>
   <depend>cgal_definitions</depend>
   <depend>message_generation</depend>
-  <depend>relative_deviations</depend>
   <depend>std_msgs</depend>
   <depend>cgal_conversions</depend>
   <depend>cgal_visualizations</depend>

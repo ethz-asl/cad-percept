@@ -15,11 +15,7 @@ namespace cgal {
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 void build_sample_polyhedrons(Polyhedron *P, Polyhedron *P_deviated);
-void sample_pc_from_mesh(const Polyhedron &P, 
-                         const int no_of_points,
-                         const double stddev,
-                         PointCloud *pointcloud,
-                         std::string file_name);
+
 } 
 }
 

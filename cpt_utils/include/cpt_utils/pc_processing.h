@@ -7,6 +7,7 @@
 #include <boost/circular_buffer.hpp>
 
 #include "pointmatcher/PointMatcher.h"
+#include <cgal_definitions/cgal_typedefs.h>
 
 namespace cad_percept {
 namespace cpt_utils {
@@ -30,6 +31,12 @@ PointCloud dpToPointCloud(const DP &dppointcloud);
 DP pointCloudToDP(const PointCloud &pointcloud);
 
 void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform);
+
+void sample_pc_from_mesh(const cgal::Polyhedron &P, 
+                         const int no_of_points,
+                         const double stddev,
+                         PointCloud *pointcloud,
+                         std::string file_name);
 
 }
 }
