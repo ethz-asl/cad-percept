@@ -98,7 +98,7 @@ class Deviations {
      * Read-in reading pc and execute detection
      */
     void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map);
-    void init(const std::string &off_pathm, const std::string &path);
+    void init(const cgal::Polyhedron &P, const std::string &path);
     std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of coplanar plane associated to plane properties
 
     /**

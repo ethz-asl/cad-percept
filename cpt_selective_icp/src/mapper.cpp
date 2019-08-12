@@ -33,6 +33,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   reload_icp_config_srv_ = nh_.advertiseService("reload_icp_config", &Mapper::reloadConfig, this);
 
   ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true);
+  cad_mesh_pub_ = nh_.advertise<cgal_msgs::TriangleMeshStamped>("cad_mesh_pub", 1, true);
   ref_pc_pub_ = nh_.advertise<PointCloud>("ref_pc", 1, true);
   pose_pub_ = nh_.advertise<geometry_msgs::TransformStamped>("icp_pose", 50, true);
   odom_pub_ = nh_.advertise<nav_msgs::Odometry>("icp_odom", 50, true);
@@ -89,8 +90,8 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   if (cad_trigger) {
     std::cout << "Processing CAD mesh" << std::endl;
     std::string frame_id = cad_mesh_in.header.frame_id; // should be "marker2" 
-    cad_percept::cgal::Polyhedron P;
-    cad_percept::cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
+    cgal::Polyhedron P;
+    cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
 
     // Make some checks:
     if (P.is_valid()) {
@@ -123,8 +124,8 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
     transformation.block(0, 0, 3, 3) = rotation;
     transformation.block(0, 3, 3, 1) = translation;
-    cad_percept::cgal::Transformation ctransformation;
-    cad_percept::cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
+    cgal::Transformation ctransformation;
+    cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
     reference_mesh_.transform(ctransformation);
     ref_mesh_ready = true;
 
@@ -142,15 +143,27 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     icp_.clearMap();
     icp_.setMap(dpcloud);
 
+    // publish transformed reference mesh once for relative_deviations (avoid reloading)
+    publishMesh(reference_mesh_, &cad_mesh_pub_);
 
     cad_trigger = false;
   }
 }
 
+void Mapper::publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const {
+  cgal::Polyhedron P;
+  P = model.getMesh();
+  cgal_msgs::TriangleMesh t_msg;
+  cgal_msgs::TriangleMeshStamped s_msg;
+  cgal::triangleMeshToMsg(P, &t_msg);
+  s_msg.mesh = t_msg;
+
+  s_msg.header.frame_id = parameters_.tf_map_frame;
+  s_msg.header.stamp = {secs: 0, nsecs: 0};
+  publisher->publish(s_msg);
+}
+
 void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
-  //TODO: use a bool flag to decide if selectiveICP or normal ICP, set this flag as soon as setRef service is called.
-  // Create a second service to unset selective ICP flag, since we can not send empty reference service call.
-  
   /**
    * Wait until tf_listener gets results
    */

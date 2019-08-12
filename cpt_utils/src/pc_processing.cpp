@@ -3,6 +3,9 @@
 namespace cad_percept {
 namespace cpt_utils {
 
+/**
+ *  This function was not tested yet!
+ */
 void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *pointcloud_out) {
   PM::ICP icp;
   icp.setDefault();

@@ -10,7 +10,10 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
     discrete_color_(nh_private.param<bool>("discrete_color", false)),
     score_threshold_(nh_private.param<float>("score_threshold", 0.01)),
     path_(nh_private.param<std::string>("path", "fail")),
-    cb(10) { // use 10 latest scans for detection
+    cb(nh_private.param<int>("buffer_size", 1)), // use x latest scans for detection
+    cad_topic(nh_private.param<std::string>("cad_mesh_pub", "fail")),
+    scan_topic(nh_private.param<std::string>("velodyne_points", "fail")),
+    input_queue_size(nh_private.param<int>("inputQueueSize", 10)) { 
 
   ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true); // latching to true
   reading_pc_pub_ = nh_.advertise<PointCloud>("reading_pc_pub", 1, true);
@@ -22,36 +25,36 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   assoc_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("assoc_marker_pub", 100, true);
   deviations_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("deviations_mesh_pub", 1, true);
 
-  // manually starting test case
-  if (nh_private_.param<bool>("test", "fail") == 1) {
-    cgal::PointCloud reading_pc;
-    createTestCase(&reading_pc);
-    deviations.init(nh_private_.param<std::string>("reference_model_file", "fail").c_str(), path_);
-    readingCallback(reading_pc);
-  }
-  else {
-    deviations.init(nh_private_.param<std::string>("reference_model_file", "fail").c_str(), path_);
-  }
+  cad_sub_ = nh_.subscribe(cad_topic,
+                           input_queue_size,
+                           &RelativeDeviations::gotCAD,
+                           this);
+
+  cloud_sub_ = nh_.subscribe(scan_topic,
+                             input_queue_size,
+                             &RelativeDeviations::gotCloud,
+                             this);
 }
 
 RelativeDeviations::~RelativeDeviations() {}
 
-void RelativeDeviations::createTestCase(cgal::PointCloud *reading_pc) {
+void RelativeDeviations::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
+  std::cout << "[RD] Received transformed CAD mesh from cpt_selective_icp" << std::endl;
   cgal::Polyhedron P;
-  cgal::Polyhedron P_deviated;
-  cgal::build_sample_polyhedrons(&P, &P_deviated);
-  cpt_utils::sample_pc_from_mesh(P_deviated, 3000, 0.01, reading_pc, "reading_pc"); 
+  cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
+  deviations.init(P, path_);
 
-  // transform reading pointcloud a little bit to test ICP
-  Eigen::Affine3f transform = Eigen::Affine3f::Identity();
-  transform.translation() << 0.5, 0.1, 0.2;
-  float theta = M_PI*0.01;
-  transform.rotate (Eigen::AngleAxisf (theta, Eigen::Vector3f::UnitZ()));
-  cpt_utils::transformPointCloud(reading_pc, transform);
-  pcl::io::savePCDFileASCII(path_ + "/resources/deviated_reading_pc.pcd", *reading_pc);
+  // reset the bimap
 }
 
-void RelativeDeviations::readingCallback(cgal::PointCloud &reading_pc) {
+void RelativeDeviations::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
+  std::cout << "[RD] Received new aligned PointCloud from selective ICP" << std::endl;
+  PointCloud cloud;
+  pcl::fromROSMsg(cloud_msg_in, cloud);
+  processBuffer(cloud);
+}
+
+void RelativeDeviations::readingCallback(PointCloud &reading_pc) {
   publishMesh(deviations.reference_mesh, &ref_mesh_pub_);
   std::vector<reconstructed_plane> rec_planes;
   PointCloud icp_cloud;
@@ -73,14 +76,29 @@ void RelativeDeviations::readingCallback(cgal::PointCloud &reading_pc) {
   deviations.reset();
 }
 
-void RelativeDeviations::bufferCallback(cgal::PointCloud &reading_pc) {
+void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
   // insert reading_pc in buffer
-  // the reading_pc should be pre-aligned with model here before continueing
+  // the reading_pc should be pre-aligned with model here before continueing (from selective ICP)
   cb.push_back(reading_pc);
   if (cb.full()) {
-    cgal::PointCloud aligned_pc;
-    cpt_utils::align_sequence(cb, &aligned_pc);
-    readingCallback(aligned_pc);
+    PointCloud::Ptr aligned_pc(new PointCloud());
+
+    // concatenate point clouds in buffer
+    for (auto pointcloud : cb) {
+      *aligned_pc += pointcloud;
+    }
+
+    // downsample
+    std::cout << "Size before filtering: " << aligned_pc->size() << std::endl;
+    PointCloud cloud_filtered;
+    pcl::RandomSample<pcl::PointXYZ> filter;
+    filter.setInputCloud(aligned_pc);
+    filter.setSample(aligned_pc->size()/cb.size());
+    filter.filter(cloud_filtered); 
+    std::cout << "Size after filtering: " << cloud_filtered.size() << std::endl;
+
+    // continue
+    //readingCallback(cloud_filtered);
   }
 }
 

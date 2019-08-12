@@ -6,11 +6,12 @@
   <arg name="icp_configuration_file" default="$(find relative_deviations)/launch/icp_configuration.yaml" />
   <arg name="selective_icp_configuration_file" default="$(find relative_deviations)/launch/selective_icp_configuration.yaml" />
   <arg name="normal_filter_file" default="$(find relative_deviations)/launch/normal_filter.yaml" />
-  <arg name="reference_model_file" default="$(find relative_deviations)/resources/room.off" />
-  <arg name="test" default="1" />
   <arg name="discrete_color" default="false" />
   <arg name="score_threshold" default="0.015" />
   <arg name="path" default="$(find relative_deviations)" />
+  <arg name="buffer_size" default="5" /> <!-- defines how many scans are concatenated for deviation analysis -->
+  <arg name="cad_topic" default="cad_mesh_pub" />
+  <arg name="scan_topic" default="velodyne_points" />
 
   <!-- node -->
   <node name="relative_dev"
@@ -18,8 +19,8 @@
         type="relative_deviations_node"
         output="screen"
         respawn="true">
+    <rosparam command="load" file="$(find relative_deviations)/launch/parameters.yaml" />
     <param name="reference_model_file" value="$(arg reference_model_file)" />
-    <param name="test" value="$(arg test)" />
     <param name="map_frame" value="$(arg map_frame)" />
     <param name="icp_configuration_file" value="$(arg icp_configuration_file)" />
     <param name="selective_icp_configuration_file" value="$(arg selective_icp_configuration_file)" />
@@ -27,6 +28,9 @@
     <param name="discrete_color" value="$(arg discrete_color)" />
     <param name="score_threshold" value="$(arg score_threshold)" />
     <param name="path" value="$(arg path)" />
+    <param name="buffer_size" value="$(arg buffer_size)" />
+    <param name="cad_topic" value="$(arg cad_topic)" />
+    <param name="scan_topic" value="$(arg scan_topic)" />
   </node>
 
   <node type="rviz" name="rviz" pkg="rviz" args="-d $(find relative_deviations)/launch/online.rviz" />
