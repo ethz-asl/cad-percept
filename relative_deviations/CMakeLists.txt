@@ -14,7 +14,6 @@ add_definitions(-std=c++11 -Wall -Wextra)
 cs_add_library(${PROJECT_NAME}
         src/relative_deviations_ros.cpp
         src/deviations.cpp
-        src/pc_mesh_creator.cpp
         )
 
 ############

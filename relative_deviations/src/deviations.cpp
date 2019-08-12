@@ -1,10 +1,7 @@
 /**
- * Static Room Deviations (SRD)
- * This is a first version which uses a static test mesh and directly does ICP.
- * Many of these functions are duplicated in deviations.cpp, which also replaces
- * some functions by using cpt_selective_icp. 
- * 
- * This class is just for testing purposes.
+ * Relative Deviations (RD)
+ * This is the online, real data solution of Relative Deviations. ICP is executed
+ * in separate package cpt_selective_icp. This package was based on SRD.
  */
 #include "relative_deviations/deviations.h"
 
@@ -15,10 +12,10 @@ Deviations::Deviations() {}
 
 Deviations::~Deviations() {}
 
-void Deviations::init(const std::string &off_pathm, const std::string &path) {
+void Deviations::init(const cgal::Polyhedron &P, const std::string &path) {
   path_ = path;
   // create MeshModel of reference
-  reference_mesh.init(off_pathm);
+  reference_mesh.init(P);
   int n_points = reference_mesh.getArea() * 100;
   std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
   cpt_utils::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, &ref_pc, "P");

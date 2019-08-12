@@ -83,12 +83,15 @@ class Mapper {
 
     void addScanToMap(DP &corrected_cloud, ros::Time &stamp);
 
+    void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
+
     // Subscribers
     ros::Subscriber cloud_sub_;
     ros::Subscriber cad_sub_;
 
     // Publishers
     ros::Publisher ref_mesh_pub_;
+    ros::Publisher cad_mesh_pub_;
     ros::Publisher ref_pc_pub_;
     ros::Publisher pose_pub_;
     ros::Publisher odom_pub_;
