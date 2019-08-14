@@ -2,7 +2,7 @@
 
 # Relative Deviations
 
-To package "Relative Deviations" implements the necessary tools and pipeline to detect deviations between a mesh model and a building (as-built). Currently, this tool focuses on flat walls (planes in general), but will be extended by other geometric primitives. Deviations are computed relatively to given references for a task. This is realized by doing "Selective ICP". The computed transformation from ICP can be used to update the pose estimation from the robot.
+The package "Relative Deviations" implements the necessary tools and pipeline to detect deviations between a mesh model and a building (as-built). Currently, this tool focuses on flat walls (planes in general), but will be extended by other geometric primitives. Deviations are computed relatively to given references for a task. This is realized by doing "Selective ICP". The computed transformation from ICP can be used to update the pose estimation from the robot.
 
 ## Scenarios
 
@@ -88,3 +88,68 @@ catkin build ethzasl_icp_mapper smb_tf_publisher smb_state_estimator
 ```
 
 If necessary install other dependencies of summer school by apt.
+
+
+
+## Launch
+
+Terminal A:
+```
+roscore
+```
+
+Terminal B:
+
+```
+rosparam set use_sim_time true
+rosbag play --clock <path_to_bag_file>/cla_garage_slam_1.bag
+```
+
+Terminal C:
+
+```
+roslaunch smb_state_estimator smb_state_estimator_standalone.launch
+```
+
+Terminal D:
+
+```
+roslaunch cpt_selective_icp supermegabot_selective_icp_no_rviz.launch
+```
+
+Terminal E:
+
+```
+roslaunch relative_deviations online.launch
+```
+
+Terminal F:
+** Why is Marker and Model only shown when rosbag is playing?**
+
+```
+roslaunch cad_interface cad_interface.launch
+```
+
+Now align /velodyne_points and then right-click on Marker and "Load CAD".
+Now observe /corrected_scan and /ref_corrected_scan (only for selective ICP)
+
+Hint:
+- For better alignment of Marker, deactivate Mesh Model. Marker can not be accessed through mesh.
+- There is a second interactive marker (red), which can be used to find closest facet ID to this marker. It is important to load the CAD first. Somehow the first projection on the facet is not shown in rviz.
+
+## Instructions
+
+Use service to set reference facets, otherwise whole model is used with normal ICP and deviation analysis not triggered:
+
+```
+rosservice call /set_ref "data:
+- 14
+- 1"
+```
+
+e.g.
+
+```
+cd megabot_ws/src/cad-percept/cpt_selective_icp/script/
+sh publish_references.sh
+```

@@ -1,7 +1,8 @@
 /**
  * Relative Deviations (RD)
  * This is the online, real data solution of Relative Deviations. ICP is executed
- * in separate package cpt_selective_icp. This package was based on SRD.
+ * in separate package cpt_selective_icp.
+ * Eventually add a check here if selective ICP was successfully executed!
  */
 #include "relative_deviations/deviations.h"
 
@@ -16,10 +17,6 @@ void Deviations::init(const cgal::Polyhedron &P, const std::string &path) {
   path_ = path;
   // create MeshModel of reference
   reference_mesh.init(P);
-  int n_points = reference_mesh.getArea() * 100;
-  std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
-  cpt_utils::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, &ref_pc, "P");
-
 
   // process model here, what stays the same between scans
 
@@ -28,66 +25,44 @@ void Deviations::init(const cgal::Polyhedron &P, const std::string &path) {
   initPlaneMap();
 }
 
-void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map) {
-  /**
-   *  ICP
-   */ 
-
-  // where will these task references be saved?
-  //std::unordered_set<int> references;
-  std::unordered_set<int> references({0,11,13});
-
-  PointCloud pointcloud_out;
-  if (references.empty() == 1) {
-    std::cout << "Entered normal ICP" << std::endl;
-    ICP(ifs_icp_config, ifs_normal_filter, reading_cloud, &pointcloud_out);
-  }
-  else {
-    std::cout << "Entered selectiveICP" << std::endl;
-    int no_of_points = 800;
-    cgal::Polyhedron P = reference_mesh.getMesh();
-    selectiveICP(ifs_selective_icp_config, ifs_normal_filter, no_of_points, P, reading_cloud, references, &pointcloud_out);
-  }
-
-  *icp_cloud = pointcloud_out;
-
-
-
+void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map) {
   /**
    *  Planar Segmentation
    */
 
   std::vector<reconstructed_plane> rec_planes;
   std::vector<reconstructed_plane> rec_planes_2;
-  planarSegmentationPCL(pointcloud_out, &rec_planes);
-  planarSegmentationCGAL(pointcloud_out, &rec_planes_2);
+  planarSegmentationPCL(reading_cloud, &rec_planes);
+  planarSegmentationCGAL(reading_cloud, &rec_planes_2);
 
   // Publish one of them
   *rec_planes_publish = rec_planes; 
 
-  /* 
-  std::map<int, cgal::Vector> normals;
-  normals = reference_mesh.computeNormals();
+  // /* 
+  // std::map<int, cgal::Vector> normals;
+  // normals = reference_mesh.computeNormals();
 
-  std::map<int, cgal::Vector>::iterator itr;
-  for (itr = normals.begin(); itr != normals.end(); ++itr) {
-    std::cout << itr->first << " " << itr->second << std::endl;
-  }
-  */
+  // std::map<int, cgal::Vector>::iterator itr;
+  // for (itr = normals.begin(); itr != normals.end(); ++itr) {
+  //   std::cout << itr->first << " " << itr->second << std::endl;
+  // }
+  // */
 
 
-  /**
-   *  Plane association
-   */
+  // /**
+  //  *  Plane association
+  //  */
 
-  findBestPlaneAssociation(rec_planes, reference_mesh, remaining_cloud_vector);
+  // findBestPlaneAssociation(rec_planes, reference_mesh, remaining_cloud_vector);
 
-  /**
-   *  Find tranformation
-   */
+  // /**
+  //  *  Find tranformation
+  //  */
 
-  computeFacetNormals(reference_mesh);
-  findPlaneDeviation(transformation_map);
+  // computeFacetNormals(reference_mesh);
+  // findPlaneDeviation(transformation_map);
+
+  
 }
 
 void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud) {
@@ -188,48 +163,6 @@ void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_fi
   *pointcloud_out = cpt_utils::dpToPointCloud(dppointcloud_out);
   getResidualError(dpref, dppointcloud_out);
   double error = getICPError(*pointcloud_out);
-}
-
-void Deviations::loadICPConfig(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter) {
-  if (ifs_icp_config.good()) {
-    LOG(INFO) << "Loading ICP configurations";
-    icp_.loadFromYaml(ifs_icp_config);
-  }
-  else {
-    LOG(WARNING) << "Could not open ICP configuration. Using default configuration.";  
-    icp_.setDefault();
-  }
-
-  // Load a data point filter
-  if (ifs_normal_filter.good()) {
-    LOG(INFO) << "Loading ICP normal filter"; 
-    normal_filter_ = PM::DataPointsFilters(ifs_normal_filter);
-  } 
-  else {
-    LOG(WARNING) << "Could not open normal filter";
-  }
-}
-
-void Deviations::getResidualError(const DP &dpref, const DP &dppointcloud_out) {
-  // https://github.com/ethz-asl/libpointmatcher/issues/193
-
-  // reuse the same module used for the icp object
-  // in case we need new matching module:
-  // https://github.com/ethz-asl/libpointmatcher/blob/master/examples/icp_advance_api.cpp
-  // https://github.com/ethz-asl/libpointmatcher/issues/193
-  // initiate matching with unfiltered point cloud
-  DP ref = dpref;
-  DP pointcloud_out = dppointcloud_out;
-  normal_filter_.apply(ref);
-  normal_filter_.apply(pointcloud_out);
-  icp_.matcher->init(ref);
-  // extract closest points
-  PM::Matches matches = icp_.matcher->findClosests(pointcloud_out);
-  // weight paired points
-  PM::OutlierWeights outlierWeights = icp_.outlierFilters.compute(pointcloud_out, ref, matches);
-  // get error, why is error smaller if outlier filter ratio is smaller and result completely misaligned?!
-  float error = icp_.errorMinimizer->getResidualError(pointcloud_out, ref, outlierWeights, matches);
-  std::cout << "Final residual error: " << error << std::endl;
 }
 
 void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes) const {
@@ -632,35 +565,6 @@ void Deviations::initPlaneMap() {
       ++i;
     } while (i != bimap.right.end() && key == i->first);
   }
-}
-
-double Deviations::getICPError(const PointCloud &aligned_pc, const std::unordered_set<int> &references) {
-  int point_count = 0;
-  double result = 0;
-  for (auto point : aligned_pc) {
-    cgal::PointAndPrimitiveId ppid = reference_mesh.getClosestPrimitive(point.x, point.y, point.z);
-    double squared_distance = reference_mesh.squaredDistance(cgal::Point(point.x, point.y, point.z));
-    if (references.find(reference_mesh.getFacetIndex(ppid.second)) != references.end() && sqrt(squared_distance) < 0.5) {
-      ++point_count;
-      result += sqrt(squared_distance);
-    }
-  }
-  std::cout << "Approximation of ICP error is: " << result/point_count << std::endl;
-  return result/point_count;
-}
-
-double Deviations::getICPError(const PointCloud &aligned_pc) {
-  int point_count = 0;
-  double result = 0;
-  for (auto point : aligned_pc) {
-    double squared_distance = reference_mesh.squaredDistance(cgal::Point(point.x, point.y, point.z));
-    if (sqrt(squared_distance) < 2) {
-      ++point_count;
-      result += sqrt(squared_distance);
-    }
-  }
-  std::cout << "Approximation of ICP error is: " << result/point_count << std::endl;
-  return result/point_count;
 }
 
 }

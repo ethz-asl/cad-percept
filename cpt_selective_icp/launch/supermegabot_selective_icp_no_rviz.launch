@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Launch file for Selective ICP
+-->
+
+<launch>
+
+	<node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen" >
+    <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
+    <param name="scanTopic" value="/velodyne_points" />
+		<param name="cadTopic" value="cad_interface_node/cad_model" />
+		<param name="icpConfig"
+			   value="$(find cpt_selective_icp)/config/icp_dynamic.yaml" />
+		<param name="selectiveIcpConfig"
+			   value="$(find cpt_selective_icp)/config/selective_icp.yaml" />
+		<param name="inputFiltersConfig"
+			   value="$(find cpt_selective_icp)/config/input_filters.yaml" />
+	</node>
+
+</launch>
