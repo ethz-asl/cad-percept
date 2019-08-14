@@ -58,6 +58,19 @@ class Mapper {
     cgal::MeshModel reference_mesh_;
     void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
     void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
+    /**
+     * Get some sort of residual error, but only for points associated to our references.
+     * Apply threshold first to avoid taking into account points from other walls.
+     * Attention: These also take into account non-wall points and objects
+     */
+    double getICPErrorToRef(const DP &aligned_dp);
+    /**
+     * Get some sort of residual error
+     * Apply threshold first to avoid taking into account points from other walls/ assuming we have a certain
+     * initial transformation... check what distance is appropriate max after initial transformation
+     */
+    double getICPError(const DP &aligned_dp);
+    void getError(DP dpref, DP dppointcloud_out);
     void processCloud(DP *point_cloud,
                       const ros::Time &stamp);
     bool setReferenceFacets(cpt_selective_icp::References::Request &req,
@@ -70,6 +83,7 @@ class Mapper {
     template <class T>
     void publishCloud(T *cloud, ros::Publisher *publisher) const;
     void extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh, std::unordered_set<int> &references, PointCloud *pointcloud);
+    std::unordered_set<int> references_new;
 
     bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
     bool getClosestFacet(cpt_selective_icp::FacetID::Request &req,
@@ -133,7 +147,8 @@ class Mapper {
     bool mapping_trigger;
     bool update_icp_ref_trigger;
 
-    DP dpcloud;
+    DP ref_dp;
+    DP selective_ref_dp;
 
 };
 

@@ -39,7 +39,7 @@ class RelativeDeviations {
     void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
     template <class T>
     void publishCloud(T *cloud, ros::Publisher *publisher) const;
-    ros::Publisher ref_mesh_pub_, reading_pc_pub_, icp_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_, assoc_pc_pub_, assoc_marker_pub_, deviations_mesh_pub_;
+    ros::Publisher buffer_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_, assoc_pc_pub_, assoc_marker_pub_, deviations_mesh_pub_;
     std::string map_frame_;
     bool discrete_color_;
     float score_threshold_;
@@ -48,7 +48,7 @@ class RelativeDeviations {
      */
     void publishReconstructedPlanes(const std::vector<reconstructed_plane> &rec_planes, ros::Publisher *publisher) const;
     void publishPolyhedron(cgal::Polyhedron &P);
-    void readingCallback(cgal::PointCloud &reading_pc);
+    void processCloud(cgal::PointCloud &reading_pc);
     // create a circular_buffer to store reading pointclouds for alignment
     std::string path_;
     boost::circular_buffer<cgal::PointCloud> cb; 

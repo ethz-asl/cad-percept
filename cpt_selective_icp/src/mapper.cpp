@@ -136,12 +136,12 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     PointCloud pointcloud;
     extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &pointcloud);
 
-    DP dpcloud = cpt_utils::pointCloudToDP(pointcloud);
-    processCloud(&dpcloud, ros::Time(0));
+    ref_dp = cpt_utils::pointCloudToDP(pointcloud);
+    processCloud(&ref_dp, ros::Time(0));
 
     // set the map
     icp_.clearMap();
-    icp_.setMap(dpcloud);
+    icp_.setMap(ref_dp);
 
     // publish transformed reference mesh once for relative_deviations (avoid reloading)
     publishMesh(reference_mesh_, &cad_mesh_pub_);
@@ -279,6 +279,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     }
 
     PM::TransformationParameters T_updated_scanner_to_map = T_scanner_to_map_;
+    DP dp;
 
     /**
      * Normal ICP
@@ -306,6 +307,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
               "[ICP] Estimated overlap too small, ignoring ICP correction!");
           return;
         }
+        dp = ref_dp;
 
       } catch (PM::ConvergenceError error) {
         ROS_ERROR_STREAM("[ICP] failed to converge: " << error.what());
@@ -362,6 +364,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
                                                                               parameters_.tf_map_frame,
                                                                               stamp));
         }
+        dp = selective_ref_dp;
 
       } catch (PM::ConvergenceError error) {
         ROS_ERROR_STREAM("[Selective ICP] failed to converge: " << error.what());
@@ -422,6 +425,16 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
                                                                           stamp));
     }
 
+    /**
+     *  ICP error metrics
+     */
+    getICPError(pc);
+    if (!references_new.empty()) {
+      getICPErrorToRef(pc);
+    }
+    
+    getError(dp, pc);
+
     map_thread.join();
     
     /** 
@@ -443,7 +456,66 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
   }
 }
 
-// this is general pre-processing of dpcloud for map and reading cloud
+double Mapper::getICPErrorToRef(const DP &aligned_dp) {
+  PointCloud aligned_pc = cpt_utils::dpToPointCloud(aligned_dp);
+  int point_count = 0;
+  double result = 0;
+  for (auto point : aligned_pc) {
+    cgal::PointAndPrimitiveId ppid = reference_mesh_.getClosestPrimitive(point.x, point.y, point.z);
+    double squared_distance = reference_mesh_.squaredDistance(cgal::Point(point.x, point.y, point.z));
+    if (references_new.find(reference_mesh_.getFacetIndex(ppid.second)) != references_new.end() && sqrt(squared_distance) < 0.5) {
+      ++point_count;
+      result += sqrt(squared_distance);
+    }
+  }
+  std::cout << "Approximation of ICP error to selected references is: " << result/point_count << std::endl;
+  return result/point_count;
+}
+
+double Mapper::getICPError(const DP &aligned_dp) {
+  PointCloud aligned_pc = cpt_utils::dpToPointCloud(aligned_dp);
+  int point_count = 0;
+  double result = 0;
+  for (auto point : aligned_pc) {
+    double squared_distance = reference_mesh_.squaredDistance(cgal::Point(point.x, point.y, point.z));
+    if (sqrt(squared_distance) < 0.5) {
+      ++point_count;
+      result += sqrt(squared_distance);
+    }
+  }
+  std::cout << "Approximation of ICP error to complete model is: " << result/point_count << std::endl;
+  return result/point_count;
+}
+
+void Mapper::getError(DP ref, DP aligned_dp) {
+  // https://github.com/ethz-asl/libpointmatcher/issues/193
+
+  // reuse the same module used for the icp object is not possible with ICPSequence
+
+  // https://github.com/ethz-asl/libpointmatcher/blob/master/examples/icp_advance_api.cpp
+  // initiate matching with unfiltered point cloud
+
+  // Generate new matcher module
+
+  // Residual error: This is kind of bad since there is nearly never a 1:1 match of ref and reading in both directions
+  const int knn = 1;
+  PM::Parameters params;
+  params["knn"] = PointMatcherSupport::toParam(knn);
+  // other parameters possible
+
+  std::shared_ptr<PM::Matcher> matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
+  matcher->init(ref);
+  PM::Matches matches = matcher->findClosests(aligned_dp);
+  // weight paired points
+  PM::OutlierWeights outlierWeights = icp_.outlierFilters.compute(aligned_dp, ref, matches);
+  // get error, why is error smaller if outlier filter ratio is smaller and result completely misaligned?!
+  float error = icp_.errorMinimizer->getResidualError(aligned_dp, ref, outlierWeights, matches);
+  std::cout << "Final residual error: " << error << std::endl;
+
+  
+}
+
+// this is general pre-processing of dp cloud for map and reading cloud
 void Mapper::processCloud(DP *point_cloud,
                           const ros::Time &stamp) {
   const size_t good_count(point_cloud->features.cols());
@@ -511,7 +583,7 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
 
   if (parameters_.update_icp_ref_trigger == true) {
     DP ref_pc = mapPointCloud; // add references 
-    ref_pc.concatenate(dpcloud);
+    ref_pc.concatenate(selective_ref_dp);
     selective_icp_.clearMap();
     selective_icp_.setMap(ref_pc);
     std::cout << "New map set" << std::endl;
@@ -531,12 +603,12 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
   PointCloud pointcloud;
   extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &pointcloud);
 
-  dpcloud = cpt_utils::pointCloudToDP(pointcloud);
-  processCloud(&dpcloud, ros::Time(0));
+  selective_ref_dp = cpt_utils::pointCloudToDP(pointcloud);
+  processCloud(&selective_ref_dp, ros::Time(0));
 
   // set the map
   selective_icp_.clearMap();
-  selective_icp_.setMap(dpcloud);
+  selective_icp_.setMap(selective_ref_dp);
 
   // clear mapPointCloud
   DP new_cloud;
@@ -632,6 +704,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
   if (references.empty() == 1) {
     std::cout << "Extract whole point cloud (normal ICP)" << std::endl;
     int n_points = reference_mesh.getArea() * density;
+    std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
     cpt_utils::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, pointcloud, "ref_pointcloud");
     publishReferenceMesh(reference_mesh, references);
   }
@@ -641,8 +714,6 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
     // sample reference point cloud from mesh
 
     // get coplanar facets
-    std::unordered_set<int> references_new;
-
     std::cout << "Choosen reference facets:" << std::endl;
     std::unordered_set<int>::iterator uitr;
     for (uitr = references.begin(); uitr != references.end(); uitr++) {
@@ -683,6 +754,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
     CGAL::Random_points_in_triangles_3<cgal::Point> g(triangles);
     // Get no_of_points random points in cdt
     int no_of_points = reference_area * density;
+    std::cout << "Mesh for selective ICP is sampled with " << no_of_points << " points" << std::endl;
     CGAL::cpp11::copy_n(g, no_of_points, std::back_inserter(points));
     // Check that we have really created no_of_points.
     assert(points.size() == no_of_points);

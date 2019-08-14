@@ -3,7 +3,6 @@
 
 #include <unistd.h>
 #include <glog/logging.h>
-#include "relative_deviations/pc_mesh_creator.h"
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_conversions/eigen_conversions.h>
@@ -97,7 +96,7 @@ class Deviations {
     /**
      * Read-in reading pc and execute detection
      */
-    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, PointCloud *icp_cloud, std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, std::ifstream &ifs_selective_icp_config, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map);
+    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map);
     void init(const cgal::Polyhedron &P, const std::string &path);
     std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of coplanar plane associated to plane properties
 
@@ -114,13 +113,6 @@ class Deviations {
   private:
     PointCloud ref_pc;
 
-    /**
-     * Load the ICP configuration
-     */
-    void loadICPConfig(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter);
-    PM::ICP icp_;
-    PM::DataPointsFilters normal_filter_;
-    void getResidualError(const DP &dpref, const DP &dppointcloud_out);
     void planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes) const;
     void planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes) const;
     template <typename ShapeDetection>
@@ -150,17 +142,7 @@ class Deviations {
     void extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud);
     void ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const PointCloud &reading_cloud, PointCloud *pointcloud_out);
     void selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, const PointCloud &reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out);
-    /**
-     * Get some sort of residual error, but only for points associated to our references.
-     * Apply threshold first to avoid taking into account points from other walls.
-     */
-    double getICPError(const PointCloud &aligned_pc, const std::unordered_set<int> &references);
-    /**
-     * Get some sort of residual error
-     * Apply threshold first to avoid taking into account points from other walls/ assuming we have a certain
-     * initial transformation... check what distance is appropriate max after initial transformation
-     */
-    double getICPError(const PointCloud &aligned_pc);
+
     std::string path_;
 };
 

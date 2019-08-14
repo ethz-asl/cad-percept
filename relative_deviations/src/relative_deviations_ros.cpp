@@ -11,13 +11,11 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
     score_threshold_(nh_private.param<float>("score_threshold", 0.01)),
     path_(nh_private.param<std::string>("path", "fail")),
     cb(nh_private.param<int>("buffer_size", 1)), // use x latest scans for detection
-    cad_topic(nh_private.param<std::string>("cad_mesh_pub", "fail")),
-    scan_topic(nh_private.param<std::string>("velodyne_points", "fail")),
+    cad_topic(nh_private.param<std::string>("cad_topic", "fail")),
+    scan_topic(nh_private.param<std::string>("scan_topic", "fail")),
     input_queue_size(nh_private.param<int>("inputQueueSize", 10)) { 
 
-  ref_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("ref_mesh", 1, true); // latching to true
-  reading_pc_pub_ = nh_.advertise<PointCloud>("reading_pc_pub", 1, true);
-  icp_pc_pub_ = nh_.advertise<PointCloud>("icp_pc_pub", 1, true);
+  buffer_pc_pub_ = nh_.advertise<PointCloud>("buffer_pc_pub", 1, true);
   reconstructed_planes_pub_ = nh_.advertise<ColoredPointCloud>("reconstructed_planes_pub", 1, true);
   polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("polygon_pub", 1, true);
   assoc_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("assoc_mesh", 1, true); 
@@ -54,28 +52,6 @@ void RelativeDeviations::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) 
   processBuffer(cloud);
 }
 
-void RelativeDeviations::readingCallback(PointCloud &reading_pc) {
-  publishMesh(deviations.reference_mesh, &ref_mesh_pub_);
-  std::vector<reconstructed_plane> rec_planes;
-  PointCloud icp_cloud;
-  std::ifstream ifs_icp_config(nh_private_.param<std::string>("icp_configuration_file", "fail").c_str());
-  std::ifstream ifs_selective_icp_config(nh_private_.param<std::string>("selective_icp_configuration_file", "fail").c_str());
-  std::ifstream ifs_normal_filter(nh_private_.param<std::string>("normal_filter_file", "fail").c_str());
-  std::vector<reconstructed_plane> remaining_cloud_vector;
-  std::unordered_map<int, transformation> transformation_map;
-  deviations.detectChanges(&rec_planes, reading_pc, &icp_cloud, ifs_icp_config, ifs_normal_filter, ifs_selective_icp_config, &remaining_cloud_vector, &transformation_map);
-  publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
-  
-  //cgal::Polyhedron P = deviations.reference_mesh_merged.getMesh();
-  //publishPolyhedron(P);
-
-  publishCloud<PointCloud>(&reading_pc, &reading_pc_pub_);
-  publishCloud<PointCloud>(&icp_cloud, &icp_pc_pub_);
-  publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_cloud_vector);
-  publishDeviations(deviations.reference_mesh, deviations.plane_map, transformation_map);
-  deviations.reset();
-}
-
 void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
   // insert reading_pc in buffer
   // the reading_pc should be pre-aligned with model here before continueing (from selective ICP)
@@ -98,8 +74,27 @@ void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
     std::cout << "Size after filtering: " << cloud_filtered.size() << std::endl;
 
     // continue
-    //readingCallback(cloud_filtered);
+    publishCloud<PointCloud>(&cloud_filtered, &buffer_pc_pub_);
+    processCloud(cloud_filtered);
   }
+}
+
+void RelativeDeviations::processCloud(PointCloud &reading_pc) {
+  std::vector<reconstructed_plane> rec_planes;
+  std::vector<reconstructed_plane> remaining_cloud_vector; // put everything in here what we can't segment as planes
+  std::unordered_map<int, transformation> transformation_map;
+  
+  deviations.detectChanges(&rec_planes, reading_pc, &remaining_cloud_vector, &transformation_map);
+  publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
+  
+  /**
+  //cgal::Polyhedron P = deviations.reference_mesh_merged.getMesh();
+  //publishPolyhedron(P);
+
+  publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_cloud_vector);
+  publishDeviations(deviations.reference_mesh, deviations.plane_map, transformation_map);
+  deviations.reset();
+  */
 }
 
 void RelativeDeviations::publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const {
