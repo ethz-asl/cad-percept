@@ -8,7 +8,6 @@
 #include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <pcl_ros/point_cloud.h>
-#include "pointmatcher/PointMatcher.h"
 #include <cpt_utils/pc_processing.h>
 
 // Planar segmentation:
@@ -45,9 +44,6 @@ namespace cad_percept {
 namespace deviations {
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-typedef PointMatcher<float> PM;
-typedef PM::DataPoints DP;
-typedef PM::Parameters Parameters;
 
 typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::multiset_of<int>> association_bimap;
 typedef association_bimap::value_type bi_association;
@@ -140,8 +136,6 @@ class Deviations {
      * polyhedron, but only from triangles.
      */
     void extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud);
-    void ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const PointCloud &reading_cloud, PointCloud *pointcloud_out);
-    void selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, const PointCloud &reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out);
 
     std::string path_;
 };

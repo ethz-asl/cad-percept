@@ -70,7 +70,7 @@ class Mapper {
      * initial transformation... check what distance is appropriate max after initial transformation
      */
     double getICPError(const DP &aligned_dp);
-    void getError(DP dpref, DP dppointcloud_out);
+    void getError(DP dpref, DP dppointcloud_out, bool selective);
     void processCloud(DP *point_cloud,
                       const ros::Time &stamp);
     bool setReferenceFacets(cpt_selective_icp::References::Request &req,
