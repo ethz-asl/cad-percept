@@ -1,1 +1,7 @@
 inputQueueSize: 1
+
+# Deviation Analysis:
+planarSegmentation: PCL # CGAL or PCL
+planarSegmentationMethod: REGION_GROWING # RANCAC or REGION_GROWING, only for CGAL
+segmentationDistanceThreshold: 0.03 # at least around the precision of the LiDAR, distance to model
+minNumberOfPlanePoints: 50 # minimum number of plane points necessary for segmentation of a plane

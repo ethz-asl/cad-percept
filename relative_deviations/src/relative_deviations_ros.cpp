@@ -9,11 +9,17 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
     map_frame_(nh_private.param<std::string>("map_frame", "fail")),
     discrete_color_(nh_private.param<bool>("discrete_color", false)),
     score_threshold_(nh_private.param<float>("score_threshold", 0.01)),
-    path_(nh_private.param<std::string>("path", "fail")),
     cb(nh_private.param<int>("buffer_size", 1)), // use x latest scans for detection
     cad_topic(nh_private.param<std::string>("cad_topic", "fail")),
     scan_topic(nh_private.param<std::string>("scan_topic", "fail")),
     input_queue_size(nh_private.param<int>("inputQueueSize", 10)) { 
+
+  // set parameters for Deviations object (public struct)
+  deviations.params.planarSegmentation = nh_private.param<std::string>("planarSegmentation", "PCL");
+  deviations.params.planarSegmentationMethod = nh_private.param<std::string>("planarSegmentationMethod", "RANSAC");
+  deviations.params.path = nh_private.param<std::string>("path", "fail");
+  deviations.params.segmentationDistanceThreshold = nh_private.param<double>("segmentationDistanceThreshold", 0.05);
+  deviations.params.minNumberOfPlanePoints = nh_private.param<int>("minNumberOfPlanePoints", 50);
 
   buffer_pc_pub_ = nh_.advertise<PointCloud>("buffer_pc_pub", 1, true);
   reconstructed_planes_pub_ = nh_.advertise<ColoredPointCloud>("reconstructed_planes_pub", 1, true);
@@ -40,7 +46,7 @@ void RelativeDeviations::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_i
   std::cout << "[RD] Received transformed CAD mesh from cpt_selective_icp" << std::endl;
   cgal::Polyhedron P;
   cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
-  deviations.init(P, path_);
+  deviations.init(P);
 
   // reset the bimap
 }

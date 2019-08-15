@@ -55,6 +55,14 @@ typedef CGAL::Parallel_tag Concurrency_tag;
 typedef CGAL::Sequential_tag Concurrency_tag;
 #endif
 
+struct parameters {
+  std::string path;
+  std::string planarSegmentation;
+  std::string planarSegmentationMethod;
+  double segmentationDistanceThreshold;
+  int minNumberOfPlanePoints;
+};
+
 struct transformation {
   Eigen::AngleAxisd aa;
   Eigen::Quaterniond quat;
@@ -88,12 +96,13 @@ class Deviations {
     Deviations();
     ~Deviations();
 
+    parameters params;
     cgal::MeshModel reference_mesh;
     /**
      * Read-in reading pc and execute detection
      */
     void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map);
-    void init(const cgal::Polyhedron &P, const std::string &path);
+    void init(const cgal::Polyhedron &P);
     std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of coplanar plane associated to plane properties
 
     /**

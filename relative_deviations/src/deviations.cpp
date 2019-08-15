@@ -13,8 +13,8 @@ Deviations::Deviations() {}
 
 Deviations::~Deviations() {}
 
-void Deviations::init(const cgal::Polyhedron &P, const std::string &path) {
-  path_ = path;
+void Deviations::init(const cgal::Polyhedron &P) {
+  path_ = params.path;
   // create MeshModel of reference
   reference_mesh.init(P);
 
@@ -25,18 +25,18 @@ void Deviations::init(const cgal::Polyhedron &P, const std::string &path) {
   initPlaneMap();
 }
 
-void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map) {
+void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map) {
   /**
    *  Planar Segmentation
    */
 
-  std::vector<reconstructed_plane> rec_planes;
-  std::vector<reconstructed_plane> rec_planes_2;
-  planarSegmentationPCL(reading_cloud, &rec_planes);
-  planarSegmentationCGAL(reading_cloud, &rec_planes_2);
+  if (params.planarSegmentation == "CGAL") {
+    planarSegmentationCGAL(reading_cloud, rec_planes);
 
-  // Publish one of them
-  *rec_planes_publish = rec_planes; 
+  }
+  else if (params.planarSegmentation == "PCL") {
+    planarSegmentationPCL(reading_cloud, rec_planes);
+  }
 
   // /* 
   // std::map<int, cgal::Vector> normals;
@@ -139,10 +139,6 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<r
 
   std::cerr << "PointCloud after filtering: " << cloud_filtered->width * cloud_filtered->height << " data points." << std::endl;
 
-  // Write the downsampled version to disk
-  pcl::PCDWriter writer;
-  writer.write<pcl::PointXYZ> (path_ + "/resources/downsampled.pcd", *cloud_filtered, false);
-
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients ()); // estimated plane parameters
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices ());
   // Create the segmentation object
@@ -150,24 +146,24 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<r
   // Optional
   seg.setOptimizeCoefficients (true);
   // Mandatory
-  seg.setModelType (pcl::SACMODEL_PLANE);
-  seg.setMethodType (pcl::SAC_RANSAC);
-  seg.setMaxIterations (1000);
-  seg.setDistanceThreshold (0.05);
+  seg.setModelType(pcl::SACMODEL_PLANE);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setMaxIterations(1000);
+  seg.setDistanceThreshold(params.segmentationDistanceThreshold); // distance to the model
 
   // Create the filtering object
   pcl::ExtractIndices<pcl::PointXYZ> extract;
 
-  int i = 0, nr_points = (int) cloud_filtered->points.size ();
+  int i = 0, nr_points = (int)cloud_filtered->points.size();
   // While 1% of the original cloud is still there
   while (cloud_filtered->points.size () > 0.01 * nr_points)
   {
     // Segment the largest planar component from the remaining cloud
     seg.setInputCloud(cloud_filtered);
     seg.segment(*inliers, *coefficients);
-    if (inliers->indices.size () == 0)
+    if (inliers->indices.size () < params.minNumberOfPlanePoints)
     {
-      std::cerr << "Could not estimate a planar model for the given dataset." << std::endl;
+      std::cerr << "Could not estimate a planar model for the remaining dataset. Not enought points." << std::endl;
       break;
     }
 
@@ -181,7 +177,7 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<r
     extract.setIndices(inliers); // use inlier point indices in filtering with "false" to get only inliers
     extract.setNegative(false);
     extract.filter(*cloud_p);
-    std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
+    std::cerr << "PointCloud representing the planar component: " << cloud_p->size() << " data points." << std::endl;
 
     reconstructed_plane rec_plane;
     rec_plane.coefficients = coefficients->values; //do we still need this?
@@ -194,19 +190,13 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<r
     rec_plane.pointcloud = *cloud_p;
     rec_planes->push_back(rec_plane);
 
-    /*
-    std::stringstream ss;
-    ss << "/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/plane_" << i << ".pcd";
-    writer.write<pcl::PointXYZ> (ss.str(), *cloud_p, false);
-    */
-
     // Create the filtering object
     extract.setNegative(true); // use inlier point indices in filtering with "true" to get cloud except inliers
     extract.filter(*cloud_f); 
     cloud_filtered.swap(cloud_f); // swap cloud_f to cloud_filtered
     i++;
   }
-
+// TODO: return remaining points!
 }
 
 void Deviations::planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes) const {
@@ -216,11 +206,14 @@ void Deviations::planarSegmentationCGAL(const PointCloud &cloud, std::vector<rec
   // RANSAC faster
   // Region growing better, deterministic
   
-  std::cout << "Efficient RANSAC" << std::endl;
-  runShapeDetection<cgal::Efficient_ransac>(cloud, rec_planes);
-  
-  std::cout << "Region Growing" << std::endl;
-  runShapeDetection<cgal::Region_growing>(cloud, rec_planes);
+  if (params.planarSegmentationMethod == "RANSAC") {
+    std::cout << "Efficient RANSAC" << std::endl;
+    runShapeDetection<cgal::Efficient_ransac>(cloud, rec_planes);
+  }
+  else if (params.planarSegmentationMethod == "REGION_GROWING") {
+    std::cout << "Region Growing" << std::endl;
+    runShapeDetection<cgal::Region_growing>(cloud, rec_planes);
+  }
 }
 
 // This works for RANSAC and Region Growing
