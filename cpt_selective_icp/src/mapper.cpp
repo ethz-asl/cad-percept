@@ -309,6 +309,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         }
         dp = ref_dp;
 
+
       } catch (PM::ConvergenceError error) {
         ROS_ERROR_STREAM("[ICP] failed to converge: " << error.what());
         return;
@@ -365,6 +366,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
                                                                               stamp));
         }
         dp = selective_ref_dp;
+        getError(selective_ref_dp, pc, 1);
 
       } catch (PM::ConvergenceError error) {
         ROS_ERROR_STREAM("[Selective ICP] failed to converge: " << error.what());
@@ -429,11 +431,11 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
      *  ICP error metrics
      */
     getICPError(pc);
+    getError(ref_dp, pc, 0);
     if (!references_new.empty()) {
       getICPErrorToRef(pc);
     }
     
-    getError(dp, pc);
 
     map_thread.join();
     
@@ -487,7 +489,7 @@ double Mapper::getICPError(const DP &aligned_dp) {
   return result/point_count;
 }
 
-void Mapper::getError(DP ref, DP aligned_dp) {
+void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
   // https://github.com/ethz-asl/libpointmatcher/issues/193
 
   // reuse the same module used for the icp object is not possible with ICPSequence
@@ -495,24 +497,70 @@ void Mapper::getError(DP ref, DP aligned_dp) {
   // https://github.com/ethz-asl/libpointmatcher/blob/master/examples/icp_advance_api.cpp
   // initiate matching with unfiltered point cloud
 
-  // Generate new matcher module
+  // Generate new matcher module, but for some functions use parameters of ICPSequences
+  PM::ICPSequence icp;
+  if (selective) {
+    icp = selective_icp_;
+  }
+  else {
+    icp = icp_;
+  }
 
-  // Residual error: This is kind of bad since there is nearly never a 1:1 match of ref and reading in both directions
-  const int knn = 1;
+  float matchRatio = icp.errorMinimizer->getWeightedPointUsedRatio();
+	std::cout << "match ratio: " <<  matchRatio << std::endl;
+
+  const int knn = 1; // first closest point
   PM::Parameters params;
   params["knn"] = PointMatcherSupport::toParam(knn);
+  params["epsilon"] =  PointMatcherSupport::toParam(0);
   // other parameters possible
-
   std::shared_ptr<PM::Matcher> matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
+  
+  /**
+   *  from reading to ref
+   */
   matcher->init(ref);
   PM::Matches matches = matcher->findClosests(aligned_dp);
-  // weight paired points
-  PM::OutlierWeights outlierWeights = icp_.outlierFilters.compute(aligned_dp, ref, matches);
+
+  // Residual error without outliers: This is kind of bad since there is nearly never a 1:1 match of ref and reading in both directions
+  // General problem with these metrics: reading and ref do not really overlap (only for normal ICP)
+  // weight paired points with icp parameters, this is important to remove non-overlapping outliers!!!
+  PM::OutlierWeights outlierWeights = icp.outlierFilters.compute(aligned_dp, ref, matches);
   // get error, why is error smaller if outlier filter ratio is smaller and result completely misaligned?!
-  float error = icp_.errorMinimizer->getResidualError(aligned_dp, ref, outlierWeights, matches);
+  float error = icp.errorMinimizer->getResidualError(aligned_dp, ref, outlierWeights, matches);
   std::cout << "Final residual error: " << error << std::endl;
 
-  
+  // Paired point mean distance without outliers
+  // generate tuples of matched points and remove pairs with zero weight
+	const PM::ErrorMinimizer::ErrorElements matchedPoints(aligned_dp, ref, outlierWeights, matches);
+	// extract relevant information for convenience
+	const int dim = matchedPoints.reading.getEuclideanDim();
+	const int nbMatchedPoints = matchedPoints.reading.getNbPoints(); 
+	const PM::Matrix matchedRead = matchedPoints.reading.features.topRows(dim);
+	const PM::Matrix matchedRef = matchedPoints.reference.features.topRows(dim);
+  // compute mean distance
+	const PM::Matrix dist = (matchedRead - matchedRef).colwise().norm(); // replace that by squaredNorm() to save computation time
+	const float meanDist = dist.sum()/nbMatchedPoints;
+	std::cout << "Robust mean distance: " << meanDist << " m" << std::endl;
+
+  // Haussdorff distance (with outliers)
+  float maxDist1 = matches.getDistsQuantile(1.0);
+	float maxDistRobust1 = matches.getDistsQuantile(0.85);
+
+  /** 
+   *  from ref to reading
+   */
+
+  // Haussdorff distance (with outliers)
+  matcher->init(aligned_dp);
+  matches = matcher->findClosests(ref);
+  float maxDist2 = matches.getDistsQuantile(1.0);
+	float maxDistRobust2 = matches.getDistsQuantile(0.85);
+
+  float haussdorffDist = std::max(maxDist1, maxDist2);
+  float haussdorffQuantileDist = std::max(maxDistRobust1, maxDistRobust2);
+  std::cout << "Haussdorff distance: " << std::sqrt(haussdorffDist) << " m" << std::endl;
+	std::cout << "Haussdorff quantile distance: " << std::sqrt(haussdorffQuantileDist) <<  " m" << std::endl;
 }
 
 // this is general pre-processing of dp cloud for map and reading cloud

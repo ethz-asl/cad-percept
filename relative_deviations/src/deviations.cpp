@@ -124,47 +124,6 @@ void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron
   }
 }
 
-void Deviations::selectiveICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const int no_of_points, cgal::Polyhedron &P, const PointCloud &reading_cloud, std::unordered_set<int> &references, PointCloud *pointcloud_out) {
-  PointCloud icp_pointcloud;
-  extractReferenceFacets(no_of_points, P, references, &icp_pointcloud);
-  // convert point clouds to DP
-  DP dppointcloud = cpt_utils::pointCloudToDP(reading_cloud);
-  DP dpref = cpt_utils::pointCloudToDP(icp_pointcloud);
-
-  loadICPConfig(ifs_icp_config, ifs_normal_filter);
-  // Compute the transformation to express data in ref
-  PM::TransformationParameters T = icp_(dppointcloud, dpref);
-  // Transform data to express it in ref
-  DP dppointcloud_out(dppointcloud);
-  icp_.transformations.apply(dppointcloud_out, T);
-
-  *pointcloud_out = cpt_utils::dpToPointCloud(dppointcloud_out);
-  getResidualError(dpref, dppointcloud_out);
-  double error = getICPError(*pointcloud_out, references);
-}
-
-void Deviations::ICP(std::ifstream &ifs_icp_config, std::ifstream &ifs_normal_filter, const PointCloud &reading_cloud, PointCloud *pointcloud_out) {
-  // convert point clouds to DP
-  DP dppointcloud = cpt_utils::pointCloudToDP(reading_cloud);
-  DP dpref = cpt_utils::pointCloudToDP(ref_pc);
-  // DP dppointcloud = PointMatcher_ros::rosMsgToPointMatcherCloud<double>(cloud);
-  // DP dpref(DP::load("P.pcd"));
-  // DP dppointcloud(DP::load("P_deviated_transformed.pcd"));
-
-  loadICPConfig(ifs_icp_config, ifs_normal_filter);
-  // Compute the transformation to express data in ref
-  PM::TransformationParameters T = icp_(dppointcloud, dpref);
-  // Transform data to express it in ref
-  DP dppointcloud_out(dppointcloud);
-  icp_.transformations.apply(dppointcloud_out, T);
-  dppointcloud_out.save(path_ + "/resources/P_icp.pcd");
-  std::cout << "Final ICP transformation: " << std::endl << T << std::endl;
-
-  *pointcloud_out = cpt_utils::dpToPointCloud(dppointcloud_out);
-  getResidualError(dpref, dppointcloud_out);
-  double error = getICPError(*pointcloud_out);
-}
-
 void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes) const {
   // PCL solution
   // http://pointclouds.org/documentation/tutorials/extract_indices.php#extract-indices

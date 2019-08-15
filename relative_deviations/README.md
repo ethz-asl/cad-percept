@@ -20,12 +20,13 @@ roslaunch srd_relative_deviations srd.launch
 
 ### Relative Deviations (RD)
 
-"Relative Deviations" describes the real, online scenario. The ROS node subscribes to the robot point cloud and pose estimation. It acts itself as a mapper by using a sliding window of several scans, matching it to the mesh model by ICP and returning the updated state estimation to the estimator. 
+"Relative Deviations" describes the real, online scenario. The ROS node subscribes the reference-aligned point cloud and executes an deviation analysis. Alignment to reference facets happens in cpt_selective_icp, which also sends updates to the state estimator.
 
 ## Status
 
 - [x] SRD tested and working
 - [x] Adapted to new findCoplanarFacets
+- [ ] Relative deviations working on real data
 
 ## Dependencies
 
