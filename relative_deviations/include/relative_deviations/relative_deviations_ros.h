@@ -50,7 +50,6 @@ class RelativeDeviations {
     void publishPolyhedron(cgal::Polyhedron &P);
     void processCloud(cgal::PointCloud &reading_pc);
     // create a circular_buffer to store reading pointclouds for alignment
-    std::string path_;
     boost::circular_buffer<cgal::PointCloud> cb; 
     void processBuffer(cgal::PointCloud &reading_pc);
 
