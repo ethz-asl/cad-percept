@@ -60,7 +60,10 @@ struct parameters {
   std::string planarSegmentation;
   std::string planarSegmentationMethod;
   double segmentationDistanceThreshold;
+  double segmentationNormalThreshold;
+  double segmentationClusterDistance;
   int minNumberOfPlanePoints;
+  double segmentationProbability;
 };
 
 struct transformation {
@@ -118,10 +121,10 @@ class Deviations {
   private:
     PointCloud ref_pc;
 
-    void planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes) const;
-    void planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes) const;
+    void planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const;
+    void planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const;
     template <typename ShapeDetection>
-    void runShapeDetection(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes) const;
+    void runShapeDetection(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const;
     /**
      * Pointcloud plane is associated to corresponding Polyhedron. 
      * Since we know that every point in cloud belongs to the same plane,

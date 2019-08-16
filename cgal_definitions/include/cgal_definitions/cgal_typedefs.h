@@ -61,7 +61,7 @@ typedef CGAL::First_of_pair_property_map<Point_with_normal>     Point_map;
 typedef CGAL::Second_of_pair_property_map<Point_with_normal>    Normal_map;
 typedef CGAL::Shape_detection_3::Shape_detection_traits
         <ShapeKernel, Pwn_vector, Point_map, Normal_map>        Traits;
-typedef CGAL::Shape_detection_3::Efficient_RANSAC<Traits>       Efficient_ransac;
+typedef CGAL::Shape_detection_3::Efficient_RANSAC<Traits>       Efficient_RANSAC;
 typedef CGAL::Shape_detection_3::Region_growing<Traits>         Region_growing;
 typedef CGAL::Shape_detection_3::Plane<Traits>                  ShapePlane;
 
