@@ -112,6 +112,9 @@ class MeshModel {
 
   double getArea() const;
 
+  double getArea(Polyhedron::Facet_handle &f) const;
+  double getArea(uint facet_id);
+
   /**
    * Compute squared distance from point to closest mesh facet
    */

@@ -64,6 +64,7 @@ struct parameters {
   double segmentationClusterDistance;
   int minNumberOfPlanePoints;
   double segmentationProbability;
+  double minPolyhedronArea;
 };
 
 struct transformation {
@@ -84,9 +85,10 @@ struct reconstructed_plane {
  */ 
 struct polyhedron_plane {
   cgal::Plane plane;
-  reconstructed_plane rec_plane; // associated point cloud
+  double area;
   Eigen::Vector3d normal;
   double match_score = 0; // match score for pc to mesh plane
+  reconstructed_plane rec_plane; // associated point cloud
 };
 
 typedef std::map<int,int>::iterator Miterator;
@@ -136,7 +138,7 @@ class Deviations {
      * This function finds best association between all p.c. planes and facets based on match_score from associatePlane().
      * Could additionally output non associated facets and point clouds.
      */
-    void findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_cloud_vector);
+    void findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
     void computeFacetNormals(cgal::MeshModel &mesh_model);
     void findPlaneDeviation(std::unordered_map<int, transformation> *transformation_map);
 

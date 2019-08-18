@@ -25,7 +25,7 @@ void Deviations::init(const cgal::Polyhedron &P) {
   initPlaneMap();
 }
 
-void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map) {
+void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_plane_cloud_vector, std::unordered_map<int, transformation> *transformation_map) {
   /**
    *  Planar Segmentation
    */
@@ -39,22 +39,11 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, con
     planarSegmentationPCL(reading_cloud, rec_planes, &remaining_cloud);
   }
 
-  // /* 
-  // std::map<int, cgal::Vector> normals;
-  // normals = reference_mesh.computeNormals();
+  /**
+   *  Plane association
+   */
 
-  // std::map<int, cgal::Vector>::iterator itr;
-  // for (itr = normals.begin(); itr != normals.end(); ++itr) {
-  //   std::cout << itr->first << " " << itr->second << std::endl;
-  // }
-  // */
-
-
-  // /**
-  //  *  Plane association
-  //  */
-
-  // findBestPlaneAssociation(rec_planes, reference_mesh, remaining_cloud_vector);
+  findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
 
   // /**
   //  *  Find tranformation
@@ -188,7 +177,10 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<r
     pc_normal.normalize();
     rec_plane.pc_normal = pc_normal;
 
-    rec_plane.pointcloud = *cloud_p;
+    // Project PointCloud to the plane, this is optional
+    cpt_utils::projectToPlane(cloud_p, coefficients, cloud_p);
+
+    rec_plane.pointcloud = *cloud_p;    
     rec_planes->push_back(rec_plane);
 
     // Create the filtering object
@@ -243,7 +235,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
   // jet_estimate_normals() is slower than pca_estimate_normals()
 
   // Estimate normals direction
-  const int nb_neighbors = 10;
+  const int nb_neighbors = 20;
   CGAL::pca_estimate_normals<Concurrency_tag>(points, nb_neighbors,
                                               CGAL::parameters::point_map(cgal::Point_map()).
                                                                 normal_map(cgal::Normal_map()));
@@ -350,11 +342,11 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
     const cgal::ShapeKernel::Plane_3 pl3 = static_cast<cgal::ShapeKernel::Plane_3>(*plane);
     std::cout << "Kernel::Plane_3: " << pl3 << std::endl;
 
-    // Sums distances of points to detected shapes
     cgal::FT sum_distances = 0;
     reconstructed_plane rec_plane;
     // Iterates through point indices assigned to each detected shape
     std::vector<std::size_t>::const_iterator index_it = (*it)->indices_of_assigned_points().begin();
+    PointCloud pointcloud;
     while (index_it != (*it)->indices_of_assigned_points().end()) {
       // Retrieve point
       const cgal::Point_with_normal &p = *(points.begin() + (*index_it));
@@ -363,10 +355,14 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
 
       // Generating point cloud
       pcl::PointXYZ pc_point(p.first.x(), p.first.y(), p.first.z());
-      rec_plane.pointcloud.push_back(pc_point);
+      pointcloud.push_back(pc_point);
       // Proceeds with next point
       index_it++;
     }
+    // Project PointCloud to Plane, this is optional
+    cpt_utils::projectToPlane(pointcloud, pl3, &pointcloud);
+
+    rec_plane.pointcloud = pointcloud;
     cgal::FT average_distance = sum_distances / plane->indices_of_assigned_points().size();
     std::cout << " average distance: " << average_distance << std::endl;
     rec_plane.coefficients.push_back(pl3.a());
@@ -387,6 +383,11 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
 void Deviations::associatePlane(cgal::MeshModel &mesh_model, const PointCloud &cloud, int *id, double *match_score) {
   *match_score = 0;
   for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); i = bimap.right.upper_bound(i->first)) {
+    // first check if Polyhedron plane even has size to be associated
+    if (plane_map[i->first].area < params.minPolyhedronArea) {
+      break;
+    }
+
     double match_score_new = 0;
     // calculate a score from squared distances
     std::cout << "Checking Plane ID: " << i->first << std::endl;
@@ -426,7 +427,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const PointCloud &c
   }
 }
 
-void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_cloud_vector) {
+void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_plane_cloud_vector) {
   // create queue
   std::queue<reconstructed_plane> cloud_queue;
   for (auto cloud : cloud_vector) {
@@ -450,7 +451,7 @@ void Deviations::findBestPlaneAssociation(const std::vector<reconstructed_plane>
     else {
       // non associated clouds
       std::cout << "Added an unassociated cloud" << std::endl;
-      remaining_cloud_vector->push_back(cloud_queue.front());
+      remaining_plane_cloud_vector->push_back(cloud_queue.front());
     }
     cloud_queue.pop(); // remove tested element from queue
   }
@@ -523,11 +524,15 @@ void Deviations::initPlaneMap() {
 
     // TODO: Decide if using this while-loop or upper_bound as in other functions
     // https://stackoverflow.com/questions/9371236/is-there-an-iterator-across-unique-keys-in-a-stdmultimap
-    // Advance to next non-duplicate entry.
+    // Advance to next non-duplicate entry and calculated polyhedron area meanwhile.
     int key = i->first;
+    double area = 0;
     do {
+      area += reference_mesh.getArea(i->second);
       ++i;
-    } while (i != bimap.right.end() && key == i->first);
+    } while (i != bimap.right.end() && key == i->first); // multidset is ordered
+    // save area to struct
+    plane_map.at(key).area = area;
   }
 }
 
