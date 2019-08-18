@@ -118,8 +118,7 @@ void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transfor
 void sample_pc_from_mesh(const cgal::Polyhedron &P, 
                          const int no_of_points,
                          const double stddev,
-                         PointCloud *pointcloud,
-                         std::string file_name) {
+                         PointCloud *pointcloud) {
   // generate random point sets on triangle mesh
   std::vector<cgal::Point> points;
   // Create the generator, input is the Polyhedron P
@@ -163,6 +162,30 @@ void sample_pc_from_mesh(const cgal::Polyhedron &P,
   //ss << "/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/" << file_name << ".pcd";
   //pcl::io::savePCDFileASCII(ss.str(), *pointcloud);
   //std::cerr << "Saved " << pointcloud->points.size() << " data points to pcd" << std::endl;
+}
+
+void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3 &plane, PointCloud *cloud_out) {
+  for (auto point : cloud_in) {
+    cgal::ShapeKernel::Point_3 p_proj;
+    p_proj = plane.projection(cgal::ShapeKernel::Point_3(point.x, point.y, point.z));
+    cloud_out->push_back(pcl::PointXYZ(p_proj.x(), p_proj.y(), p_proj.z()));
+  }
+}
+
+void projectToPlane(const PointCloud &cloud_in, const cgal::Plane &plane, PointCloud *cloud_out) {
+  for (auto point : cloud_in) {
+    cgal::Point p_proj;
+    p_proj = plane.projection(cgal::Point(point.x, point.y, point.z));
+    cloud_out->push_back(pcl::PointXYZ(p_proj.x(), p_proj.y(), p_proj.z()));
+  }
+}
+
+void projectToPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, const pcl::ModelCoefficients::Ptr coefficients, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out) {
+  pcl::ProjectInliers<pcl::PointXYZ> proj;
+  proj.setModelType(pcl::SACMODEL_PLANE);
+  proj.setInputCloud(cloud_in);
+  proj.setModelCoefficients(coefficients);
+  proj.filter(*cloud_out);
 }
 
 }

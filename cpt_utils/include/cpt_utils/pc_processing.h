@@ -4,6 +4,8 @@
 #include <glog/logging.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/common/transforms.h>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/filters/project_inliers.h>
 #include <boost/circular_buffer.hpp>
 
 #include "pointmatcher/PointMatcher.h"
@@ -35,8 +37,17 @@ void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transfor
 void sample_pc_from_mesh(const cgal::Polyhedron &P, 
                          const int no_of_points,
                          const double stddev,
-                         PointCloud *pointcloud,
-                         std::string file_name);
+                         PointCloud *pointcloud);
+
+/**
+ *  Projecting a PointCloud on a cgal::Plane using a cgal method.
+ */
+void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3 &plane, PointCloud *cloud_out);
+void projectToPlane(const PointCloud &cloud_in, const cgal::Plane &plane, PointCloud *cloud_out);
+/**
+ *  The PCL method for projecting a PointCloud to a plane given by ModelCoefficients
+ */
+void projectToPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, const pcl::ModelCoefficients::Ptr coefficients, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out);
 
 }
 }

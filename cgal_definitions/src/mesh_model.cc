@@ -305,6 +305,17 @@ double MeshModel::getArea() const {
   return CGAL::to_double(area);
 }
 
+double MeshModel::getArea(Polyhedron::Facet_handle &f) const {
+  FT area;
+  area = CGAL::Polygon_mesh_processing::face_area(f, P_);
+  return CGAL::to_double(area);
+}
+
+double MeshModel::getArea(uint facet_id) {
+  Polyhedron::Facet_handle handle = getFacetHandle(facet_id);
+  return getArea(handle);
+}
+
 double MeshModel::squaredDistance(const Point &point) const {
   FT sqd = tree_->squared_distance(point);
   return CGAL::to_double(sqd);

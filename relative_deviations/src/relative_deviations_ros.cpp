@@ -23,6 +23,7 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   deviations.params.segmentationClusterDistance = nh_private.param<double>("segmentationClusterDistance", 0.5);
   deviations.params.minNumberOfPlanePoints = nh_private.param<int>("minNumberOfPlanePoints", 50);
   deviations.params.segmentationProbability = nh_private.param<double>("segmentationProbability", 0.05);
+  deviations.params.minPolyhedronArea = nh_private.param<double>("minPolyhedronArea", 0.05);
 
   buffer_pc_pub_ = nh_.advertise<PointCloud>("buffer_pc_pub", 1, true);
   reconstructed_planes_pub_ = nh_.advertise<ColoredPointCloud>("reconstructed_planes_pub", 1, true);
