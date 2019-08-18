@@ -13,3 +13,7 @@ segmentationProbability: 0.05 # only for CGAL Efficient_Ransac
 
 # Association
 minPolyhedronArea: 0.05
+matchScoreUpperLimit: 2 # above this limit, don't do any association since we don't expect wrong walls to be so wrong
+assocAreaRatioUpperLimit: 10 # ratio = (rec. area)/(ref. copl. area), don't do any assoc. if we reach these limits
+assocAreaRatioLowerLimit: 0.2
+assocLowerLimitThreshold: 0.5 # lower ratio only taken into account if a threshold in m² is not fulfilled

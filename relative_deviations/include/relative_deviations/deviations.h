@@ -65,6 +65,10 @@ struct parameters {
   int minNumberOfPlanePoints;
   double segmentationProbability;
   double minPolyhedronArea;
+  double matchScoreUpperLimit;
+  double assocAreaRatioUpperLimit;
+  double assocAreaRatioLowerLimit;
+  double assocLowerLimitThreshold;
 };
 
 struct transformation {

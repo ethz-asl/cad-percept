@@ -24,6 +24,11 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   deviations.params.minNumberOfPlanePoints = nh_private.param<int>("minNumberOfPlanePoints", 50);
   deviations.params.segmentationProbability = nh_private.param<double>("segmentationProbability", 0.05);
   deviations.params.minPolyhedronArea = nh_private.param<double>("minPolyhedronArea", 0.05);
+  deviations.params.matchScoreUpperLimit = nh_private.param<double>("matchScoreUpperLimit", 2.0);
+  deviations.params.assocAreaRatioUpperLimit = nh_private.param<double>("assocAreaRatioUpperLimit", 10.0);
+  deviations.params.assocAreaRatioLowerLimit = nh_private.param<double>("assocAreaRatioLowerLimit", 0.2);
+  deviations.params.assocLowerLimitThreshold = nh_private.param<double>("assocLowerLimitThreshold", 0.5);
+
 
   buffer_pc_pub_ = nh_.advertise<PointCloud>("buffer_pc_pub", 1, true);
   reconstructed_planes_pub_ = nh_.advertise<ColoredPointCloud>("reconstructed_planes_pub", 1, true);
@@ -98,9 +103,6 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
   
   /**
-  //cgal::Polyhedron P = deviations.reference_mesh_merged.getMesh();
-  //publishPolyhedron(P);
-
   publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_cloud_vector);
   publishDeviations(deviations.reference_mesh, deviations.plane_map, transformation_map);
   deviations.reset();

@@ -321,7 +321,6 @@ double MeshModel::squaredDistance(const Point &point) const {
   return CGAL::to_double(sqd);
 }
 
-
 }
 }
 

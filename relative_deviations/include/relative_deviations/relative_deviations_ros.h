@@ -47,6 +47,10 @@ class RelativeDeviations {
      * Publish point cloud of segmented planes
      */
     void publishReconstructedPlanes(const std::vector<reconstructed_plane> &rec_planes, ros::Publisher *publisher) const;
+    /**
+     *  Currently there is no use for this anymore, since we do not merge
+     *  anymore and just use triangle meshes.
+     */
     void publishPolyhedron(cgal::Polyhedron &P);
     void processCloud(cgal::PointCloud &reading_pc);
     // create a circular_buffer to store reading pointclouds for alignment

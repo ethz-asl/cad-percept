@@ -382,9 +382,19 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
 
 void Deviations::associatePlane(cgal::MeshModel &mesh_model, const PointCloud &cloud, int *id, double *match_score) {
   *match_score = 0;
+
+  // Area ratio check
+  double pc_area = cpt_utils::getArea(cloud);
+
   for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); i = bimap.right.upper_bound(i->first)) {
     // first check if Polyhedron plane even has size to be associated
     if (plane_map[i->first].area < params.minPolyhedronArea) {
+      break;
+    }
+    
+    // now check area ratio
+    double ratio = pc_area/plane_map[i->first].area;
+    if (ratio > params.assocAreaRatioUpperLimit || (plane_map[i->first].area < params.assocLowerLimitThreshold && ratio < params.assocAreaRatioLowerLimit)) {
       break;
     }
 
@@ -408,8 +418,12 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const PointCloud &c
     // eventually take into account similar sizes
     // find a better match_score, e.g. (1/normalized_size) * distance score
 
-    // detect if there is no fit (too large deviation)
+    // detect if there is no fit (too large deviation) and cancel in that case
+    if (match_score_new > params.matchScoreUpperLimit) {
+      break;
+    }
 
+    // lower match_score is better fit!
     if (match_score_new < *match_score || *match_score == 0) {
       if (match_score_new == plane_map[i->first].match_score) {
         std::cout << "Match score new is: " << match_score_new << ", map score is: " << plane_map[i->first].match_score << std::endl;
@@ -422,7 +436,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const PointCloud &c
       }
     }
     else if (match_score_new == *match_score) {
-      std::cout << "Facet with same match score, preceding previous one." << std::endl;
+      std::cout << "Facet with same match score, keeping previous one." << std::endl;
     }
   }
 }
