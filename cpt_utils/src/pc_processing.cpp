@@ -188,5 +188,21 @@ void projectToPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, const pc
   proj.filter(*cloud_out);
 }
 
+double getArea(const PointCloud &pointcloud) {
+  // http://pointclouds.org/documentation/tutorials/convex_hull_2d.php
+
+  // copy pointer
+  pcl::PointCloud<pcl::PointXYZ>::Ptr mycloudPtr;
+  mycloudPtr = boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ> >(new pcl::PointCloud<pcl::PointXYZ>(pointcloud)); 
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::ConvexHull<pcl::PointXYZ> chull;
+  chull.setInputCloud(mycloudPtr);
+  // set hull to 2D. If this fails, projectToPlane was not executed before
+  chull.setDimension(2);
+  chull.reconstruct(*cloud_hull);
+  return chull.getTotalArea();
+}
+
 }
 }

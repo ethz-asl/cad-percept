@@ -6,6 +6,7 @@
 #include <pcl/common/transforms.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/filters/project_inliers.h>
+#include <pcl/surface/convex_hull.h>
 #include <boost/circular_buffer.hpp>
 
 #include "pointmatcher/PointMatcher.h"
@@ -48,6 +49,28 @@ void projectToPlane(const PointCloud &cloud_in, const cgal::Plane &plane, PointC
  *  The PCL method for projecting a PointCloud to a plane given by ModelCoefficients
  */
 void projectToPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, const pcl::ModelCoefficients::Ptr coefficients, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out);
+
+/**
+ *  Perform Principal Component Analysis to get eigenvectors and compute
+ *  bounding box from these. Then use bounding box to calculate an estimated
+ *  wall center point.
+ */
+//void pca(const PointCloud &pointcloud, eigenvectors);
+
+/**
+ *  Compute the bounding box from pca result
+ */
+//void getBoundingBox(const PointCloud &pointcloud);
+
+/**
+ *  Get an estimated center of plane based on bounding box
+ */
+//void getCenter(const PointCloud &pointcloud);
+
+/**
+ *  Use 2D convex hull to get area
+ */
+double getArea(const PointCloud &pointcloud);
 
 }
 }
