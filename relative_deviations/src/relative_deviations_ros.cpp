@@ -56,8 +56,6 @@ void RelativeDeviations::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_i
   cgal::Polyhedron P;
   cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
   deviations.init(P);
-
-  // reset the bimap
 }
 
 void RelativeDeviations::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
@@ -96,17 +94,17 @@ void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
 
 void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   std::vector<reconstructed_plane> rec_planes;
-  std::vector<reconstructed_plane> remaining_cloud_vector; // put everything in here what we can't segment as planes
-  std::unordered_map<int, transformation> transformation_map;
+  std::vector<reconstructed_plane> remaining_plane_cloud_vector; // put everything in here what we can't segment as planes
   
-  deviations.detectChanges(&rec_planes, reading_pc, &remaining_cloud_vector, &transformation_map);
+  deviations.detectChanges(&rec_planes, reading_pc, &remaining_plane_cloud_vector);
   publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
   
-  /**
-  publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_cloud_vector);
-  publishDeviations(deviations.reference_mesh, deviations.plane_map, transformation_map);
+  publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_plane_cloud_vector);
+  
+  publishDeviations(deviations.reference_mesh, deviations.plane_map, deviations.transformation_map);
+  
+  // reset here in case we still want to access something, otherwise can put in detectChanges
   deviations.reset();
-  */
 }
 
 void RelativeDeviations::publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const {

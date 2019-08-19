@@ -21,7 +21,7 @@ void Deviations::init(const std::string &off_pathm, const std::string &path) {
   reference_mesh.init(off_pathm);
   int n_points = reference_mesh.getArea() * 100;
   std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
-  cpt_utils::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, &ref_pc, "P");
+  cpt_utils::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, &ref_pc);
 
 
   // process model here, what stays the same between scans
