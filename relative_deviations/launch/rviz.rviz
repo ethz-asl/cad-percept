@@ -145,7 +145,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 107
+      Max Intensity: 227
       Min Color: 0; 0; 0
       Min Intensity: 1
       Name: Corrected Scan
@@ -175,7 +175,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 225
+      Max Intensity: 227
       Min Color: 0; 0; 0
       Min Intensity: 1
       Name: Before ICP PointCloud
@@ -318,6 +318,53 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /assoc_marker_pub
+      Name: Assoc Marker
+      Namespaces:
+        semantic_graph_matches: true
+      Queue Size: 100
+      Value: true
+    - Alpha: 0.800000012
+      Backface Culling: false
+      Class: cgal_visualizations/ColoredMeshDisplay
+      Edge Color: 0; 0; 0
+      Enabled: true
+      Name: Assoc Mesh
+      Topic: /assoc_mesh
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: Assoc PointCloud
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.00999999978
+      Style: Flat Squares
+      Topic: /assoc_pc_pub
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -343,7 +390,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 18.5835323
+      Distance: 45.349575
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1

@@ -7,6 +7,7 @@
 #include <pcl/ModelCoefficients.h>
 #include <pcl/filters/project_inliers.h>
 #include <pcl/surface/convex_hull.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 #include <boost/circular_buffer.hpp>
 
 #include "pointmatcher/PointMatcher.h"
@@ -71,6 +72,13 @@ void projectToPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, const pc
  *  Use 2D convex hull to get area
  */
 double getArea(const PointCloud &pointcloud);
+
+void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox);
+
+/**
+ *  Statistical removal of outliers from a pointcloud
+ */
+void removeOutliers(PointCloud *pointcloud);
 
 }
 }

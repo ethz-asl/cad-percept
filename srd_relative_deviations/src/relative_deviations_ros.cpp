@@ -40,7 +40,7 @@ void RelativeDeviations::createTestCase(cgal::PointCloud *reading_pc) {
   cgal::Polyhedron P;
   cgal::Polyhedron P_deviated;
   cgal::build_sample_polyhedrons(&P, &P_deviated);
-  cpt_utils::sample_pc_from_mesh(P_deviated, 3000, 0.01, reading_pc, "reading_pc"); 
+  cpt_utils::sample_pc_from_mesh(P_deviated, 3000, 0.01, reading_pc); 
 
   // transform reading pointcloud a little bit to test ICP
   Eigen::Affine3f transform = Eigen::Affine3f::Identity();

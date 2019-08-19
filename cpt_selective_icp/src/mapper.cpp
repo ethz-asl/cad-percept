@@ -753,7 +753,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
     std::cout << "Extract whole point cloud (normal ICP)" << std::endl;
     int n_points = reference_mesh.getArea() * density;
     std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
-    cpt_utils::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, pointcloud, "ref_pointcloud");
+    cpt_utils::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, pointcloud);
     publishReferenceMesh(reference_mesh, references);
   }
   else {

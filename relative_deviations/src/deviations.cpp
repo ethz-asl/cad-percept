@@ -21,11 +21,14 @@ void Deviations::init(const cgal::Polyhedron &P) {
   // process model here, what stays the same between scans
 
   // Find coplanar facets and create bimap Facet ID <-> Plane ID (arbitrary iterated)
+  bimap.clear();
   reference_mesh.findAllCoplanarFacets(&bimap, 0.01);
   initPlaneMap();
+  computeCGALBboxes();
+  computeFacetNormals(reference_mesh);
 }
 
-void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_plane_cloud_vector, std::unordered_map<int, transformation> *transformation_map) {
+void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_plane_cloud_vector) {
   /**
    *  Planar Segmentation
    */
@@ -45,73 +48,12 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, con
 
   findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
 
-  // /**
-  //  *  Find tranformation
-  //  */
-
-  // computeFacetNormals(reference_mesh);
-  // findPlaneDeviation(transformation_map);
-
-  
-}
-
-void Deviations::extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud) {
-  std::cout << "Choosen reference facets:" << std::endl;
-  std::unordered_set<int>::iterator uitr;
-  for (uitr = references.begin(); uitr != references.end(); uitr++) {
-    std::cout << *uitr << std::endl;
-  }
-  
-  // sample reference point cloud from mesh 
-
-  // not sure if it makes sense to use whole colinear plane or just the given facets with a very small filter ratio
-  // -> balance between how many points we can match from reading vs. misorientation due to errors in colinear facets
-  // find better filter 
-
-  // create unordered set of all neighboring colinear facets
-  std::unordered_set<int> references_new;
-  // references_new = references; // with trimmed dist outlier filter ratio 0.2
-
-  // with trimmed dist outlier filter ratio 0.3 , this ratio can be as small as possible, but depends on how many associations we have
-  // with reference vs. total associations (we only want to keep the correct associations)
-  for (auto reference : references) {
-    std::cout << reference << std::endl;
-    reference_mesh.findCoplanarFacets(reference, &references_new, 0.01);
-  }
-
-  std::cout << "Computed reference facets:" << std::endl;
-  for (uitr = references_new.begin(); uitr != references_new.end(); uitr++) {
-    std::cout << *uitr << std::endl;
-  }
-
-  // create sampled point cloud from reference_new
-  
-  // generated points
-  std::vector<cgal::Point> points;
-  // create input triangles
-  std::vector<cgal::Triangle> triangles;
-  for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
-    if (references_new.find(j->id()) != references_new.end()) {
-      triangles.push_back(cgal::Triangle(j->halfedge()->vertex()->point(),
-                                   j->halfedge()->next()->vertex()->point(),
-                                   j->halfedge()->next()->next()->vertex()->point()));
-    }
-  }
-
-  // Create the generator, input is the vector of Triangle
-  CGAL::Random_points_in_triangles_3<cgal::Point> g(triangles);
-  // Get no_of_points random points in cdt
-  CGAL::cpp11::copy_n(g, no_of_points, std::back_inserter(points));
-  // Check that we have really created no_of_points.
-  assert(points.size() == no_of_points);
-
-  for (auto point : points) {
-    pcl::PointXYZ cloudpoint;
-    cloudpoint.x = (float)point.x();
-    cloudpoint.y = (float)point.y();
-    cloudpoint.z = (float)point.z();
-    icp_pointcloud->push_back(cloudpoint);
-  }
+  /**
+   *  Find current transformation_map and update transformation_map
+   */
+  std::unordered_map<int, transformation> current_transformation_map; // the latest transformation result
+  findPlaneDeviation(&current_transformation_map);
+  updateTransformationMap(&current_transformation_map);
 }
 
 void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const {
@@ -389,13 +331,13 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const PointCloud &c
   for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); i = bimap.right.upper_bound(i->first)) {
     // first check if Polyhedron plane even has size to be associated
     if (plane_map[i->first].area < params.minPolyhedronArea) {
-      break;
+      continue;
     }
     
     // now check area ratio
     double ratio = pc_area/plane_map[i->first].area;
     if (ratio > params.assocAreaRatioUpperLimit || (plane_map[i->first].area < params.assocLowerLimitThreshold && ratio < params.assocAreaRatioLowerLimit)) {
-      break;
+      continue;
     }
 
     double match_score_new = 0;
@@ -420,7 +362,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const PointCloud &c
 
     // detect if there is no fit (too large deviation) and cancel in that case
     if (match_score_new > params.matchScoreUpperLimit) {
-      break;
+      continue;
     }
 
     // lower match_score is better fit!
@@ -479,7 +421,7 @@ void Deviations::computeFacetNormals(cgal::MeshModel &mesh_model) {
   }
 }
 
-void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *transformation_map) {
+void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map) {
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
       std::cout << "Process plane ID: " << umit->first << std::endl;
@@ -513,10 +455,23 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *tra
 
       // create separate map with only facets ID match_score != 0 (only facets which we associated in current scan)
       // and  transform to each facet
-      transformation_map->insert(std::make_pair(umit->first, trafo));
+      current_transformation_map->insert(std::make_pair(umit->first, trafo));
 
     }
   }
+}
+
+void Deviations::updateTransformationMap(std::unordered_map<int, transformation> *current_transformation_map) {
+  // TODO: Do the real update filtering thing here
+  // - try to investigate the distribution using the single current_transformation_map and plot them
+  // - prediction based on this distribution, but what does it help to know error distribution?
+  // - how is update filtering indended to work normally?
+  // - now just compute average
+
+  ++transformation_map[i].count;
+
+  
+  transformation_map = *current_transformation_map;
 }
 
 void Deviations::reset() {
@@ -549,6 +504,32 @@ void Deviations::initPlaneMap() {
     plane_map.at(key).area = area;
   }
 }
+
+void Deviations::computeCGALBboxes() {
+  for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); ++i) {
+    cgal::Polyhedron::Facet_handle facet_handle = reference_mesh.getFacetHandle(i->second);
+    CGAL::Bbox_3 bbox = CGAL::Polygon_mesh_processing::face_bbox(facet_handle, reference_mesh.getMesh());
+    // update bbox
+    plane_map.at(i->first).bbox += bbox;
+  }
+
+/**
+  // Make a check what we have there now
+  for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); ) {
+    int dim = plane_map.at(i->first).bbox.dimension(); 
+    std::cout << "Dimension: " << dim << std::endl; 
+    double max = plane_map.at(i->first).bbox.max(0);  
+    double min = plane_map.at(i->first).bbox.min(0);  
+    std::cout << "Min/ max of bbox: " << min << "/ " << max << std::endl;
+    int key = i->first;
+    do {
+      ++i;
+    } while (i != bimap.right.end() && key == i->first); // multidset is ordered
+  }
+*/
+
+}
+
 
 }
 }

@@ -30,7 +30,8 @@
 #include <CGAL/Timer.h>
 #include <CGAL/number_utils.h>
 
-#include <CGAL/point_generators_3.h>
+// #include <CGAL/point_generators_3.h> remove
+#include <CGAL/Polygon_mesh_processing/bbox.h>
 
 #include <map>
 #include <unordered_map>
@@ -72,6 +73,7 @@ struct parameters {
 };
 
 struct transformation {
+  int count = 0; // use count to calculate the average later
   Eigen::AngleAxisd aa;
   Eigen::Quaterniond quat;
   double distance_score;
@@ -93,6 +95,9 @@ struct polyhedron_plane {
   Eigen::Vector3d normal;
   double match_score = 0; // match score for pc to mesh plane
   reconstructed_plane rec_plane; // associated point cloud
+  CGAL::Bbox_3 bbox; // bounding box of ref polyhedron_plane
+  // add normal (for rotation) and translation vector, which we update filter
+  // add updated cov. matrix for reconstructed plane, which we can use to get bbox and transl. (this is already an update filter for translations I guess)
 };
 
 typedef std::map<int,int>::iterator Miterator;
@@ -110,9 +115,10 @@ class Deviations {
     /**
      * Read-in reading pc and execute detection
      */
-    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector, std::unordered_map<int, transformation> *transformation_map);
+    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector);
     void init(const cgal::Polyhedron &P);
     std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of coplanar plane associated to plane properties
+    std::unordered_map<int, transformation> transformation_map; // here we keep all the latest updated transformations
 
     /**
      * Bimap saving associations between triangles and planes: Facet ID <-> Plane ID (arbitrary iterated)
@@ -125,7 +131,7 @@ class Deviations {
     void reset();
 
   private:
-    PointCloud ref_pc;
+    //PointCloud ref_pc; remove
 
     void planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const;
     void planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const;
@@ -144,16 +150,15 @@ class Deviations {
      */
     void findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
     void computeFacetNormals(cgal::MeshModel &mesh_model);
-    void findPlaneDeviation(std::unordered_map<int, transformation> *transformation_map);
+    void findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map);
+    /**
+     *  Update filtering of overall transformation_map
+     */
+    void updateTransformationMap(std::unordered_map<int, transformation> *current_transformation_map);
 
     void initPlaneMap();
-    /**
-     * Takes list of given reference facet ID's and uses them with colinear facets to perform ICP,
-     * P is old (unmerged) Polyhedron.
-     * This function is a little bit overcomplicated since we can not directly sample points from
-     * polyhedron, but only from triangles.
-     */
-    void extractReferenceFacets(const int no_of_points, cgal::Polyhedron &P, std::unordered_set<int> &references, PointCloud *icp_pointcloud);
+    
+    void computeCGALBboxes();
 
     std::string path_;
 };
