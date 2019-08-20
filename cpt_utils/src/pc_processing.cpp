@@ -210,7 +210,7 @@ void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox) {
   *bbox = CGAL::Bbox_3(min_pt.x, min_pt.y, min_pt.z, max_pt.x, max_pt.y, max_pt.z);
 }
 
-void removeOutliers(PointCloud *pointcloud) {
+void removeOutliers(PointCloud *pointcloud, int knn, float thresh_mult) {
   // copy pointer
   pcl::PointCloud<pcl::PointXYZ>::Ptr mycloudPtr;
   mycloudPtr = boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ> >(new pcl::PointCloud<pcl::PointXYZ>(*pointcloud)); 
@@ -219,8 +219,8 @@ void removeOutliers(PointCloud *pointcloud) {
   // Create the filtering object
   pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
   sor.setInputCloud(mycloudPtr);
-  sor.setMeanK(50);
-  sor.setStddevMulThresh(1.0);
+  sor.setMeanK(knn);
+  sor.setStddevMulThresh(thresh_mult);
   sor.filter(*pointcloud);
   std::cout << "Cloud after statistical outlier removal: " << pointcloud->size() << std::endl;
 }

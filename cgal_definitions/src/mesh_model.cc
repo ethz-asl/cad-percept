@@ -299,6 +299,17 @@ Plane MeshModel::getPlaneFromID(uint facet_id) {
   return getPlaneFromHandle(handle);
 }
 
+Triangle MeshModel::getTriangleFromHandle(Polyhedron::Facet_handle &f) const {
+  return Triangle(f->halfedge()->vertex()->point(),
+               f->halfedge()->next()->vertex()->point(),
+               f->halfedge()->next()->next()->vertex()->point());
+}
+
+Triangle MeshModel::getTriangleFromID(uint facet_id) {
+  Polyhedron::Facet_handle handle = getFacetHandle(facet_id);
+  return getTriangleFromHandle(handle);
+}
+
 double MeshModel::getArea() const {
   FT area;
   area = CGAL::Polygon_mesh_processing::area(P_);
