@@ -74,9 +74,10 @@ struct parameters {
 
 struct transformation {
   int count = 0; // use count to calculate the average later
-  Eigen::AngleAxisd aa;
+  Eigen::Vector3d avg_pc_normal; // averaged normal from all pc_normals necessary to calculate averages in transformation_map
+  Eigen::AngleAxisd aa; // remove in case we don't need it, can calculate everything from quat
   Eigen::Quaterniond quat;
-  double distance_score;
+  double distance_score = 0;
 };
 
 struct reconstructed_plane {
@@ -154,7 +155,7 @@ class Deviations {
     /**
      *  Update filtering of overall transformation_map
      */
-    void updateTransformationMap(std::unordered_map<int, transformation> *current_transformation_map);
+    void updateAveragePlaneDeviation();
 
     void initPlaneMap();
     
