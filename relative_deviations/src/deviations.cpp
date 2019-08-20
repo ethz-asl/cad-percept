@@ -53,7 +53,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, con
    */
   std::unordered_map<int, transformation> current_transformation_map; // the latest transformation result
   findPlaneDeviation(&current_transformation_map);
-  updateTransformationMap(&current_transformation_map);
+  updateAveragePlaneDeviation();
 }
 
 void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const {
@@ -436,7 +436,9 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
 
       // find angle
 
-      // Angle Axis
+      /**
+       *  Angle Axis
+       */ 
       Eigen::Vector3d axis = umit->second.rec_plane.pc_normal.cross(umit->second.normal);
       // std::cout << "Vector pc: " << umit->second.rec_plane.pc_normal << ", Vector facet: " << umit->second.normal << std::endl;
       axis.normalize();
@@ -446,8 +448,13 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
       Eigen::AngleAxisd aa(angle, axis);
       trafo.aa = aa;
 
-      // To Quaternion
-      Eigen::Quaterniond quat(aa);
+      /**
+       *  Quaternion
+       */
+      // TODO: check that aa and quat are same
+      // no need to normalize first
+      Eigen::Quaterniond quat;
+      quat.FromTwoVectors(umit->second.rec_plane.pc_normal, umit->second.normal);
       trafo.quat = quat;
 
       // could convert quaternion to euler angles, but these are ambiguous, better work with
@@ -456,22 +463,53 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
       // create separate map with only facets ID match_score != 0 (only facets which we associated in current scan)
       // and  transform to each facet
       current_transformation_map->insert(std::make_pair(umit->first, trafo));
-
     }
   }
 }
 
-void Deviations::updateTransformationMap(std::unordered_map<int, transformation> *current_transformation_map) {
+void Deviations::updateAveragePlaneDeviation() {
   // TODO: Do the real update filtering thing here
   // - try to investigate the distribution using the single current_transformation_map and plot them
   // - prediction based on this distribution, but what does it help to know error distribution?
   // - how is update filtering indended to work normally?
   // - now just compute average
+  // - since there is no bullet-proof way to average rotations, we additionally save avg_normal of all
+  // associated normals and update average rotation from these
+  // - also because rotations before can not be used to calculate average, this fct. is independent of 
+  // current_transformation_map
 
-  ++transformation_map[i].count;
 
-  
-  transformation_map = *current_transformation_map;
+  for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
+    if (umit->second.match_score != 0) {
+      std::cout << "Average transformation of plane ID: " << umit->first << std::endl;
+      // increase count for averages and create element if not existing yet
+      transformation_map[umit->first].count = transformation_map[umit->first].count + 1;
+      
+      transformation trafo;
+
+      // update distance score average
+      double current_distance_score = umit->second.match_score; // since we set it to distance score before
+      trafo.distance_score = transformation_map[umit->first].distance_score + (current_distance_score - transformation_map[umit->first].distance_score) / transformation_map[umit->first].count;
+
+      // update rotation average
+      Eigen::Vector3d current_pc_normal = umit->second.rec_plane.pc_normal;
+      trafo.avg_pc_normal = transformation_map[umit->first].avg_pc_normal + (current_pc_normal - transformation_map[umit->first].avg_pc_normal) / transformation_map[umit->first].count;
+      // angle axis
+      Eigen::Vector3d axis = trafo.avg_pc_normal.cross(umit->second.normal);
+      axis.normalize();
+      double angle = acos(trafo.avg_pc_normal.dot(umit->second.normal));
+      Eigen::AngleAxisd aa(angle, axis);
+      trafo.aa = aa;
+      // quaternion
+      // TODO: check that aa and quat are same
+      // no need to normalize first
+      Eigen::Quaterniond quat;
+      quat.FromTwoVectors(trafo.avg_pc_normal, umit->second.normal);
+      trafo.quat = quat;
+
+      transformation_map[umit->first] = trafo;
+    }
+  }
 }
 
 void Deviations::reset() {
