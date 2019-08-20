@@ -103,6 +103,12 @@ class MeshModel {
   Plane getPlaneFromHandle(Polyhedron::Facet_handle &f) const;
   Plane getPlaneFromID(uint facet_id);
 
+  /**
+   *  Compute Triangle from facet
+   */
+  Triangle getTriangleFromHandle(Polyhedron::Facet_handle &f) const;
+  Triangle getTriangleFromID(uint facet_id);
+
   void findCoplanarFacets(uint facet_id, std::unordered_set<int> *result, const double eps);
   
   /**

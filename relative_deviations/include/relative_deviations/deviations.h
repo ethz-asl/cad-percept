@@ -41,6 +41,8 @@
 #include <boost/bimap/unordered_set_of.hpp>
 #include <boost/bimap/multiset_of.hpp>
 
+#include <limits>
+
 namespace cad_percept {
 namespace deviations {
 
@@ -67,9 +69,15 @@ struct parameters {
   double segmentationProbability;
   double minPolyhedronArea;
   double matchScoreUpperLimit;
+  double matchDistScoreThresh;
+  double matchMinDistThresh;
+  double matchAngleThresh;
   double assocAreaRatioUpperLimit;
   double assocAreaRatioLowerLimit;
-  double assocLowerLimitThreshold;
+  double assocAreaLowerLimitThreshold;
+  double minDistWeight;
+  double distanceScoreWeight;
+  double angleWeight;
 };
 
 struct transformation {
@@ -144,12 +152,12 @@ class Deviations {
      * every cloud point is associated to the same Polyhedron while testing
      * and then a score is evaluated.
      */
-    void associatePlane(cgal::MeshModel &mesh_model, const PointCloud &cloud, int *id, double *match_score);
+    void associatePlane(cgal::MeshModel &mesh_model, const reconstructed_plane &rec_plane, int *id, double *match_score);
     /**
      * This function finds best association between all p.c. planes and facets based on match_score from associatePlane().
      * Could additionally output non associated facets and point clouds.
      */
-    void findBestPlaneAssociation(const std::vector<reconstructed_plane> &cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
+    void findBestPlaneAssociation(std::vector<reconstructed_plane> cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
     void computeFacetNormals(cgal::MeshModel &mesh_model);
     void findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map);
     /**
