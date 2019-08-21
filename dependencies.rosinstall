@@ -3,7 +3,8 @@
     uri: git@github.com:catkin/catkin_simple.git
 - git:
     local-name: cgal_catkin
-    uri: git@github.com:ethz-asl/cgal_catkin.git
+    uri: https://github.com/ethz-asl/cgal_catkin.git
+    version: feature/4.13
 - git:
     local-name: glog_catkin
     uri: git@github.com:ethz-asl/glog_catkin.git
