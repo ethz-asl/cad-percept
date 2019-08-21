@@ -2,7 +2,7 @@
 
 <launch>
 
-  <arg name="cad_file" default="/home/julian/Downloads/CLA_CAD_simplified_single_wall.off" />
+  <arg name="cad_file" default="$(find cpt_meshcad_interface)/../example_meshes/CLA_CAD_simplified_single_wall.off" />
   <arg name="map_frame"    default="map" />
   <arg name="marker_frame" default="marker" />
   <arg name="marker_frame2" default="marker2" />
