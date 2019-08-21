@@ -640,14 +640,21 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
 
 bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
                                 cpt_selective_icp::References::Response &res) {
-  
+  std::unordered_set<int> references;
+  for (auto id : req.data) {
+    // check that every request is in mesh
+    if (id < reference_mesh_.size()) {
+      references.insert(id);
+    }
+  }
+
+  if (references.empty()) {
+    return false;
+  }
+
   selective_icp_trigger = true; // use selective ICP now
   std::cout << "Mode set to selective ICP" << std::endl;
 
-  std::unordered_set<int> references;
-  for (auto id : req.data) {
-    references.insert(id);
-  }
   PointCloud pointcloud;
   extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &pointcloud);
 
