@@ -27,7 +27,12 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   deviations.params.matchScoreUpperLimit = nh_private.param<double>("matchScoreUpperLimit", 2.0);
   deviations.params.matchDistScoreThresh = nh_private.param<double>("matchDistScoreThresh", 1.0);
   deviations.params.matchMinDistThresh = nh_private.param<double>("matchMinDistThresh", 2.0);
+  deviations.params.matchDistThresh = nh_private.param<double>("matchDistThresh", 2.0);
   deviations.params.matchAngleThresh = nh_private.param<double>("matchAngleThresh", 1.5);
+  deviations.params.minDistWeight = nh_private.param<double>("minDistWeight", 0.0);
+  deviations.params.distanceScoreWeight = nh_private.param<double>("distanceScoreWeight", 1.0);
+  deviations.params.angleWeight = nh_private.param<double>("angleWeight", 0.0);
+  deviations.params.distWeight = nh_private.param<double>("distWeight", 0.0);
   deviations.params.assocAreaRatioUpperLimit = nh_private.param<double>("assocAreaRatioUpperLimit", 10.0);
   deviations.params.assocAreaRatioLowerLimit = nh_private.param<double>("assocAreaRatioLowerLimit", 0.2);
   deviations.params.assocAreaLowerLimitThreshold = nh_private.param<double>("assocAreaLowerLimitThreshold", 0.5);
@@ -175,7 +180,7 @@ void RelativeDeviations::publishReconstructedPlanes(const std::vector<reconstruc
   publishCloud<ColoredPointCloud>(&pointcloud_rgb, publisher);
 }
 
-void RelativeDeviations::publishAssociations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, const std::vector<reconstructed_plane> &remaining_cloud_vector) {
+void RelativeDeviations::publishAssociations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, const std::vector<reconstructed_plane> &remaining_plane_cloud_vector) {
   ColoredPointCloud pointcloud_rgb;
   ColoredPointCloud pointcloud_plane_rgb;
   
@@ -189,8 +194,11 @@ void RelativeDeviations::publishAssociations(const cgal::MeshModel &model, std::
   c_msg.header.stamp = {secs: 0, nsecs: 0};
   c_msg.header.seq = 0;
 
+  /**
+   *  Non-associated planes PointCloud
+   */
   // add non associated rec. planes in blue
-  for (auto plane : remaining_cloud_vector) {
+  for (auto plane : remaining_plane_cloud_vector) {
     pcl::copyPointCloud(plane.pointcloud, pointcloud_plane_rgb);
     uint8_t r = 0, g = 0, b = 255;    
     uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
@@ -200,6 +208,9 @@ void RelativeDeviations::publishAssociations(const cgal::MeshModel &model, std::
     pointcloud_rgb += pointcloud_plane_rgb;
   }
 
+  /**
+   *  Associated Triangles, Rec. Planes P.C.
+   */
   std_msgs::ColorRGBA c;
 
   // set all facet colors to blue, non-associated stay blue
@@ -215,7 +226,7 @@ void RelativeDeviations::publishAssociations(const cgal::MeshModel &model, std::
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
-    if (umit->second.match_score != 0) {
+    if (!umit->second.rec_plane.pointcloud.empty()) {
       std::cout << "Visualize Facet: " << umit->first << std::endl;
       uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;   
 
