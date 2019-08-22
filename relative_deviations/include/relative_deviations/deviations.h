@@ -101,6 +101,7 @@ struct reconstructed_plane {
  *  ID of merged facet is given in map.
  */ 
 struct polyhedron_plane {
+  bool associated = false; // set true if association was mades
   cgal::Plane plane;
   double area;
   Eigen::Vector3d normal;

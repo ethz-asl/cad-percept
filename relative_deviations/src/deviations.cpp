@@ -324,6 +324,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
 }
 
 void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed_plane &rec_plane, int *id, double *match_score, bool *success) {
+  // TODO check every metrics function used here
   *success = false;
   PointCloud cloud = rec_plane.pointcloud;
   // Area ratio check
@@ -360,7 +361,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
       continue;
     }
 
-    // min_dist (cancels most of assoc, slow)
+    // dist and min_dist (cancels most of assoc, slow)
     double d_min = std::numeric_limits<double>::max();
     double dist = 0;
     int count = 0;
@@ -377,8 +378,8 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
       std::cout << "min_dist is: " << min_dist << ", but threshold at: " << params.matchMinDistThresh << std::endl;
       continue;
     }
-    if (min_dist > params.matchDistThresh) {
-      std::cout << "dist is: " << dist << ", but threshold at: " << params.matchDistThresh << std::endl;
+    if (avg_dist > params.matchDistThresh) {
+      std::cout << "avg_dist is: " << avg_dist << ", but threshold at: " << params.matchDistThresh << std::endl;
       continue;
     }
 
@@ -438,11 +439,12 @@ void Deviations::findBestPlaneAssociation(std::vector<reconstructed_plane> cloud
     bool success = false;
     associatePlane(mesh_model, cloud_queue.front(), &id, &match_score_new, &success);
     if (success) {
-      if (!plane_map[id].rec_plane.pointcloud.empty()) {
+      if (plane_map[id].associated) {
         cloud_queue.push(plane_map[id].rec_plane); // re-add pointcloud to queue
       }
       plane_map[id].rec_plane = cloud_queue.front();
       plane_map[id].match_score = match_score_new;
+      plane_map[id].associated = true;
     }
     else {
       // non associated clouds
@@ -556,6 +558,7 @@ void Deviations::reset() {
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     reconstructed_plane rec_plane;
     umit->second.rec_plane = rec_plane;
+    umit->second.associated = false;
     umit->second.match_score = std::numeric_limits<double>::max(); 
   }
 }
@@ -566,6 +569,7 @@ void Deviations::initPlaneMap() {
     //std::cout << "First element is: " << i->first << std::endl;
 
     polyhedron_plane plane;
+    plane.associated = false;
     plane.plane = reference_mesh.getPlaneFromID(i->second); // getPlane from the first facet of this plane (arbitrary)
     plane_map.insert(std::make_pair(i->first, plane));
 
