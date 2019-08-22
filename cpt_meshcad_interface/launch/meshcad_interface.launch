@@ -4,19 +4,14 @@
 
   <arg name="cad_file" default="$(find cpt_meshcad_interface)/../example_meshes/CLA_CAD_simplified_single_wall.off" />
   <arg name="map_frame"    default="map" />
-  <arg name="marker_frame" default="marker" />
-  <arg name="marker_frame2" default="marker2" />
-  <arg name="world_frame" default="world" />
 
   <node name="cad_interface_node" pkg="cpt_meshcad_interface" type="cad_interface_node" output="screen"/>
     <param name="/cad_file_pcd" value="$(arg cad_file)" />
 
-  <node name="interactive_marker" pkg="cpt_meshcad_interface" type="interactive_mesh.py" output="screen"/>
+  <node name="interactive_marker_node" pkg="cpt_meshcad_interface" type="interactive_mesh_node.py" output="screen"/>
     <param name="map_frame"      value="$(arg map_frame)" />
-    <param name="marker_frame"   value="$(arg marker_frame)" />
-    <param name="marker_frame2"   value="$(arg marker_frame2)" />
 
-  <node name="facet_selector" pkg="cpt_meshcad_interface" type="facet_selector.py" output="screen" />
+  <node name="facet_selector_node" pkg="cpt_meshcad_interface" type="facet_selector_node.py" output="screen" />
     <param name="map_frame"   value="$(arg map_frame)" />
 
 </launch>

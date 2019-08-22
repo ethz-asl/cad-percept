@@ -19,10 +19,12 @@ int_marker = InteractiveMarker()
 
 map_frame = rospy.get_param('map_frame')
 
-def processFeedback( feedback ):
+
+def processFeedback(feedback):
     server.applyChanges()
 
-def makeBox( msg ):
+
+def makeBox(msg):
     marker = Marker()
 
     marker.type = Marker.CUBE
@@ -36,18 +38,19 @@ def makeBox( msg ):
 
     return marker
 
-def makeBoxControl( msg ):
-    control =  InteractiveMarkerControl()
+
+def makeBoxControl(msg):
+    control = InteractiveMarkerControl()
     control.always_visible = True
-    control.markers.append( makeBox(msg) )
-    msg.controls.append( control )
+    control.markers.append(makeBox(msg))
+    msg.controls.append(control)
     return control
 
 
 #####################################################################
 # Marker Creation
 
-def normalizeQuaternion( quaternion_msg ):
+def normalizeQuaternion(quaternion_msg):
     norm = quaternion_msg.x**2 + quaternion_msg.y**2 + quaternion_msg.z**2 + quaternion_msg.w**2
     s = norm**(-0.5)
     quaternion_msg.x *= s
@@ -55,7 +58,8 @@ def normalizeQuaternion( quaternion_msg ):
     quaternion_msg.z *= s
     quaternion_msg.w *= s
 
-def make6DofMarker( fixed, interaction_mode, position, show_6dof = False):
+
+def make6DofMarker(fixed, interaction_mode, position, show_6dof=False):
     global map_frame, int_marker
     int_marker.header.frame_id = map_frame
     int_marker.pose.position = position
@@ -73,17 +77,17 @@ def make6DofMarker( fixed, interaction_mode, position, show_6dof = False):
         int_marker.description += "\n(fixed orientation)"
 
     if interaction_mode != InteractiveMarkerControl.NONE:
-        control_modes_dict = { 
-                          InteractiveMarkerControl.MOVE_3D : "FACET ID DETECTOR", # MOVE_3D
-                          InteractiveMarkerControl.ROTATE_3D : "ROTATE_3D",
-                          InteractiveMarkerControl.MOVE_ROTATE_3D : "MOVE_ROTATE_3D" }
+        control_modes_dict = {
+            InteractiveMarkerControl.MOVE_3D: "FACET ID DETECTOR",  # MOVE_3D
+            InteractiveMarkerControl.ROTATE_3D: "ROTATE_3D",
+            InteractiveMarkerControl.MOVE_ROTATE_3D: "MOVE_ROTATE_3D"}
         int_marker.name += "_" + control_modes_dict[interaction_mode]
         int_marker.description = "3D Control"
-        if show_6dof: 
-          int_marker.description += " + 6-DOF controls"
+        if show_6dof:
+            int_marker.description += " + 6-DOF controls"
         int_marker.description += "\n" + control_modes_dict[interaction_mode]
-    
-    if show_6dof: 
+
+    if show_6dof:
         control = InteractiveMarkerControl()
         control.orientation.w = 1
         control.orientation.x = 1
@@ -157,7 +161,8 @@ def make6DofMarker( fixed, interaction_mode, position, show_6dof = False):
         int_marker.controls.append(control)
 
     server.insert(int_marker, processFeedback)
-    menu_handler.apply( server, int_marker.name )
+    menu_handler.apply(server, int_marker.name)
+
 
 def getFacetIDCb(feedback):
     global int_marker
@@ -166,24 +171,26 @@ def getFacetIDCb(feedback):
 
     rospy.wait_for_service('/mapper/get_closest_facet')
     try:
-        pose = Point(int_marker.pose.position.x, int_marker.pose.position.y, int_marker.pose.position.z)
+        pose = Point(int_marker.pose.position.x,
+                     int_marker.pose.position.y, int_marker.pose.position.z)
         get_facet_id = rospy.ServiceProxy('/mapper/get_closest_facet',
-                                            FacetID)
+                                          FacetID)
         res = get_facet_id(pose)
-        print "Closest facet ID is: ",res.facet_id
+        print "Closest facet ID is: ", res.facet_id
     except rospy.ServiceException, e:
-        print "Service call failed: %s"%e
+        print "Service call failed: %s" % e
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     rospy.init_node("mesh_facet_selector")
 
     server = InteractiveMarkerServer("mesh_facet_selector")
 
-    menu_handler.insert( "Get closest facet ID", callback=getFacetIDCb )
-  
-    position = Point( 3, 0, 0)
-    make6DofMarker( False, InteractiveMarkerControl.MOVE_3D, position, False)
- 
+    menu_handler.insert("Get closest facet ID", callback=getFacetIDCb)
+
+    position = Point(3, 0, 0)
+    make6DofMarker(False, InteractiveMarkerControl.MOVE_3D, position, False)
+
     server.applyChanges()
 
     rospy.spin()

@@ -4,6 +4,7 @@ project(cpt_meshcad_interface)
 add_definitions(-std=c++11)
 
 find_package(catkin_simple REQUIRED)
+catkin_python_setup()
 catkin_simple(ALL_DEPS_REQUIRED)
 
 catkin_package()
