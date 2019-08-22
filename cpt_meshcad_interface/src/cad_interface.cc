@@ -29,7 +29,7 @@ void CadInterface::load(const std::string &filename) {
   cgal_msgs::TriangleMesh t_msg;
   cad_percept::cgal::triangleMeshToMsg(P_, &t_msg);
   cad_mesh_msg_.mesh = t_msg;
-  cad_mesh_msg_.header.frame_id = "marker2";
+  cad_mesh_msg_.header.frame_id = "marker_position";
 }
 
 void CadInterface::publishPointCloudThread() {
