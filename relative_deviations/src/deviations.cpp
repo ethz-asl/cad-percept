@@ -487,7 +487,7 @@ void Deviations::findBestPlaneAssociation(std::vector<reconstructed_plane> cloud
 
 void Deviations::computeFacetNormals(cgal::MeshModel &mesh_model) {
   for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); i = bimap.right.upper_bound(i->first)) {
-    cgal::Vector cnormal = mesh_model.computeFaceNormal2(mesh_model.getFacetHandle(i->first));
+    cgal::Vector cnormal = mesh_model.computeFaceNormal2(mesh_model.getFacetHandle(i->second));
     Eigen::Vector3d normal = cgal::cgalVectorToEigenVector(cnormal);
     plane_map[i->first].normal = normal;
   }
