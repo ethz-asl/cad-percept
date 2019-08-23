@@ -7,7 +7,6 @@
   <arg name="discrete_color" default="false" />
   <arg name="score_threshold" default="0.015" />
   <arg name="path" default="$(find relative_deviations)" />
-  <arg name="buffer_size" default="5" /> <!-- defines how many scans are concatenated for deviation analysis -->
   <arg name="cad_topic" default="cad_mesh_pub" />
   <arg name="scan_topic" default="ref_corrected_scan" />
 
@@ -21,7 +20,6 @@
     <param name="discrete_color" value="$(arg discrete_color)" />
     <param name="score_threshold" value="$(arg score_threshold)" />
     <param name="path" value="$(arg path)" />
-    <param name="buffer_size" value="$(arg buffer_size)" />
     <param name="cad_topic" value="$(arg cad_topic)" />
     <param name="scan_topic" value="$(arg scan_topic)" />
   </node>

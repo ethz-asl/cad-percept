@@ -137,6 +137,7 @@ Now observe /corrected_scan and /ref_corrected_scan (only for selective ICP)
 Hint:
 - For better alignment of Marker, deactivate Mesh Model. Marker can not be accessed through mesh.
 - There is a second interactive marker (red), which can be used to find closest facet ID to this marker. It is important to load the CAD first. Somehow the first projection on the facet is not shown in rviz.
+- Pay attention when looking at visualizations in rviz since sometimes rviz is inaccurate with showing current message when simulation is paused. Deactivate and activate marker again to show correctly when simulation paused.
 
 ## Instructions
 

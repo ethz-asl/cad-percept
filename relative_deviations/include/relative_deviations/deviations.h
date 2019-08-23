@@ -42,6 +42,7 @@
 #include <boost/bimap/multiset_of.hpp>
 
 #include <limits>
+#include <math.h>
 
 namespace cad_percept {
 namespace deviations {

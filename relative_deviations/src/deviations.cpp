@@ -193,7 +193,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
   points.erase(unoriented_points_begin, points.end());            
   */                                                                                              
 
-  std::cout << "Size of pwn_vector: " << points.size() << std::endl;
+  //std::cout << "Size of pwn_vector: " << points.size() << std::endl;
 
   // Instantiate shape detection engine.
   ShapeDetection shape_detection;
@@ -280,10 +280,10 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
   while (it != shapes.end()) {
     cgal::ShapePlane* plane = dynamic_cast<cgal::ShapePlane*>(it->get());
     cgal::ShapeKernel::Vector_3 normal = plane->plane_normal();
-    std::cout << (*it)->info() << std::endl; // parameters of detected shape
-    std::cout << "Plane with normal " << normal << std::endl;
+    //std::cout << (*it)->info() << std::endl; // parameters of detected shape
+    //std::cout << "Plane with normal " << normal << std::endl;
     const cgal::ShapeKernel::Plane_3 pl3 = static_cast<cgal::ShapeKernel::Plane_3>(*plane);
-    std::cout << "Kernel::Plane_3: " << pl3 << std::endl;
+    //std::cout << "Kernel::Plane_3: " << pl3 << std::endl;
 
     cgal::FT sum_distances = 0;
     reconstructed_plane rec_plane;
@@ -307,7 +307,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
 
     rec_plane.pointcloud = pointcloud;
     cgal::FT average_distance = sum_distances / plane->indices_of_assigned_points().size();
-    std::cout << " average distance: " << average_distance << std::endl;
+    //std::cout << " average distance: " << average_distance << std::endl;
     rec_plane.coefficients.push_back(pl3.a());
     rec_plane.coefficients.push_back(pl3.b());
     rec_plane.coefficients.push_back(pl3.c());
@@ -330,6 +330,13 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
   // Area ratio check
   double pc_area = cpt_utils::getArea(cloud);
 
+  // Parameters of best fit
+  double best_distance_score;
+  double best_min_dist;
+  double best_avg_dist;
+  double best_angle;
+
+
   // iterate over all planes
   for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); i = bimap.right.upper_bound(i->first)) {
     // first check if Polyhedron plane even has size to be associated
@@ -346,7 +353,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     // now compute all the metrics which we want to use for score, but cancel as soon as a hard threshold is reached
     // put in computationally least expensive order
     double match_score_new = std::numeric_limits<double>::max();
-    std::cout << "Checking Plane ID: " << i->first << std::endl;
+    //std::cout << "Checking Plane ID: " << i->first << std::endl;
 
     // distance_score of squared distances
     uint facet_id = i->second;
@@ -357,43 +364,50 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     d = d/cloud.size();
     double distance_score = CGAL::to_double(d);
     if (distance_score > params.matchDistScoreThresh) {
-      std::cout << "distance_score is: " << distance_score << ", but threshold at: " << params.matchDistScoreThresh << std::endl;
+      //std::cout << "distance_score is: " << distance_score << ", but threshold at: " << params.matchDistScoreThresh << std::endl;
       continue;
     }
 
     // dist and min_dist (cancels most of assoc, slow)
     double d_min = std::numeric_limits<double>::max();
     double dist = 0;
-    int count = 0;
-    for (auto plane : boost::make_iterator_range(bimap.right.equal_range(i->first))) {
-      for (auto point : cloud.points) {
-        d_min = std::min(CGAL::to_double(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z), mesh_model.getTriangleFromID(plane.second))), d_min);
-        dist += sqrt(CGAL::to_double(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z), mesh_model.getTriangleFromID(plane.second))));
-        count++;
+    for (auto point : cloud.points) {
+      double d = std::numeric_limits<double>::max();
+      for (auto plane : boost::make_iterator_range(bimap.right.equal_range(i->first))) {
+        d = std::min(d, CGAL::to_double(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z), mesh_model.getTriangleFromID(plane.second))));
       }
+      d_min = std::min(d, d_min);
+      dist += sqrt(d);
     }
-    double avg_dist = dist/count;
+
+    double avg_dist = dist/cloud.size();
     double min_dist = sqrt(d_min);
     if (min_dist > params.matchMinDistThresh) {
-      std::cout << "min_dist is: " << min_dist << ", but threshold at: " << params.matchMinDistThresh << std::endl;
+      //std::cout << "min_dist is: " << min_dist << ", but threshold at: " << params.matchMinDistThresh << std::endl;
       continue;
     }
     if (avg_dist > params.matchDistThresh) {
-      std::cout << "avg_dist is: " << avg_dist << ", but threshold at: " << params.matchDistThresh << std::endl;
+      //std::cout << "avg_dist is: " << avg_dist << ", but threshold at: " << params.matchDistThresh << std::endl;
       continue;
     }
 
     //TODO: this needs fix because of different orientation of normals
     // angle (not sure if necessary since already somehow contained in distance_score)
     // we just care about angle of axis angle representation
-    double angle = std::abs(acos(rec_plane.pc_normal.dot(plane_map[i->first].normal))); // since both normals are already normalized
-    double angle_2 = std::abs(acos(-rec_plane.pc_normal.dot(plane_map[i->first].normal)));
-    if (std::min(angle, angle_2) < params.matchAngleThresh) {
-      std::cout << "angle is: " << angle << " or " << angle_2 << ", but threshold at: " << params.matchAngleThresh << std::endl;
+    double angle = acos(rec_plane.pc_normal.dot(plane_map[i->first].normal));
+    //std::cout << "Angle is: " << angle << std::endl;
+    //std::cout << "Angles: " << angle << "/ " << std::abs(angle - M_PI) << std::endl;
+    // Bring angle to first quadrant
+    angle = std::min(angle, std::abs(angle - M_PI));
+    //std::cout << "Chosen angle: " << angle << std::endl;
+    //std::cout << "P.C. Normal: " << rec_plane.pc_normal << ", Ref. plane normal: " << plane_map[i->first].normal << std::endl; 
+
+    if (angle > params.matchAngleThresh) {
+      //std::cout << "angle is: " << angle << " or " << angle_2 << ", but threshold at: " << params.matchAngleThresh << std::endl;
       continue;
     }
 
-    match_score_new = params.distWeight * avg_dist + params.minDistWeight * min_dist + params.distanceScoreWeight * distance_score + params.angleWeight * std::min(angle, angle_2);
+    match_score_new = params.distWeight * avg_dist + params.minDistWeight * min_dist + params.distanceScoreWeight * distance_score + params.angleWeight * angle;
     //std::cout << "Match score new is: " << match_score_new << std::endl;
     //std::cout << "Match score before is: " << *match_score << std::endl;
 
@@ -402,26 +416,41 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
 
     // detect if there is no fit (too large deviation) and cancel in that case
     if (match_score_new > params.matchScoreUpperLimit) {
-      std::cout << "match_score is: " << match_score_new << ", but threshold at: " << params.matchScoreUpperLimit << std::endl;
+      //std::cout << "match_score is: " << match_score_new << ", but threshold at: " << params.matchScoreUpperLimit << std::endl;
       continue;
     }
 
     // lower match_score is better fit!
     if (match_score_new < *match_score) {
       if (match_score_new == plane_map[i->first].match_score) {
-        std::cout << "Match score new is: " << match_score_new << ", map score is: " << plane_map[i->first].match_score << std::endl;
-        std::cerr << "Pointcloud with same match score. Keeping preceding result." << std::endl;
+        //std::cout << "Match score new is: " << match_score_new << ", map score is: " << plane_map[i->first].match_score << std::endl;
+        //std::cerr << "Pointcloud with same match score. Keeping preceding result." << std::endl;
       }
       else if (match_score_new < plane_map[i->first].match_score) {
         //std::cout << "Replacing score by new score" << std::endl;
         *id = i->first;
         *match_score = match_score_new;
         *success = true;
+
+        // Save parameters for later use
+        best_avg_dist = avg_dist;
+        best_min_dist = min_dist;
+        best_distance_score = distance_score;
+        best_angle = angle;
       }
     }
     else if (match_score_new == *match_score) {
-      std::cout << "Facet with same match score, keeping previous one." << std::endl;
+      //std::cout << "Facet with same match score, keeping previous one." << std::endl;
     }
+  }
+  // Output parameters of best fit
+  if (*success) {
+    std::cout << "PointCloud associated to plane: " << *id << std::endl;
+    std::cout << "Match score: " << *match_score << std::endl;
+    std::cout << "Min_dist: " << best_min_dist << std::endl;
+    std::cout << "Avg_dist: " << best_avg_dist << std::endl;
+    std::cout << "Distance score: " << best_distance_score << std::endl;
+    std::cout << "Angle: " << best_angle << std::endl;
   }
 }
 
@@ -445,6 +474,7 @@ void Deviations::findBestPlaneAssociation(std::vector<reconstructed_plane> cloud
       plane_map[id].rec_plane = cloud_queue.front();
       plane_map[id].match_score = match_score_new;
       plane_map[id].associated = true;
+      std::cout << "Set plane " << id << std::endl;
     }
     else {
       // non associated clouds
@@ -466,7 +496,7 @@ void Deviations::computeFacetNormals(cgal::MeshModel &mesh_model) {
 void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map) {
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
-      std::cout << "Process plane ID: " << umit->first << std::endl;
+      //std::cout << "Process plane ID: " << umit->first << std::endl;
       transformation trafo;
       // set distance_score to match_score
       trafo.distance_score = umit->second.match_score; // since we set it equal before
@@ -523,7 +553,7 @@ void Deviations::updateAveragePlaneDeviation() {
 
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
-      std::cout << "Average transformation of plane ID: " << umit->first << std::endl;
+      //std::cout << "Average transformation of plane ID: " << umit->first << std::endl;
       // increase count for averages and create element if not existing yet
       transformation_map[umit->first].count = transformation_map[umit->first].count + 1;
       
