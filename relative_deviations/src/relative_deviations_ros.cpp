@@ -227,7 +227,7 @@ void RelativeDeviations::publishAssociations(const cgal::MeshModel &model, std::
   int marker_id = 0;
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (!umit->second.rec_plane.pointcloud.empty()) {
-      std::cout << "Visualize Facet: " << umit->first << std::endl;
+      //std::cout << "Visualize Facet: " << umit->first << std::endl;
       uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;   
 
       auto iit = deviations.bimap.right.equal_range(umit->first);
@@ -309,7 +309,7 @@ void RelativeDeviations::publishDeviations(const cgal::MeshModel &model, std::un
 
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     if (umit->second.match_score != 0) {
-      std::cout << "Visualize Deviation of Facet: " << umit->first << std::endl;
+      // std::cout << "Visualize Deviation of Facet: " << umit->first << std::endl;
       
       //std::unordered_map<int,transformation>::const_iterator it = transformation_map.find(umit->first);
       transformation trafo = transformation_map[umit->first];

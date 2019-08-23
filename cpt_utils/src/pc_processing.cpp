@@ -215,14 +215,14 @@ void removeOutliers(PointCloud *pointcloud, int knn, float thresh_mult) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr mycloudPtr;
   mycloudPtr = boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ> >(new pcl::PointCloud<pcl::PointXYZ>(*pointcloud)); 
 
-  std::cout << "Cloud before statistical outlier removal: " << mycloudPtr->size() << std::endl;
+  //std::cout << "Cloud before statistical outlier removal: " << mycloudPtr->size() << std::endl;
   // Create the filtering object
   pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
   sor.setInputCloud(mycloudPtr);
   sor.setMeanK(knn);
   sor.setStddevMulThresh(thresh_mult);
   sor.filter(*pointcloud);
-  std::cout << "Cloud after statistical outlier removal: " << pointcloud->size() << std::endl;
+  //std::cout << "Cloud after statistical outlier removal: " << pointcloud->size() << std::endl;
 }
 
 }
