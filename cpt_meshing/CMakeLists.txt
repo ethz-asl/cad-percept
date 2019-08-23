@@ -6,7 +6,6 @@ catkin_simple(ALL_DEPS_REQUIRED)
 find_package(CGAL QUIET COMPONENTS Core)
 include(${CGAL_USE_FILE})
 
-
 add_definitions(-std=c++11 -Wall -Wextra)
 
 #############
@@ -22,10 +21,6 @@ cs_add_library(${PROJECT_NAME}
 ############
 cs_add_executable(cpt_meshing_node src/cpt_meshing_node.cpp)
 target_link_libraries(cpt_meshing_node ${PROJECT_NAME})
-
-
-cs_add_executable(cpt_meshing_test_node src/cpt_meshing_test_node.cpp)
-target_link_libraries(cpt_meshing_test_node ${PROJECT_NAME})
 
 ##########
 # EXPORT #
