@@ -99,6 +99,14 @@ void MeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr& msg) {
 MeshVisual::~MeshVisual() {}
 
 void MeshVisual::update() {
+  // check if there is a valid mesh
+  // RVIZ crashes with empty meshes
+  if(triangle_mesh_msg_.vertices.empty() ||
+      triangle_mesh_msg_.triangles.empty()){
+    ROS_WARN("Ignoring empty mesh.");
+    return;
+  }
+
   Ogre::ManualObject* ogre_object;
 
   if (scene_manager_->hasManualObject(object_name_)) {
