@@ -39,6 +39,8 @@ cgal::Vector getNormalFromPlane(const cgal::Plane &plane);
 // Associate point-cloud with architect model.
 Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh_model);
 
+cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox);
+
 }
 }
 

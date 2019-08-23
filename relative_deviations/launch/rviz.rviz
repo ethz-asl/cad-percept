@@ -3,9 +3,7 @@ Panels:
     Help Height: 78
     Name: Displays
     Property Tree Widget:
-      Expanded:
-        - /Global Options1
-        - /Status1
+      Expanded: ~
       Splitter Ratio: 0.560526311
     Tree Height: 749
   - Class: rviz/Selection
@@ -148,7 +146,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 227
+      Max Intensity: 155
       Min Color: 0; 0; 0
       Min Intensity: 1
       Name: Before ICP PointCloud
@@ -184,23 +182,23 @@ Visualization Manager:
       Value: false
     - Class: rviz/InteractiveMarkers
       Enable Transparency: true
-      Enabled: false
+      Enabled: true
       Name: Facet ID Detector
       Show Axes: false
       Show Descriptions: true
       Show Visual Aids: false
       Update Topic: /facet_selector/update
-      Value: false
+      Value: true
     - Alpha: 1
       Class: rviz/PointStamped
       Color: 255; 0; 255
-      Enabled: false
+      Enabled: true
       History Length: 1
       Name: Projected Facet Point
       Radius: 0.100000001
       Topic: /point_pub_
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -273,7 +271,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -290,13 +288,13 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /assoc_marker_pub
       Name: Assoc Marker
       Namespaces:
-        {}
+        semantic_graph_matches: true
       Queue Size: 100
       Value: true
     - Alpha: 0.800000012
@@ -331,12 +329,37 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.00999999978
+      Size (m): 0.0199999996
       Style: Flat Squares
       Topic: /assoc_pc_pub
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /bboxes_marker_pub
+      Name: PC Bboxes, Normals
+      Namespaces:
+        bboxes: true
+        normals: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: false
+      Marker Topic: /all_mesh_normals_marker_pub
+      Name: All Model Normals
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /mesh_normals_marker_pub
+      Name: Mesh Normals
+      Namespaces:
+        mesh_normals: true
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
@@ -363,25 +386,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 28.1755638
+      Distance: 25.8228722
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 2.14315796
-        Y: -2.39317179
-        Z: 3.63627219
+        X: -0.732892632
+        Y: -2.57687068
+        Z: 4.06065178
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.999797225
+      Pitch: 0.919798255
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.37310791
+      Yaw: 4.37308645
     Saved: ~
 Window Geometry:
   Displays:

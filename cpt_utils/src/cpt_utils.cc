@@ -75,5 +75,12 @@ Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh
   return associations;
 }
 
+cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox) {
+  double x = bbox.xmin() + (bbox.xmax() - bbox.xmin())/2;
+  double y = bbox.ymin() + (bbox.ymax() - bbox.ymin())/2;
+  double z = bbox.zmin() + (bbox.zmax() - bbox.zmin())/2;
+  return cgal::Point(x, y, z);
+}
+
 }
 }

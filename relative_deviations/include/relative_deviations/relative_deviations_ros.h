@@ -39,7 +39,7 @@ class RelativeDeviations {
     void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
     template <class T>
     void publishCloud(T *cloud, ros::Publisher *publisher) const;
-    ros::Publisher buffer_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_, assoc_pc_pub_, assoc_marker_pub_, deviations_mesh_pub_;
+    ros::Publisher buffer_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_, assoc_pc_pub_, assoc_marker_pub_, bboxes_marker_pub_, deviations_mesh_pub_, mesh_normals_marker_pub_, all_mesh_normals_marker_pub_;
     std::string map_frame_;
     bool discrete_color_;
     float score_threshold_;
@@ -58,6 +58,9 @@ class RelativeDeviations {
     void processBuffer(cgal::PointCloud &reading_pc);
 
     void publishAssociations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, const std::vector<reconstructed_plane> &remaining_plane_cloud_vector);
+    void publishBboxesAndNormals(std::unordered_map<int, polyhedron_plane> &plane_map);
+    void publishModelNormals(std::unordered_map<int, polyhedron_plane> &plane_map);
+    void publishAllModelNormals(std::unordered_map<int, polyhedron_plane> &plane_map);
 
     void publishDeviations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, std::unordered_map<int, transformation> &transformation_map);
 
