@@ -1,5 +1,5 @@
 <launch>
-    <node name="mesher" pkg="cpt_meshing" type="cpt_meshing_test_node" output="screen">
+    <node name="mesher" pkg="cpt_meshing" type="cpt_meshing_node" output="screen">
         <rosparam command="load" file="$(find cpt_meshing)/cfg/default_mesher.yaml" />
         <remap from="points" to="/kea/tof_cam/points" />
     </node>

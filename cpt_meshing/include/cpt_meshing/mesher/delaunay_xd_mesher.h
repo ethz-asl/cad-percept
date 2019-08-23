@@ -11,6 +11,7 @@ template<class DelaunayTriangulation>
 class DelaunayXDMesher : public AbstractSimpleMesher {
 
  public:
+  // Function has to be implemented in header (non-specialized template)
   bool getMesh(cad_percept::cgal::Polyhedron* output,
                MeshPerformanceCounters* counters = nullptr) {
     if (!inputPointsValid()) {
