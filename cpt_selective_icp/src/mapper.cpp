@@ -627,7 +627,7 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
                                                                         stamp));
   }
 
-  std::cout << "New map created" << std::endl;
+  std::cout << "New map created with " << mapPointCloud.features.cols() << " points." << std::endl;
 
   if (parameters_.update_icp_ref_trigger == true) {
     DP ref_pc = mapPointCloud; // add references 

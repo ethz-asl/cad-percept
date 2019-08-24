@@ -15,6 +15,10 @@ Launch file for Selective ICP
 			   value="$(find cpt_selective_icp)/config/selective_icp.yaml" />
 		<param name="inputFiltersConfig"
 			   value="$(find cpt_selective_icp)/config/input_filters.yaml" />
+		<param name="mapPostFiltersConfig"
+			   value="$(find cpt_selective_icp)/config/map_post_filter.yaml" />
+		<param name="mapPreFiltersConfig"
+			   value="$(find cpt_selective_icp)/config/map_pre_filter.yaml" />
 	</node>
 
 	<node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_selective_icp)/launch/rviz.rviz" />
