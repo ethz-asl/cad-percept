@@ -4,16 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
         - /Status1
-        - /ColoredMeshDisplay1
-        - /PointCloud21
-        - /PointCloud22
-        - /PointCloud23
-        - /InteractiveMarkers1
-        - /TriangleMeshDisplay1
-        - /InteractiveMarkers2
-        - /PointStamped1
       Splitter Ratio: 0.5
     Tree Height: 749
   - Class: rviz/Selection
@@ -183,7 +174,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 227
+      Max Intensity: 151
       Min Color: 0; 0; 0
       Min Intensity: 1
       Name: PointCloud2
@@ -291,7 +282,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 46.8479271
+      Distance: 32.7763519
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -306,10 +297,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.964796782
+      Pitch: 1.03479671
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.61309958
+      Yaw: 4.00310087
     Saved: ~
 Window Geometry:
   Displays:
