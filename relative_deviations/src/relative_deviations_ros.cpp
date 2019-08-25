@@ -164,7 +164,7 @@ void RelativeDeviations::publish(const std::vector<reconstructed_plane> &rec_pla
   publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_plane_cloud_vector);
   publishBboxesAndNormals(deviations.plane_map);
   publishModelNormals(deviations.plane_map); // only of the associated ones
-  publishDeviations(deviations.reference_mesh, deviations.plane_map, transformation_map);
+  publishDeviations(deviations.reference_mesh, transformation_map);
 }
 
 void RelativeDeviations::publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const {
@@ -477,7 +477,7 @@ void RelativeDeviations::publishAllModelNormals(std::unordered_map<int, polyhedr
   all_mesh_normals_marker_pub_.publish(marker_array);
 }
 
-void RelativeDeviations::publishDeviations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, std::unordered_map<int, transformation> &transformation_map) {
+void RelativeDeviations::publishDeviations(const cgal::MeshModel &model, std::unordered_map<int, transformation> &transformation_map) {
   cgal::Polyhedron P;
   P = model.getMesh();
   cgal_msgs::TriangleMesh t_msg;
@@ -503,56 +503,55 @@ void RelativeDeviations::publishDeviations(const cgal::MeshModel &model, std::un
   // because distance score includes both angle deviation and distance deviation
   // - set threshold for ok walls
 
-  for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
-    if (umit->second.associated) {
-      // std::cout << "Visualize Deviation of Facet: " << umit->first << std::endl;
-      
-      //std::unordered_map<int,transformation>::const_iterator it = transformation_map.find(umit->first);
-      transformation trafo = transformation_map[umit->first];
-      double score = trafo.score;
+  for (auto it = transformation_map.begin(); it != transformation_map.end(); ++it) {
+    // std::cout << "Visualize Deviation of Facet: " << umit->first << std::endl;
+    
+    //std::unordered_map<int,transformation>::const_iterator it = transformation_map.find(umit->first);
+    transformation trafo = it->second;
+    double score = trafo.score;
 
-      if (score < score_threshold_) {
-        c.r = 0.0;
-        c.g = 1.0;
+    if (score < score_threshold_) {
+      c.r = 0.0;
+      c.g = 1.0;
+      c.b = 0.0;
+      c.a = 0.4;   
+    }
+    else {
+      // make gradient based on score here
+      if (discrete_color_ == true) {
+        c.r = 1.0;
+        c.g = 0.0;
         c.b = 0.0;
-        c.a = 0.4;   
+        c.a = 0.4;
       }
       else {
-        // make gradient based on score here
-        if (discrete_color_ == true) {
+        if (score > 0.25) {
           c.r = 1.0;
           c.g = 0.0;
           c.b = 0.0;
           c.a = 0.4;
         }
         else {
-          if (score > 0.75) {
+          // create a gradient
+          float g = score/0.25; // 1 for red, 0 for green
+          if (g > 0.5) {
             c.r = 1.0;
-            c.g = 0.0;
-            c.b = 0.0;
-            c.a = 0.4;
+            c.g = 2.0 * (1 - g);
+          } else {
+            c.r = 2*g;
+            c.g = 1.0;
           }
-          else {
-            // create a gradient
-            float g = score/0.75; // 1 for red, 0 for green
-            if (g > 0.5) {
-              c.r = 1.0;
-              c.g = 2.0 * (1 - g);
-            } else {
-              c.r = 2*g;
-              c.g = 1.0;
-            }
-            c.b = 0.0;
-            c.a = 0.4;
-          }
+          c.b = 0.0;
+          c.a = 0.4;
         }
       }
-
-      auto iit = deviations.bimap.right.equal_range(umit->first);
-      for (auto itr = iit.first; itr != iit.second; ++itr) {
-        c_msg.colors[itr->second] = c;
-      }
     }
+
+    auto iit = deviations.bimap.right.equal_range(it->first);
+    for (auto itr = iit.first; itr != iit.second; ++itr) {
+      c_msg.colors[itr->second] = c;
+    }
+    
   }
   deviations_mesh_pub_.publish(c_msg);
 }

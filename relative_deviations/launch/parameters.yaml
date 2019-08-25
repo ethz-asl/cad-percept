@@ -1,3 +1,5 @@
+# At the moment these parameters are used for both map and current scan analysis
+
 inputQueueSize: 1
 
 # Deviation Analysis:
