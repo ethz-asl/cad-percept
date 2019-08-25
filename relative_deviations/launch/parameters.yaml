@@ -2,6 +2,7 @@ inputQueueSize: 1
 
 # Deviation Analysis:
 buffer_size: 1 # how many scans to merge before analysis
+visualize: current # choose which to visualize: "map" or "current"
 
 # Segmentation
 planarSegmentation: CGAL # CGAL or PCL
