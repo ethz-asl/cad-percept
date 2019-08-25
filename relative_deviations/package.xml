@@ -34,5 +34,6 @@
   <depend>cgal_visualizations</depend>
   <depend>visualization_msgs</depend>
   <depend>cpt_utils</depend>
+  <depend>std_msgs</depend>
 
 </package>

@@ -9,6 +9,7 @@
 #include <cgal_conversions/mesh_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <cpt_utils/pc_processing.h>
+#include <cpt_utils/cpt_utils.h>
 
 // Planar segmentation:
 #include <iostream>
@@ -85,10 +86,10 @@ struct parameters {
 
 struct transformation {
   int count = 0; // use count to calculate the average later
-  Eigen::Vector3d avg_pc_normal; // averaged normal from all pc_normals necessary to calculate averages in transformation_map
   Eigen::AngleAxisd aa; // remove in case we don't need it, can calculate everything from quat
   Eigen::Quaterniond quat;
-  double distance_score = 0;
+  Eigen::Vector3d translation;
+  double score;
 };
 
 struct reconstructed_plane {
@@ -106,9 +107,9 @@ struct polyhedron_plane {
   cgal::Plane plane;
   double area;
   Eigen::Vector3d normal;
+  CGAL::Bbox_3 bbox; // bounding box of ref polyhedron_plane
   double match_score = std::numeric_limits<double>::max(); // match score for pc to mesh plane
   reconstructed_plane rec_plane; // associated point cloud
-  CGAL::Bbox_3 bbox; // bounding box of ref polyhedron_plane
   // add normal (for rotation) and translation vector, which we update filter
   // add updated cov. matrix for reconstructed plane, which we can use to get bbox and transl. (this is already an update filter for translations I guess)
 };
@@ -129,6 +130,7 @@ class Deviations {
      * Read-in reading pc and execute detection
      */
     void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector);
+    void detectMapChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud, std::vector<reconstructed_plane> *remaining_plane_cloud_vector, std::unordered_map<int, transformation> *current_transformation_map);
     void init(const cgal::Polyhedron &P);
     std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of coplanar plane associated to plane properties
     std::unordered_map<int, transformation> transformation_map; // here we keep all the latest updated transformations
@@ -163,11 +165,11 @@ class Deviations {
      */
     void findBestPlaneAssociation(std::vector<reconstructed_plane> cloud_vector, cgal::MeshModel &mesh_model, std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
     void computeFacetNormals(cgal::MeshModel &mesh_model);
-    void findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map);
+    void findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map, bool size_check);
     /**
      *  Update filtering of overall transformation_map
      */
-    void updateAveragePlaneDeviation();
+    void updateAveragePlaneDeviation(const std::unordered_map<int, transformation> &current_transformation_map);
 
     void initPlaneMap();
     

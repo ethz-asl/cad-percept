@@ -12,7 +12,10 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
     cb(nh_private.param<int>("buffer_size", 1)), // use x latest scans for detection
     cad_topic(nh_private.param<std::string>("cad_topic", "fail")),
     scan_topic(nh_private.param<std::string>("scan_topic", "fail")),
-    input_queue_size(nh_private.param<int>("inputQueueSize", 10)) { 
+    map_topic(nh_private.param<std::string>("map_topic", "fail")),
+    input_queue_size(nh_private.param<int>("inputQueueSize", 10)),
+    visualize(nh_private.param<std::string>("visualize", "current")),
+    map_analyzer_trigger(false) {
 
   // set parameters for Deviations object (public struct)
   deviations.params.planarSegmentation = nh_private.param<std::string>("planarSegmentation", "PCL");
@@ -49,6 +52,8 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   all_mesh_normals_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("all_mesh_normals_marker_pub", 100, true);
   deviations_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("deviations_mesh_pub", 1, true);
 
+  analyze_map_srv_ = nh_.advertiseService("analyze_map", &RelativeDeviations::analyzeMap, this);
+
   cad_sub_ = nh_.subscribe(cad_topic,
                            input_queue_size,
                            &RelativeDeviations::gotCAD,
@@ -58,6 +63,11 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
                              input_queue_size,
                              &RelativeDeviations::gotCloud,
                              this);
+
+  map_sub_ = nh_.subscribe(map_topic,
+                           input_queue_size,
+                           &RelativeDeviations::gotMap,
+                           this);
 }
 
 RelativeDeviations::~RelativeDeviations() {}
@@ -75,6 +85,22 @@ void RelativeDeviations::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) 
   PointCloud cloud;
   pcl::fromROSMsg(cloud_msg_in, cloud);
   processBuffer(cloud);
+}
+
+void RelativeDeviations::gotMap(const sensor_msgs::PointCloud2 &cloud_msg_in) {
+  if (map_analyzer_trigger) {
+    std::cout << "[RD] Received new aligned Map PointCloud from selective ICP" << std::endl;
+    PointCloud cloud;
+    pcl::fromROSMsg(cloud_msg_in, cloud);
+    processMap(cloud);
+    map_analyzer_trigger = false;
+  }
+}
+
+bool RelativeDeviations::analyzeMap(std_srvs::Empty::Request &req,
+                                    std_srvs::Empty::Response &res) {
+  map_analyzer_trigger = true;
+  return true;
 }
 
 void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
@@ -109,15 +135,36 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   std::vector<reconstructed_plane> remaining_plane_cloud_vector; // put everything in here what we can't segment as planes
   
   deviations.detectChanges(&rec_planes, reading_pc, &remaining_plane_cloud_vector);
-  publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
   
-  publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_plane_cloud_vector);
-  publishBboxesAndNormals(deviations.plane_map);
-  publishModelNormals(deviations.plane_map); // only of the associated ones
-  publishDeviations(deviations.reference_mesh, deviations.plane_map, deviations.transformation_map);
+  if (visualize == "current") {
+    publish(rec_planes, remaining_plane_cloud_vector, deviations.transformation_map);
+  }
   
   // reset here in case we still want to access something, otherwise can put in detectChanges
   deviations.reset();
+}
+
+void RelativeDeviations::processMap(PointCloud &map_pc) {
+  std::vector<reconstructed_plane> rec_planes;
+  std::vector<reconstructed_plane> remaining_plane_cloud_vector; // put everything in here what we can't segment as planes
+  std::unordered_map<int, transformation> current_transformation_map;
+
+  deviations.detectMapChanges(&rec_planes, map_pc, &remaining_plane_cloud_vector, &current_transformation_map);
+
+  if (visualize == "map") {
+    publish(rec_planes, remaining_plane_cloud_vector, current_transformation_map);
+  }
+
+  // reset here in case we still want to access something, otherwise can put in detectChanges
+  deviations.reset();
+}
+
+void RelativeDeviations::publish(const std::vector<reconstructed_plane> &rec_planes, const std::vector<reconstructed_plane> &remaining_plane_cloud_vector, std::unordered_map<int, transformation> &transformation_map) {
+  publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_); 
+  publishAssociations(deviations.reference_mesh, deviations.plane_map, remaining_plane_cloud_vector);
+  publishBboxesAndNormals(deviations.plane_map);
+  publishModelNormals(deviations.plane_map); // only of the associated ones
+  publishDeviations(deviations.reference_mesh, deviations.plane_map, transformation_map);
 }
 
 void RelativeDeviations::publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const {
@@ -360,8 +407,7 @@ void RelativeDeviations::publishModelNormals(std::unordered_map<int, polyhedron_
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     uint8_t r = 0, g = 0, b = 255;   
     if (umit->second.associated) {
-      CGAL::Bbox_3 bbox = umit->second.bbox;
-      cgal::Point center = cpt_utils::centerOfBbox(bbox);
+      cgal::Point center = cpt_utils::centerOfBbox(umit->second.bbox);
 
       visualization_msgs::Marker marker;
       marker.header.frame_id = map_frame_;
@@ -399,8 +445,7 @@ void RelativeDeviations::publishAllModelNormals(std::unordered_map<int, polyhedr
   int marker_id = 0;
   uint8_t r = 0, g = 0, b = 255;   
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
-    CGAL::Bbox_3 bbox = umit->second.bbox;
-    cgal::Point center = cpt_utils::centerOfBbox(bbox);
+    cgal::Point center = cpt_utils::centerOfBbox(umit->second.bbox);
 
     visualization_msgs::Marker marker;
     marker.header.frame_id = map_frame_;
@@ -464,7 +509,7 @@ void RelativeDeviations::publishDeviations(const cgal::MeshModel &model, std::un
       
       //std::unordered_map<int,transformation>::const_iterator it = transformation_map.find(umit->first);
       transformation trafo = transformation_map[umit->first];
-      double score = trafo.distance_score;
+      double score = trafo.score;
 
       if (score < score_threshold_) {
         c.r = 0.0;

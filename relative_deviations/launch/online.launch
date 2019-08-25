@@ -9,6 +9,7 @@
   <arg name="path" default="$(find relative_deviations)" />
   <arg name="cad_topic" default="cad_mesh_pub" />
   <arg name="scan_topic" default="ref_corrected_scan" />
+  <arg name="map_topic" default="map" />
 
   <node name="relative_dev"
         pkg="relative_deviations"
@@ -22,6 +23,7 @@
     <param name="path" value="$(arg path)" />
     <param name="cad_topic" value="$(arg cad_topic)" />
     <param name="scan_topic" value="$(arg scan_topic)" />
+    <param name="map_topic" value="$(arg map_topic)" />
   </node>
 
   <node type="rviz" name="rviz" pkg="rviz" args="-d $(find relative_deviations)/launch/rviz.rviz" />-->

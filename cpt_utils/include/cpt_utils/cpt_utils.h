@@ -9,6 +9,7 @@
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_conversions/eigen_conversions.h>
+#include "cpt_utils/pc_processing.h"
 
 namespace cad_percept {
 namespace cpt_utils {
@@ -40,6 +41,7 @@ cgal::Vector getNormalFromPlane(const cgal::Plane &plane);
 Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh_model);
 
 cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox);
+cgal::Point centerOfBbox(const PointCloud &pointcloud);
 
 }
 }

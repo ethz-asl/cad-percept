@@ -82,5 +82,11 @@ cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox) {
   return cgal::Point(x, y, z);
 }
 
+cgal::Point centerOfBbox(const PointCloud &pointcloud) {
+  CGAL::Bbox_3 bbox;
+  computePCBbox(pointcloud, &bbox);
+  return centerOfBbox(bbox);
+}
+
 }
 }

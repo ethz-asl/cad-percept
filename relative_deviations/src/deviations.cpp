@@ -53,8 +53,25 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, con
    *  Find current transformation_map and update transformation_map
    */
   std::unordered_map<int, transformation> current_transformation_map; // the latest transformation result
-  findPlaneDeviation(&current_transformation_map);
-  updateAveragePlaneDeviation();
+  findPlaneDeviation(&current_transformation_map, 0);
+  updateAveragePlaneDeviation(current_transformation_map);
+}
+
+/**
+ *  This function does basically the same as detectChanges but for the latest map.
+ */
+void Deviations::detectMapChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud, std::vector<reconstructed_plane> *remaining_plane_cloud_vector, std::unordered_map<int, transformation> *current_transformation_map) {
+  PointCloud remaining_cloud;
+  if (params.planarSegmentation == "CGAL") {
+    planarSegmentationCGAL(map_cloud, rec_planes, &remaining_cloud);
+
+  }
+  else if (params.planarSegmentation == "PCL") {
+    planarSegmentationPCL(map_cloud, rec_planes, &remaining_cloud);
+  }
+  
+  findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
+  findPlaneDeviation(current_transformation_map, 1);
 }
 
 void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const {
@@ -493,29 +510,44 @@ void Deviations::computeFacetNormals(cgal::MeshModel &mesh_model) {
   }
 }
 
-void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map) {
+/**
+ *  PC to Model
+ */
+void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map, bool size_check) {
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
-    if (umit->second.match_score != 0) {
+    if (umit->second.associated == true) {
+      // equal size check in case of full transformations
+      if (size_check) {
+        double pc_area = cpt_utils::getArea(umit->second.rec_plane.pointcloud);
+        if (pc_area < 0.9 * umit->second.area || pc_area > 1.1 * umit->second.area) {
+          continue;
+        }
+      }
       //std::cout << "Process plane ID: " << umit->first << std::endl;
       transformation trafo;
-      // set distance_score to match_score
-      trafo.distance_score = umit->second.match_score; // since we set it equal before
+      trafo.score = umit->second.match_score; // since we set it equal before
 
       // - find translation (also in normal direction is hard since we don't have point association,
       // every point has different translation even in normal direction)
       // - using center point of both planes is only meaningful if we have representative scan of whole plane
       // which is most certainly not the case. So instead of translation better use the distance_score from before
 
+      // Check that pc_normal points in same direction as reference normal
+      Eigen::Vector3d pc_normal = umit->second.rec_plane.pc_normal;
+      if (pc_normal.dot(umit->second.normal) < 0) {
+        pc_normal = -pc_normal;
+      }
+
       // find angle
 
       /**
        *  Angle Axis
        */ 
-      Eigen::Vector3d axis = umit->second.rec_plane.pc_normal.cross(umit->second.normal);
+      Eigen::Vector3d axis = pc_normal.cross(umit->second.normal);
       // std::cout << "Vector pc: " << umit->second.rec_plane.pc_normal << ", Vector facet: " << umit->second.normal << std::endl;
       axis.normalize();
       // std::cout << "Axis: " << axis << std::endl;
-      double angle = acos(umit->second.rec_plane.pc_normal.dot(umit->second.normal));
+      double angle = acos(pc_normal.dot(umit->second.normal));
       // std::cout << "Angle: " << angle << std::endl;
       Eigen::AngleAxisd aa(angle, axis);
       trafo.aa = aa;
@@ -526,12 +558,19 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
       // TODO: check that aa and quat are same
       // no need to normalize first
       Eigen::Quaterniond quat;
-      quat.FromTwoVectors(umit->second.rec_plane.pc_normal, umit->second.normal);
+      quat.FromTwoVectors(pc_normal, umit->second.normal);
       trafo.quat = quat;
 
       // could convert quaternion to euler angles, but these are ambiguous, better work with
       // quaternions 
 
+      /**
+       *  Translation between the Bbox Center Points
+       *  If we have full scan of wall, this might be correct, otherwise not
+       */
+      cgal::Vector translation = cpt_utils::centerOfBbox(umit->second.bbox) - cpt_utils::centerOfBbox(umit->second.rec_plane.pointcloud);  
+      trafo.translation = cgal::cgalVectorToEigenVector(translation);
+      
       // create separate map with only facets ID match_score != 0 (only facets which we associated in current scan)
       // and  transform to each facet
       current_transformation_map->insert(std::make_pair(umit->first, trafo));
@@ -539,7 +578,7 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
   }
 }
 
-void Deviations::updateAveragePlaneDeviation() {
+void Deviations::updateAveragePlaneDeviation(const std::unordered_map<int, transformation> &current_transformation_map) {
   // TODO: Do the real update filtering thing here
   // - try to investigate the distribution using the single current_transformation_map and plot them
   // - prediction based on this distribution, but what does it help to know error distribution?
@@ -550,37 +589,28 @@ void Deviations::updateAveragePlaneDeviation() {
   // - also because rotations before can not be used to calculate average, this fct. is independent of 
   // current_transformation_map
 
+  for (auto it = current_transformation_map.begin(); it != current_transformation_map.end(); ++it) {
+    ++transformation_map[it->first].count;
+    transformation trafo;
 
-  for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
-    if (umit->second.match_score != 0) {
-      //std::cout << "Average transformation of plane ID: " << umit->first << std::endl;
-      // increase count for averages and create element if not existing yet
-      transformation_map[umit->first].count = transformation_map[umit->first].count + 1;
-      
-      transformation trafo;
+    // update score average
+    double current_score = it->second.score;
+    trafo.score = transformation_map[it->first].score + (current_score - transformation_map[it->first].score) / transformation_map[it->first].count;
+    // update translation average
+    Eigen::Vector3d current_translation = it->second.translation;
+    trafo.translation = transformation_map[it->first].translation + (current_translation - transformation_map[it->first].translation) / transformation_map[it->first].count;
+    // update rotation average using unit vector rotation 
+    // TODO: check this
+    Eigen::Vector3d v_unit(1,0,0);
+    Eigen::Vector3d u = it->second.quat * v_unit;
+    Eigen::Vector3d u_avg = transformation_map[it->first].quat * v_unit;
+    u_avg.normalize();
+    u.normalize();
+    Eigen::Vector3d u_avg_new = u_avg + (u - u_avg) / transformation_map[it->first].count;
+    Eigen::Quaterniond quat;
+    trafo.quat = quat.FromTwoVectors(v_unit, u_avg_new);
 
-      // update distance score average
-      double current_distance_score = umit->second.match_score; // since we set it to distance score before
-      trafo.distance_score = transformation_map[umit->first].distance_score + (current_distance_score - transformation_map[umit->first].distance_score) / transformation_map[umit->first].count;
-
-      // update rotation average
-      Eigen::Vector3d current_pc_normal = umit->second.rec_plane.pc_normal;
-      trafo.avg_pc_normal = transformation_map[umit->first].avg_pc_normal + (current_pc_normal - transformation_map[umit->first].avg_pc_normal) / transformation_map[umit->first].count;
-      // angle axis
-      Eigen::Vector3d axis = trafo.avg_pc_normal.cross(umit->second.normal);
-      axis.normalize();
-      double angle = acos(trafo.avg_pc_normal.dot(umit->second.normal));
-      Eigen::AngleAxisd aa(angle, axis);
-      trafo.aa = aa;
-      // quaternion
-      // TODO: check that aa and quat are same
-      // no need to normalize first
-      Eigen::Quaterniond quat;
-      quat.FromTwoVectors(trafo.avg_pc_normal, umit->second.normal);
-      trafo.quat = quat;
-
-      transformation_map[umit->first] = trafo;
-    }
+    transformation_map[it->first] = trafo;
   }
 }
 
