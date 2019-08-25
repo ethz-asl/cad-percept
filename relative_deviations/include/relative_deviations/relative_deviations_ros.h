@@ -66,7 +66,7 @@ class RelativeDeviations {
     void publishBboxesAndNormals(std::unordered_map<int, polyhedron_plane> &plane_map);
     void publishModelNormals(std::unordered_map<int, polyhedron_plane> &plane_map);
     void publishAllModelNormals(std::unordered_map<int, polyhedron_plane> &plane_map);
-    void publishDeviations(const cgal::MeshModel &model, std::unordered_map<int, polyhedron_plane> &plane_map, std::unordered_map<int, transformation> &transformation_map);
+    void publishDeviations(const cgal::MeshModel &model, std::unordered_map<int, transformation> &transformation_map);
 
     std::string cad_topic;
     std::string scan_topic;

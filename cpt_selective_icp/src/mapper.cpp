@@ -359,8 +359,8 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         }
 
         if (selective_icp_scan_pub_.getNumSubscribers()) {
-          ROS_DEBUG_STREAM(
-              "Selective ICP scan publishing " << pc.getNbPoints() << " points");
+          std::cout <<
+              "Selective ICP scan publishing " << pc.getNbPoints() << " points" << std::endl;
           selective_icp_scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc,
                                                                               parameters_.tf_map_frame,
                                                                               stamp));
