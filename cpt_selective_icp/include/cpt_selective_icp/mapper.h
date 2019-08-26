@@ -73,6 +73,8 @@ class Mapper {
     void getError(DP dpref, DP dppointcloud_out, bool selective);
     void processCloud(DP *point_cloud,
                       const ros::Time &stamp);
+    bool selectiveICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map, const ros::Time &stamp);
+    bool normalICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map);
     bool setReferenceFacets(cpt_selective_icp::References::Request &req,
                             cpt_selective_icp::References::Response &res);
     bool setNormalICP(std_srvs::SetBool::Request &req,
@@ -149,6 +151,9 @@ class Mapper {
 
     DP ref_dp;
     DP selective_ref_dp;
+
+    boost::thread map_thread;
+
 
 };
 

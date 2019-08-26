@@ -24,6 +24,7 @@ struct MapperParameters {
   double min_overlap;
   bool mapping_trigger;
   bool update_icp_ref_trigger;
+  bool normal_icp_primer_trigger;
 };
 
 }
