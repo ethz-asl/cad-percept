@@ -12,7 +12,6 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     transformation_(PM::get().REG(Transformation).create("RigidTransformation")),
     cad_trigger(false),
     selective_icp_trigger(false),
-    normal_icp_trigger(true),
     ref_mesh_ready(false),
     projection_count(0) {
 
@@ -188,7 +187,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       odom_received_++;
     }
   } else {
-    boost::thread map_thread;
     ros::Time stamp = cloud_msg_in.header.stamp;
     uint32_t seq = cloud_msg_in.header.seq;
 
@@ -278,48 +276,14 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       return;
     }
 
-    PM::TransformationParameters T_updated_scanner_to_map = T_scanner_to_map_;
-    DP dp;
+    PM::TransformationParameters T_updated_scanner_to_map = T_scanner_to_map_; // not sure why copy is necessary
 
     /**
      * Normal ICP
      */
-    if (normal_icp_trigger == true) {
-      std::cout << "Perform normal ICP" << std::endl;
-      try {
-
-        ROS_DEBUG_STREAM(
-            "[ICP] Computing - reading: " << cloud.getNbPoints()
-                                          << ", reference: "
-                                          << icp_.getInternalMap().getNbPoints());
-
-        // Do ICP
-        T_updated_scanner_to_map = icp_(cloud, T_scanner_to_map_);
-
-        ROS_DEBUG_STREAM(
-            "[ICP] T_updated_scanner_to_map_normal:\n" << T_updated_scanner_to_map);
-
-        // Ensure minimum overlap between scans.
-        const double estimated_overlap = icp_.errorMinimizer->getOverlap();
-        ROS_DEBUG_STREAM("[ICP] Overlap: " << estimated_overlap);
-        if (estimated_overlap < parameters_.min_overlap) {
-          ROS_ERROR_STREAM(
-              "[ICP] Estimated overlap too small, ignoring ICP correction!");
-          return;
-        }
-        dp = ref_dp;
-
-
-      } catch (PM::ConvergenceError error) {
-        ROS_ERROR_STREAM("[ICP] failed to converge: " << error.what());
-        return;
-      } catch(const std::exception &ex) {
-        std::cerr << "Error occured: " << ex.what() << std::endl;
-        return;
-      } catch (...) {
-        // everything else.
-        ROS_ERROR_STREAM("Unen XZ");
-        return;
+    if (parameters_.normal_icp_primer_trigger == true) {
+      if (!normalICP(cloud, &T_updated_scanner_to_map)) {
+        return; // if not successfull cancel the process
       }
     }
 
@@ -327,72 +291,20 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
      * Selective ICP
      */
     if (selective_icp_trigger == true) {
-      std::cout << "Perform selective ICP" << std::endl;
-      try {
-        ROS_DEBUG_STREAM(
-            "[Selective ICP] Computing - reading: " << cloud.getNbPoints()
-                                          << ", reference: "
-                                          << selective_icp_.getInternalMap().getNbPoints());
-
-        // Do ICP
-        T_updated_scanner_to_map = selective_icp_(cloud, T_updated_scanner_to_map);
-
-        ROS_DEBUG_STREAM(
-            "[Selective ICP] T_updated_scanner_to_map_selective:\n" << T_updated_scanner_to_map);
-
-        // Ensure minimum overlap between scans.
-        const double estimated_overlap = selective_icp_.errorMinimizer->getOverlap();
-        ROS_DEBUG_STREAM("[Selective ICP] Overlap: " << estimated_overlap);
-        if (estimated_overlap < parameters_.min_overlap) {
-          ROS_ERROR_STREAM(
-              "[Selective ICP] Estimated overlap too small, ignoring ICP correction!");
-          return;
+      if (!selectiveICP(cloud, &T_updated_scanner_to_map, stamp)) {
+        if (parameters_.normal_icp_primer_trigger == false) { // if not executed before, do now
+          if (!normalICP(cloud, &T_updated_scanner_to_map)) { // if no result cancel
+            return; // if not successfull cancel the process
+          }
         }
-
-
-        // Publish the selective ICP exclusive transformed cloud for deviation analysis
-        DP pc = transformation_->compute(cloud,
-                                        T_updated_scanner_to_map);
-
-        if (parameters_.mapping_trigger == true) {
-          map_thread = boost::thread(&Mapper::addScanToMap, this, pc, stamp);
-        }
-
-        if (selective_icp_scan_pub_.getNumSubscribers()) {
-          std::cout <<
-              "Selective ICP scan publishing " << pc.getNbPoints() << " points" << std::endl;
-          selective_icp_scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc,
-                                                                              parameters_.tf_map_frame,
-                                                                              stamp));
-        }
-        dp = selective_ref_dp;
-        getError(selective_ref_dp, pc, 1);
-
-      } catch (PM::ConvergenceError error) {
-        ROS_ERROR_STREAM("[Selective ICP] failed to converge: " << error.what());
-        if (normal_icp_trigger == false) {
-          return;
-        }
-        ROS_ERROR_STREAM("[Selective ICP] Using result from normal ICP");
-      } catch(const std::exception &ex) {
-        std::cerr << "Error occured: " << ex.what() << std::endl;
-        if (normal_icp_trigger == false) {
-          return;
-        }
-        ROS_ERROR_STREAM("[Selective ICP] Using result from normal ICP");
-      } catch (...) {
-        // everything else.
-        ROS_ERROR_STREAM("Unen XZ");
-        if (normal_icp_trigger == false) {
-          return;
-        }
-        ROS_ERROR_STREAM("[Selective ICP] Using result from normal ICP");
       }
     }
 
-    if (normal_icp_trigger == false && selective_icp_trigger == false) {
-      std::cerr << "Error in code. Both ICP methods turned off." << std::endl;
-      return;
+    if (parameters_.normal_icp_primer_trigger == false && selective_icp_trigger == false) {
+      std::cerr << "Both ICP methods turned off. Executing normal ICP temporary to avoid drift." << std::endl;
+      if (!normalICP(cloud, &T_updated_scanner_to_map)) {
+        return; // if not successfull cancel the process
+      }
     }
 
     /**
@@ -436,7 +348,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       getICPErrorToRef(pc);
     }
     
-
     map_thread.join();
     
     /** 
@@ -455,6 +366,100 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
     last_point_cloud_time_ = stamp;
     last_point_cloud_seq_ = seq;               
+  }
+}
+
+bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map, const ros::Time &stamp) {
+  std::cout << "Perform selective ICP" << std::endl;
+  try {
+    ROS_DEBUG_STREAM(
+        "[Selective ICP] Computing - reading: " << cloud.getNbPoints()
+                                      << ", reference: "
+                                      << selective_icp_.getInternalMap().getNbPoints());
+
+    // Do ICP
+    *T_updated_scanner_to_map = selective_icp_(cloud, *T_updated_scanner_to_map);
+
+    ROS_DEBUG_STREAM(
+        "[Selective ICP] T_updated_scanner_to_map_selective:\n" << *T_updated_scanner_to_map);
+
+    // Ensure minimum overlap between scans.
+    const double estimated_overlap = selective_icp_.errorMinimizer->getOverlap();
+    ROS_DEBUG_STREAM("[Selective ICP] Overlap: " << estimated_overlap);
+    if (estimated_overlap < parameters_.min_overlap) {
+      ROS_ERROR_STREAM(
+          "[Selective ICP] Estimated overlap too small, ignoring ICP correction!");
+      return false;
+    }
+
+    // Publish the selective ICP exclusive transformed cloud for deviation analysis
+    DP pc = transformation_->compute(cloud,
+                                    *T_updated_scanner_to_map);
+
+    if (parameters_.mapping_trigger == true) {
+      map_thread = boost::thread(&Mapper::addScanToMap, this, pc, stamp);
+    }
+
+    if (selective_icp_scan_pub_.getNumSubscribers()) {
+      std::cout <<
+          "Selective ICP scan publishing " << pc.getNbPoints() << " points" << std::endl;
+      selective_icp_scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc,
+                                                                          parameters_.tf_map_frame,
+                                                                          stamp));
+    }
+    getError(selective_ref_dp, pc, 1);
+
+    return true;
+
+  } catch (PM::ConvergenceError error) {
+    ROS_ERROR_STREAM("[Selective ICP] failed to converge: " << error.what());
+    return false;
+  } catch(const std::exception &ex) {
+    std::cerr << "Error occured: " << ex.what() << std::endl;
+    return false;
+  } catch (...) {
+    // everything else.
+    ROS_ERROR_STREAM("Unen XZ");
+    return false;
+  }
+}
+
+bool Mapper::normalICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map) {
+  std::cout << "Perform normal ICP" << std::endl;
+  try {
+
+    ROS_DEBUG_STREAM(
+        "[ICP] Computing - reading: " << cloud.getNbPoints()
+                                      << ", reference: "
+                                      << icp_.getInternalMap().getNbPoints());
+
+    // Do ICP
+    *T_updated_scanner_to_map = icp_(cloud, *T_updated_scanner_to_map);
+
+    ROS_DEBUG_STREAM(
+        "[ICP] T_updated_scanner_to_map_normal:\n" << *T_updated_scanner_to_map);
+
+    // Ensure minimum overlap between scans.
+    const double estimated_overlap = icp_.errorMinimizer->getOverlap();
+    ROS_DEBUG_STREAM("[ICP] Overlap: " << estimated_overlap);
+    if (estimated_overlap < parameters_.min_overlap) {
+      ROS_ERROR_STREAM(
+          "[ICP] Estimated overlap too small, ignoring ICP correction!");
+      return false;
+    }
+
+    return true;
+
+  } catch (PM::ConvergenceError error) {
+    ROS_ERROR_STREAM("[ICP] failed to converge: " << error.what());
+    return false;
+  } catch(const std::exception &ex) {
+    std::cerr << "Error occured: " << ex.what() << std::endl;
+    return false;
+  } catch (...) {
+    // everything else.
+    ROS_ERROR_STREAM("Unen XZ");
+    return false;
   }
 }
 
@@ -682,7 +687,7 @@ bool Mapper::setSelectiveICP(std_srvs::SetBool::Request &req,
     }
     selective_icp_trigger = true;
   } else {
-    if (normal_icp_trigger == true)
+    if (parameters_.normal_icp_primer_trigger == true)
       selective_icp_trigger = false;
     else
       std::cerr << "Can not turn both ICP methods off. Ignoring command." << std::endl;
@@ -695,7 +700,7 @@ bool Mapper::setNormalICP(std_srvs::SetBool::Request &req,
                           std_srvs::SetBool::Response &res) {
   
   if (req.data == true) {
-    normal_icp_trigger = true;
+    parameters_.normal_icp_primer_trigger = true;
     std::cout << "Mode set to normal ICP" << std::endl;
 
     // just called to publish ref mesh and p.c. again:
@@ -704,7 +709,7 @@ bool Mapper::setNormalICP(std_srvs::SetBool::Request &req,
     extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references, &pointcloud);
   } else {
     if (selective_icp_trigger == true) 
-      normal_icp_trigger = false;
+      parameters_.normal_icp_primer_trigger = false;
     else
       std::cerr << "Can not turn both ICP methods off. Ignoring command." << std::endl;
   }
@@ -769,6 +774,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
     // sample reference point cloud from mesh
 
     // get coplanar facets
+    references_new.clear();
     std::cout << "Choosen reference facets:" << std::endl;
     std::unordered_set<int>::iterator uitr;
     for (uitr = references.begin(); uitr != references.end(); uitr++) {
