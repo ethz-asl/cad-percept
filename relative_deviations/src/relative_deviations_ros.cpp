@@ -330,6 +330,7 @@ void RelativeDeviations::publishAssociations(const cgal::MeshModel &model, std::
   publishCloud<ColoredPointCloud>(&pointcloud_rgb, &assoc_pc_pub_);
   //TODO: Backface culling should be turned on, but is somehow not activated after new msg
   assoc_mesh_pub_.publish(c_msg);
+  c_associated = c_msg.colors; // copy colors to global variable
   assoc_marker_pub_.publish(marker_array);
 }
 
@@ -338,7 +339,6 @@ void RelativeDeviations::publishBboxesAndNormals(std::unordered_map<int, polyhed
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
-    uint8_t r = std::rand()%256, g = std::rand()%256, b = 0;   
     if (umit->second.associated) {
       /**
        *  BBox
@@ -349,9 +349,7 @@ void RelativeDeviations::publishBboxesAndNormals(std::unordered_map<int, polyhed
 	    marker.type = visualization_msgs::Marker::CUBE;
 	    marker.action = visualization_msgs::Marker::ADD;
 	    marker.id = marker_id;
-      marker.color.r = r/255.;
-      marker.color.g = g/255.;
-      marker.color.b = b/255.;
+      marker.color = c_associated[deviations.bimap.right.find(umit->first)->second]; // get color of one of the corresponding facets
       marker.color.a = 0.7f;
 
       CGAL::Bbox_3 bbox;
@@ -376,9 +374,7 @@ void RelativeDeviations::publishBboxesAndNormals(std::unordered_map<int, polyhed
 	    marker_2.type = visualization_msgs::Marker::ARROW;
 	    marker_2.action = visualization_msgs::Marker::ADD;
 	    marker_2.id = marker_id;
-      marker_2.color.r = r/255.;
-      marker_2.color.g = g/255.;
-      marker_2.color.b = b/255.;
+      marker_2.color = c_associated[deviations.bimap.right.find(umit->first)->second];
       marker_2.color.a = 0.7f;
       marker_2.scale.x = 0.05;
       marker_2.scale.y = 0.1;
@@ -405,7 +401,6 @@ void RelativeDeviations::publishModelNormals(std::unordered_map<int, polyhedron_
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
-    uint8_t r = 0, g = 0, b = 255;   
     if (umit->second.associated) {
       cgal::Point center = cpt_utils::centerOfBbox(umit->second.bbox);
 
@@ -415,9 +410,9 @@ void RelativeDeviations::publishModelNormals(std::unordered_map<int, polyhedron_
 	    marker.type = visualization_msgs::Marker::ARROW;
 	    marker.action = visualization_msgs::Marker::ADD;
 	    marker.id = marker_id;
-      marker.color.r = r/255.;
-      marker.color.g = g/255.;
-      marker.color.b = b/255.;
+      marker.color.r = 0;
+      marker.color.g = 0;
+      marker.color.b = 1;
       marker.color.a = 0.7f;
       marker.scale.x = 0.05;
       marker.scale.y = 0.1;
@@ -443,7 +438,6 @@ void RelativeDeviations::publishModelNormals(std::unordered_map<int, polyhedron_
 void RelativeDeviations::publishAllModelNormals(std::unordered_map<int, polyhedron_plane> &plane_map) {
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
-  uint8_t r = 0, g = 0, b = 255;   
   for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
     cgal::Point center = cpt_utils::centerOfBbox(umit->second.bbox);
 
@@ -453,9 +447,9 @@ void RelativeDeviations::publishAllModelNormals(std::unordered_map<int, polyhedr
     marker.type = visualization_msgs::Marker::ARROW;
     marker.action = visualization_msgs::Marker::ADD;
     marker.id = marker_id;
-    marker.color.r = r/255.;
-    marker.color.g = g/255.;
-    marker.color.b = b/255.;
+    marker.color.r = 0;
+    marker.color.g = 0;
+    marker.color.b = 1;
     marker.color.a = 0.7f;
     marker.scale.x = 0.05;
     marker.scale.y = 0.1;
