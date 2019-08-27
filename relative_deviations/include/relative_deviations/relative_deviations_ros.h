@@ -17,6 +17,7 @@
 #include <cpt_utils/pc_processing.h>
 #include <pcl/filters/random_sample.h>
 #include <std_srvs/Empty.h>
+#include <std_msgs/ColorRGBA.h>
 
 #include <boost/circular_buffer.hpp>
 
@@ -87,6 +88,7 @@ class RelativeDeviations {
     bool analyzeMap(std_srvs::Empty::Request &req,
                     std_srvs::Empty::Response &res);
 
+    std::vector<std_msgs::ColorRGBA> c_associated; // keep association colors in current callback
 };
 
 }
