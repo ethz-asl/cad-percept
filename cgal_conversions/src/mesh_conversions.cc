@@ -106,6 +106,5 @@ void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *pc) {
     pc->push_back(point);
   }
 }
-
 }
 }
