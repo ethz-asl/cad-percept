@@ -5,12 +5,12 @@
 #ifndef CPT_MESHING_DELAUNAY_2D_MESHER_H
 #define CPT_MESHING_DELAUNAY_2D_MESHER_H
 
-//CGAL Includes
+// CGAL Includes
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Projection_traits_xy_3.h>
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 
-//simplification includes
+// simplification includes
 // Simplification function
 #include <CGAL/Surface_mesh_simplification/edge_collapse.h>
 // Visitor base
@@ -31,7 +31,7 @@ namespace Delaunay2DMesher {
 typedef CGAL::Exact_predicates_inexact_constructions_kernel
     ReconstructionKernel;
 
-//Local CGAL Typedefs
+// Local CGAL Typedefs
 typedef CGAL::Projection_traits_xy_3<cad_percept::cgal::Kernel>
     ProjectionTraits;
 
@@ -46,12 +46,12 @@ typedef CGAL::Delaunay_triangulation_2<ProjectionTraits,
                                        TriangulationDataStructure>
     TriangulationType;
 
-typedef CGAL::Surface_mesh_simplification::Edge_profile<cad_percept::cgal::Polyhedron>
+typedef CGAL::Surface_mesh_simplification::Edge_profile<
+    cad_percept::cgal::Polyhedron>
     EdgeProfile;
 
 typedef DelaunayXDMesher<TriangulationType> Mesher;
-
 }
 }
 }
-#endif //CPT_MESHING_DELAUNAY_2D_MESHER_H
+#endif  // CPT_MESHING_DELAUNAY_2D_MESHER_H
