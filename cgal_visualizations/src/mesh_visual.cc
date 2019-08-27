@@ -77,18 +77,19 @@ void MeshVisual::initResourcePaths() {
 }
 
 // overloaded setMessage sets display mode
-void MeshVisual::setMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr &msg) {
+void MeshVisual::setMessage(
+    const cgal_msgs::TriangleMeshStamped::ConstPtr& msg) {
   triangle_mesh_msg_ = msg->mesh;
 }
 
-void MeshVisual::setMessage(const cgal_msgs::ColoredMesh::ConstPtr &msg) {
+void MeshVisual::setMessage(const cgal_msgs::ColoredMesh::ConstPtr& msg) {
   triangle_mesh_msg_ = msg->mesh;
   mesh_color_msg_ = msg->color;
   surface_colors_msg_ = msg->colors;
   visualize_color_ = true;
 }
 
-void MeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr &msg) {
+void MeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr& msg) {
   triangle_mesh_msg_ = msg->mesh;
   normals_msg_ = msg->normals;
   cov_vertices_msg_ = msg->cov_vertices;
@@ -134,20 +135,20 @@ void MeshVisual::update() {
           triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].z);
       if (visualize_color_) {
         if (surface_colors_msg_.size() != 0) {
-          ogre_object->colour(Ogre::ColourValue(surface_colors_msg_[triangle_count].r,
-                              surface_colors_msg_[triangle_count].g,
-                              surface_colors_msg_[triangle_count].b,
-                              surface_colors_msg_[triangle_count].a));
-        }
-        else if (mesh_color_msg_.r != 0 || mesh_color_msg_.g != 0 || mesh_color_msg_.b != 0) {
-          ogre_object->colour(Ogre::ColourValue(mesh_color_msg_.r, mesh_color_msg_.g, 
-                              mesh_color_msg_.b, mesh_color_msg_.a));
-        }
-        else {
+          ogre_object->colour(
+              Ogre::ColourValue(surface_colors_msg_[triangle_count].r,
+                                surface_colors_msg_[triangle_count].g,
+                                surface_colors_msg_[triangle_count].b,
+                                surface_colors_msg_[triangle_count].a));
+        } else if (mesh_color_msg_.r != 0 || mesh_color_msg_.g != 0 ||
+                   mesh_color_msg_.b != 0) {
+          ogre_object->colour(
+              Ogre::ColourValue(mesh_color_msg_.r, mesh_color_msg_.g,
+                                mesh_color_msg_.b, mesh_color_msg_.a));
+        } else {
           ogre_object->colour(std_surface_color_);
         }
-      }
-      else {
+      } else {
         ogre_object->colour(std_surface_color_);
       }
     }
@@ -223,11 +224,11 @@ void MeshVisual::clear() {
   }
 }
 
-void MeshVisual::setFramePosition(const Ogre::Vector3 &position) {
+void MeshVisual::setFramePosition(const Ogre::Vector3& position) {
   frame_node_->setPosition(position);
 }
 
-void MeshVisual::setFrameOrientation(const Ogre::Quaternion &orientation) {
+void MeshVisual::setFrameOrientation(const Ogre::Quaternion& orientation) {
   frame_node_->setOrientation(orientation);
 }
 

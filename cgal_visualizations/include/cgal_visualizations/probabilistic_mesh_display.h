@@ -35,7 +35,7 @@ class ProbabilisticMeshDisplay
   virtual void reset();
 
  private:
-  void processMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr &msg);
+  void processMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr& msg);
 
   struct {
     rviz::BoolProperty* BackfaceCulling;
