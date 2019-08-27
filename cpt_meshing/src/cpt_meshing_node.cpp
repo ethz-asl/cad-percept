@@ -2,7 +2,6 @@
 using namespace std;
 
 int main(int argc, char** argv) {
-
   ros::init(argc, argv, "cpt_meshing_node");
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
