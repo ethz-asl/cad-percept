@@ -1,6 +1,7 @@
 #ifndef CPT_MESHING_MESHER_INTERFACE_H
 #define CPT_MESHING_MESHER_INTERFACE_H
 
+#include <iostream>
 #include <cpt_meshing/pcl_typedefs.h>
 #include <cgal_definitions/cgal_typedefs.h>
 
@@ -10,8 +11,15 @@ namespace meshing {
 // Data structure for performance measurements.
 typedef struct {
   float processing_time;  //milli-seconds
+  uint num_vertices; // Number of resulting vertices
+  uint num_points; // Number of input points (cleaned pointcloud)
   // todo:: add more.
 } MeshPerformanceCounters;
+
+std::ostream& operator<<(std::ostream& os, const MeshPerformanceCounters& s) {
+  return (os << "t = " << s.processing_time << "\t n_points = " << s.num_points
+             << "\t n_vertices = " << s.num_vertices);
+}
 
 class MesherInterface {
  public:

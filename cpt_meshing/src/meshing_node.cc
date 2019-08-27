@@ -77,12 +77,11 @@ void CadPerceptMeshingNode::pointCoudCallback(const sensor_msgs::PointCloud2Cons
 
   // run through processing
   preprocessing_.run(input_cloud, cloud_filtered, normals);
-  std::cout << cloud_filtered->size() << std::endl;
+  MeshPerformanceCounters perf_count;
   mesher_->addPointCloud(cloud_filtered, normals);
-  mesher_->getMesh(&mesh);
+  mesher_->getMesh(&mesh, &perf_count);
 
-
-  std::cout << "SIZE "<< mesh.size_of_vertices() << " " << mesh.size_of_halfedges() << std::endl;
+  ROS_DEBUG_STREAM("[Meshing Stats] " << perf_count);
 
   // publish mesh
   cgal_msgs::TriangleMeshStamped msg;
