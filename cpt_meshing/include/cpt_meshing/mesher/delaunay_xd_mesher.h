@@ -46,6 +46,8 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
     std::chrono::duration<double, std::milli> execution_time = end - start;
     if (counters != nullptr) {
       counters->processing_time = execution_time.count();
+      counters->num_points = points_->size();
+      counters->num_vertices = output->size_of_vertices();
     }
 
     return true;
@@ -62,7 +64,6 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
     void operator()(HDS& hds) {
       size_t num_vertices = triangulation_.number_of_vertices();
       size_t num_facets = triangulation_.number_of_faces();
-      std::cout << "NUM_VERTICES: " << num_vertices << std::endl;
 
       //  Build a builder and begin construction
       CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
@@ -81,7 +82,6 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
 
         typename HDS::Vertex_handle vh_new = B.add_vertex(cgal::Point(x, y, z));
         vh_new->id() = vit->info();
-        std::cout << vit->info() << std::endl;
       }
 
       uint cells, facets;
@@ -92,7 +92,6 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
            fit != triangulation_.faces_end(); ++fit) {
         // Create new facet and add vertices
         B.begin_facet();
-
         B.add_vertex_to_facet(fit->vertex(0)->info());
         B.add_vertex_to_facet(fit->vertex(1)->info());
         B.add_vertex_to_facet(fit->vertex(2)->info());
