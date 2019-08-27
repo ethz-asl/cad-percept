@@ -11,14 +11,14 @@ namespace meshing {
 // Data structure for performance measurements.
 typedef struct {
   float processing_time;  // milli-seconds
-  size_t num_vertices;      // Number of resulting vertices
-  size_t num_points;        // Number of input points (cleaned pointcloud)
+  size_t num_vertices;    // Number of resulting vertices
+  size_t num_points;      // Number of input points (cleaned pointcloud)
   // todo:: add more.
 } MeshPerformanceCounters;
 
 std::ostream& operator<<(std::ostream& os, const MeshPerformanceCounters& s) {
-  return (os << "t = " << s.processing_time << " [ms] \t n_points = " << s.num_points
-             << "\t n_vertices = " << s.num_vertices);
+  return (os << "t = " << s.processing_time << " [ms] \t n_points = "
+             << s.num_points << "\t n_vertices = " << s.num_vertices);
 }
 
 class MesherInterface {
