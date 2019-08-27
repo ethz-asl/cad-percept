@@ -73,7 +73,7 @@ void CadPerceptMeshingNode::pointCoudCallback(
   mesher_->addPointCloud(cloud_filtered, normals);
   mesher_->getMesh(&mesh, &perf_count);
 
-  ROS_DEBUG_STREAM("[Meshing Stats] " << perf_count);
+  ROS_INFO_STREAM("[Meshing Stats] " << perf_count);
 
   // publish mesh
   cgal_msgs::TriangleMeshStamped msg;
