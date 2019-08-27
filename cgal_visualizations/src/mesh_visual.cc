@@ -101,8 +101,8 @@ MeshVisual::~MeshVisual() {}
 void MeshVisual::update() {
   // check if there is a valid mesh
   // RVIZ crashes with empty meshes
-  if(triangle_mesh_msg_.vertices.empty() ||
-      triangle_mesh_msg_.triangles.empty()){
+  if (triangle_mesh_msg_.vertices.empty() ||
+      triangle_mesh_msg_.triangles.empty()) {
     ROS_WARN("Ignoring empty mesh.");
     return;
   }

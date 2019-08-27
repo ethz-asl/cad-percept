@@ -1,18 +1,18 @@
 #ifndef CPT_MESHING_MESHER_INTERFACE_H
 #define CPT_MESHING_MESHER_INTERFACE_H
 
-#include <iostream>
-#include <cpt_meshing/pcl_typedefs.h>
 #include <cgal_definitions/cgal_typedefs.h>
+#include <cpt_meshing/pcl_typedefs.h>
+#include <iostream>
 
 namespace cad_percept {
 namespace meshing {
 
 // Data structure for performance measurements.
 typedef struct {
-  float processing_time;  //milli-seconds
-  uint num_vertices; // Number of resulting vertices
-  uint num_points; // Number of input points (cleaned pointcloud)
+  float processing_time;  // milli-seconds
+  uint num_vertices;      // Number of resulting vertices
+  uint num_points;        // Number of input points (cleaned pointcloud)
   // todo:: add more.
 } MeshPerformanceCounters;
 
@@ -38,9 +38,8 @@ class MesherInterface {
    */
   virtual bool getMesh(cad_percept::cgal::Polyhedron* output,
                        MeshPerformanceCounters* counters = nullptr) = 0;
-
 };
 
-} // namespace meshing
-} // namespace cad_percept
-#endif //CPT_MESHING_MESHER_INTERFACE_H
+}  // namespace meshing
+}  // namespace cad_percept
+#endif  // CPT_MESHING_MESHER_INTERFACE_H

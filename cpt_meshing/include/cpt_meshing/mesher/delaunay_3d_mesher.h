@@ -14,7 +14,7 @@ namespace Delaunay3DMesher {
 typedef CGAL::Exact_predicates_inexact_constructions_kernel
     ReconstructionKernel;
 
-//Local CGAL Typedefs
+// Local CGAL Typedefs
 typedef CGAL::Triangulation_vertex_base_with_info_3<unsigned int,
                                                     ReconstructionKernel>
     TriangulationVertexBase;
@@ -32,7 +32,6 @@ typedef CGAL::Delaunay_triangulation_3<ReconstructionKernel,
 
 typedef DelaunayXDMesher<TriangulationType> Mesher;
 }
-
 }
 }
-#endif //CPT_MESHING_DELAUNAY_3D_MESHER_H
+#endif  // CPT_MESHING_DELAUNAY_3D_MESHER_H
