@@ -30,10 +30,12 @@ class ChangesRos {
   void associatePointCloud(const PointCloud &pc_msg);
 
   // Publishing of colorized association markers
-  void publishColorizedAssocMarkers(const cpt_utils::Associations &associations);
+  void publishColorizedAssocMarkers(
+      const cpt_utils::Associations &associations);
 
   // Service call to transform the architect model.
-  bool transformModelCb(std_srvs::Empty::Request &request, std_srvs::Empty::Response &response);
+  bool transformModelCb(std_srvs::Empty::Request &request,
+                        std_srvs::Empty::Response &response);
 
   // Publishing of architect model as point cloud.
   void publishArchitectModel() const;
@@ -42,13 +44,14 @@ class ChangesRos {
   void publishArchitectModelMesh() const;
 
   // Publishing of colorized association triangles
-  void publishColorizedAssocTriangles(const cpt_utils::Associations associations) const;
+  void publishColorizedAssocTriangles(
+      const cpt_utils::Associations associations) const;
 
  private:
   ros::NodeHandle &nh_, nh_private_;
   cgal::MeshModel mesh_model_;
-  ros::Publisher good_matches_pub_, bad_matches_pub_, model_pub_, arch_pub_, mesh_pub_,
-      distance_triangles_pub_;
+  ros::Publisher good_matches_pub_, bad_matches_pub_, model_pub_, arch_pub_,
+      mesh_pub_, distance_triangles_pub_;
   ros::Subscriber pointcloud_sub_;
   visualization_msgs::Marker model_;
   ros::ServiceServer transformSrv_;

@@ -49,7 +49,8 @@ TEST(CGALConversionsTest, transformation_to_transformation) {
   t_eigen_a(3, 3) = 1.0;
 
   Transformation t_cgal_a = eigenTransformationToCgalTransformation(t_eigen_a);
-  Eigen::Matrix4d t_eigen_comp_a = cgalTransformationToEigenTransformation(t_cgal_a);
+  Eigen::Matrix4d t_eigen_comp_a =
+      cgalTransformationToEigenTransformation(t_cgal_a);
 
   EXPECT_TRUE(t_eigen_a == t_eigen_comp_a);
 
