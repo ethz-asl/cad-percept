@@ -33,16 +33,15 @@ void ProbabilisticMeshDisplay::initProperties() {
       "face defined by the normal",
       this, SLOT(backfaceCullingPropertyChanged()));
 
-  properties_.SurfaceColor = new rviz::ColorProperty(
-      "Surface Color", QColor(0, 0, 255), "Color of surfaces.", this,
-      SLOT(appearencePropertyChanged()));
+  properties_.SurfaceColor =
+      new rviz::ColorProperty("Surface Color", QColor(0, 0, 255), "Color of surfaces.", this,
+                              SLOT(appearencePropertyChanged()));
 
   properties_.EdgeColor = new rviz::ColorProperty(
-      "Edge Color", QColor(0, 0, 0), "Color of surfaces.", this,
-      SLOT(appearencePropertyChanged()));
+      "Edge Color", QColor(0, 0, 0), "Color of surfaces.", this, SLOT(appearencePropertyChanged()));
 
-  properties_.Alpha = new rviz::FloatProperty(
-      "Alpha", 0.8, "Transparency", this, SLOT(appearencePropertyChanged()));
+  properties_.Alpha = new rviz::FloatProperty("Alpha", 0.8, "Transparency", this,
+                                              SLOT(appearencePropertyChanged()));
   properties_.Alpha->setMax(1.0);
   properties_.Alpha->setMin(0.0);
 }
@@ -57,23 +56,21 @@ void ProbabilisticMeshDisplay::backfaceCullingPropertyChanged() {
 void ProbabilisticMeshDisplay::appearencePropertyChanged() {
   if (visual_ != nullptr) {
     visual_->setAppearance(properties_.EdgeColor->getOgreColor(),
-                           properties_.SurfaceColor->getOgreColor(),
-                           properties_.Alpha->getFloat());
+                           properties_.SurfaceColor->getOgreColor(), properties_.Alpha->getFloat());
     visual_->update();
   }
 }
 
-void ProbabilisticMeshDisplay::processMessage(
-    const cgal_msgs::ProbabilisticMesh::ConstPtr &msg) {
+void ProbabilisticMeshDisplay::processMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr &msg) {
   // Here we call the rviz::FrameManager to get the transform from the
   // fixed frame to the frame in the header of this Imu message.  If
   // it fails, we can't do anything else so we return.
   Ogre::Quaternion orientation;
   Ogre::Vector3 position;
-  if (!context_->getFrameManager()->getTransform(
-          msg->header.frame_id, msg->header.stamp, position, orientation)) {
-    ROS_DEBUG("Error transforming from frame '%s' to frame '%s'",
-              msg->header.frame_id.c_str(), qPrintable(fixed_frame_));
+  if (!context_->getFrameManager()->getTransform(msg->header.frame_id, msg->header.stamp, position,
+                                                 orientation)) {
+    ROS_DEBUG("Error transforming from frame '%s' to frame '%s'", msg->header.frame_id.c_str(),
+              qPrintable(fixed_frame_));
     return;
   }
 
@@ -92,5 +89,4 @@ void ProbabilisticMeshDisplay::processMessage(
 }  // namespace cad_percept
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::ProbabilisticMeshDisplay,
-                       rviz::Display)
+PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::ProbabilisticMeshDisplay, rviz::Display)

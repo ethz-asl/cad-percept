@@ -15,8 +15,7 @@ namespace visualizations {
 
 class MeshVisual;  // Forward definition
 
-class ColoredMeshDisplay
-    : public rviz::MessageFilterDisplay<cgal_msgs::ColoredMesh> {
+class ColoredMeshDisplay : public rviz::MessageFilterDisplay<cgal_msgs::ColoredMesh> {
   Q_OBJECT
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -35,7 +34,7 @@ class ColoredMeshDisplay
   virtual void reset();
 
  private:
-  void processMessage(const cgal_msgs::ColoredMesh::ConstPtr &msg);
+  void processMessage(const cgal_msgs::ColoredMesh::ConstPtr& msg);
 
   struct {
     rviz::BoolProperty* BackfaceCulling;
