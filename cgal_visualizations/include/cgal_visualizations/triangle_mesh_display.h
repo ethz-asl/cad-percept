@@ -15,8 +15,7 @@ namespace visualizations {
 
 class MeshVisual;  // Forward definition
 
-class TriangleMeshDisplay
-    : public rviz::MessageFilterDisplay<cgal_msgs::TriangleMeshStamped> {
+class TriangleMeshDisplay : public rviz::MessageFilterDisplay<cgal_msgs::TriangleMeshStamped> {
   Q_OBJECT
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -35,7 +34,7 @@ class TriangleMeshDisplay
   virtual void reset();
 
  private:
-  void processMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr &msg);
+  void processMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr& msg);
 
   struct {
     rviz::BoolProperty* BackfaceCulling;
