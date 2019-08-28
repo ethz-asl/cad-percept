@@ -28,7 +28,7 @@ class MesherInterface {
    * Depending on the mesher, this might overwrite older data.
    * This call should return fast, so not much processing happening here.
    */
-  virtual void addPointCloud(const InputPointCloud::Ptr& input,
+  virtual bool addPointCloud(const InputPointCloud::Ptr& input,
                              const InputNormals::Ptr& normals) = 0;
 
   /*

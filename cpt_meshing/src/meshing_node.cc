@@ -66,8 +66,16 @@ void CadPerceptMeshingNode::pointCoudCallback(const sensor_msgs::PointCloud2Cons
   // run through processing
   preprocessing_.run(input_cloud, cloud_filtered, normals);
   MeshPerformanceCounters perf_count;
-  mesher_->addPointCloud(cloud_filtered, normals);
-  mesher_->getMesh(&mesh, &perf_count);
+
+  if (!mesher_->addPointCloud(cloud_filtered, normals)) {
+    ROS_WARN_STREAM("Invalid point cloud");
+    return;
+  }
+
+  if (!mesher_->getMesh(&mesh, &perf_count)) {
+    ROS_WARN_STREAM("Invalid mesh");
+    return;
+  }
 
   ROS_INFO_STREAM("[Meshing Stats] " << perf_count);
 
@@ -77,5 +85,5 @@ void CadPerceptMeshingNode::pointCoudCallback(const sensor_msgs::PointCloud2Cons
   cgal::triangleMeshToMsg(mesh, &msg.mesh);
   pub_mesh_.publish(msg);
 }
-}
+}  // namespace meshing
 }
