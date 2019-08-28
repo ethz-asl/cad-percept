@@ -26,7 +26,9 @@ class CollisionManifoldTestNode {
   }
 
  private:
-  void meshCallback(const cgal_msgs::TriangleMeshConstPtr& mesh) {}
+  void meshCallback(const cgal_msgs::TriangleMeshConstPtr& mesh) {
+    ROS_INFO("Dummy change to test CI");
+  }
 
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
