@@ -11,7 +11,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 # LIBRARIES #
 #############
 cs_add_library(${PROJECT_NAME}
-    src/cpt_collision_manifolds_node.cc
+    src/iso_surface_manifold.cc
 )
 
 
