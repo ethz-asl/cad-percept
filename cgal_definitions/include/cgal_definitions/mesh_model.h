@@ -37,8 +37,7 @@ class MeshModel {
  * Get closest point on surface and surface id to a given point.
  */
   PointAndPrimitiveId getClosestTriangle(const Point &p) const;
-  PointAndPrimitiveId getClosestTriangle(const double x, const double y,
-                                         const double z) const;
+  PointAndPrimitiveId getClosestTriangle(const double x, const double y, const double z) const;
 
   /**
  * Get normal of primitive.

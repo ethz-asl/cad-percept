@@ -3,8 +3,7 @@
 namespace cad_percept {
 namespace cgal {
 
-MeshModel::MeshModel(const std::string &off_path, bool verbose)
-    : verbose_(verbose) {
+MeshModel::MeshModel(const std::string &off_path, bool verbose) : verbose_(verbose) {
   std::ifstream off_file(off_path.c_str(), std::ios::binary);
   if (!CGAL::read_off(off_file, P_)) {
     std::cerr << "Error: invalid STL file" << std::endl;
@@ -18,8 +17,7 @@ MeshModel::MeshModel(const std::string &off_path, bool verbose)
  * Now we have loaded the geometric structure and need to conduct intersection
  * and distance queries. For this, we build an AABB tree.
  **/
-  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
-                                               CGAL::faces(P_).second, P_);
+  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first, CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 
   initializeFacetIndices();  // set fixed facet IDs for whole class
@@ -39,8 +37,8 @@ bool MeshModel::isIntersection(const Ray &query) const {
 // using function isIntersection()
 Intersection MeshModel::getIntersection(const Ray &query) const {
   if (verbose_) {
-    std::cout << " %i intersections "
-              << tree_->number_of_intersected_primitives(query) << std::endl;
+    std::cout << " %i intersections " << tree_->number_of_intersected_primitives(query)
+              << std::endl;
   }
 
   // compute the closest intersection point and the distance
@@ -51,8 +49,7 @@ Intersection MeshModel::getIntersection(const Ray &query) const {
     intersection_result.intersected_point = p;
     intersection_result.surface_normal = getNormal(intersection->second);
   } catch (...) {
-    std::cout << "There is no intersection result. Use isIntersection() first."
-              << std::endl;
+    std::cout << "There is no intersection result. Use isIntersection() first." << std::endl;
   }
 
   return intersection_result;
@@ -72,8 +69,7 @@ PointAndPrimitiveId MeshModel::getClosestTriangle(const Point &p) const {
   return tree_->closest_point_and_primitive(p);  // primitive Id is Facet_handle
 }
 
-PointAndPrimitiveId MeshModel::getClosestTriangle(const double x,
-                                                  const double y,
+PointAndPrimitiveId MeshModel::getClosestTriangle(const double x, const double y,
                                                   const double z) const {
   Point pt = Point(x, y, z);
   return getClosestTriangle(pt);
@@ -82,10 +78,9 @@ PointAndPrimitiveId MeshModel::getClosestTriangle(const double x,
 // directed to positive side of h
 Vector MeshModel::getNormal(const Polyhedron::Face_handle &face_handle) const {
   // introduce the triangle with 3 points:
-  Triangle intersected_triangle(
-      face_handle->halfedge()->vertex()->point(),
-      face_handle->halfedge()->next()->vertex()->point(),
-      face_handle->halfedge()->next()->next()->vertex()->point());
+  Triangle intersected_triangle(face_handle->halfedge()->vertex()->point(),
+                                face_handle->halfedge()->next()->vertex()->point(),
+                                face_handle->halfedge()->next()->next()->vertex()->point());
   return intersected_triangle.supporting_plane().orthogonal_vector();
 }
 
@@ -94,11 +89,9 @@ Vector MeshModel::getNormal(const PointAndPrimitiveId &ppid) const {
 }
 
 void MeshModel::transform(const Transformation &transform) {
-  std::transform(P_.points_begin(), P_.points_end(), P_.points_begin(),
-                 transform);
+  std::transform(P_.points_begin(), P_.points_end(), P_.points_begin(), transform);
   // create updated AABBTree:
-  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
-                                               CGAL::faces(P_).second, P_);
+  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first, CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 }
 
@@ -110,8 +103,7 @@ void MeshModel::initializeFacetIndices() {
   // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for
   // facets
   std::size_t i = 0;
-  for (Polyhedron::Facet_iterator facet = P_.facets_begin();
-       facet != P_.facets_end(); ++facet) {
+  for (Polyhedron::Facet_iterator facet = P_.facets_begin(); facet != P_.facets_end(); ++facet) {
     facet->id() = i++;
   }
 }

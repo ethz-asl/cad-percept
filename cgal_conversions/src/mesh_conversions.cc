@@ -23,15 +23,13 @@ void triangleMeshToMsg(Polyhedron &m, cgal_msgs::TriangleMesh *msg) {
   std::map<int, int> vertex_idx_for_id;
 
   // get triangles
-  for (Polyhedron::Facet_iterator facet = m.facets_begin();
-       facet != m.facets_end(); ++facet) {
+  for (Polyhedron::Facet_iterator facet = m.facets_begin(); facet != m.facets_end(); ++facet) {
     if (!facet->is_triangle()) continue;
 
     shape_msgs::MeshTriangle triangle;
 
     int i = 0;
-    Polyhedron::Halfedge_around_facet_const_circulator hit =
-        facet->facet_begin();
+    Polyhedron::Halfedge_around_facet_const_circulator hit = facet->facet_begin();
     do {
       if (i > 2) {
         std::cout << "Non-triangular mesh" << std::endl;
@@ -66,8 +64,7 @@ void triangleMeshToMsg(Polyhedron &m, cgal_msgs::TriangleMesh *msg) {
 template <class HDS>
 void BuildMesh<HDS>::operator()(HDS &hds) {
   CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
-  B.begin_surface(msg_->vertices.size(),
-                  msg_->triangles.size());  // vertices, facets, halfedges
+  B.begin_surface(msg_->vertices.size(), msg_->triangles.size());  // vertices, facets, halfedges
   // add all vertices first
   for (auto const &vertice : msg_->vertices) {
     B.add_vertex(Point(vertice.x, vertice.y, vertice.z));
@@ -98,8 +95,7 @@ void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *pc) {
   pc->width = mesh.size_of_vertices();  // number of vertices
   pc->header.frame_id = "mesh";
   pcl::PointXYZ point;
-  for (auto vertex_point = mesh.points_begin();
-       vertex_point != mesh.points_end(); ++vertex_point) {
+  for (auto vertex_point = mesh.points_begin(); vertex_point != mesh.points_end(); ++vertex_point) {
     point.x = vertex_point->x();
     point.y = vertex_point->y();
     point.z = vertex_point->z();

@@ -39,8 +39,8 @@ class MeshVisual {
 
   void setBackFaceCulling(const bool value) { backface_culling_ = value; }
 
-  void setAppearance(const Ogre::ColourValue edge_color,
-                     const Ogre::ColourValue surface_color, const float alpha) {
+  void setAppearance(const Ogre::ColourValue edge_color, const Ogre::ColourValue surface_color,
+                     const float alpha) {
     std_edge_color_ = edge_color;
     std_edge_color_.a = alpha;
 

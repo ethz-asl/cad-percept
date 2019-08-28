@@ -15,8 +15,7 @@ namespace visualizations {
 
 class MeshVisual;  // Forward definition
 
-class ColoredMeshDisplay
-    : public rviz::MessageFilterDisplay<cgal_msgs::ColoredMesh> {
+class ColoredMeshDisplay : public rviz::MessageFilterDisplay<cgal_msgs::ColoredMesh> {
   Q_OBJECT
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

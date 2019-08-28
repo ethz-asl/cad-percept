@@ -15,8 +15,7 @@ namespace visualizations {
 
 class MeshVisual;  // Forward definition
 
-class ProbabilisticMeshDisplay
-    : public rviz::MessageFilterDisplay<cgal_msgs::ProbabilisticMesh> {
+class ProbabilisticMeshDisplay : public rviz::MessageFilterDisplay<cgal_msgs::ProbabilisticMesh> {
   Q_OBJECT
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
