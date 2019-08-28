@@ -11,13 +11,18 @@ add_definitions(-std=c++11 -Wall -Wextra)
 # LIBRARIES #
 #############
 cs_add_library(${PROJECT_NAME}
-    src/iso_surface_manifold.cc
-)
+        src/iso_surface_manifold.cc
+        )
 
 
 ############
 # BINARIES #
 ############
+cs_add_executable(collision_manifold_test_node
+        src/collision_manifold_test_node.cc
+        )
+
+target_link_libraries(collision_manifold_test_node ${PROJECT_NAME})
 
 
 ##########
