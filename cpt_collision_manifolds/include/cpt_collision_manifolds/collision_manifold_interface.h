@@ -1,8 +1,8 @@
 #ifndef CPT_COLLISION_MANIFOLDS_COLLISION_MANIFOLD_INTERFACE_H
 #define CPT_COLLISION_MANIFOLDS_COLLISION_MANIFOLD_INTERFACE_H
 
-#include <Eigen/Dense>
 #include <cgal_definitions/cgal_typedefs.h>
+#include <Eigen/Dense>
 
 namespace cad_percept {
 namespace cpt_collision_manifolds {
@@ -31,9 +31,7 @@ class CollisionManifoldInterface {
    * should happen.
    */
   virtual void construct() = 0;
-
-
 };
-}
-}
-#endif // CPT_COLLISION_MANIFOLDS_COLLISION_MANIFOLD_INTERFACE_H
+}  // namespace cpt_collision_manifolds
+}  // namespace cad_percept
+#endif  // CPT_COLLISION_MANIFOLDS_COLLISION_MANIFOLD_INTERFACE_H

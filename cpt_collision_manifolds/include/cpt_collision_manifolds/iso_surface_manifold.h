@@ -10,11 +10,9 @@ namespace cpt_collision_manifolds {
  * Assumes body to be uniform shaped sphere.
  * Constructs Isosurface of the Mesh with the given radius.
  */
-class IsoSurfaceManifold : CollisionManifoldInterface {
+class IsoSurfaceManifold : public CollisionManifoldInterface {
  public:
-  IsoSurfaceManifold(double body_radius) :
-      body_radius_(body_radius),
-      is_constructed_(false) {}
+  IsoSurfaceManifold(double body_radius) : body_radius_(body_radius), is_constructed_(false) {}
 
   /*
    * Interface methods:
@@ -30,9 +28,8 @@ class IsoSurfaceManifold : CollisionManifoldInterface {
 
   const double body_radius_;
   bool is_constructed_;
-
 };
-}
-}
+}  // namespace cpt_collision_manifolds
+}  // namespace cad_percept
 
-#endif // CPT_COLLISION_MANIFOLDS_ISOSURFACEMANIFOLD_H
+#endif  // CPT_COLLISION_MANIFOLDS_ISOSURFACEMANIFOLD_H
