@@ -25,7 +25,8 @@ struct Associations {
 };
 
 // Associate point-cloud with architect model.
-Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh_model);
+Associations associatePointCloud(const PointCloud &pc_msg,
+                                 cgal::MeshModel *mesh_model);
 }
 }
 
