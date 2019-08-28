@@ -255,6 +255,5 @@ void ChangesRos::publishColorizedAssocTriangles(
   c_msg.header.seq = 0;
   distance_triangles_pub_.publish(c_msg);
 }
-
 }
 }
