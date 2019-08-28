@@ -13,21 +13,23 @@ namespace cpt_collision_manifolds {
 class IsoSurfaceManifold : CollisionManifoldInterface {
  public:
   IsoSurfaceManifold(double body_radius) :
-      body_radius_(body_radius) {}
+      body_radius_(body_radius),
+      is_constructed_(false) {}
 
   /*
    * Interface methods:
    */
-
   void setBodyAttitude(const Eigen::Quaterniond& attitude);
   double signedDistance(const Eigen::Vector3d& position);
   void getAsMesh(cgal::PolyhedronPtr mesh);
+  void construct();
 
  private:
   // Private default constructor.
   IsoSurfaceManifold() : body_radius_(0.0) {}
 
   const double body_radius_;
+  bool is_constructed_;
 
 };
 }

@@ -3,6 +3,10 @@
 namespace cad_percept {
 namespace cpt_collision_manifolds {
 
+void IsoSurfaceManifold::construct(){
+
+}
+
 void IsoSurfaceManifold::setBodyAttitude(const Eigen::Quaterniond& attitude) {
   // We don't need the attitude, so nothing is happening here.
 }
