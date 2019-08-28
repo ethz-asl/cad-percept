@@ -42,8 +42,7 @@ typedef std::shared_ptr<Polyhedron> PolyhedronPtr;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
 typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
-typedef boost::graph_traits<Polyhedron>::halfedge_descriptor
-    halfedge_descriptor;
+typedef boost::graph_traits<Polyhedron>::halfedge_descriptor halfedge_descriptor;
 typedef boost::graph_traits<Polyhedron>::face_descriptor face_descriptor;
 
 typedef boost::graph_traits<Polyhedron>::vertex_iterator vertex_iterator;
@@ -52,19 +51,14 @@ typedef boost::graph_traits<Polyhedron>::face_iterator face_iterator;
 // Tree structures
 // AABB tree
 typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron>
-    PolyhedronPrimitive;  // cadify: Primitive
-typedef CGAL::AABB_traits<Kernel, PolyhedronPrimitive>
-    PolyhedronAABBTraits;  // cadify: Traits
-typedef CGAL::AABB_tree<PolyhedronAABBTraits>
-    PolyhedronAABBTree;  // cadify: Tree
-typedef boost::optional<
-    PolyhedronAABBTree::Intersection_and_primitive_id<Segment>::Type>
+    PolyhedronPrimitive;                                                      // cadify: Primitive
+typedef CGAL::AABB_traits<Kernel, PolyhedronPrimitive> PolyhedronAABBTraits;  // cadify: Traits
+typedef CGAL::AABB_tree<PolyhedronAABBTraits> PolyhedronAABBTree;             // cadify: Tree
+typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Segment>::Type>
     PolyhedronSegmentIntersection;
-typedef boost::optional<
-    PolyhedronAABBTree::Intersection_and_primitive_id<Plane>::Type>
+typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Plane>::Type>
     PolyhedronPlaneIntersection;
-typedef boost::optional<
-    PolyhedronAABBTree::Intersection_and_primitive_id<Ray>::Type>
+typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Ray>::Type>
     PolyhedronRayIntersection;  // cadify: Ray_intersection
 typedef PolyhedronAABBTree::Primitive_id PolyhedronPrimitiveId;
 typedef std::pair<Point, PolyhedronPrimitive::Id> PointAndPrimitiveId;
