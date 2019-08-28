@@ -10,10 +10,9 @@ PreProcessingFilter::PreProcessingFilter()
     : normal_search_radius_(0.03)  // set reasonable default
 {}
 
-void PreProcessingFilter::run(
-    cad_percept::meshing::InputPointCloud::ConstPtr input,
-    cad_percept::meshing::InputPointCloud::Ptr output,
-    cad_percept::meshing::InputNormals::Ptr normals) {
+void PreProcessingFilter::run(cad_percept::meshing::InputPointCloud::ConstPtr input,
+                              cad_percept::meshing::InputPointCloud::Ptr output,
+                              cad_percept::meshing::InputNormals::Ptr normals) {
   // run through filters naively
   pcl::copyPointCloud(*input, *output);
   for (auto filter : filter_list_) {
@@ -26,8 +25,8 @@ void PreProcessingFilter::run(
   estimateNormals(output, normals);
 }
 
-void PreProcessingFilter::addBoxFilter(const std::string& axis,
-                                       const double min, const double max) {
+void PreProcessingFilter::addBoxFilter(const std::string& axis, const double min,
+                                       const double max) {
   std::shared_ptr<pcl::PassThrough<InputPoint>> filter =
       std::make_shared<pcl::PassThrough<InputPoint>>();
   filter->setFilterFieldName(axis);
@@ -35,8 +34,7 @@ void PreProcessingFilter::addBoxFilter(const std::string& axis,
   filter_list_.push_back(filter);
 }
 
-void PreProcessingFilter::addVoxelFilter(const double x_leaf,
-                                         const double y_leaf,
+void PreProcessingFilter::addVoxelFilter(const double x_leaf, const double y_leaf,
                                          const double z_leaf) {
   std::shared_ptr<pcl::VoxelGrid<InputPoint>> filter =
       std::make_shared<pcl::VoxelGrid<InputPoint>>();
@@ -45,14 +43,12 @@ void PreProcessingFilter::addVoxelFilter(const double x_leaf,
   filter_list_.push_back(filter);
 }
 
-void PreProcessingFilter::estimateNormals(
-    cad_percept::meshing::InputPointCloud::ConstPtr input,
-    cad_percept::meshing::InputNormals::Ptr normals) {
+void PreProcessingFilter::estimateNormals(cad_percept::meshing::InputPointCloud::ConstPtr input,
+                                          cad_percept::meshing::InputNormals::Ptr normals) {
   pcl::NormalEstimation<InputPoint, pcl::Normal> ne;
   ne.setInputCloud(input);
 
-  pcl::search::KdTree<InputPoint>::Ptr tree(
-      new pcl::search::KdTree<InputPoint>());
+  pcl::search::KdTree<InputPoint>::Ptr tree(new pcl::search::KdTree<InputPoint>());
   ne.setSearchMethod(tree);
 
   ne.setRadiusSearch(normal_search_radius_);

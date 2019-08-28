@@ -12,8 +12,7 @@ namespace meshing {
 
 class AbstractSimpleMesher : public MesherInterface {
  public:
-  void addPointCloud(const InputPointCloud::Ptr& input,
-                     const InputNormals::Ptr& normals) {
+  void addPointCloud(const InputPointCloud::Ptr& input, const InputNormals::Ptr& normals) {
     points_ = input;
     normals_ = normals;
   }

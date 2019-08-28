@@ -17,32 +17,26 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       discrete_color_(nh_private.param<bool>("discrete_color", false)) {
   if (!nh_private_.hasParam("off_model"))
     std::cerr << "ERROR 'off_model' not set as parameter." << std::endl;
-  good_matches_pub_ =
-      nh_.advertise<visualization_msgs::Marker>("good_cad_matches", 100);
-  bad_matches_pub_ =
-      nh_.advertise<visualization_msgs::Marker>("bad_cad_matches", 100);
-  model_pub_ =
-      nh_.advertise<visualization_msgs::Marker>("architect_model", 100);
+  good_matches_pub_ = nh_.advertise<visualization_msgs::Marker>("good_cad_matches", 100);
+  bad_matches_pub_ = nh_.advertise<visualization_msgs::Marker>("bad_cad_matches", 100);
+  model_pub_ = nh_.advertise<visualization_msgs::Marker>("architect_model", 100);
   arch_pub_ = nh_.advertise<PointCloud>("architect_model_pcl", 100,
                                         true);  // latching to true (saves last
                                                 // messages and sends to future
                                                 // subscriber)
-  mesh_pub_ = nh_.advertise<cgal_msgs::TriangleMeshStamped>(
-      "mesh_model", 100, true);  // latching to true
-  distance_triangles_pub_ =
-      nh_.advertise<cgal_msgs::ColoredMesh>("distance_mesh", 100, true);
+  mesh_pub_ =
+      nh_.advertise<cgal_msgs::TriangleMeshStamped>("mesh_model", 100, true);  // latching to true
+  distance_triangles_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("distance_mesh", 100, true);
 
-  pointcloud_sub_ =
-      nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"),
-                            10, &ChangesRos::associatePointCloud, this);
+  pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10,
+                                          &ChangesRos::associatePointCloud, this);
 
   // start defining visualization_msgs Marker, this is just a block, right?
   model_.type = visualization_msgs::Marker::MESH_RESOURCE;
   model_.ns = "primitive_surfaces";
   if (!nh_private_.hasParam("stl_model"))
     std::cerr << "ERROR 'stl_model' not set as parameter." << std::endl;
-  model_.mesh_resource =
-      "file://" + nh_private_.param<std::string>("stl_model", "fail");
+  model_.mesh_resource = "file://" + nh_private_.param<std::string>("stl_model", "fail");
   model_.header.frame_id = map_frame_;
   model_.scale.x = 1.0;
   model_.scale.y = 1.0;
@@ -59,18 +53,15 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   model_.color.g = 0.0f;
   model_.color.b = 0.0f;
 
-  transformSrv_ = nh.advertiseService("transformModel",
-                                      &ChangesRos::transformModelCb, this);
+  transformSrv_ = nh.advertiseService("transformModel", &ChangesRos::transformModelCb, this);
 }
 
 ChangesRos::~ChangesRos() {}
 
 // callback for each p.c. scan topic
 void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
-  cpt_utils::Associations associations =
-      cpt_utils::associatePointCloud(pc_msg, &mesh_model_);
-  CHECK_EQ(associations.points_from.cols(),
-           pc_msg.width);  // glog, checks equality
+  cpt_utils::Associations associations = cpt_utils::associatePointCloud(pc_msg, &mesh_model_);
+  CHECK_EQ(associations.points_from.cols(), pc_msg.width);  // glog, checks equality
   CHECK_EQ(associations.points_to.cols(), pc_msg.width);
   CHECK_EQ(associations.distances.rows(), pc_msg.width);
   CHECK_EQ(associations.triangles_to.rows(), pc_msg.width);
@@ -84,8 +75,7 @@ void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
   // -> because they might be associated to the wrong plane
 }
 
-void ChangesRos::publishColorizedAssocMarkers(
-    const cpt_utils::Associations &associations) {
+void ChangesRos::publishColorizedAssocMarkers(const cpt_utils::Associations &associations) {
   visualization_msgs::Marker good_marker, bad_marker;
   good_marker.header.frame_id = map_frame_;
   good_marker.ns = "semantic_graph_matches";
@@ -116,16 +106,15 @@ void ChangesRos::publishColorizedAssocMarkers(
     double length = associations.distances(i);
     if (length > distance_threshold_) {
       differences++;
-      bad_marker.points.push_back(
-          p_from);  // marker makes point between these two
+      bad_marker.points.push_back(p_from);  // marker makes point between these two
       bad_marker.points.push_back(p_to);
     } else {
       good_marker.points.push_back(p_from);
       good_marker.points.push_back(p_to);
     }
   }
-  std::cout << "number of differences in current reading: " << differences
-            << "/" << associations.points_from.cols() << std::endl;
+  std::cout << "number of differences in current reading: " << differences << "/"
+            << associations.points_from.cols() << std::endl;
 
   good_matches_pub_.publish(good_marker);
   bad_matches_pub_.publish(bad_marker);
@@ -142,11 +131,9 @@ bool ChangesRos::transformModelCb(std_srvs::Empty::Request &request,
                                             // transform, but where is
                                             // cad_frame?
   Eigen::Matrix3d rotation;
-  tf::matrixTFToEigen(transform.getBasis(),
-                      rotation);  // basis matrix for rotation
+  tf::matrixTFToEigen(transform.getBasis(), rotation);  // basis matrix for rotation
   Eigen::Vector3d translation;
-  tf::vectorTFToEigen(transform.getOrigin(),
-                      translation);  // origin vector translation
+  tf::vectorTFToEigen(transform.getOrigin(), translation);  // origin vector translation
   Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
   transformation.block(0, 0, 3, 3) = rotation;
   transformation.block(0, 3, 3, 1) = translation;
@@ -161,8 +148,7 @@ void ChangesRos::publishArchitectModel() const {
   PointCloud pc_msg;
   cgal::meshToVerticePointCloud(mesh_model_.getMesh(), &pc_msg);
   pc_msg.header.frame_id = map_frame_;
-  pcl_conversions::toPCL(
-      ros::Time(0), pc_msg.header.stamp);  // ROS time stamp to PCL time stamp
+  pcl_conversions::toPCL(ros::Time(0), pc_msg.header.stamp);  // ROS time stamp to PCL time stamp
   arch_pub_.publish(pc_msg);
 }
 
@@ -183,8 +169,7 @@ void ChangesRos::publishArchitectModelMesh() const {
   mesh_pub_.publish(p_msg);
 }
 
-void ChangesRos::publishColorizedAssocTriangles(
-    const cpt_utils::Associations associations) const {
+void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations associations) const {
   cgal_msgs::TriangleMesh t_msg;
   cgal_msgs::ColoredMesh c_msg;
   cgal::Polyhedron mesh;
