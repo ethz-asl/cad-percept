@@ -10,8 +10,7 @@ int main(int argc, char **argv) {
   std::shared_ptr<cad_percept::changes::ChangesRos> changes_ros_node;
 
   // Hand over the handle to the object.
-  changes_ros_node =
-      std::make_shared<cad_percept::changes::ChangesRos>(nh, nh_private);
+  changes_ros_node = std::make_shared<cad_percept::changes::ChangesRos>(nh, nh_private);
 
   ros::spin();
 

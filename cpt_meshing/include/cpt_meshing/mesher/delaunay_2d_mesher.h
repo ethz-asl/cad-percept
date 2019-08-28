@@ -28,27 +28,20 @@ namespace cad_percept {
 namespace meshing {
 namespace Delaunay2DMesher {
 
-typedef CGAL::Exact_predicates_inexact_constructions_kernel
-    ReconstructionKernel;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel ReconstructionKernel;
 
 // Local CGAL Typedefs
-typedef CGAL::Projection_traits_xy_3<cad_percept::cgal::Kernel>
-    ProjectionTraits;
+typedef CGAL::Projection_traits_xy_3<cad_percept::cgal::Kernel> ProjectionTraits;
 
-typedef CGAL::Triangulation_vertex_base_with_info_2<unsigned int,
-                                                    ProjectionTraits>
+typedef CGAL::Triangulation_vertex_base_with_info_2<unsigned int, ProjectionTraits>
     TriangulationVertexBase;
 
-typedef CGAL::Triangulation_data_structure_2<TriangulationVertexBase>
-    TriangulationDataStructure;
+typedef CGAL::Triangulation_data_structure_2<TriangulationVertexBase> TriangulationDataStructure;
 
-typedef CGAL::Delaunay_triangulation_2<ProjectionTraits,
-                                       TriangulationDataStructure>
+typedef CGAL::Delaunay_triangulation_2<ProjectionTraits, TriangulationDataStructure>
     TriangulationType;
 
-typedef CGAL::Surface_mesh_simplification::Edge_profile<
-    cad_percept::cgal::Polyhedron>
-    EdgeProfile;
+typedef CGAL::Surface_mesh_simplification::Edge_profile<cad_percept::cgal::Polyhedron> EdgeProfile;
 
 typedef DelaunayXDMesher<TriangulationType> Mesher;
 }

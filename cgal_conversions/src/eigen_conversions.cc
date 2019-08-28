@@ -39,8 +39,8 @@ Vector eigenVectorToCgalVector(const Eigen::Vector3d &vector) {
   return Vector(vector(0, 0), vector(1, 0), vector(2, 0));
 }
 
-void cgalTransformationToEigenTransformation(
-    const Transformation &ctransformation, Eigen::Matrix4d *transformation) {
+void cgalTransformationToEigenTransformation(const Transformation &ctransformation,
+                                             Eigen::Matrix4d *transformation) {
   if (ctransformation.m(3, 3) != 1) {
     std::cerr << "Transformation Matrix is not an affine transformation with "
                  "m(3,3) = 1!"
@@ -65,32 +65,29 @@ void cgalTransformationToEigenTransformation(
   (*transformation)(3, 3) = ctransformation.m(3, 3);
 }
 
-void eigenTransformationToCgalTransformation(
-    const Eigen::Matrix4d &transformation, Transformation *ctransformation) {
-  if (transformation(3, 0) != 0 || transformation(3, 1) != 0 ||
-      transformation(3, 2) != 0 || transformation(3, 3) != 1) {
+void eigenTransformationToCgalTransformation(const Eigen::Matrix4d &transformation,
+                                             Transformation *ctransformation) {
+  if (transformation(3, 0) != 0 || transformation(3, 1) != 0 || transformation(3, 2) != 0 ||
+      transformation(3, 3) != 1) {
     std::cerr << "Transformation Matrix is not an affine transformation with "
                  "m(3,3) = 1!"
               << std::endl;
   }
 
   *ctransformation = Transformation(
-      transformation(0, 0), transformation(0, 1), transformation(0, 2),
-      transformation(0, 3), transformation(1, 0), transformation(1, 1),
-      transformation(1, 2), transformation(1, 3), transformation(2, 0),
-      transformation(2, 1), transformation(2, 2), transformation(2, 3),
+      transformation(0, 0), transformation(0, 1), transformation(0, 2), transformation(0, 3),
+      transformation(1, 0), transformation(1, 1), transformation(1, 2), transformation(1, 3),
+      transformation(2, 0), transformation(2, 1), transformation(2, 2), transformation(2, 3),
       transformation(3, 3));
 }
 
-Eigen::Matrix4d cgalTransformationToEigenTransformation(
-    const Transformation &ctransformation) {
+Eigen::Matrix4d cgalTransformationToEigenTransformation(const Transformation &ctransformation) {
   Eigen::Matrix4d transformation;
   cgalTransformationToEigenTransformation(ctransformation, &transformation);
   return transformation;
 }
 
-Transformation eigenTransformationToCgalTransformation(
-    const Eigen::Matrix4d &transformation) {
+Transformation eigenTransformationToCgalTransformation(const Eigen::Matrix4d &transformation) {
   Transformation ctransformation;
   eigenTransformationToCgalTransformation(transformation, &ctransformation);
   return ctransformation;

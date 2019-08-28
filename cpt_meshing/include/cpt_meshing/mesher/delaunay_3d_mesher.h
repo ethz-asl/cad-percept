@@ -11,23 +11,18 @@ namespace cad_percept {
 namespace meshing {
 namespace Delaunay3DMesher {
 
-typedef CGAL::Exact_predicates_inexact_constructions_kernel
-    ReconstructionKernel;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel ReconstructionKernel;
 
 // Local CGAL Typedefs
-typedef CGAL::Triangulation_vertex_base_with_info_3<unsigned int,
-                                                    ReconstructionKernel>
+typedef CGAL::Triangulation_vertex_base_with_info_3<unsigned int, ReconstructionKernel>
     TriangulationVertexBase;
 
-typedef CGAL::Delaunay_triangulation_cell_base_3<ReconstructionKernel>
-    TriangulationCellBase;
+typedef CGAL::Delaunay_triangulation_cell_base_3<ReconstructionKernel> TriangulationCellBase;
 
-typedef CGAL::Triangulation_data_structure_3<TriangulationVertexBase,
-                                             TriangulationCellBase>
+typedef CGAL::Triangulation_data_structure_3<TriangulationVertexBase, TriangulationCellBase>
     TriangulationDataStructure;
 
-typedef CGAL::Delaunay_triangulation_3<ReconstructionKernel,
-                                       TriangulationDataStructure>
+typedef CGAL::Delaunay_triangulation_3<ReconstructionKernel, TriangulationDataStructure>
     TriangulationType;
 
 typedef DelaunayXDMesher<TriangulationType> Mesher;

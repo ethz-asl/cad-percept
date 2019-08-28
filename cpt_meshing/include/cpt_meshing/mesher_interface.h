@@ -17,8 +17,8 @@ typedef struct {
 } MeshPerformanceCounters;
 
 std::ostream& operator<<(std::ostream& os, const MeshPerformanceCounters& s) {
-  return (os << "t = " << s.processing_time << " [ms] \t n_points = "
-             << s.num_points << "\t n_vertices = " << s.num_vertices);
+  return (os << "t = " << s.processing_time << " [ms] \t n_points = " << s.num_points
+             << "\t n_vertices = " << s.num_vertices);
 }
 
 class MesherInterface {

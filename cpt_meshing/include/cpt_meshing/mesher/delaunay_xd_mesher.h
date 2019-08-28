@@ -11,8 +11,7 @@ template <class DelaunayTriangulation>
 class DelaunayXDMesher : public AbstractSimpleMesher {
  public:
   // Function has to be implemented in header (non-specialized template)
-  bool getMesh(cad_percept::cgal::Polyhedron* output,
-               MeshPerformanceCounters* counters = nullptr) {
+  bool getMesh(cad_percept::cgal::Polyhedron* output, MeshPerformanceCounters* counters = nullptr) {
     if (!inputPointsValid()) {
       return false;
     }
@@ -28,8 +27,8 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
     for (size_t i = 0; i < points_->size(); ++i) {
       // Create Point3 from pcl
       // Todo: Add PCL<->CGAL conversions to cgal_conversions
-      typename DelaunayTriangulation::Point vertex(
-          points_->at(i).x, points_->at(i).y, points_->at(i).z);
+      typename DelaunayTriangulation::Point vertex(points_->at(i).x, points_->at(i).y,
+                                                   points_->at(i).z);
 
       vh = dt.insert(vertex);
       vh->info() = i;  // Assign index as info.
@@ -37,8 +36,7 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
 
     // convert to SurfaceMesh
     output->erase_all();
-    DelaunayXDToPolyhedron<cad_percept::cgal::Polyhedron::HalfedgeDS> converter(
-        dt);
+    DelaunayXDToPolyhedron<cad_percept::cgal::Polyhedron::HalfedgeDS> converter(dt);
     output->delegate(converter);
     CGAL::set_halfedgeds_items_id(*output);  // fix ids
 
@@ -73,8 +71,7 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
       for (typename DelaunayTriangulation::Finite_vertices_iterator vit =
                triangulation_.finite_vertices_begin();
            vit != triangulation_.finite_vertices_end(); ++vit) {
-        typename DelaunayTriangulation::Point r_point =
-            triangulation_.point(vit);
+        typename DelaunayTriangulation::Point r_point = triangulation_.point(vit);
 
         double x = r_point.x();
         double y = r_point.y();
@@ -87,8 +84,7 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
       uint cells, facets;
 
       // Iterate through all triangles and add them
-      for (typename DelaunayTriangulation::Face_iterator fit =
-               triangulation_.faces_begin();
+      for (typename DelaunayTriangulation::Face_iterator fit = triangulation_.faces_begin();
            fit != triangulation_.faces_end(); ++fit) {
         // Create new facet and add vertices
         B.begin_facet();
