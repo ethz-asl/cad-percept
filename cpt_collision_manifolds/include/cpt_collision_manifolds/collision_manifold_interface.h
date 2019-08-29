@@ -5,7 +5,7 @@
 #include <Eigen/Dense>
 
 namespace cad_percept {
-namespace cpt_collision_manifolds {
+namespace collision_manifolds {
 
 class CollisionManifoldInterface {
  public:
@@ -23,7 +23,7 @@ class CollisionManifoldInterface {
    * Outputs the collision manifold as a mesh,
    * based on the current body attitude.
    */
-  virtual void getAsMesh(cgal::PolyhedronPtr mesh) = 0;
+  virtual void getAsMesh(cgal::Polyhedron* mesh) = 0;
 
   /*
    * Method that triggers the construction of the underlying
@@ -32,6 +32,6 @@ class CollisionManifoldInterface {
    */
   virtual void construct() = 0;
 };
-}  // namespace cpt_collision_manifolds
+}  // namespace collision_manifolds
 }  // namespace cad_percept
 #endif  // CPT_COLLISION_MANIFOLDS_COLLISION_MANIFOLD_INTERFACE_H
