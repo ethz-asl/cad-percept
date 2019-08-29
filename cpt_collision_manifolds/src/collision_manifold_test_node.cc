@@ -16,7 +16,8 @@ class CollisionManifoldTestNode {
   CollisionManifoldTestNode(ros::NodeHandle& nh, ros::NodeHandle nh_private)
       : nh_(nh), nh_private_(nh_private) {
     // Create simple subscriber for a mesh.
-    nh_.subscribe("mesh", 1, &CollisionManifoldTestNode::meshCallback, this);
+    sub_surface_manifold_ =
+        nh_private_.subscribe("mesh", 1, &CollisionManifoldTestNode::meshCallback, this);
 
     // Publisher for the constructed manifold.
     pub_collision_manifold_ =
@@ -25,6 +26,7 @@ class CollisionManifoldTestNode {
 
  private:
   void meshCallback(const cgal_msgs::TriangleMeshStampedConstPtr& mesh) {
+    ROS_INFO_STREAM("Mesh Received w/ " << mesh->mesh.vertices.size() << " vertices.");
     cgal::PolyhedronPtr original_surface = std::make_shared<cgal::Polyhedron>();
     cgal::msgToTriangleMesh(mesh->mesh, original_surface.get());
 
@@ -35,6 +37,7 @@ class CollisionManifoldTestNode {
     IsoSurfaceManifold collision_manifold(
         original_surface, 0.3,
         std::dynamic_pointer_cast<offset_surface::ConstructionStrategy>(construction_strategy));
+    collision_manifold.construct();
 
     // Get manifold back as mesh
     cgal::PolyhedronPtr collision_manifold_mesh = std::make_shared<cgal::Polyhedron>();
@@ -45,11 +48,13 @@ class CollisionManifoldTestNode {
     output_msg.header = mesh->header;
     cgal::triangleMeshToMsg(*collision_manifold_mesh, &output_msg.mesh);
     pub_collision_manifold_.publish(output_msg);
+    ROS_INFO_STREAM("  - CM published w/ " << output_msg.mesh.vertices.size() << " vertices.");
   }
 
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
   ros::Publisher pub_collision_manifold_;
+  ros::Subscriber sub_surface_manifold_;
 };
 
 }  // namespace collision_manifolds
