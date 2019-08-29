@@ -7,6 +7,11 @@ namespace cad_percept {
 namespace collision_manifolds {
 namespace offset_surface {
 
+/*
+ * Strategy that moves the vertices along their computed normal
+ * in order to construct the offset surface.
+ *
+ */
 class VertexNormalStrategy : public ConstructionStrategy {
  public:
   bool execute(const cad_percept::cgal::Polyhedron& surface, double offset,
