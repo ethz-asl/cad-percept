@@ -1,0 +1,32 @@
+# OpenSCAD commands to generate the objects in this folder.
+
+# cube.off
+# Facets: 6
+cube(1, center=true);
+
+# sphere1.off (high res, no small triangles at poles)
+# Facets: 3908
+sphere(1, $fa=5, $fs=0.1);
+
+# sphere2.off (high res w many small triangles)
+# Facets: 9802
+sphere(1, $fn=100);
+
+# sphere_lowres.off (very low res, looks bad)
+# Facets: 22
+sphere(r = 1);
+
+# diamond_lowres.off
+# Facets: 11
+cylinder($fn=10, h=1, r1=0, r2=1, center=true);
+
+# diamond_highres.off
+# Facets: 361
+cylinder($fn=360, h=1, r1=0, r2=1, center=true);
+
+# complex1.off
+# Facets: 258 or so
+difference() {
+	cylinder (h = 1, r=0.25, center = true, $fn=100);
+	rotate ([90,0,0]) cylinder (h = 1, r=0.2, center = true, $fn=100);
+}
