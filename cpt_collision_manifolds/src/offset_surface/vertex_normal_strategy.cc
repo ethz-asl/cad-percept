@@ -18,6 +18,7 @@ bool VertexNormalStrategy::execute(const cad_percept::cgal::Polyhedron& surface,
   CGAL::Polygon_mesh_processing::compute_vertex_normals(*offset_surface, map_vnormals);
 
   // move Vertex along normal for each vertex-normal pair
+  // could be easily parallelized using parallel_for_each or similar.
   std::for_each(vnormals.begin(), vnormals.end(),
                 std::bind(&VertexNormalStrategy::moveVertex, this, std::placeholders::_1, offset));
 
