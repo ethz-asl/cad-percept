@@ -35,7 +35,7 @@ class CollisionManifoldTestNode {
 
     // Create collision manifold w radius 0.3
     IsoSurfaceManifold collision_manifold(
-        original_surface, 0.3,
+        original_surface, 0.05,
         std::dynamic_pointer_cast<offset_surface::ConstructionStrategy>(construction_strategy));
     collision_manifold.construct();
 
