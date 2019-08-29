@@ -26,7 +26,8 @@ bool VertexNormalStrategy::execute(const cad_percept::cgal::Polyhedron& surface,
 
 void VertexNormalStrategy::moveVertex(std::pair<cgal::vertex_descriptor, cgal::Vector> vertex,
                                       const double offset) const {
-  // todo
+  const cgal::Vector displacement = vertex.second * offset;
+  vertex.first->point() += displacement;  // In place change of vertex
 }
 
 }  // namespace offset_surface
