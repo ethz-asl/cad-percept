@@ -1,0 +1,6 @@
+<launch>
+    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
+        <param name="default_filename" value="$(find cpt_utils)/resources/simple_meshes/complex1.off"/>
+        <param name="frame_name" value="world"/>
+    </node>
+</launch>
