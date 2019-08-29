@@ -1,9 +1,10 @@
+#include <cgal_conversions/mesh_conversions.h>
 #include <cgal_msgs/TriangleMesh.h>
 #include <cpt_collision_manifolds/iso_surface_manifold.h>
 #include <ros/ros.h>
 
 namespace cad_percept {
-namespace cpt_collision_manifolds {
+namespace collision_manifolds {
 
 /*
  * For now we leave the Testnode inside this file, it will be factored out
@@ -19,25 +20,37 @@ class CollisionManifoldTestNode {
     // Publisher for the constructed manifold.
     pub_collision_manifold_ =
         nh_private_.advertise<cgal_msgs::TriangleMesh>("collision_manifold", 1);
-
-    // Create iso surface manifold w radius 0.3 m
-    auto manifold = std::make_shared<IsoSurfaceManifold>(0.3);
-    collision_manifold_ = std::dynamic_pointer_cast<CollisionManifoldInterface>(manifold);
   }
 
  private:
   void meshCallback(const cgal_msgs::TriangleMeshConstPtr& mesh) {
-    ROS_INFO("Dummy change to test CI");
+    cgal::PolyhedronPtr original_surface = std::make_shared<cgal::Polyhedron>();
+    cgal::msgToTriangleMesh(*mesh, original_surface.get());
+
+    // Create construction strategy
+    auto construction_strategy = std::make_shared<offset_surface::VertexNormalStrategy>();
+
+    // Create collision manifold w radius 0.3
+    IsoSurfaceManifold collision_manifold(
+        original_surface, 0.3,
+        std::dynamic_pointer_cast<offset_surface::ConstructionStrategy>(construction_strategy));
+
+    // Get manifold back as mesh
+    cgal::PolyhedronPtr collision_manifold_mesh = std::make_shared<cgal::Polyhedron>();
+    collision_manifold.getAsMesh(collision_manifold_mesh.get());
+
+    // send message with collision manifold
+    cgal_msgs::TriangleMesh output_msg;
+    cgal::triangleMeshToMsg(*collision_manifold_mesh, &output_msg);
+    pub_collision_manifold_.publish(output_msg);
   }
 
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
   ros::Publisher pub_collision_manifold_;
-
-  std::shared_ptr<CollisionManifoldInterface> collision_manifold_;
 };
 
-}  // namespace cpt_collision_manifolds
+}  // namespace collision_manifolds
 }  // namespace cad_percept
 
 int main(int argc, char** argv) {
@@ -47,7 +60,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh_private("~");
 
   // Create Node object
-  cad_percept::cpt_collision_manifolds::CollisionManifoldTestNode node(nh, nh_private);
+  cad_percept::collision_manifolds::CollisionManifoldTestNode node(nh, nh_private);
 
   ros::spin();
 
