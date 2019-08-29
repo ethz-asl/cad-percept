@@ -14,7 +14,10 @@ void IsoSurfaceManifold::setBodyAttitude(const Eigen::Quaterniond& attitude) {
   // We don't need the attitude, so nothing is happening here.
 }
 
-double IsoSurfaceManifold::signedDistance(const Eigen::Vector3d& position) { return 0.0; }
+double IsoSurfaceManifold::signedDistance(const Eigen::Vector3d& position) {
+  // todo: to be implemeneted later.
+  return 0.0;
+}
 
 void IsoSurfaceManifold::getAsMesh(cad_percept::cgal::Polyhedron* mesh) {
   // Create a copy
