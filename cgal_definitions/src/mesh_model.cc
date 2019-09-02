@@ -11,14 +11,23 @@ MeshModel::MeshModel(Polyhedron &p, bool verbose) : P_(std::move(p)), verbose_(v
   initializeFacetIndices();  // set fixed facet IDs for whole class
 }
 
+// Static factory method.
 bool MeshModel::create(const std::string &off_path, MeshModel::Ptr *ptr, bool verbose) {
   Polyhedron p;
   std::ifstream off_file(off_path.c_str(), std::ios::binary);
+
+  // Check if file is accessible
+  if (!off_file.good()) {
+    return false;
+  }
+
+  // check if cgal could read it
   if (!CGAL::read_off(off_file, p)) {
     std::cerr << "Error: invalid STL file" << std::endl;
     return false;
   }
 
+  // check polyhedron structure
   if (!p.is_valid() || p.empty()) {
     std::cerr << "Error: Invalid facegraph" << std::endl;
     return false;
@@ -27,7 +36,7 @@ bool MeshModel::create(const std::string &off_path, MeshModel::Ptr *ptr, bool ve
   // Create new object and assign (note cannot use make_shared here because constructor is private)
   ptr->reset(new MeshModel(p, verbose));
   return true;
-};
+}
 
 // checks if there is an intersection at all
 bool MeshModel::isIntersection(const Ray &query) const {

@@ -18,7 +18,8 @@ struct Intersection {
 class MeshModel {
  public:
   typedef std::shared_ptr<MeshModel> Ptr;
-  static bool create(const std::string &off_pathm, MeshModel::Ptr* meshmodel_ptr, bool verbose = false);
+  static bool create(const std::string &off_pathm, MeshModel::Ptr *meshmodel_ptr,
+                     bool verbose = false);
 
   /**
    * Check if there is an intersection
