@@ -3,7 +3,7 @@
 namespace cad_percept {
 namespace cpt_utils {
 
-Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh_model) {
+Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel::Ptr mesh_model) {
   // Convert point cloud msg
   std::cout << "Associating pointcloud of size " << pc_msg.width << " x " << pc_msg.height
             << std::endl;
