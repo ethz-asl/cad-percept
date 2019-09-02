@@ -3,24 +3,30 @@
 namespace cad_percept {
 namespace cgal {
 
-MeshModel::MeshModel(const std::string &off_path, bool verbose) : verbose_(verbose) {
-  std::ifstream off_file(off_path.c_str(), std::ios::binary);
-  if (!CGAL::read_off(off_file, P_)) {
-    std::cerr << "Error: invalid STL file" << std::endl;
-  }
-
-  if (!P_.is_valid() || P_.empty()) {
-    std::cerr << "Error: Invalid facegraph" << std::endl;
-  }
-
-  /**
- * Now we have loaded the geometric structure and need to conduct intersection
- * and distance queries. For this, we build an AABB tree.
- **/
+MeshModel::MeshModel(Polyhedron &p, bool verbose) : P_(std::move(p)), verbose_(verbose) {
+  // Initlaize trees and facet index
   tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first, CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();
 
   initializeFacetIndices();  // set fixed facet IDs for whole class
+}
+
+bool MeshModel::create(const std::string &off_path, MeshModel::Ptr *ptr, bool verbose) {
+  Polyhedron p;
+  std::ifstream off_file(off_path.c_str(), std::ios::binary);
+  if (!CGAL::read_off(off_file, p)) {
+    std::cerr << "Error: invalid STL file" << std::endl;
+    return false;
+  }
+
+  if (!p.is_valid() || p.empty()) {
+    std::cerr << "Error: Invalid facegraph" << std::endl;
+    return false;
+  }
+
+  // Create new object and assign (note cannot use make_shared here because constructor is private)
+  ptr->reset(new MeshModel(p, verbose));
+  return true;
 };
 
 // checks if there is an intersection at all
@@ -113,5 +119,5 @@ int MeshModel::getFacetIndex(Polyhedron::Facet_handle &handle) {
   facet_id = handle->id();
   return facet_id;
 }
-}
-}
+}  // namespace cgal
+}  // namespace cad_percept
