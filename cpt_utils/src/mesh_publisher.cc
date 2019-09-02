@@ -1,5 +1,6 @@
 #include <CGAL/IO/Polyhedron_iostream.h>
 #include <cgal_conversions/mesh_conversions.h>
+#include <cgal_definitions/mesh_model.h>
 #include <cpt_utils/mesh_publisher.h>
 
 namespace cad_percept {
@@ -27,21 +28,19 @@ MeshPublisher::MeshPublisher(ros::NodeHandle nh, ros::NodeHandle nh_private)
 }
 
 bool MeshPublisher::publishOffFile(std::string filename) {
-  // if no filename is supplied, use default name
+  // default parameter => replace by default filename.
   if (filename.empty()) {
     filename = default_filename_;
   }
 
-  std::ifstream infile(filename.c_str());
-
-  // Check if file is readable.
-  if (!infile.good()) {
+  // Create mesh model.
+  cgal::MeshModel::Ptr model;
+  if (!cgal::MeshModel::create(filename, &model)) {
     return false;
   }
 
   // Read Off file into polyhedron type
-  cgal::Polyhedron mesh;
-  infile >> mesh;  // such a nice operator overload!
+  cgal::Polyhedron mesh = model->getMesh();
 
   // publish as mesh msg
   cgal_msgs::TriangleMeshStamped mesh_msg;
