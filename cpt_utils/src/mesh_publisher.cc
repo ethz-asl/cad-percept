@@ -7,13 +7,31 @@ namespace cpt_utils {
 
 MeshPublisher::MeshPublisher(ros::NodeHandle nh, ros::NodeHandle nh_private)
     : nh_(nh), nh_private_(nh_private) {
-  pub_mesh_ = nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("mesh_out", 1, true);
+  // Settings only needed here.
+  bool publish_on_start_ = nh_private_.param<bool>("publish_on_start", true);
+  bool latch_topic_ = nh_private_.param<bool>("publish_on_start", true);
+
+  // Set-up of node.
+  pub_mesh_ = nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("mesh_out", 1, latch_topic_);
   publish_service_ = nh_private_.advertiseService("publish", &MeshPublisher::triggerService, this);
   default_filename_ = nh_private_.param<std::string>("default_filename", "mesh.off");
   frame_name_ = nh_private_.param<std::string>("frame_name", "world");
+
+  if (publish_on_start_) {
+    if (publishOffFile()) {
+      ROS_INFO_STREAM("Published Mesh on Start");
+    } else {
+      ROS_WARN_STREAM("Could not publish Mesh on Start");
+    }
+  }
 }
 
-bool MeshPublisher::publishOffFile(const std::string filename) {
+bool MeshPublisher::publishOffFile(std::string filename) {
+  // if no filename is supplied, use default name
+  if (filename.empty()) {
+    filename = default_filename_;
+  }
+
   std::ifstream infile(filename.c_str());
 
   // Check if file is readable.
@@ -34,11 +52,11 @@ bool MeshPublisher::publishOffFile(const std::string filename) {
   return true;
 }
 
-bool MeshPublisher::triggerService(std_srvs::Trigger::Request &req,
-                                   std_srvs::Trigger::Response &res) {
-  bool result = publishOffFile(default_filename_);
+bool MeshPublisher::triggerService(cgal_msgs::PublishMesh::Request &req,
+                                   cgal_msgs::PublishMesh::Response &res) {
+  bool result = publishOffFile(req.path);
   res.success = result;
-  res.message = result ? "Published and Latched Mesh" : "Mesh not published";
+  res.message = result ? "Published Mesh" : "Mesh not published";
   return true;
 }
 }  // namespace cpt_utils
