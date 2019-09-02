@@ -18,7 +18,7 @@ bool MeshModel::create(const std::string &off_path, MeshModel::Ptr *ptr, bool ve
 
   // Check if file is accessible
   if (!off_file.good()) {
-    std::cerr << "Error: File not readable " << off_path  << std::endl;
+    std::cerr << "Error: File not readable " << off_path << std::endl;
     return false;
   }
 
