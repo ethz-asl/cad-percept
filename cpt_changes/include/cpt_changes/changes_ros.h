@@ -46,7 +46,7 @@ class ChangesRos {
 
  private:
   ros::NodeHandle &nh_, nh_private_;
-  cgal::MeshModel mesh_model_;
+  cgal::MeshModel::Ptr   mesh_model_;
   ros::Publisher good_matches_pub_, bad_matches_pub_, model_pub_, arch_pub_, mesh_pub_,
       distance_triangles_pub_;
   ros::Subscriber pointcloud_sub_;
