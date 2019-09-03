@@ -5,6 +5,7 @@
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
+#include <cgal_msgs/PublishMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <ros/ros.h>
 #include <std_srvs/Trigger.h>
@@ -22,14 +23,13 @@ class MeshPublisher {
   /*
    * Reads off file and publishes it via pub_mesh_
    */
-  bool publishOffFile(const std::string filename);
+  bool publishOffFile(std::string filename = std::string());
 
   /*
    * Service callback.
    * Currently it always calls publishOffFile with the default_filename_.
-   * todo: Later we should add a service call with a path parameter.
    */
-  bool triggerService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+  bool triggerService(cgal_msgs::PublishMesh::Request &req, cgal_msgs::PublishMesh::Response &res);
 
  private:
   ros::NodeHandle nh_;
