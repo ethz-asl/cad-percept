@@ -40,7 +40,7 @@ class CollisionManifoldTestNode {
     } else {
       construction_strategy = std::make_shared<offset_surface::VertexNormalStrategy>();
     }
-    // std::dynamic_pointer_cast<offset_surface::ConstructionStrategy>(
+    
     // Create collision manifold w radius 0.3
     IsoSurfaceManifold collision_manifold(original_surface, 0.05, construction_strategy);
     collision_manifold.construct();
