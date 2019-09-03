@@ -1,7 +1,6 @@
 <launch>
     <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node"
           output="screen">
-        <param name="latch_topic" value="true"/>
         <param name="publish_on_start" value="false"/>
         <param name="default_filename"
                value="$(find cpt_utils)/resources/simple_meshes/complex1.off"/>
