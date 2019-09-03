@@ -10,7 +10,7 @@ MeshPublisher::MeshPublisher(ros::NodeHandle nh, ros::NodeHandle nh_private)
     : nh_(nh), nh_private_(nh_private) {
   // Settings only needed here.
   bool publish_on_start_ = nh_private_.param<bool>("publish_on_start", true);
-  bool latch_topic_ = nh_private_.param<bool>("publish_on_start", true);
+  bool latch_topic_ = nh_private_.param<bool>("latch_topic", true);
 
   // Set-up of node.
   pub_mesh_ = nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("mesh_out", 1, latch_topic_);
