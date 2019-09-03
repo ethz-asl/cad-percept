@@ -2,6 +2,7 @@
 #include <cgal_msgs/TriangleMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_collision_manifolds/iso_surface_manifold.h>
+#include <cpt_collision_manifolds/offset_surface/multiple_vertex_normal_strategy.h>
 #include <ros/ros.h>
 
 namespace cad_percept {
@@ -22,6 +23,8 @@ class CollisionManifoldTestNode {
     // Publisher for the constructed manifold.
     pub_collision_manifold_ =
         nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("collision_manifold", 1);
+
+    construction_method_ = nh_private_.param<std::string>("construction_method", "vertex_normal");
   }
 
  private:
@@ -31,12 +34,15 @@ class CollisionManifoldTestNode {
     cgal::msgToTriangleMesh(mesh->mesh, original_surface.get());
 
     // Create construction strategy
-    auto construction_strategy = std::make_shared<offset_surface::VertexNormalStrategy>();
-
+    offset_surface::ConstructionStrategy::Ptr construction_strategy;
+    if (construction_method_ == "multiple_vertex_normal") {
+      construction_strategy = std::make_shared<offset_surface::MultipleVertexNormalStrategy>();
+    } else {
+      construction_strategy = std::make_shared<offset_surface::VertexNormalStrategy>();
+    }
+    // std::dynamic_pointer_cast<offset_surface::ConstructionStrategy>(
     // Create collision manifold w radius 0.3
-    IsoSurfaceManifold collision_manifold(
-        original_surface, 0.05,
-        std::dynamic_pointer_cast<offset_surface::ConstructionStrategy>(construction_strategy));
+    IsoSurfaceManifold collision_manifold(original_surface, 0.05, construction_strategy);
     collision_manifold.construct();
 
     // Get manifold back as mesh
@@ -55,6 +61,8 @@ class CollisionManifoldTestNode {
   ros::NodeHandle nh_private_;
   ros::Publisher pub_collision_manifold_;
   ros::Subscriber sub_surface_manifold_;
+
+  std::string construction_method_;
 };
 
 }  // namespace collision_manifolds
