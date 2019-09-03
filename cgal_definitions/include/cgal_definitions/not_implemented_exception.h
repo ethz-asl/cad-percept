@@ -1,6 +1,6 @@
 #ifndef CGAL_DEFINITIONS_EXCEPTIONS_H_
 #define CGAL_DEFINITIONS_EXCEPTIONS_H_
-
+#include <stdexcept>
 /*
  * Simple NotImplementedException as seen on
  * https://stackoverflow.com/questions/24469927
