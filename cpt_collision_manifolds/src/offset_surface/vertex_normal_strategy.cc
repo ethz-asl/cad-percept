@@ -8,7 +8,8 @@ namespace offset_surface {
 bool VertexNormalStrategy::execute(const cad_percept::cgal::Polyhedron& surface,
                                    const double offset,
                                    cad_percept::cgal::Polyhedron* offset_surface) {
-  // Copy mesh (todo: check if this really does a deep copy)
+  // Copy mesh
+  // TODO(mpantic): Check performance / copy semantics of doing this.
   *offset_surface = surface;
 
   // Compute normals and store them in a map

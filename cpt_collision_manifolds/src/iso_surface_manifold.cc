@@ -1,3 +1,4 @@
+#include <cgal_definitions/not_implemented_exception.h>
 #include <cpt_collision_manifolds/iso_surface_manifold.h>
 
 namespace cad_percept {
@@ -15,8 +16,7 @@ void IsoSurfaceManifold::setBodyAttitude(const Eigen::Quaterniond& attitude) {
 }
 
 double IsoSurfaceManifold::signedDistance(const Eigen::Vector3d& position) {
-  // todo: to be implemeneted later.
-  return 0.0;
+  throw cad_percept::NotImplementedException();
 }
 
 void IsoSurfaceManifold::getAsMesh(cad_percept::cgal::Polyhedron* mesh) {
