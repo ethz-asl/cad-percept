@@ -17,7 +17,9 @@ struct Intersection {
 
 class MeshModel {
  public:
-  MeshModel(const std::string &off_pathm, bool verbose = false);
+  typedef std::shared_ptr<MeshModel> Ptr;
+  static bool create(const std::string &off_pathm, MeshModel::Ptr *meshmodel_ptr,
+                     bool verbose = false);
 
   /**
    * Check if there is an intersection
@@ -25,34 +27,34 @@ class MeshModel {
   bool isIntersection(const Ray &query) const;
 
   /**
- * Get the intersection between the ray and the mesh model.
- */
+   * Get the intersection between the ray and the mesh model.
+   */
   Intersection getIntersection(const Ray &query) const;
   /**
- * Get the distance of the intersection with the mesh from the ray origin.
- */
+   * Get the distance of the intersection with the mesh from the ray origin.
+   */
   double getDistance(const Ray &query) const;
 
   /**
- * Get closest point on surface and surface id to a given point.
- */
+   * Get closest point on surface and surface id to a given point.
+   */
   PointAndPrimitiveId getClosestTriangle(const Point &p) const;
   PointAndPrimitiveId getClosestTriangle(const double x, const double y, const double z) const;
 
   /**
- * Get normal of primitive.
- */
+   * Get normal of primitive.
+   */
   Vector getNormal(const Polyhedron::Face_handle &face_handle) const;
   Vector getNormal(const PointAndPrimitiveId &ppid) const;
 
   /**
- * Transform the mesh model.
- */
+   * Transform the mesh model.
+   */
   void transform(const Transformation &transform);
 
   /**
- * Return size of mesh (number of facet primitives).
- */
+   * Return size of mesh (number of facet primitives).
+   */
   int size() const;
 
   /**
@@ -70,10 +72,12 @@ class MeshModel {
   int getFacetIndex(Polyhedron::Facet_handle &handle);
 
  private:
+  MeshModel() {}                           // private default constructor
+  MeshModel(Polyhedron &p, bool verbose);  // Constructor to be used by factory method
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;
   bool verbose_;
 };
-}
-}
+}  // namespace cgal
+}  // namespace cad_percept
 #endif
