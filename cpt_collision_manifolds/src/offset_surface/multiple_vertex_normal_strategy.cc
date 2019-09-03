@@ -15,9 +15,9 @@ bool MultipleVertexNormalStrategy::execute(const cad_percept::cgal::Polyhedron& 
 
   // calculate all face normals with new method
   for (auto vertex = surface_.vertices_begin(); vertex != surface_.vertices_end(); ++vertex) {
-    std::pair<cgal::vertex_descriptor, cgal::Vector> normal_pair;
+    std::pair<cgal::vertex_descriptor, MultiNormal> normal_pair;
     normal_pair.first = vertex;
-    createNewVertex(vertex, &normal_pair.second);
+    calculateMultiNormal(vertex, &normal_pair.second);
     vnormals_.insert(normal_pair);
   }
 
@@ -43,10 +43,10 @@ void MultipleVertexNormalStrategy::getFaceNormals() {
   CGAL::Polygon_mesh_processing::compute_face_normals(surface_, map_fnormals);
 }
 
-bool MultipleVertexNormalStrategy::createNewVertex(cgal::vertex_descriptor& vertex,
-                                                   cgal::Vector* normal) {
+void MultipleVertexNormalStrategy::calculateMultiNormal(cgal::vertex_descriptor& vertex,
+                                                        MultiNormal* multi_normal) {
   uint count_faces = 0;
-  std::vector<Eigen::Vector3d> multiple_normals;
+  std::vector<Eigen::Vector3d> eigen_multi_normal;
   const double delta = 0.1;
 
   // iterate through all incident faces
@@ -55,24 +55,28 @@ bool MultipleVertexNormalStrategy::createNewVertex(cgal::vertex_descriptor& vert
     cgal::cgalVectorToEigenVector(fnormals_[d->face()], &face_normal);
 
     bool normal_used = false;
+
     // iterate through existing vectors and check if they are close enough.
-    for (auto& multiple_normal : multiple_normals) {
-      if (multiple_normal.cross(face_normal).norm() < delta) {
-        multiple_normal += face_normal;
-        multiple_normal.normalize();
+    // if so, add current normal.
+    for (auto& normal : eigen_multi_normal) {
+      if (normal.cross(face_normal).norm() < delta) {
+        normal += face_normal;
+        normal.normalize();
         normal_used = true;
         break;
       }
     }
 
+    // if none of them was close enough, add another.
     if (!normal_used) {
-      multiple_normals.push_back(face_normal);
+      eigen_multi_normal.push_back(face_normal);
     }
 
+    // keeping statistics.
     count_faces++;
   }
 
-  std::cout << count_faces << " -> " << multiple_normals.size() << std::endl;
+  std::cout << count_faces << " -> " << eigen_multi_normal.size() << std::endl;
 
   // Create statistics about vertices for info
   if (vertex_statistics_) {
@@ -82,13 +86,16 @@ bool MultipleVertexNormalStrategy::createNewVertex(cgal::vertex_descriptor& vert
     vertex_faces_statistics_[count_faces]++;
   }
 
-  *normal = cgal::Vector(0.1, 0, 0);
-  return true;
+  // convert eigen normals back to cgal.
+  multi_normal->resize(eigen_multi_normal.size());
+  for (size_t i = 0; i < multi_normal->size(); ++i) {
+    cgal::eigenVectorToCgalVector(eigen_multi_normal[i], &(multi_normal->at(i)));
+  }
 }
 
 void MultipleVertexNormalStrategy::moveVertex(
-    std::pair<cgal::vertex_descriptor, cgal::Vector> vertex, const double offset) const {
-  const cgal::Vector displacement = vertex.second * offset;
+    std::pair<cgal::vertex_descriptor, MultiNormal> vertex, const double offset) const {
+  const cgal::Vector displacement = vertex.second[0] * offset;
   vertex.first->point() += displacement;  // In place change of vertex
 }
 
