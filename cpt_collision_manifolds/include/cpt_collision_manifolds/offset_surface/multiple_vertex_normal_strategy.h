@@ -12,6 +12,7 @@ namespace offset_surface {
  */
 class MultipleVertexNormalStrategy : public ConstructionStrategy {
  public:
+  MultipleVertexNormalStrategy() : vertex_statistics_(true) {}
   typedef std::map<cgal::face_descriptor, cgal::Vector> FaceNormalMap;
   typedef std::map<cgal::vertex_descriptor, cgal::Vector> VertexNormalMap;
 
@@ -22,6 +23,8 @@ class MultipleVertexNormalStrategy : public ConstructionStrategy {
   cad_percept::cgal::Polyhedron surface_;
   FaceNormalMap fnormals_;
   VertexNormalMap vnormals_;
+  bool vertex_statistics_;
+  std::map<uint, uint> vertex_faces_statistics_;
 
   /*
    * Calculates all face normals

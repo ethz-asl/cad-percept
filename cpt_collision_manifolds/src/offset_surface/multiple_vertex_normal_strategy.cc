@@ -1,4 +1,5 @@
 #include <CGAL/Polygon_mesh_processing/compute_normal.h>
+#include <cgal_conversions/eigen_conversions.h>
 #include <cpt_collision_manifolds/offset_surface/multiple_vertex_normal_strategy.h>
 #include <Eigen/Dense>
 
@@ -20,12 +21,21 @@ bool MultipleVertexNormalStrategy::execute(const cad_percept::cgal::Polyhedron& 
     vnormals_.insert(normal_pair);
   }
 
+  // output vertex statistics
+  if (vertex_statistics_) {
+    std::cout << "Faces per Vertex statistic:" << std::endl;
+    for (auto statistic : vertex_faces_statistics_) {
+      std::cout << "\t" << statistic.first << ": " << statistic.second << std::endl;
+    }
+  }
+
   // use simple vertex movement as a test.
   std::for_each(
       vnormals_.begin(), vnormals_.end(),
       std::bind(&MultipleVertexNormalStrategy::moveVertex, this, std::placeholders::_1, offset));
 
   *offset_surface = surface_;
+  return true;
 }
 
 void MultipleVertexNormalStrategy::getFaceNormals() {
@@ -35,20 +45,44 @@ void MultipleVertexNormalStrategy::getFaceNormals() {
 
 bool MultipleVertexNormalStrategy::createNewVertex(cgal::vertex_descriptor& vertex,
                                                    cgal::Vector* normal) {
-  *normal = cgal::Vector(0, 0, 0);
   uint count_faces = 0;
+  std::vector<Eigen::Vector3d> multiple_normals;
+  const double delta = 0.1;
 
   // iterate through all incident faces
   for (const cgal::halfedge_descriptor& d : CGAL::halfedges_around_source(vertex, surface_)) {
-    cgal::Vector face_normal = fnormals_[d->face()];
-    *normal += face_normal;
+    Eigen::Vector3d face_normal;
+    cgal::cgalVectorToEigenVector(fnormals_[d->face()], &face_normal);
+
+    bool normal_used = false;
+    // iterate through existing vectors and check if they are close enough.
+    for (auto& multiple_normal : multiple_normals) {
+      if (multiple_normal.cross(face_normal).norm() < delta) {
+        multiple_normal += face_normal;
+        multiple_normal.normalize();
+        normal_used = true;
+        break;
+      }
+    }
+
+    if (!normal_used) {
+      multiple_normals.push_back(face_normal);
+    }
+
     count_faces++;
   }
 
-  // normalize
-  if (count_faces != 0) {
-    *normal /= count_faces;
+  std::cout << count_faces << " -> " << multiple_normals.size() << std::endl;
+
+  // Create statistics about vertices for info
+  if (vertex_statistics_) {
+    if (vertex_faces_statistics_.find(count_faces) == vertex_faces_statistics_.end()) {
+      vertex_faces_statistics_[count_faces] = 0;
+    }
+    vertex_faces_statistics_[count_faces]++;
   }
+
+  *normal = cgal::Vector(0.1, 0, 0);
   return true;
 }
 
