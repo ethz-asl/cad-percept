@@ -20,5 +20,6 @@
   <depend>cgal_msgs</depend>
   <depend>cgal_visualizations</depend>
   <depend>cpt_meshing</depend>
+  <depend>cpt_collision_manifolds</depend>
 
 </package>
