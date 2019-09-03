@@ -8,6 +8,7 @@
 
     <node name="collision_manifold_construct" pkg="cpt_collision_manifolds"
           type="collision_manifold_test_node" output="screen">
+	<param name="construction_method" value="multiple_vertex_normal" />
         <remap from="~mesh" to="/mesh_publisher/mesh_out"/>
     </node>
 </launch>

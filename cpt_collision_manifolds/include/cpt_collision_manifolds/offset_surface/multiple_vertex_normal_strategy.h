@@ -13,16 +13,20 @@ namespace offset_surface {
 class MultipleVertexNormalStrategy : public ConstructionStrategy {
  public:
   typedef std::map<cgal::face_descriptor, cgal::Vector> FaceNormalMap;
-
+  typedef std::map<cgal::vertex_descriptor, cgal::Vector> VertexNormalMap;
 
   bool execute(const cad_percept::cgal::Polyhedron& surface, double offset,
                cad_percept::cgal::Polyhedron* offset_surface);
 
  private:
+  cad_percept::cgal::Polyhedron surface_;
+  FaceNormalMap fnormals_;
+  VertexNormalMap vnormals_;
+
   /*
    * Calculates all face normals
    */
-  void getFaceNormals(const cad_percept::cgal::Polyhedron& surface, FaceNormalMap* fnormals);
+  void getFaceNormals();
 
   /*
    * Evaluates if, for one given vertex, a multiple or a single normal is used and
@@ -32,7 +36,12 @@ class MultipleVertexNormalStrategy : public ConstructionStrategy {
    * c) Split in three (using multiple normals) and interpolated
    * d)
    */
-  bool createNewVertex(cgal::vertex_descriptor vertex);
+  bool createNewVertex(cgal::vertex_descriptor& vertex, cgal::Vector* normal);
+
+  /*
+   * Todo(mpantic): Remove later
+   */
+  void moveVertex(std::pair<cgal::vertex_descriptor, cgal::Vector> vertex, double offset) const;
 };
 }  // namespace offset_surface
 }  // namespace collision_manifolds
