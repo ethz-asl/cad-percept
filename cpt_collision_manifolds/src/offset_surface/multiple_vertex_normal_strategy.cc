@@ -15,14 +15,13 @@ bool MultipleVertexNormalStrategy::execute(const cad_percept::cgal::Polyhedron& 
 
   // calculate all face normals with new method
   for (auto vertex = surface_.vertices_begin(); vertex != surface_.vertices_end(); ++vertex) {
-    std::pair<cgal::vertex_descriptor, MultiNormal> normal_pair;
-    normal_pair.first = vertex;
-    calculateMultiNormal(vertex, &normal_pair.second);
-    vnormals_.insert(normal_pair);
+    MultiNormal normal;
+    calculateMultiNormal(vertex, &normal);
+    vnormals_[vertex] = normal;
   }
 
   // output vertex statistics
-  if (vertex_statistics_) {
+  if (config_.statistics) {
     std::cout << "Faces per Vertex statistic:" << std::endl;
     for (auto statistic : vertex_faces_statistics_) {
       std::cout << "\t" << statistic.first << ": " << statistic.second << std::endl;
@@ -47,7 +46,6 @@ void MultipleVertexNormalStrategy::calculateMultiNormal(cgal::vertex_descriptor&
                                                         MultiNormal* multi_normal) {
   uint count_faces = 0;
   std::vector<Eigen::Vector3d> eigen_multi_normal;
-  const double delta = 0.1;
 
   // iterate through all incident faces
   for (const cgal::halfedge_descriptor& d : CGAL::halfedges_around_source(vertex, surface_)) {
@@ -59,7 +57,7 @@ void MultipleVertexNormalStrategy::calculateMultiNormal(cgal::vertex_descriptor&
     // iterate through existing vectors and check if they are close enough.
     // if so, add current normal.
     for (auto& normal : eigen_multi_normal) {
-      if (normal.cross(face_normal).norm() < delta) {
+      if (normal.cross(face_normal).norm() < config_.delta) {
         normal += face_normal;
         normal.normalize();
         normal_used = true;
@@ -79,11 +77,15 @@ void MultipleVertexNormalStrategy::calculateMultiNormal(cgal::vertex_descriptor&
   std::cout << count_faces << " -> " << eigen_multi_normal.size() << std::endl;
 
   // Create statistics about vertices for info
-  if (vertex_statistics_) {
+  if (config_.statistics) {
     if (vertex_faces_statistics_.find(count_faces) == vertex_faces_statistics_.end()) {
       vertex_faces_statistics_[count_faces] = 0;
     }
     vertex_faces_statistics_[count_faces]++;
+  }
+
+  if (config_.use_twopass_normal_clustering) {
+    // TODO(mpantic): Add twopass clustering.
   }
 
   // convert eigen normals back to cgal.

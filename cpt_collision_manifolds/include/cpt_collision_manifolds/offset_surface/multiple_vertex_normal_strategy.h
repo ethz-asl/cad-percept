@@ -12,7 +12,14 @@ namespace offset_surface {
  */
 class MultipleVertexNormalStrategy : public ConstructionStrategy {
  public:
-  MultipleVertexNormalStrategy() : vertex_statistics_(true) {}
+  typedef struct Config {
+    bool statistics;
+    bool use_twopass_normal_clustering;
+    double delta;  // normal clustering threshold.
+
+    Config() : statistics(true), use_twopass_normal_clustering(true), delta(0.1) {}
+  } Config;
+
   typedef std::map<cgal::face_descriptor, cgal::Vector> FaceNormalMap;
   typedef std::vector<cgal::Vector> MultiNormal;
   typedef std::map<cgal::vertex_descriptor, MultiNormal> VertexNormalMap;
@@ -21,10 +28,10 @@ class MultipleVertexNormalStrategy : public ConstructionStrategy {
                cad_percept::cgal::Polyhedron* offset_surface);
 
  private:
+  Config config_;
   cad_percept::cgal::Polyhedron surface_;
   FaceNormalMap fnormals_;
   VertexNormalMap vnormals_;
-  bool vertex_statistics_;
   std::map<uint, uint> vertex_faces_statistics_;
 
   /*
