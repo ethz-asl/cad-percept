@@ -13,6 +13,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 cs_add_library(${PROJECT_NAME}
         src/iso_surface_manifold.cc
         src/offset_surface/vertex_normal_strategy.cc
+        src/offset_surface/multiple_vertex_normal_strategy.cc
         )
 
 
