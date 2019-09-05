@@ -21,9 +21,6 @@
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_tree.h>
 
-// Domain typdefs
-#include <CGAL/Labeled_mesh_domain_3.h>
-#include <CGAL/Mesh_complex_3_in_triangulation_3.h>
 
 namespace cad_percept {
 namespace cgal {
@@ -40,9 +37,6 @@ typedef Kernel::Sphere_3 Sphere;
 typedef Kernel::Triangle_3 Triangle;
 typedef Kernel::Vector_3 Vector;
 
-// for meshing
-typedef CGAL::Labeled_mesh_domain_3<Kernel, int, int> Mesh_domain;
-
 typedef CGAL::Aff_transformation_3<Kernel> Transformation;
 
 typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
@@ -57,10 +51,6 @@ typedef boost::graph_traits<Polyhedron>::face_descriptor face_descriptor;
 
 typedef boost::graph_traits<Polyhedron>::vertex_iterator vertex_iterator;
 typedef boost::graph_traits<Polyhedron>::face_iterator face_iterator;
-
-typedef CGAL::Mesh_complex_3_in_triangulation_3<Polyhedron, Polyhedron::Vertex_handle,
-                                                Polyhedron::Face_handle>
-    C3T3;
 
 // Tree structures
 // AABB tree
