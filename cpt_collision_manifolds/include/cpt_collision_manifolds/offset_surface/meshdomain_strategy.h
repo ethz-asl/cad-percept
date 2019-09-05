@@ -1,6 +1,7 @@
 #ifndef CPT_COLLISION_MANIFOLDS_OFFSET_SURFACE_MESHDOMAIN_STRATEGY_H_
 #define CPT_COLLISION_MANIFOLDS_OFFSET_SURFACE_MESHDOMAIN_STRATEGY_H_
 #include <cgal_definitions/cgal_typedefs.h>
+#include <cgal_definitions/cgal_meshing_typedefs.h>
 #include <cpt_collision_manifolds/offset_surface/construction_strategy.h>
 
 namespace cad_percept {

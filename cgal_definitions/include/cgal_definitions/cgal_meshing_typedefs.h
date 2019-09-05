@@ -3,6 +3,9 @@
 
 #include <cgal_definitions/cgal_typedefs.h>
 
+// Adapted from
+// https://github.com/CGAL/cgal/blob/master/Polyhedron/demo/Polyhedron/C3t3_type.h
+
 // Domain typdefs
 #include <CGAL/Labeled_mesh_domain_3.h>
 #include <CGAL/Mesh_complex_3_in_triangulation_3.h>
