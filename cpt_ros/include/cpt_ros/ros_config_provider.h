@@ -4,14 +4,20 @@
 #include <ros/ros.h>
 namespace cad_percept {
 
-class RosConfigProvider : public ConfigProvider<std::string> {
+class RosConfigProvider : ConfigProvider {
  public:
   explicit RosConfigProvider(ros::NodeHandle nh) : nh_(nh) {}
 
   bool hasParam(std::string name) override;
 
+  GETTER_FOR_TYPE(int)
+  GETTER_FOR_TYPE(double)
+  GETTER_FOR_TYPE(bool)
+  GETTER_FOR_TYPE(std::string)
+
+ private:
   template <class T>
-  T getParam(std::string name, T& default_value);
+  T getParamImpl(std::string name, const T& default_value);
 
   ros::NodeHandle nh_;
 };
