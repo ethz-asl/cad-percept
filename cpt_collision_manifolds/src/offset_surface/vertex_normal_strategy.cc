@@ -8,11 +8,6 @@ namespace offset_surface {
 bool VertexNormalStrategy::execute(const cad_percept::cgal::Polyhedron& surface,
                                    const double offset,
                                    cad_percept::cgal::Polyhedron* offset_surface) {
-
-  int test = cfg_->getParam("test", 15);
-  std::cout << test << std::endl;
-
-  // Copy mesh
   // TODO(mpantic): Check performance / copy semantics of doing this.
   *offset_surface = surface;
 
