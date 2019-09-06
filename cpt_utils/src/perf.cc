@@ -1,5 +1,7 @@
 #include <cpt_utils/perf.h>
+#include <initializer_list>
 #include <iomanip>
+
 namespace cad_percept {
 
 Perf* Perf::instance_ = new Perf();
@@ -70,28 +72,29 @@ void Perf::printStatistics() {
 void Perf::printRegionStatistics() {
   std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~ Timings  ~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
   std::cout << std::left << std::setw(30) << "Name";
-  std::cout << std::right << std::setw(8) << "Avg";
-  std::cout << std::right << std::setw(8) << "Min";
-  std::cout << std::right << std::setw(8) << "Max";
-  std::cout << std::right << std::setw(8) << "Count";
+  std::cout << std::right << std::setw(13) << "Count";
+  std::cout << std::right << std::setw(16) << "Avg [us]";
+  std::cout << std::right << std::setw(16) << "Min [us]";
+  std::cout << std::right << std::setw(16) << "Max [us]";
+
   std::cout << std::endl;
 
   for (const auto& statistic : statistics_) {
     std::cout << std::left << std::setw(30) << statistic.first;
-    std::cout << std::right << std::setw(8)
-              << std::chrono::duration_cast<std::chrono::microseconds>(statistic.second.total /
-                                                                       statistic.second.count)
-                     .count();
+    std::cout << std::right << std::setw(13) << statistic.second.count;
+    long long avg_micro = std::chrono::duration_cast<std::chrono::microseconds>(
+                              statistic.second.total / statistic.second.count)
+                              .count();
+    long long min_micro =
+        std::chrono::duration_cast<std::chrono::microseconds>(statistic.second.min).count();
 
-    std::cout
-        << std::right << std::setw(8)
-        << std::chrono::duration_cast<std::chrono::microseconds>(statistic.second.min).count();
+    long long max_micro =
+        std::chrono::duration_cast<std::chrono::microseconds>(statistic.second.max).count();
 
-    std::cout
-        << std::right << std::setw(8)
-        << std::chrono::duration_cast<std::chrono::microseconds>(statistic.second.max).count();
+    std::cout << std::right << std::setw(16) << std::scientific << (double)avg_micro;
+    std::cout << std::right << std::setw(16) << std::scientific << (double)min_micro;
+    std::cout << std::right << std::setw(16) << std::scientific << (double)max_micro;
 
-    std::cout << std::right << std::setw(8) << statistic.second.count;
     std::cout << std::endl;
   }
 };
