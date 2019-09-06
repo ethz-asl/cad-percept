@@ -4,7 +4,7 @@
 #include <ros/ros.h>
 namespace cad_percept {
 
-class RosConfigProvider : ConfigProvider {
+class RosConfigProvider : public ConfigProvider {
  public:
   explicit RosConfigProvider(ros::NodeHandle nh) : nh_(nh) {}
 

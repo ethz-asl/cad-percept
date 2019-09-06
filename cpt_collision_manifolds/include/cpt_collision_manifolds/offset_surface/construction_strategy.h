@@ -13,7 +13,7 @@ namespace offset_surface {
  */
 class ConstructionStrategy {
  public:
-  explicit ConstructionStrategy(ConfigProvider<std::string>::Ptr cfg) : cfg_(std::move(cfg)) {}
+  explicit ConstructionStrategy(ConfigProvider::Ptr cfg) : cfg_(std::move(cfg)) {}
 
   typedef std::shared_ptr<ConstructionStrategy> Ptr;
 
@@ -21,7 +21,7 @@ class ConstructionStrategy {
                        cad_percept::cgal::Polyhedron* offset_surface) = 0;
 
  protected:
-  ConfigProvider<std::string>::Ptr cfg_;
+  ConfigProvider::Ptr cfg_;
 };
 
 }  // namespace offset_surface
