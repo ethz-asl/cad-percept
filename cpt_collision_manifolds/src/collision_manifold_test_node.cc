@@ -32,8 +32,8 @@ class CollisionManifoldTestNode {
     cgal::msgToTriangleMesh(mesh->mesh, original_surface.get());
 
     // Set up configuration provider.
-    RosConfigProvider ros_cfg(nh_private_);
-    ConfigProvider<std::string>::Ptr cfg(&ros_cfg);
+    ConfigProvider::Ptr cfg =
+        std::dynamic_pointer_cast<ConfigProvider>(std::make_shared<RosConfigProvider>(nh_private_));
 
     // Create construction strategy
     auto construction_strategy = std::make_shared<offset_surface::VertexNormalStrategy>(cfg);
