@@ -34,7 +34,6 @@ void VertexNormalStrategy::moveVertex(std::pair<cgal::vertex_descriptor, cgal::V
   const cgal::Vector displacement = vertex.second * offset;
   vertex.first->point() += displacement;  // In place change of vertex
   Perf::get()->count("VertexDisplacement");
-
 }
 
 }  // namespace offset_surface
