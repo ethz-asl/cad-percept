@@ -1,5 +1,6 @@
 #include <CGAL/Polygon_mesh_processing/compute_normal.h>
 #include <cpt_collision_manifolds/offset_surface/vertex_normal_strategy.h>
+#include <cpt_utils/perf.h>
 
 namespace cad_percept {
 namespace collision_manifolds {
@@ -15,7 +16,10 @@ bool VertexNormalStrategy::execute(const cad_percept::cgal::Polyhedron& surface,
   std::map<cgal::vertex_descriptor, cgal::Vector> vnormals;
   boost::associative_property_map<std::map<cgal::vertex_descriptor, cgal::Vector>> map_vnormals(
       vnormals);
+
+  Perf::get()->enter("VertexNormals");
   CGAL::Polygon_mesh_processing::compute_vertex_normals(*offset_surface, map_vnormals);
+  Perf::get()->exit();
 
   // move Vertex along normal for each vertex-normal pair
   // could be easily parallelized using parallel_for_each or similar.
@@ -29,6 +33,8 @@ void VertexNormalStrategy::moveVertex(std::pair<cgal::vertex_descriptor, cgal::V
                                       const double offset) const {
   const cgal::Vector displacement = vertex.second * offset;
   vertex.first->point() += displacement;  // In place change of vertex
+  Perf::get()->count("VertexDisplacement");
+
 }
 
 }  // namespace offset_surface
