@@ -2,6 +2,7 @@
 #include <cgal_msgs/TriangleMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_collision_manifolds/iso_surface_manifold.h>
+#include <cpt_collision_manifolds/offset_surface/meshdomain_strategy.h>
 #include <ros/ros.h>
 
 namespace cad_percept {
@@ -31,7 +32,7 @@ class CollisionManifoldTestNode {
     cgal::msgToTriangleMesh(mesh->mesh, original_surface.get());
 
     // Create construction strategy
-    auto construction_strategy = std::make_shared<offset_surface::VertexNormalStrategy>();
+    auto construction_strategy = std::make_shared<offset_surface::MeshDomainStrategy>();
 
     // Create collision manifold w radius 0.3
     IsoSurfaceManifold collision_manifold(

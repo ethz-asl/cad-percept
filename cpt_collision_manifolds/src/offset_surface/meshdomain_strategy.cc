@@ -43,13 +43,11 @@ bool MeshDomainStrategy::execute(const cad_percept::cgal::Polyhedron& surface, c
   // Set up mesher.
   CGAL::Mesh_facet_topology topology = CGAL::FACET_VERTICES_ON_SAME_SURFACE_PATCH;
   topology = CGAL::Mesh_facet_topology(topology | CGAL::MANIFOLD);
-  /* TODO(mpantic): Make configurable   
+  /* TODO(mpantic): Make configurable
    * topology = CGAL::Mesh_facet_topology(topology | CGAL::MANIFOLD_WITH_BOUNDARY); (if boundaries)
    */
-
-  double angle = 30.0, sizing = 1.0, approx = 0.1;
   CGAL::Mesh_criteria_3<cgal::C3t3::Triangulation> criteria(
-      p::facet_angle = angle, p::facet_size = sizing, p::facet_distance = approx,
+      p::facet_angle = 30.0, p::facet_size = 0.03, p::facet_distance = 0.01,
       p::facet_topology = topology);
 
   // Execute mesher and read triangulation.

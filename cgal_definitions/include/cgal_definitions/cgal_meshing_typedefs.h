@@ -1,6 +1,7 @@
 #ifndef CGAL_DEFINITIONS_CGAL_MESHING_TYPDEFS_H_
 #define CGAL_DEFINITIONS_CGAL_MESHING_TYPDEFS_H_
 
+#define BOOST_PARAMETER_MAX_ARITY 12
 #include <cgal_definitions/cgal_typedefs.h>
 
 // Adapted from
