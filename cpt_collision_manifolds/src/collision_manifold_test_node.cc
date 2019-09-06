@@ -3,6 +3,7 @@
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_collision_manifolds/iso_surface_manifold.h>
 #include <cpt_ros/ros_config_provider.h>
+#include <cpt_utils/perf.h>
 #include <ros/ros.h>
 
 namespace cad_percept {
@@ -54,6 +55,7 @@ class CollisionManifoldTestNode {
     cgal::triangleMeshToMsg(*collision_manifold_mesh, &output_msg.mesh);
     pub_collision_manifold_.publish(output_msg);
     ROS_INFO_STREAM("  - CM published w/ " << output_msg.mesh.vertices.size() << " vertices.");
+    Perf::get()->printStatistics();
   }
 
   ros::NodeHandle nh_;

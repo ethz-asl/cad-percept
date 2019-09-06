@@ -15,6 +15,7 @@
     <depend>cgal_definitions</depend>
     <depend>cgal_conversions</depend>
     <depend>cpt_ros</depend>
+    <depend>cpt_utils</depend>
 
     <depend>cgal_catkin</depend>
     <depend>eigen_catkin</depend>
