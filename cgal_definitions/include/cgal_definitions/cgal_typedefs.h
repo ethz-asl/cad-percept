@@ -1,7 +1,3 @@
-//
-// Created by mpantic on 20.02.19.
-//
-
 #ifndef CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 #define CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 
@@ -20,7 +16,6 @@
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_tree.h>
-
 
 namespace cad_percept {
 namespace cgal {

@@ -6,6 +6,7 @@
 #include <CGAL/Polygon_mesh_processing/compute_normal.h>
 #include <CGAL/Polygon_mesh_processing/orientation.h>
 #include <cpt_collision_manifolds/offset_surface/meshdomain_strategy.h>
+#include <cpt_utils/perf.h>
 
 namespace cad_percept {
 namespace collision_manifolds {
@@ -51,15 +52,19 @@ bool MeshDomainStrategy::execute(const cad_percept::cgal::Polyhedron& surface, c
       p::facet_topology = topology);
 
   // Execute mesher and read triangulation.
+  Perf::get()->enter("Make_mesh_3");
   cgal::C3t3 c3t3 = CGAL::make_mesh_3<cgal::C3t3>(domain, criteria, p::no_perturb(), p::no_exude());
   const cgal::C3t3::Triangulation& tr = c3t3.triangulation();
+  Perf::get()->exit();
 
   if (tr.number_of_vertices() == 0) {
     return false;
   }
 
   // Convert triangulatin to Polyhedron.
+  Perf::get()->enter("Triangulation");
   CGAL::facets_in_complex_3_to_triangle_mesh(c3t3, *offset_surface);
+  Perf::get()->exit();
 
   // Fix Polyhedron orientation.
   if (CGAL::is_closed(*offset_surface) &&
