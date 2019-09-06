@@ -1,7 +1,7 @@
 #ifndef CPT_COLLISION_MANIFOLDS_OFFSET_SURFACE_MESHDOMAIN_STRATEGY_H_
 #define CPT_COLLISION_MANIFOLDS_OFFSET_SURFACE_MESHDOMAIN_STRATEGY_H_
-#include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/cgal_meshing_typedefs.h>
+#include <cgal_definitions/cgal_typedefs.h>
 #include <cpt_collision_manifolds/offset_surface/construction_strategy.h>
 
 namespace cad_percept {
@@ -12,9 +12,9 @@ namespace offset_surface {
  * Strategy based on CGAL's implicit mesh domain
  *
  */
-class OffseFunction {
+class OffsetFunction {
  public:
-  OffseFunction(const cgal::Polyhedron& tm, const double offset_distance)
+  OffsetFunction(const cgal::Polyhedron& tm, const double offset_distance)
       : m_tree_ptr(
             new cgal::PolyhedronAABBTree(boost::begin(faces(tm)), boost::end(faces(tm)), tm)),
         m_side_of_ptr(new cgal::PolyhedronSideOf(*m_tree_ptr)),
@@ -45,6 +45,8 @@ class OffseFunction {
 
 class MeshDomainStrategy : public ConstructionStrategy {
  public:
+  explicit MeshDomainStrategy(ConfigProvider::Ptr cfg) : ConstructionStrategy(std::move(cfg)) {}
+
   bool execute(const cad_percept::cgal::Polyhedron& surface, double offset,
                cad_percept::cgal::Polyhedron* offset_surface);
   // define mesh domain

@@ -34,7 +34,7 @@ bool MeshDomainStrategy::execute(const cad_percept::cgal::Polyhedron& surface, c
   namespace p = CGAL::parameters;
 
   // Create implicit mesh domain from offset surface.
-  OffseFunction offfunct(surface, offset);
+  OffsetFunction offfunct(surface, offset);
 
   cgal::MeshDomain domain = cgal::MeshDomain::create_implicit_mesh_domain(
       offfunct, cgal::Sphere(center, sqrad), p::relative_error_bound = 1e-7,
