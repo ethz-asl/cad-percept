@@ -197,9 +197,10 @@ double getArea(const PointCloud &pointcloud) {
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::ConvexHull<pcl::PointXYZ> chull;
+  chull.setDimension(2);
   chull.setInputCloud(mycloudPtr);
   // set hull to 2D. If this fails, projectToPlane was not executed before
-  chull.setDimension(2);
+  chull.setComputeAreaVolume(true);
   chull.reconstruct(*cloud_hull);
   return chull.getTotalArea();
 }

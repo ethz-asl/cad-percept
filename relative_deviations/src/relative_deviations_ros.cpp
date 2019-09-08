@@ -172,6 +172,7 @@ void RelativeDeviations::processMap(PointCloud &map_pc) {
 
   deviations.detectMapChanges(&rec_planes, map_pc, &remaining_plane_cloud_vector, &current_transformation_map);
 
+  std::cout << "Transformation map has size: " << current_transformation_map.size() << std::endl;
   timingFile << ros::Time::now() << "," << "," << t_processMap.elapsed() << "," << std::endl;
 
   if (visualize == "map") {
