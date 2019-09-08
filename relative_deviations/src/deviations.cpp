@@ -557,11 +557,11 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
       // equal size check in case of full transformations
       if (size_check) {
         double pc_area = cpt_utils::getArea(umit->second.rec_plane.pointcloud);
-        if (pc_area < 0.9 * umit->second.area || pc_area > 1.1 * umit->second.area) {
+        if (pc_area < 0.6 * umit->second.area || pc_area > 1.4 * umit->second.area) { // better use [0.9, 1.1], but keep in mind that current lidar does not have full view
+          //std::cout << "Area: " << pc_area << "/ " << umit->second.area << std::endl;
           continue;
         }
       }
-      //std::cout << "Process plane ID: " << umit->first << std::endl;
       transformation trafo;
       trafo.score = umit->second.match_score; // since we set it equal before
 
