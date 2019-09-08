@@ -7,3 +7,4 @@ minOverlap: 0.5
 mappingTrigger: true 
 updateICPRefTrigger: false
 normalICPPrimerTrigger: false # use a normal ICP Primer for selectiveICP
+output: false 

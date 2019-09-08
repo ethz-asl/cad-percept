@@ -16,7 +16,9 @@ MapperParameters::MapperParameters() :
   min_overlap(getParam<double>("minOverlap", 0.5)),
   mapping_trigger(getParam<bool>("mappingTrigger", false)),
   update_icp_ref_trigger(getParam<bool>("updateICPRefTrigger", false)),
-  normal_icp_primer_trigger(getParam<bool>("normalICPPrimerTrigger", false))
+  normal_icp_primer_trigger(getParam<bool>("normalICPPrimerTrigger", false)),
+  path(getParam<std::string>("path", "fail")),
+  output(getParam<bool>("output", false))
 {}
 MapperParameters::~MapperParameters() {}
 

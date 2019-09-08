@@ -46,10 +46,19 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   std::cout << "Ready!" << std::endl;
 
   loadConfig();
+
+  // Create output file for timing information
+  std::stringstream ss;
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);
+  ss << parameters_.path << "/exports/timing_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  std::string filename = ss.str();
+  timingFile.open(filename);
+  timingFile << "Duration" << "," << "selectiveICP" << "," << "normalICP" << "," << "gotCloud" << "," << "processCloud" << "," << "mapping" << "," << "realTimeCap" << std::endl;
 }
 
 Mapper::~Mapper() {
-
+  timingFile.close();
 }
 
 bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req,
@@ -214,6 +223,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       }
       return; // cancel if icp_ was not initialized yet
     }
+    PointMatcherSupport::timer t_gotCloud;
 
     DP cloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(cloud_msg_in));
     
@@ -339,13 +349,17 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
                                                                           stamp));
     }
 
+    timingFile << ros::Time::now() << "," << "," << "," << t_gotCloud.elapsed() << "," << "," << "," << std::endl;
+
     /**
      *  ICP error metrics
      */
-    getICPError(pc);
-    getError(ref_dp, pc, 0);
-    if (!references_new.empty()) {
-      getICPErrorToRef(pc);
+    if (parameters_.output) {
+      getICPError(pc);
+      getError(ref_dp, pc, 0);
+      if (!references_new.empty()) {
+        getICPErrorToRef(pc);
+      }
     }
     
     map_thread.join();
@@ -364,6 +378,8 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     else
       ROS_WARN_STREAM("[TIME] Real-time capability: " << real_time_ratio << "%");
 
+    timingFile << ros::Time::now() << "," << "," << "," << "," << "," << "," << real_time_ratio << std::endl;
+
     last_point_cloud_time_ = stamp;
     last_point_cloud_seq_ = seq;               
   }
@@ -371,6 +387,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
 bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map, const ros::Time &stamp) {
   std::cout << "Perform selective ICP" << std::endl;
+  PointMatcherSupport::timer t_selectiveICP;
   try {
     ROS_DEBUG_STREAM(
         "[Selective ICP] Computing - reading: " << cloud.getNbPoints()
@@ -407,7 +424,11 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
                                                                           parameters_.tf_map_frame,
                                                                           stamp));
     }
-    getError(selective_ref_dp, pc, 1);
+    timingFile << ros::Time::now() << "," << t_selectiveICP.elapsed() << "," << "," << "," << "," << "," << std::endl;
+
+    if (parameters_.output) {
+      getError(selective_ref_dp, pc, 1);
+    }
 
     return true;
 
@@ -426,6 +447,7 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
 
 bool Mapper::normalICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map) {
   std::cout << "Perform normal ICP" << std::endl;
+  PointMatcherSupport::timer t_normalICP;
   try {
 
     ROS_DEBUG_STREAM(
@@ -448,6 +470,7 @@ bool Mapper::normalICP(const DP &cloud, PM::TransformationParameters *T_updated_
       return false;
     }
 
+    timingFile << ros::Time::now() << "," << "," << t_normalICP.elapsed() << "," << "," << "," << "," << std::endl;
     return true;
 
   } catch (PM::ConvergenceError error) {
@@ -571,6 +594,7 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
 // this is general pre-processing of dp cloud for map and reading cloud
 void Mapper::processCloud(DP *point_cloud,
                           const ros::Time &stamp) {
+  PointMatcherSupport::timer t_processCloud;
   const size_t good_count(point_cloud->features.cols());
   if (good_count == 0) {
     ROS_ERROR("[ICP] I found no good points in the cloud");
@@ -610,9 +634,11 @@ void Mapper::processCloud(DP *point_cloud,
         "[ICP] Not enough points in newPointCloud: only " << pts_count
                                                           << " pts.");
   }
+  timingFile << ros::Time::now() << "," << "," << "," << "," << t_processCloud.elapsed() << "," << "," << std::endl;
 }
 
 void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
+  PointMatcherSupport::timer t_mapping;
   // Preparation of cloud for inclusion in map
   map_pre_filters_.apply(corrected_cloud);
   // Merge cloud to map
@@ -641,6 +667,7 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
     selective_icp_.setMap(ref_pc);
     std::cout << "New map set" << std::endl;
   }    
+  timingFile << ros::Time::now() << "," << "," << "," << "," << "," << t_mapping.elapsed() << "," << std::endl;
 }
 
 bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,

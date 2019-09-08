@@ -11,9 +11,28 @@ namespace deviations {
 
 Deviations::Deviations() {}
 
-Deviations::~Deviations() {}
+Deviations::~Deviations() {
+  timingFile.close();
+  performanceFile.close();
+}
 
 void Deviations::init(const cgal::Polyhedron &P) {
+  // Create output file for timing information
+  std::stringstream ss;
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);
+  ss << params.path << "/exports/timing_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  std::string filename = ss.str();
+  timingFile.open(filename);
+  timingFile << "Duration" << "," << "segmentation" << "," << "association" << "," << "deviation" << "," << "average" << "," << "segmentationMap" << "," << "associationMap" << "," << "deviationMap" << std::endl;
+
+  // Create output file for performance information
+  std::stringstream ss2;
+  ss2 << params.path << "/exports/performance_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  filename = ss2.str();
+  performanceFile.open(filename);
+  performanceFile << "Duration" << "," << "noOfRecPlanes" << "," << "noOfAssocPlanes" << std::endl;
+
   path_ = params.path;
   // create MeshModel of reference
   reference_mesh.init(P);
@@ -33,6 +52,8 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, con
   /**
    *  Planar Segmentation
    */
+  
+  PointMatcherSupport::timer t_segmentation;
 
   PointCloud remaining_cloud;
   if (params.planarSegmentation == "CGAL") {
@@ -42,19 +63,29 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, con
   else if (params.planarSegmentation == "PCL") {
     planarSegmentationPCL(reading_cloud, rec_planes, &remaining_cloud);
   }
+  timingFile << ros::Time::now() << "," << t_segmentation.elapsed() << "," << "," << "," << "," << "," << "," << std::endl;
 
   /**
    *  Plane association
    */
 
+  PointMatcherSupport::timer t_association;
+
   findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
+  
+  performanceFile << ros::Time::now() << "," << rec_planes->size() << "," << rec_planes->size() - remaining_plane_cloud_vector->size() << std::endl;
+  timingFile << ros::Time::now() << "," << "," << t_association.elapsed() << "," << "," << "," << "," << "," << std::endl;
 
   /**
    *  Find current transformation_map and update transformation_map
    */
   std::unordered_map<int, transformation> current_transformation_map; // the latest transformation result
+  PointMatcherSupport::timer t_deviation;
   findPlaneDeviation(&current_transformation_map, 0);
+  timingFile << ros::Time::now() << "," << "," << "," << t_deviation.elapsed() << "," << "," << "," << "," << std::endl;
+  PointMatcherSupport::timer t_average;
   updateAveragePlaneDeviation(current_transformation_map);
+  timingFile << ros::Time::now() << "," << "," << "," << "," << t_average.elapsed() << "," << "," << "," << std::endl;
 }
 
 /**
@@ -62,6 +93,8 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, con
  */
 void Deviations::detectMapChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud, std::vector<reconstructed_plane> *remaining_plane_cloud_vector, std::unordered_map<int, transformation> *current_transformation_map) {
   PointCloud remaining_cloud;
+  PointMatcherSupport::timer t_segmentation_map;
+
   if (params.planarSegmentation == "CGAL") {
     planarSegmentationCGAL(map_cloud, rec_planes, &remaining_cloud);
 
@@ -69,9 +102,14 @@ void Deviations::detectMapChanges(std::vector<reconstructed_plane> *rec_planes, 
   else if (params.planarSegmentation == "PCL") {
     planarSegmentationPCL(map_cloud, rec_planes, &remaining_cloud);
   }
-  
+  timingFile << ros::Time::now() << "," << "," << "," << "," << "," << t_segmentation_map.elapsed() << "," << "," << std::endl;
+  PointMatcherSupport::timer t_association_map;
   findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
+  timingFile << ros::Time::now() << "," << "," << "," << "," << "," << "," << t_association_map.elapsed() << "," << std::endl;
+  PointMatcherSupport::timer t_deviation_map;
   findPlaneDeviation(current_transformation_map, 1);
+  timingFile << ros::Time::now() << "," << "," << "," << "," << "," << "," << "," << t_deviation_map.elapsed() << std::endl;
+  performanceFile << ros::Time::now() << "," << rec_planes->size() << "," << rec_planes->size() - remaining_plane_cloud_vector->size() << std::endl;
 }
 
 void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const {

@@ -19,6 +19,8 @@ Launch file for Selective ICP
 			   value="$(find cpt_selective_icp)/config/map_post_filter.yaml" />
 		<param name="mapPreFiltersConfig"
 			   value="$(find cpt_selective_icp)/config/map_pre_filter.yaml" />
+		<param name="path"
+				 value="$(find cpt_selective_icp)" />
 	</node>
 
 </launch>
