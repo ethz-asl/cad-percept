@@ -18,6 +18,7 @@
 #include <pcl/filters/random_sample.h>
 #include <std_srvs/Empty.h>
 #include <std_msgs/ColorRGBA.h>
+#include <pointmatcher/Timer.h>
 
 #include <boost/circular_buffer.hpp>
 
@@ -38,6 +39,7 @@ class RelativeDeviations {
   private:
     Deviations deviations;
     ros::NodeHandle &nh_, nh_private_;
+    std::ofstream timingFile;
     void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
     template <class T>
     void publishCloud(T *cloud, ros::Publisher *publisher) const;

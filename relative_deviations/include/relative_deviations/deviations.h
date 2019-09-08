@@ -42,6 +42,8 @@
 #include <boost/bimap/unordered_set_of.hpp>
 #include <boost/bimap/multiset_of.hpp>
 
+#include <pointmatcher/Timer.h>
+
 #include <limits>
 #include <math.h>
 
@@ -147,6 +149,8 @@ class Deviations {
 
   private:
     //PointCloud ref_pc; remove
+    std::ofstream timingFile;
+    std::ofstream performanceFile;
 
     void planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const;
     void planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const;

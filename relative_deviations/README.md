@@ -26,7 +26,7 @@ roslaunch srd_relative_deviations srd.launch
 
 - [x] SRD tested and working
 - [x] Adapted to new findCoplanarFacets
-- [ ] Relative deviations working on real data
+- [x] Relative deviations working on real data
 
 ## Dependencies
 
@@ -138,6 +138,7 @@ Hint:
 - For better alignment of Marker, deactivate Mesh Model. Marker can not be accessed through mesh.
 - There is a second interactive marker (red), which can be used to find closest facet ID to this marker. It is important to load the CAD first. Somehow the first projection on the facet is not shown in rviz.
 - Pay attention when looking at visualizations in rviz since sometimes rviz is inaccurate with showing current message when simulation is paused. Deactivate and activate marker again to show correctly when simulation paused.
+- Change SMB Confusor config according to robot: waco_calibration.cfg or smb_calibration.cfg
 
 ## Instructions
 
@@ -154,4 +155,10 @@ e.g.
 ```
 cd megabot_ws/src/cad-percept/cpt_selective_icp/script/
 sh publish_references.sh
+```
+
+Analysis of complete map (callback still needs to run and mapping needs to be turned on in cpt_selective_icp):
+
+```
+rosservice call /analyze_map
 ```

@@ -55,6 +55,7 @@ class Mapper {
     ros::NodeHandle &nh_, &nh_private_;
     tf::TransformListener tf_listener_;
     MapperParameters parameters_;
+    std::ofstream timingFile;
     cgal::MeshModel reference_mesh_;
     void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
     void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);

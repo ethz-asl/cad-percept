@@ -68,9 +68,20 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
                            input_queue_size,
                            &RelativeDeviations::gotMap,
                            this);
+
+  // Create output file for timing information
+  std::stringstream ss;
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);
+  ss << deviations.params.path << "/exports/timing_ros_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  std::string filename = ss.str();
+  timingFile.open(filename);
+  timingFile << "Duration" << "," << "processBuffer" << "," << "processMap" << "," << "processCloud" << std::endl;
 }
 
-RelativeDeviations::~RelativeDeviations() {}
+RelativeDeviations::~RelativeDeviations() {
+  timingFile.close();
+}
 
 void RelativeDeviations::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   std::cout << "[RD] Received transformed CAD mesh from cpt_selective_icp" << std::endl;
@@ -106,6 +117,8 @@ bool RelativeDeviations::analyzeMap(std_srvs::Empty::Request &req,
 void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
   // insert reading_pc in buffer
   // the reading_pc should be pre-aligned with model here before continueing (from selective ICP)
+  PointMatcherSupport::timer t_processBuffer;
+
   cb.push_back(reading_pc);
   if (cb.full()) {
     PointCloud::Ptr aligned_pc(new PointCloud());
@@ -128,13 +141,19 @@ void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
     publishCloud<PointCloud>(&cloud_filtered, &buffer_pc_pub_);
     processCloud(cloud_filtered);
   }
+
+  timingFile << ros::Time::now() << "," << t_processBuffer.elapsed() << "," << "," << std::endl;
 }
 
 void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   std::vector<reconstructed_plane> rec_planes;
   std::vector<reconstructed_plane> remaining_plane_cloud_vector; // put everything in here what we can't segment as planes
-  
+    
+  PointMatcherSupport::timer t_processCloud;
+
   deviations.detectChanges(&rec_planes, reading_pc, &remaining_plane_cloud_vector);
+
+  timingFile << ros::Time::now() << "," << "," << "," << t_processCloud.elapsed() << std::endl;
   
   if (visualize == "current") {
     publish(rec_planes, remaining_plane_cloud_vector, deviations.transformation_map);
@@ -149,7 +168,11 @@ void RelativeDeviations::processMap(PointCloud &map_pc) {
   std::vector<reconstructed_plane> remaining_plane_cloud_vector; // put everything in here what we can't segment as planes
   std::unordered_map<int, transformation> current_transformation_map;
 
+  PointMatcherSupport::timer t_processMap;
+
   deviations.detectMapChanges(&rec_planes, map_pc, &remaining_plane_cloud_vector, &current_transformation_map);
+
+  timingFile << ros::Time::now() << "," << "," << t_processMap.elapsed() << "," << std::endl;
 
   if (visualize == "map") {
     publish(rec_planes, remaining_plane_cloud_vector, current_transformation_map);
