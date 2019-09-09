@@ -13,7 +13,6 @@ namespace offset_surface {
  */
 class ConstructionStrategy {
  public:
-
   explicit ConstructionStrategy(ConfigProvider::Ptr cfg) : cfg_(std::move(cfg)) {}
 
   typedef std::shared_ptr<ConstructionStrategy> Ptr;

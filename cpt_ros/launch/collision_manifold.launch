@@ -8,6 +8,7 @@
 
     <node name="collision_manifold_construct" pkg="cpt_ros"
           type="collision_manifold_test_node" output="screen">
+        <param name="offset_distance" value="0.1" />
         <param name="offset_strategy/type" value="meshdomain"/>
         <param name="offset_strategy/facet_size" value="0.01"/>
 

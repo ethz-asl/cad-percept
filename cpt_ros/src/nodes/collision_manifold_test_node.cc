@@ -51,8 +51,9 @@ class CollisionManifoldTestNode {
     cgal::PolyhedronPtr original_surface = std::make_shared<cgal::Polyhedron>();
     cgal::msgToTriangleMesh(mesh->mesh, original_surface.get());
 
-    // Create collision manifold w radius 0.3
-    collision_manifolds::IsoSurfaceManifold collision_manifold(original_surface, 0.05,
+    // Create collision manifold
+    double offset_distance = nh_private_.param("offset_distance", 0.1);
+    collision_manifolds::IsoSurfaceManifold collision_manifold(original_surface, offset_distance,
                                                                surface_construct_);
     collision_manifold.construct();
 
