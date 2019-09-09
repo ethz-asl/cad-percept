@@ -8,8 +8,4 @@ T RosConfigProvider::getParamImpl(std::string name, const T& default_value) {
   return nh_.param(name, default_value);
 }
 
-void test() {
-  ros::NodeHandle test;
-  RosConfigProvider roscfg(test);
-}
 }  // namespace cad_percept

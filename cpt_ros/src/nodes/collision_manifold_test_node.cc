@@ -2,12 +2,12 @@
 #include <cgal_msgs/TriangleMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_collision_manifolds/iso_surface_manifold.h>
+#include <cpt_collision_manifolds/offset_surface/meshdomain_strategy.h>
 #include <cpt_ros/ros_config_provider.h>
 #include <cpt_utils/perf.h>
 #include <ros/ros.h>
 
 namespace cad_percept {
-namespace collision_manifolds {
 
 /*
  * For now we leave the Testnode inside this file, it will be factored out
@@ -24,6 +24,25 @@ class CollisionManifoldTestNode {
     // Publisher for the constructed manifold.
     pub_collision_manifold_ =
         nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("collision_manifold", 1);
+
+    // valid strategies: meshdomain, vertexnormal
+    const std::string offset_strategy =
+        nh_private_.param<std::string>("offset_strategy/type", "vertexnormal");
+
+    // set up config provider in subnamespace
+    ConfigProvider::Ptr cfg(
+        std::make_shared<RosConfigProvider>(ros::NodeHandle(nh_private_, "offset_strategy")));
+
+    // set up construction strategy
+    // TODO(mpantic): At some point replace by a nice factory.
+    if (offset_strategy == "meshdomain") {
+      surface_construct_ =
+          std::make_shared<collision_manifolds::offset_surface::MeshDomainStrategy>(cfg);
+    } else {
+      // we assume "vertexnormal"
+      surface_construct_ =
+          std::make_shared<collision_manifolds::offset_surface::VertexNormalStrategy>(cfg);
+    }
   }
 
  private:
@@ -32,17 +51,10 @@ class CollisionManifoldTestNode {
     cgal::PolyhedronPtr original_surface = std::make_shared<cgal::Polyhedron>();
     cgal::msgToTriangleMesh(mesh->mesh, original_surface.get());
 
-    // Set up configuration provider.
-    ConfigProvider::Ptr cfg =
-        std::dynamic_pointer_cast<ConfigProvider>(std::make_shared<RosConfigProvider>(nh_private_));
-
-    // Create construction strategy
-    auto construction_strategy = std::make_shared<offset_surface::VertexNormalStrategy>(cfg);
-
-    // Create collision manifold w radius 0.3
-    IsoSurfaceManifold collision_manifold(
-        original_surface, 0.05,
-        std::dynamic_pointer_cast<offset_surface::ConstructionStrategy>(construction_strategy));
+    // Create collision manifold
+    double offset_distance = nh_private_.param("offset_distance", 0.1);
+    collision_manifolds::IsoSurfaceManifold collision_manifold(original_surface, offset_distance,
+                                                               surface_construct_);
     collision_manifold.construct();
 
     // Get manifold back as mesh
@@ -58,13 +70,13 @@ class CollisionManifoldTestNode {
     Perf::get()->printStatistics();
   }
 
+  collision_manifolds::offset_surface::ConstructionStrategy::Ptr surface_construct_;
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
   ros::Publisher pub_collision_manifold_;
   ros::Subscriber sub_surface_manifold_;
 };
 
-}  // namespace collision_manifolds
 }  // namespace cad_percept
 
 int main(int argc, char** argv) {
@@ -74,7 +86,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh_private("~");
 
   // Create Node object
-  cad_percept::collision_manifolds::CollisionManifoldTestNode node(nh, nh_private);
+  cad_percept::CollisionManifoldTestNode node(nh, nh_private);
 
   ros::spin();
 

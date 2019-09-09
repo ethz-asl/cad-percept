@@ -1,5 +1,5 @@
 #include "cgal_definitions/mesh_model.h"
-
+#include <cgal_definitions/cgal_meshing_typedefs.h>
 namespace cad_percept {
 namespace cgal {
 

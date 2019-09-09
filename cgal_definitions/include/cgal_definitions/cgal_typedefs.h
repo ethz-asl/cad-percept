@@ -1,7 +1,3 @@
-//
-// Created by mpantic on 20.02.19.
-//
-
 #ifndef CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 #define CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 
@@ -11,6 +7,7 @@
 #include <CGAL/Polygon_mesh_processing/measure.h>
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/Polyhedron_items_with_id_3.h>
+#include <CGAL/Side_of_triangle_mesh.h>
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 #include <CGAL/property_map.h>
@@ -31,8 +28,10 @@ typedef Kernel::Plane_3 Plane;
 typedef Kernel::Ray_3 Ray;
 typedef Kernel::Segment_3 Segment;
 typedef Kernel::Segment_2 Segment_2;
+typedef Kernel::Sphere_3 Sphere;
 typedef Kernel::Triangle_3 Triangle;
 typedef Kernel::Vector_3 Vector;
+
 typedef CGAL::Aff_transformation_3<Kernel> Transformation;
 
 typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
@@ -54,6 +53,8 @@ typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron>
     PolyhedronPrimitive;                                                      // cadify: Primitive
 typedef CGAL::AABB_traits<Kernel, PolyhedronPrimitive> PolyhedronAABBTraits;  // cadify: Traits
 typedef CGAL::AABB_tree<PolyhedronAABBTraits> PolyhedronAABBTree;             // cadify: Tree
+typedef CGAL::Side_of_triangle_mesh<Polyhedron, Kernel> PolyhedronSideOf;
+
 typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Segment>::Type>
     PolyhedronSegmentIntersection;
 typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Plane>::Type>
@@ -62,6 +63,6 @@ typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Ray>::
     PolyhedronRayIntersection;  // cadify: Ray_intersection
 typedef PolyhedronAABBTree::Primitive_id PolyhedronPrimitiveId;
 typedef std::pair<Point, PolyhedronPrimitive::Id> PointAndPrimitiveId;
-}
-}
+}  // namespace cgal
+}  // namespace cad_percept
 #endif  // CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
