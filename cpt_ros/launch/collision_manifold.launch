@@ -6,8 +6,11 @@
         <param name="frame_name" value="world"/>
     </node>
 
-    <node name="collision_manifold_construct" pkg="cpt_collision_manifolds"
+    <node name="collision_manifold_construct" pkg="cpt_ros"
           type="collision_manifold_test_node" output="screen">
+        <param name="offset_strategy/type" value="meshdomain"/>
+        <param name="offset_strategy/facet_size" value="0.01"/>
+
         <remap from="~mesh" to="/mesh_publisher/mesh_out"/>
     </node>
 </launch>

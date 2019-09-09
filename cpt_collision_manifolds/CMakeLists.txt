@@ -17,17 +17,6 @@ cs_add_library(${PROJECT_NAME}
         src/offset_surface/meshdomain_strategy.cc
         )
 
-
-############
-# BINARIES #
-############
-cs_add_executable(collision_manifold_test_node
-        src/collision_manifold_test_node.cc
-        )
-
-target_link_libraries(collision_manifold_test_node ${PROJECT_NAME})
-
-
 ##########
 # EXPORT #
 ##########
