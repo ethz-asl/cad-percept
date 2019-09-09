@@ -5,21 +5,26 @@
 #include <rviz/properties/color_property.h>
 #include <rviz/properties/float_property.h>
 #include <Eigen/Dense>
+#include <QObject>
+namespace cad_percept {
+namespace visualizations {
 
 /*
  * Abstract class that handles QT specific interfaces
  * Introduced to break problem with Q_OBJECTS not being allowed to be templated.
  * (Mainly Q_SLOTS and Q_OBJECT).
  */
-class QMeshDisplay {
-  Q_OBJECT
 
- protected Q_SLOTS:
+class QMeshDisplay {
+
+ public:
+ protected :
   /*
    * Pure virtual Q_SLOTS, that are defined in the subclass.
    */
-  virtual void backfaceCullingPropertyChanged() = 0;
-  virtual void appearencePropertyChanged() = 0;
+
 };
+}  // namespace visualizations
+}  // namespace cad_percept
 
 #endif  // CGAL_VISUALIZATIONS_Q_MESH_DISPLAY_H_

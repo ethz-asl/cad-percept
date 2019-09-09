@@ -1,5 +1,6 @@
 #include <OGRE/OgreSceneNode.h>
 #include <cgal_visualizations/mesh_display.h>
+#include <cgal_visualizations/mesh_display_instantiations.h>
 #include <rviz/visualization_manager.h>
 #include <tf/transform_listener.h>
 
@@ -13,7 +14,6 @@ template <typename T>
 void MeshDisplay<T>::onInitialize() {
   initProperties();
   rviz::MessageFilterDisplay<T>::MFDClass::onInitialize();
-  std::cout << "onInitialize" << std::endl;
 }
 
 template <typename T>
@@ -106,9 +106,17 @@ void MeshDisplay<T>::processMessage(const typename T::ConstPtr &msg) {
 }  // namespace cad_percept
 
 /*
- * Export Pluginlib interfaces.
+ * Export classes.
  */
 #include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::MeshDisplay<cgal_msgs::TriangleMeshStamped>,
+                       rviz::Display)
 PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::TriangleMeshDisplay, rviz::Display)
+
+PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::MeshDisplay<cgal_msgs::ColoredMesh>,
+                       rviz::Display)
 PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::ColoredMeshDisplay, rviz::Display)
+
+PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::MeshDisplay<cgal_msgs::ProbabilisticMesh>,
+                       rviz::Display)
 PLUGINLIB_EXPORT_CLASS(cad_percept::visualizations::ProbabilisticMeshDisplay, rviz::Display)
