@@ -12,7 +12,7 @@ set(CMAKE_AUTOMOC ON)
 
 ## This plugin includes Qt widgets, so we must include Qt.
 ## We'll use the version that rviz used so they are compatible.
-if(rviz_QT_VERSION VERSION_LESS "5")
+if (rviz_QT_VERSION VERSION_LESS "5")
     message(STATUS "Using Qt4 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
     find_package(Qt4 ${rviz_QT_VERSION} EXACT REQUIRED QtCore QtGui)
     ## pull in all required include dirs, define QT_LIBRARIES, etc.
@@ -20,7 +20,7 @@ if(rviz_QT_VERSION VERSION_LESS "5")
     qt4_wrap_cpp(MOC_FILES
             ${INCLUDE_FILES_QT}
             )
-else()
+else ()
     message(STATUS "Using Qt5 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
     find_package(Qt5 ${rviz_QT_VERSION} EXACT REQUIRED Core Widgets)
     ## make target_link_libraries(${QT_LIBRARIES}) pull in all required dependencies
@@ -28,18 +28,19 @@ else()
     QT5_WRAP_CPP(MOC_FILES
             ${INCLUDE_FILES_QT}
             )
-endif()
+endif ()
 
 ## Avoid Qt signals and slots defining "emit", "slots", etc.
 add_definitions(-DQT_NO_KEYWORDS)
 
 set(HEADER_FILES
-    include/cgal_visualizations/mesh_visual.h
+        include/cgal_visualizations/mesh_visual.h
         include/cgal_visualizations/mesh_display.h
+        include/cgal_visualizations/mesh_display_instantiations.h
         )
 
 set(SRC_FILES
-    src/mesh_visual.cc
+        src/mesh_visual.cc
         src/mesh_display.cc
         )
 
