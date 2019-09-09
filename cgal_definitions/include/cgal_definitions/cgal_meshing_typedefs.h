@@ -33,12 +33,12 @@ typedef CGAL::Triangulation_cell_base_with_info_3<int, Robust_K, Cell_base> Cell
 
 #ifdef CONCURRENT_POLYHEDRON_MESH
 typedef CGAL::Mesh_triangulation_3<PolyhedronMeshDomain, Robust_intersections_traits,
-                                   CGAL::Parallel_tag, CGAL::Default, Cell_base_with_info>::type
-    Triangulation;
+                                   CGAL::Parallel_tag, CGAL::Default,
+                                   Cell_base_with_info>::type Triangulation;
 #else
 typedef CGAL::Mesh_triangulation_3<PolyhedronMeshDomain, Robust_intersections_traits,
-                                   CGAL::Sequential_tag, CGAL::Default, Cell_base_with_info>::type
-    Triangulation;
+                                   CGAL::Sequential_tag, CGAL::Default,
+                                   Cell_base_with_info>::type Triangulation;
 #endif
 
 typedef CGAL::Mesh_complex_3_in_triangulation_3<Triangulation> C3t3;
