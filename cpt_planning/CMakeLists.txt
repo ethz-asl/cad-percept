@@ -13,7 +13,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 #############
 cs_add_library(${PROJECT_NAME}
         src/test.cc
-        src/coordinates/barycentric_coordinates.cc
+        src/coordinates/barycentric.cc
         )
 
 ##########
