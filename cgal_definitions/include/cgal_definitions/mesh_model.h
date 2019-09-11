@@ -21,6 +21,9 @@ class MeshModel {
   static bool create(const std::string &off_pathm, MeshModel::Ptr *meshmodel_ptr,
                      bool verbose = false);
 
+  MeshModel(Polyhedron &p);
+  MeshModel(Polyhedron &p, bool verbose);  // Constructor to be used by factory method
+
   /**
    * Check if there is an intersection
    */
@@ -72,8 +75,7 @@ class MeshModel {
   int getFacetIndex(Polyhedron::Facet_handle &handle);
 
  private:
-  MeshModel() {}                           // private default constructor
-  MeshModel(Polyhedron &p, bool verbose);  // Constructor to be used by factory method
+  MeshModel() {}  // private default constructor
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;
   bool verbose_;
