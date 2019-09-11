@@ -55,10 +55,26 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   std::string filename = ss.str();
   timingFile.open(filename);
   timingFile << "Duration" << "," << "selectiveICP" << "," << "normalICP" << "," << "gotCloud" << "," << "processCloud" << "," << "mapping" << "," << "realTimeCap" << std::endl;
+
+  // Create output file for metrics information
+  std::stringstream ss2;
+  ss2 << parameters_.path << "/exports/metrics_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  filename = ss2.str();
+  metricsFile.open(filename);
+  metricsFile << "Duration" << "," << std::endl;
+
+  // Create output file saving the transformation from scanner to map
+  std::stringstream ss3;
+  ss3 << parameters_.path << "/exports/T_updated_scanner_to_map_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  filename = ss3.str();
+  transformationFile.open(filename);
+  transformationFile << "Duration" << "," << "x" << "," << "y" << "," << "z" << "," << "x" << "," << "y" << "," << "z" << "," << "w" << std::endl;
 }
 
 Mapper::~Mapper() {
   timingFile.close();
+  metricsFile.close();
+  transformationFile.close();
 }
 
 bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req,
@@ -286,10 +302,10 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       return;
     }
 
-    PM::TransformationParameters T_updated_scanner_to_map = T_scanner_to_map_; // not sure why copy is necessary
+    PM::TransformationParameters T_updated_scanner_to_map = T_scanner_to_map_; // not sure if copy is necessary
 
     /**
-     * Normal ICP
+     * Normal ICP Primer
      */
     if (parameters_.normal_icp_primer_trigger == true) {
       if (!normalICP(cloud, &T_updated_scanner_to_map)) {
@@ -316,6 +332,21 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         return; // if not successfull cancel the process
       }
     }
+
+    // Save complete matrix to file
+    Eigen::Matrix<double,3,3> rotationMatrix;
+    rotationMatrix(0,0) = T_updated_scanner_to_map(0,0);
+    rotationMatrix(0,1) = T_updated_scanner_to_map(0,1);
+    rotationMatrix(0,2) = T_updated_scanner_to_map(0,2);
+    rotationMatrix(1,0) = T_updated_scanner_to_map(1,0);
+    rotationMatrix(1,1) = T_updated_scanner_to_map(1,1);
+    rotationMatrix(1,2) = T_updated_scanner_to_map(1,2);
+    rotationMatrix(2,0) = T_updated_scanner_to_map(2,0);
+    rotationMatrix(2,1) = T_updated_scanner_to_map(2,1);
+    rotationMatrix(2,2) = T_updated_scanner_to_map(2,2);
+
+    Eigen::Quaterniond rot(rotationMatrix);
+    transformationFile << stamp << "," << T_updated_scanner_to_map(0,3) << "," << T_updated_scanner_to_map(1,3) << "," << T_updated_scanner_to_map(2,3) << "," << rot.x() << "," << rot.y() << "," << rot.z() << "," << rot.w() << std::endl;
 
     /**
      * Publish
