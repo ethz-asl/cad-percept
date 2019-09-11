@@ -56,6 +56,8 @@ class Mapper {
     tf::TransformListener tf_listener_;
     MapperParameters parameters_;
     std::ofstream timingFile;
+    std::ofstream metricsFile;
+    std::ofstream transformationFile;
     cgal::MeshModel reference_mesh_;
     void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
     void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
