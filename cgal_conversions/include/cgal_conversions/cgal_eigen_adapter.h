@@ -61,7 +61,7 @@ class Vector3Adap {
  *  cgal::Vector pointer,
  *  cgal::Point pointer
  *
- *  and allows assignemetns from these types that are reflected back to the pointer.
+ *  and allows assignments from these types that are reflected back to the pointer.
  *
  */
 class Vector3Out : public Vector3Adap {
@@ -84,8 +84,11 @@ class Vector3Out : public Vector3Adap {
   inline Vector3Out(cgal::Point* pt)
       : Vector3Adap(*pt), external_eigen_(nullptr), external_cgal_(nullptr), external_point_(pt) {}
 
+  // Disable assignment of Vector3Out itself
+  void operator=(const Vector3Out&) = delete;
+
   /*
-   * Assignement operators for all 3 types.
+   * Assignment operators for all 3 types.
    */
   inline void operator=(const Eigen::Vector3d& value) {
     x_ = value.x();
@@ -148,10 +151,15 @@ class Vector3In : public Vector3Adap {
   inline Vector3In(Eigen::Vector3d eigen) : Vector3Adap(eigen) {}
   inline Vector3In(cgal::Point pt) : Vector3Adap(pt) {}
 
+  // Disable assignment of Vector3In itself
+  void operator=(const Vector3In&) = delete;
+
+  // Casts to eigen/cgal.
   inline operator cgal::Vector() { return {x_, y_, z_}; }
   inline operator Eigen::Vector3d() { return {x_, y_, z_}; }
   inline operator cgal::Point() { return {x_, y_, z_}; }
 
+ private:
   inline void dummy() final {}
 };
 
