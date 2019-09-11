@@ -19,18 +19,21 @@ namespace cgal {
  *                                      cgal::Vector test2 = vec;
  *
  *            Calling the function: yourFunction(test) (where test is of type Eigen::Vector3d or
- *                                                      cgal::Vector, doesn't matter)
+ *                                                      cgal::Vector/Point, doesn't matter)
  *
  * You want a function that returns a Vector3 that can be assigned to eigen / cgal:
  * Signature: Vector3Return yourFunction()
  * Usage:     Eigen::Vector3d test = yourFunction();
  *            cgal::Vector test2 = yourFunction();
  *
+ * Inside function: return Eigen::Vector3d(...) or cgal::Vector(...)  or cgal::Point(...)
+ *
  *
  * You want a function with a Vector3 as output parameter:
  * Signature: void yourFunction(Vector3Out vec_out)
  * Usage inside function: Just assign a eigen/cgal vector to vec_out
- * Calling function: yourFunction(&test), where test is of type Eigen::Vector3d or cgal::Vector)
+ * Calling function: yourFunction(&test), where test is of type Eigen::Vector3d or cgal::Vector or
+ * cgal::Point)
  *
  */
 
