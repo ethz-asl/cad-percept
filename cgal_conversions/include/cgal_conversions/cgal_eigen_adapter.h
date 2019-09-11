@@ -240,7 +240,7 @@ class VectorIn : public VectorAdap<N> {
 };
 
 // Typedefs for 2/3d
-template<int N>
+template <int N>
 using VectorReturn = VectorIn<N>;
 typedef VectorOut<2> Vector2Out;
 typedef VectorIn<2> Vector2In;
