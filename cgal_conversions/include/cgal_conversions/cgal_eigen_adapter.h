@@ -95,7 +95,7 @@ class VectorAdap {
 /* Template specializations for toData
  * Compiles for all T that have that same interface (which by chance is true with eigen/cgal here).
  */
-template <> // template instantiation on class level, thus empty <>
+template <>         // template instantiation on class level, thus empty <>
 template <class T>  // normal template on function level
 inline void VectorAdap<3>::toData(const T& vec, double* data) {
   data[0] = vec.x();
