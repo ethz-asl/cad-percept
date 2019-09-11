@@ -13,6 +13,8 @@ using TupleTriangle = std::tuple<cgal::VectorIn<N>, cgal::VectorIn<N>, cgal::Vec
 
 template <int N>
 class Barycentric {
+  static_assert(N == 2 || N == 3, "ONLY IMPLEMENTED FOR 2D/3D TYPES.");
+
  public:
   Barycentric(cgal::Vector3In& values);
 
