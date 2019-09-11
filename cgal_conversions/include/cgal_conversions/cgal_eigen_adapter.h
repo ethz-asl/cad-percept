@@ -240,13 +240,15 @@ class VectorIn : public VectorAdap<N> {
 };
 
 // Typedefs for 2/3d
+template<int N>
+using VectorReturn = VectorIn<N>;
 typedef VectorOut<2> Vector2Out;
 typedef VectorIn<2> Vector2In;
-typedef Vector2In Vector2Return;
+typedef VectorReturn<2> Vector2Return;
 
 typedef VectorOut<3> Vector3Out;
 typedef VectorIn<3> Vector3In;
-typedef Vector3In Vector3Return;
+typedef VectorReturn<3> Vector3Return;
 
 }  // namespace cgal
 }  // namespace cad_percept
