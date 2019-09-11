@@ -3,6 +3,8 @@
 namespace cad_percept {
 namespace cgal {
 
+MeshModel::MeshModel(Polyhedron &p) : MeshModel(p, false) {}
+
 MeshModel::MeshModel(Polyhedron &p, bool verbose) : P_(std::move(p)), verbose_(verbose) {
   // Initlaize trees and facet index
   tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first, CGAL::faces(P_).second, P_);
