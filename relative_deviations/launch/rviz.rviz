@@ -24,7 +24,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Before ICP PointCloud
+    SyncSource: ""
 Toolbars:
   toolButtonStyle: 2
 Visualization Manager:
@@ -156,7 +156,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.00999999978
       Style: Points
-      Topic: /velodyne_points
+      Topic: /rslidar_points
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -294,7 +294,7 @@ Visualization Manager:
       Marker Topic: /assoc_marker_pub
       Name: Assoc Marker
       Namespaces:
-        semantic_graph_matches: true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 0.800000012
@@ -341,8 +341,7 @@ Visualization Manager:
       Marker Topic: /bboxes_marker_pub
       Name: PC Bboxes, Normals
       Namespaces:
-        bboxes: true
-        normals: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -358,7 +357,7 @@ Visualization Manager:
       Marker Topic: /mesh_normals_marker_pub
       Name: Mesh Normals
       Namespaces:
-        mesh_normals: true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 0.800000012
