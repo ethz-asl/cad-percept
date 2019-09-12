@@ -17,7 +17,10 @@ class RosConfigProvider : public ConfigProvider {
 
  private:
   template <class T>
-  T getParamImpl(std::string name, const T& default_value);
+  T param_Impl(std::string name, const T& default_value);
+
+  template <class T>
+  bool getParam_Impl(std::string name, T& value);
 
   ros::NodeHandle nh_;
 };
