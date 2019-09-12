@@ -2,6 +2,8 @@
 #include <cgal_msgs/TriangleMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_collision_manifolds/iso_surface_manifold.h>
+#include <cpt_ros/ros_config_provider.h>
+#include <cpt_utils/perf.h>
 #include <ros/ros.h>
 
 namespace cad_percept {
@@ -30,8 +32,12 @@ class CollisionManifoldTestNode {
     cgal::PolyhedronPtr original_surface = std::make_shared<cgal::Polyhedron>();
     cgal::msgToTriangleMesh(mesh->mesh, original_surface.get());
 
+    // Set up configuration provider.
+    ConfigProvider::Ptr cfg =
+        std::dynamic_pointer_cast<ConfigProvider>(std::make_shared<RosConfigProvider>(nh_private_));
+
     // Create construction strategy
-    auto construction_strategy = std::make_shared<offset_surface::VertexNormalStrategy>();
+    auto construction_strategy = std::make_shared<offset_surface::VertexNormalStrategy>(cfg);
 
     // Create collision manifold w radius 0.3
     IsoSurfaceManifold collision_manifold(
@@ -49,6 +55,7 @@ class CollisionManifoldTestNode {
     cgal::triangleMeshToMsg(*collision_manifold_mesh, &output_msg.mesh);
     pub_collision_manifold_.publish(output_msg);
     ROS_INFO_STREAM("  - CM published w/ " << output_msg.mesh.vertices.size() << " vertices.");
+    Perf::get()->printStatistics();
   }
 
   ros::NodeHandle nh_;

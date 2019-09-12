@@ -14,6 +14,8 @@ namespace offset_surface {
  */
 class VertexNormalStrategy : public ConstructionStrategy {
  public:
+  explicit VertexNormalStrategy(ConfigProvider::Ptr cfg) : ConstructionStrategy(std::move(cfg)) {}
+
   bool execute(const cad_percept::cgal::Polyhedron& surface, double offset,
                cad_percept::cgal::Polyhedron* offset_surface);
 
