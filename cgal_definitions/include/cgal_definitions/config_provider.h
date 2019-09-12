@@ -5,16 +5,22 @@
 #include <memory>
 #include <vector>
 
-#define VIRTUAL_GETTER_FOR_TYPE(t)                             \
-  virtual t getParam(std::string, const t& default_value) = 0; \
-  virtual std::vector<t> getParam(std::string, const std::vector<t>& default_value) = 0;
+#define VIRTUAL_GETTER_FOR_TYPE(t)                                                    \
+  virtual t param(std::string, const t& default_value) = 0;                           \
+  virtual std::vector<t> param(std::string, const std::vector<t>& default_value) = 0; \
+  virtual bool getParam(const std::string, t& value) = 0;                             \
+  virtual bool getParam(const std::string, std::vector<t>& value) = 0;
 
-#define GETTER_FOR_TYPE(t)                                                                  \
-  t getParam(std::string name, const t& default_value) override {                           \
-    return getParamImpl(name, default_value);                                               \
-  };                                                                                        \
-  std::vector<t> getParam(std::string name, const std::vector<t>& default_value) override { \
-    return getParamImpl(name, default_value);                                               \
+#define GETTER_FOR_TYPE(t)                                                                         \
+  t param(std::string name, const t& default_value) override {                                     \
+    return param_Impl(name, default_value);                                                        \
+  };                                                                                               \
+  std::vector<t> param(std::string name, const std::vector<t>& default_value) override {           \
+    return param_Impl(name, default_value);                                                        \
+  };                                                                                               \
+  bool getParam(const std::string name, t& value) override { return getParam_Impl(name, value); }; \
+  bool getParam(const std::string name, std::vector<t>& value) override {                          \
+    return getParam_Impl(name, value);                                                             \
   };
 
 namespace cad_percept {
