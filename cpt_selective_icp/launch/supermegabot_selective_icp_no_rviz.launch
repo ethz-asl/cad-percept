@@ -7,7 +7,7 @@ Launch file for Selective ICP
 
 	<node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen" >
     <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
-    <param name="scanTopic" value="/velodyne_points" />
+    <param name="scanTopic" value="/rslidar_points" />
 		<param name="cadTopic" value="cad_interface_node/cad_model" />
 		<param name="icpConfig"
 			   value="$(find cpt_selective_icp)/config/icp_dynamic.yaml" />
@@ -22,5 +22,7 @@ Launch file for Selective ICP
 		<param name="path"
 				 value="$(find cpt_selective_icp)" />
 	</node>
+
+	<node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
 
 </launch>

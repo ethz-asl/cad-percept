@@ -333,20 +333,37 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       }
     }
 
+    tf::StampedTransform transform;
+    tf_listener_.lookupTransform("marker2", parameters_.tf_map_frame, ros::Time(0), transform); // from tf_map_frame to "marker2"
+    Eigen::Matrix3d rotation;
+    tf::matrixTFToEigen(transform.getBasis(), rotation);
+    Eigen::Vector3d translation;
+    tf::vectorTFToEigen(transform.getOrigin(), translation);
+    Eigen::Matrix4d T_map_to_marker2 = Eigen::Matrix4d::Identity();
+    T_map_to_marker2.block(0, 0, 3, 3) = rotation;
+    T_map_to_marker2.block(0, 3, 3, 1) = translation;
+    
+    Eigen::Matrix4f T_float = T_updated_scanner_to_map;
+    Eigen::Matrix4d T_double_updated_scanner_to_map = T_float.cast <double> ();
+
+    // the naming of the Transformation matrices is confusing, since normally you would switch the names
+    Eigen::Matrix4d T_scanner_to_marker2 = T_map_to_marker2 * T_double_updated_scanner_to_map;
+    
     // Save complete matrix to file
     Eigen::Matrix<double,3,3> rotationMatrix;
-    rotationMatrix(0,0) = T_updated_scanner_to_map(0,0);
-    rotationMatrix(0,1) = T_updated_scanner_to_map(0,1);
-    rotationMatrix(0,2) = T_updated_scanner_to_map(0,2);
-    rotationMatrix(1,0) = T_updated_scanner_to_map(1,0);
-    rotationMatrix(1,1) = T_updated_scanner_to_map(1,1);
-    rotationMatrix(1,2) = T_updated_scanner_to_map(1,2);
-    rotationMatrix(2,0) = T_updated_scanner_to_map(2,0);
-    rotationMatrix(2,1) = T_updated_scanner_to_map(2,1);
-    rotationMatrix(2,2) = T_updated_scanner_to_map(2,2);
+    rotationMatrix(0,0) = T_scanner_to_marker2(0,0);
+    rotationMatrix(0,1) = T_scanner_to_marker2(0,1);
+    rotationMatrix(0,2) = T_scanner_to_marker2(0,2);
+    rotationMatrix(1,0) = T_scanner_to_marker2(1,0);
+    rotationMatrix(1,1) = T_scanner_to_marker2(1,1);
+    rotationMatrix(1,2) = T_scanner_to_marker2(1,2);
+    rotationMatrix(2,0) = T_scanner_to_marker2(2,0);
+    rotationMatrix(2,1) = T_scanner_to_marker2(2,1);
+    rotationMatrix(2,2) = T_scanner_to_marker2(2,2);
 
     Eigen::Quaterniond rot(rotationMatrix);
-    transformationFile << stamp << "," << T_updated_scanner_to_map(0,3) << "," << T_updated_scanner_to_map(1,3) << "," << T_updated_scanner_to_map(2,3) << "," << rot.x() << "," << rot.y() << "," << rot.z() << "," << rot.w() << std::endl;
+
+    transformationFile << stamp << "," << T_scanner_to_marker2(0,3) << "," << T_scanner_to_marker2(1,3) << "," << T_scanner_to_marker2(2,3) << "," << rot.x() << "," << rot.y() << "," << rot.z() << "," << rot.w() << std::endl;
 
     /**
      * Publish

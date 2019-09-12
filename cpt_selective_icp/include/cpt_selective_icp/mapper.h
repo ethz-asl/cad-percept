@@ -25,6 +25,7 @@
 #include <cgal_msgs/ColoredMesh.h>
 #include <std_msgs/ColorRGBA.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
+#include <geometry_msgs/PointStamped.h>
 
 #include <pointmatcher_ros/point_cloud.h>
 #include <pointmatcher_ros/transform.h>
