@@ -3,8 +3,8 @@
  * the rviz plugins.
  */
 
-#ifndef TRIANGLE_MESH_VISUALIZATIONS_H
-#define TRIANGLE_MESH_VISUALIZATIONS_H
+#ifndef CGAL_VISUALIZATIONS_Q_MESH_VISUAL_H_
+#define CGAL_VISUALIZATIONS_Q_MESH_VISUAL_H_
 
 #include <OGRE/OgreManualObject.h>
 #include <cgal_msgs/ColoredMesh.h>
@@ -67,6 +67,6 @@ class MeshVisual {
   Ogre::ColourValue std_surface_color_;
 };
 }  // namespace visualizations
-}  // namespace cad-percept
+}  // namespace cad_percept
 
-#endif  // TRIANGLE_MESH_VISUALIZATIONS_H
+#endif  // CGAL_VISUALIZATIONS_Q_MESH_VISUAL_H_
