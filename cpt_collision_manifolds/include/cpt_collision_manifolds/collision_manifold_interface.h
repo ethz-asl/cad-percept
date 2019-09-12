@@ -9,6 +9,7 @@ namespace collision_manifolds {
 
 class CollisionManifoldInterface {
  public:
+  typedef std::shared_ptr<CollisionManifoldInterface> Ptr;
   /*
    * Sets the current Body's orientation in 3D Space
    */
