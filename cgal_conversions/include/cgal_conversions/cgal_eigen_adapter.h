@@ -71,6 +71,8 @@ class VectorAdap {
       /* y? */ Eigen::Vector2d,
       /* n? */ Eigen::Vector3d>::type eigenVector;
 
+  virtual ~VectorAdap() = 0;  // Pure virtual destructor to mark this class abstract.
+
  protected:
   inline VectorAdap() {}
 
@@ -88,9 +90,15 @@ class VectorAdap {
   template <class T>
   inline static void fromData(const double* data, T* vec);
 
-  virtual void dummy() = 0;  // method to mark this class as purely abstract
   double data_[N];
 };
+
+template <int N>
+inline VectorAdap<N>::~VectorAdap() {
+  // Compulsory out-of-line virtual destructor definition,
+  // even if it's empty
+  // see https://eli.thegreenplace.net/2010/11/13/pure-virtual-destructors-in-c
+}
 
 /* Template specializations for toData
  * Compiles for all T that have that same interface (which by chance is true with eigen/cgal here).
@@ -163,26 +171,25 @@ class VectorOut : public VectorAdap<N> {
    */
   inline void operator=(const typename VectorAdap<N>::eigenVector& value) {
     this->toData(value, this->data_);
-    sync();
+    updateExternalReference();
   }
   inline void operator=(const typename VectorAdap<N>::cgalVector& value) {
     this->toData(value, this->data_);
-    sync();
+    updateExternalReference();
   }
 
   inline void operator=(const typename VectorAdap<N>::cgalPoint& value) {
     this->toData(value, this->data_);
-    sync();
+    updateExternalReference();
   }
 
-  inline void dummy() final {}
-  inline ~VectorOut() {
+  inline ~VectorOut() override {
     // write data to pointers before becoming out of scope.
-    sync();
+    updateExternalReference();
   }
 
  private:
-  inline void sync() {
+  inline void updateExternalReference() {
     if (external_eigen_ != nullptr) {
       this->fromData(this->data_, external_eigen_);
     }
@@ -210,33 +217,34 @@ class VectorOut : public VectorAdap<N> {
 template <int N>
 class VectorIn : public VectorAdap<N> {
  public:
-  inline VectorIn(cgal::Vector vec) : VectorAdap<N>(vec) {}
-  inline VectorIn(Eigen::Vector3d eigen) : VectorAdap<N>(eigen) {}
-  inline VectorIn(cgal::Point pt) : VectorAdap<N>(pt) {}
+  inline VectorIn(const typename VectorAdap<N>::cgalVector& vec) : VectorAdap<N>(vec) {}
+  inline VectorIn(const typename VectorAdap<N>::eigenVector& eigen) : VectorAdap<N>(eigen) {}
+  inline VectorIn(const typename VectorAdap<N>::cgalPoint pt) : VectorAdap<N>(pt) {}
 
   // Disable assignment of Vector3In itself
   void operator=(const VectorIn&) = delete;
 
   // Casts to eigen/cgal.
-  inline operator cgal::Vector() {
-    cgal::Vector temp;
+  inline operator typename VectorAdap<N>::cgalVector() {
+    typename VectorAdap<N>::cgalVector temp;
     this->fromData(this->data_, &temp);
     return temp;
   }
 
-  inline operator Eigen::Vector3d() {
-    Eigen::Vector3d temp;
+  inline operator typename VectorAdap<N>::eigenVector() {
+    typename VectorAdap<N>::eigenVector temp;
     this->fromData(this->data_, &temp);
     return temp;
   }
-  inline operator cgal::Point() {
-    cgal::Point temp;
+  inline operator typename VectorAdap<N>::cgalPoint() {
+    typename VectorAdap<N>::cgalPoint temp;
     this->fromData(this->data_, &temp);
     return temp;
   }
 
- private:
-  inline void dummy() final {}
+  inline ~VectorIn() {
+    // concrete destructor to make class non-abstract.
+  }
 };
 
 // Typedefs for 2/3d

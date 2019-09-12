@@ -26,7 +26,9 @@ catkin_add_gtest(${PROJECT_NAME}_tests
         test/test_main.cpp
         test/test_mesh_messages.cpp
         test/test_eigen_conversions.cpp
-        test/test_cgal_eigen_adapter.cpp)
+        test/test_cgal_eigen_adapter_2d.cpp
+        test/test_cgal_eigen_adapter_3d.cpp)
+
 target_link_libraries(${PROJECT_NAME}_tests ${PROJECT_NAME})
 
 ##########
