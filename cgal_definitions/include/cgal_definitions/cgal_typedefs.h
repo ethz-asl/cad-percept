@@ -30,6 +30,7 @@ typedef Kernel::Segment_3 Segment;
 typedef Kernel::Segment_2 Segment_2;
 typedef Kernel::Sphere_3 Sphere;
 typedef Kernel::Triangle_3 Triangle;
+typedef Kernel::Vector_2 Vector_2;
 typedef Kernel::Vector_3 Vector;
 
 typedef CGAL::Aff_transformation_3<Kernel> Transformation;
