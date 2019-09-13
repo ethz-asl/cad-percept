@@ -13,9 +13,9 @@ add_definitions(-std=c++11 -Wall -Wextra)
 #############
 cs_add_library(${PROJECT_NAME}
         src/test.cc
-        src/coordinates/barycentric.cc
+        src/coordinates/triangle_coords.cc
+        src/coordinates/face_coords.cc
         src/coordinates/uv_mapping.cc
-
         )
 
 ##########

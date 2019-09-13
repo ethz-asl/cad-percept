@@ -2,7 +2,7 @@
 #define CPT_PLANNING_UV_MAPPING_H_
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
-#include "barycentric.h"
+#include <cpt_planning/coordinates/face_coords.h>
 
 namespace cad_percept {
 namespace planning {

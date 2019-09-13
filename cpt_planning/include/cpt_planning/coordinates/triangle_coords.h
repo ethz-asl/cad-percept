@@ -31,40 +31,6 @@ class TriangleCoords {
   const Eigen::Matrix<double, N, 1> a1_, a2_, a3_;
 };
 
-template <int N>
-class FaceCoords : TriangleCoords<N> {
- public:
-  FaceCoords(cgal::face_descriptor face, const cgal::Polyhedron& mesh)
-      : TriangleCoords<N>(FaceCoords<N>::staticInitializer(face, mesh)), face_(face) {}
-
- public:
-  cgal::face_descriptor getFaceDescriptor() const { return face_; }
-
- private:
-  static Eigen::Matrix<double, N, 3> staticInitializer(const cgal::face_descriptor face,
-                                                       const cgal::Polyhedron& mesh) {
-    int i = 0;
-    Eigen::Matrix<double, N, 3> vertice_coords;
-
-    for (const auto& halfedge : CGAL::halfedges_around_face(CGAL::halfedge(face, mesh), mesh)) {
-      if (i >= 3) {
-        break;
-      }
-      auto& vertex = halfedge->vertex()->point();
-      vertice_coords.col(i)[0] = vertex.x();
-      vertice_coords.col(i)[1] = vertex.y();
-      if (N == 3) {
-        vertice_coords.col(i)[2] = vertex.z();  // hack until we have templated meshmodel
-      }
-      ++i;
-    }
-    return vertice_coords;
-  }
-
-  const cgal::face_descriptor face_;
-};
-typedef FaceCoords<2> FaceCoords2d;
-typedef FaceCoords<3> FaceCoords3d;
 
 }  // namespace planning
 }  // namespace cad_percept

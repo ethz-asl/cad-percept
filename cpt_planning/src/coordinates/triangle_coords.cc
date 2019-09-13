@@ -1,4 +1,4 @@
-#include <cpt_planning/coordinates/barycentric.h>
+#include <cpt_planning/coordinates/triangle_coords.h>
 
 namespace cad_percept {
 namespace planning {
