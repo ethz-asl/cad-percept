@@ -16,21 +16,25 @@ class TriangleCoords {
   explicit TriangleCoords(cgal::Vector3In& a1, cgal::Vector3In& a2, cgal::Vector3In& a3)
       : a1_(a1), a2_(a2), a3_(a3) {}
 
-  cgal::VectorReturn<N> toCartesian(cgal::Vector3In& barycentric);
+  cgal::VectorReturn<N> toCartesian(cgal::Vector3In& barycentric) const;
 
-  cgal::Vector3Return toBarycentric(cgal::VectorIn<N>& point_on_triangle);
+  cgal::Vector3Return toBarycentric(cgal::VectorIn<N>& point_on_triangle) const;
+
+  /* Used to translate coordinates from one triangle to the other */
+  template <int M>
+  cgal::VectorOut<M> translateTo(const TriangleCoords<M>& other,
+                                 cgal::VectorIn<N>& point_on_triangle) const;
 
  protected:
   explicit TriangleCoords(const Eigen::Matrix<double, N, 3>& a)
       : a1_(a.col(0)), a2_(a.col(1)), a3_(a.col(2)) {}
 
-  Eigen::Matrix<double, N, 1> toCartesian(const Eigen::Vector3d& coordinates);
+  Eigen::Matrix<double, N, 1> toCartesian(const Eigen::Vector3d& coordinates) const;
 
-  Eigen::Vector3d toBarycentric(const Eigen::Matrix<double, N, 1>& point_on_triangle);
+  Eigen::Vector3d toBarycentric(const Eigen::Matrix<double, N, 1>& point_on_triangle) const;
 
   const Eigen::Matrix<double, N, 1> a1_, a2_, a3_;
 };
-
 
 }  // namespace planning
 }  // namespace cad_percept
