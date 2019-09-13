@@ -1,5 +1,6 @@
 #ifndef CPT_COLLISION_MANIFOLDS_ISOSURFACEMANIFOLD_H
 #define CPT_COLLISION_MANIFOLDS_ISOSURFACEMANIFOLD_H
+#include <cgal_definitions/mesh_model.h>
 #include <cpt_collision_manifolds/collision_manifold_interface.h>
 #include <cpt_collision_manifolds/offset_surface/vertex_normal_strategy.h>
 
@@ -35,7 +36,7 @@ class IsoSurfaceManifold : public CollisionManifoldInterface {
   const double body_radius_;
   bool is_constructed_;
   const cgal::PolyhedronPtr original_manifold_;
-  cgal::Polyhedron collision_manifold_;
+  std::unique_ptr<cgal::MeshModel> collision_manifold_;
 
   const offset_surface::ConstructionStrategy::Ptr offset_constructor_;
 };

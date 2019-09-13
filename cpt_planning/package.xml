@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-    <name>cpt_collision_manifolds</name>
+    <name>cpt_planning</name>
     <version>0.0.1</version>
     <description>cpt_utils</description>
 

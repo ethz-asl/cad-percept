@@ -1,7 +1,9 @@
 #include "cgal_definitions/mesh_model.h"
-
+#include <cgal_definitions/cgal_meshing_typedefs.h>
 namespace cad_percept {
 namespace cgal {
+
+MeshModel::MeshModel(Polyhedron &p) : MeshModel(p, false) {}
 
 MeshModel::MeshModel(Polyhedron &p, bool verbose) : P_(std::move(p)), verbose_(verbose) {
   // Initlaize trees and facet index
@@ -114,6 +116,7 @@ void MeshModel::transform(const Transformation &transform) {
 int MeshModel::size() const { return P_.size_of_facets(); }
 
 Polyhedron MeshModel::getMesh() const { return P_; }
+PolyhedronPtr MeshModel::getMeshPtr() { return PolyhedronPtr(&P_); }
 
 void MeshModel::initializeFacetIndices() {
   // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for
