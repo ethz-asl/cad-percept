@@ -4,44 +4,29 @@ namespace cad_percept {
 namespace planning {
 
 template <int N>
-Barycentric<N>::Barycentric(cgal::Vector3In& values) {
-  coordinates_ = values;
+cgal::VectorReturn<N> TriangleCoords<N>::toCartesian(cgal::Vector3In& barycentric) {
+  return toCartesian(barycentric);
 }
 
 template <int N>
-cgal::Vector3Return Barycentric<N>::asVector() {
-  return coordinates_;
+cgal::Vector3Return TriangleCoords<N>::toBarycentric(cgal::VectorIn<N>& point_on_triangle) {
+  return toBarycentric(point_on_triangle);
 }
 
 template <int N>
-cgal::VectorReturn<N> Barycentric<N>::toCartesian(TupleTriangle<N>& triangle) {
-  return toCartesian(std::get<0>(triangle), std::get<1>(triangle), std::get<2>(triangle));
+Eigen::Matrix<double, N, 1> TriangleCoords<N>::toCartesian(const Eigen::Vector3d& coordinates) {
+  return coordinates.x() * a1_ + coordinates.y() * a2_ + coordinates.z() * a3_;
 }
 
 template <int N>
-void Barycentric<N>::fromCartesian(TupleTriangle<N>& triangle,
-                                   cgal::VectorIn<N>& point_on_triangle) {
-  coordinates_ = fromCartesian(std::get<0>(triangle), std::get<1>(triangle), std::get<2>(triangle),
-                               point_on_triangle);
-}
-
-template <int N>
-Eigen::Matrix<double, N, 1> Barycentric<N>::toCartesian(const Eigen::Matrix<double, N, 1>& a1,
-                                                        const Eigen::Matrix<double, N, 1>& a2,
-                                                        const Eigen::Matrix<double, N, 1>& a3) {
-  return coordinates_.x() * a1 + coordinates_.y() * a2 + coordinates_.z() * a3;
-}
-
-template <int N>
-Eigen::Vector3d Barycentric<N>::fromCartesian(
-    const Eigen::Matrix<double, N, 1>& a1, const Eigen::Matrix<double, N, 1>& a2,
-    const Eigen::Matrix<double, N, 1>& a3, const Eigen::Matrix<double, N, 1>& point_on_triangle) {
+Eigen::Vector3d TriangleCoords<N>::toBarycentric(
+    const Eigen::Matrix<double, N, 1>& point_on_triangle) {
   Eigen::Matrix<double, N, 1> v0, v1, v2;  // intermediate values
 
   // works for 2d and 3d cartesian coordinates (barycentric coordinates are always 3d.)
-  v0 = a2 - a1;
-  v1 = a3 - a1;
-  v2 = point_on_triangle - a1;
+  v0 = a2_ - a1_;
+  v1 = a3_ - a1_;
+  v2 = point_on_triangle - a1_;
 
   double d00 = v0.dot(v0);
   double d01 = v0.dot(v1);

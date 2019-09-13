@@ -9,35 +9,62 @@ namespace cad_percept {
 namespace planning {
 
 template <int N>
-using TupleTriangle = std::tuple<cgal::VectorIn<N>, cgal::VectorIn<N>, cgal::VectorIn<N>>;
-
-template <int N>
-class Barycentric {
+class TriangleCoords {
   static_assert(N == 2 || N == 3, "ONLY IMPLEMENTED FOR 2D/3D TYPES.");
 
  public:
-  Barycentric(cgal::Vector3In& values);
+  explicit TriangleCoords(cgal::Vector3In& a1, cgal::Vector3In& a2, cgal::Vector3In& a3)
+      : a1_(a1), a2_(a2), a3_(a3) {}
 
-  cgal::Vector3Return asVector();
+  cgal::VectorReturn<N> toCartesian(cgal::Vector3In& barycentric);
 
-  cgal::VectorReturn<N> toCartesian(TupleTriangle<N>& triangle);
+  cgal::Vector3Return toBarycentric(cgal::VectorIn<N>& point_on_triangle);
 
-  void fromCartesian(TupleTriangle<N>& triangle, cgal::VectorIn<N>& point_on_triangle);
+ protected:
+  explicit TriangleCoords(const Eigen::Matrix<double, N, 3>& a)
+      : a1_(a.col(0)), a2_(a.col(1)), a3_(a.col(2)) {}
+
+  Eigen::Matrix<double, N, 1> toCartesian(const Eigen::Vector3d& coordinates);
+
+  Eigen::Vector3d toBarycentric(const Eigen::Matrix<double, N, 1>& point_on_triangle);
+
+  const Eigen::Matrix<double, N, 1> a1_, a2_, a3_;
+};
+
+template <int N>
+class FaceCoords : TriangleCoords<N> {
+ public:
+  FaceCoords(cgal::face_descriptor face, const cgal::Polyhedron& mesh)
+      : TriangleCoords<N>(FaceCoords<N>::staticInitializer(face, mesh)), face_(face) {}
+
+ public:
+  cgal::face_descriptor getFaceDescriptor() const { return face_; }
 
  private:
-  Eigen::Matrix<double, N, 1> toCartesian(const Eigen::Matrix<double, N, 1>& a1,
-                                          const Eigen::Matrix<double, N, 1>& a2,
-                                          const Eigen::Matrix<double, N, 1>& a3);
+  static Eigen::Matrix<double, N, 3> staticInitializer(const cgal::face_descriptor face,
+                                                       const cgal::Polyhedron& mesh) {
+    int i = 0;
+    Eigen::Matrix<double, N, 3> vertice_coords;
 
-  Eigen::Vector3d fromCartesian(const Eigen::Matrix<double, N, 1>& a1,
-                                const Eigen::Matrix<double, N, 1>& a2,
-                                const Eigen::Matrix<double, N, 1>& a3,
-                                const Eigen::Matrix<double, N, 1>& point_on_triangle);
+    for (const auto& halfedge : CGAL::halfedges_around_face(CGAL::halfedge(face, mesh), mesh)) {
+      if (i >= 3) {
+        break;
+      }
+      auto& vertex = halfedge->vertex()->point();
+      vertice_coords.col(i)[0] = vertex.x();
+      vertice_coords.col(i)[1] = vertex.y();
+      if (N == 3) {
+        vertice_coords.col(i)[2] = vertex.z();  // hack until we have templated meshmodel
+      }
+      ++i;
+    }
+    return vertice_coords;
+  }
 
-  Eigen::Vector3d coordinates_;  // Actual coordinates
+  const cgal::face_descriptor face_;
 };
-typedef Barycentric<2> Barycentric2d;
-typedef Barycentric<3> Barycentric3d;
+typedef FaceCoords<2> FaceCoords2d;
+typedef FaceCoords<3> FaceCoords3d;
 
 }  // namespace planning
 }  // namespace cad_percept
