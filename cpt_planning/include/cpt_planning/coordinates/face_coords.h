@@ -12,7 +12,7 @@ namespace planning {
 template <int N>
 class FaceCoords : TriangleCoords<N> {
  public:
-  inline FaceCoords(cgal::face_descriptor face, const cgal::Polyhedron& mesh)
+  inline FaceCoords(cgal::face_descriptor face, const cgal::PolyhedronPtr mesh)
       : TriangleCoords<N>(FaceCoords<N>::staticInitializer(face, mesh)), face_(face) {}
 
  public:
@@ -20,7 +20,7 @@ class FaceCoords : TriangleCoords<N> {
 
  private:
   static Eigen::Matrix<double, N, 3> staticInitializer(const cgal::face_descriptor face,
-                                                       const cgal::Polyhedron& mesh);
+                                                       const cgal::PolyhedronPtr mesh);
   const cgal::face_descriptor face_;
 };
 typedef FaceCoords<2> FaceCoords2d;

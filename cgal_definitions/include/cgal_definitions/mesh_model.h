@@ -65,6 +65,8 @@ class MeshModel {
    */
   Polyhedron getMesh() const;
 
+  PolyhedronPtr getMeshPtr();
+
   /**
    * Get facet iterator
    */

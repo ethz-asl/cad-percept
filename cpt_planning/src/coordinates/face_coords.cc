@@ -4,11 +4,11 @@ namespace planning {
 
 template <int N>
 Eigen::Matrix<double, N, 3> FaceCoords<N>::staticInitializer(const cgal::face_descriptor face,
-                                                             const cgal::Polyhedron& mesh) {
+                                                             const cgal::PolyhedronPtr mesh) {
   int i = 0;
   Eigen::Matrix<double, N, 3> vertice_coords;
 
-  for (const auto& halfedge : CGAL::halfedges_around_face(CGAL::halfedge(face, mesh), mesh)) {
+  for (const auto& halfedge : CGAL::halfedges_around_face(CGAL::halfedge(face, *mesh), *mesh)) {
     if (i >= 3) {
       break;
     }

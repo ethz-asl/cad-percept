@@ -116,6 +116,7 @@ void MeshModel::transform(const Transformation &transform) {
 int MeshModel::size() const { return P_.size_of_facets(); }
 
 Polyhedron MeshModel::getMesh() const { return P_; }
+PolyhedronPtr MeshModel::getMeshPtr() { return PolyhedronPtr(&P_); }
 
 void MeshModel::initializeFacetIndices() {
   // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for

@@ -14,25 +14,44 @@ namespace planning {
 class UVMapping {
   // UV mapping
   typedef CGAL::Unique_hash_map<cgal::face_descriptor, cgal::face_descriptor> FaceHashMap;
+  typedef CGAL::Unique_hash_map<cgal::vertex_descriptor, cgal::Point_2> UVVertexMap;
   typedef boost::associative_property_map<FaceHashMap> UVPropertyMap;
 
   /*
    * Internal class that handles build up of the flattened coordinate representation.
-   *
+   */
   class CoordinateMeshBuilder : public CGAL::Modifier_base<cgal::HalfedgeDS> {
    public:
-    CoordinateMeshBuilder(cgal::PolyhedronPtr mesh, UVHashMap &mapping,
-                          UVReverseHashMap *reverse_mapping) {}
+    CoordinateMeshBuilder(cgal::PolyhedronPtr mesh, UVVertexMap &vertexmap)
+        : vertexmap_(vertexmap), mesh_(mesh) {}
 
+    void operator()(cgal::HalfedgeDS &hds);
+
+   protected:
     cgal::PolyhedronPtr mesh_;
-    UVHashMap &mapping_;
-    UVReverseHashMap *reverse_mapping_;
-
-    void operator()(cgal::HalfedgeDS &hds) {}
+    UVVertexMap &vertexmap_;
   };
-/
-  void build(cgal::PolyhedronPtr mesh) {}
-  */
+
+ public:
+  void build(cgal::PolyhedronPtr mesh) {
+    CoordinateMeshBuilder builder(mesh_3d_->getMeshPtr(), vertex_map_);
+    cgal::PolyhedronPtr flat_mesh = std::make_shared<cgal::Polyhedron>();
+    flat_mesh->delegate(builder);
+
+    mesh_2d_ = std::make_shared<cgal::MeshModel>(*flat_mesh);
+
+    // create double-mapping.
+    // first from 2d to 3d
+    map_2d_to_3d_.insert(mesh_2d_->getMeshPtr()->facets_begin(),
+                         mesh_2d_->getMeshPtr()->facets_end(),
+                         mesh_3d_->getMeshPtr()->facets_begin());
+
+    // then from 3d to 2d
+    map_3d_to_2d_.insert(mesh_3d_->getMeshPtr()->facets_begin(),
+                         mesh_3d_->getMeshPtr()->facets_end(),
+                         mesh_2d_->getMeshPtr()->facets_begin());
+  }
+
   std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector3In);
   std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector2In);
 
@@ -49,6 +68,7 @@ class UVMapping {
  private:
   FaceHashMap map_2d_to_3d_;
   FaceHashMap map_3d_to_2d_;
+  UVVertexMap vertex_map_;
   cgal::MeshModel::Ptr mesh_2d_;
   cgal::MeshModel::Ptr mesh_3d_;
 };
