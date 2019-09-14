@@ -63,18 +63,26 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   metricsFile.open(filename);
   metricsFile << "Duration" << "," << std::endl;
 
-  // Create output file saving the transformation from scanner to map
+  // Create output file saving the transformation from scanner to marker2
   std::stringstream ss3;
-  ss3 << parameters_.path << "/exports/T_updated_scanner_to_map_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  ss3 << parameters_.path << "/exports/T_scanner_to_marker2_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
   filename = ss3.str();
   transformationFile.open(filename);
   transformationFile << "Duration" << "," << "x" << "," << "y" << "," << "z" << "," << "x" << "," << "y" << "," << "z" << "," << "w" << std::endl;
+
+  // Create output file saving the transformation from prisma to marker2
+  std::stringstream ss4;
+  ss4 << parameters_.path << "/exports/T_prisma_to_marker2_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  filename = ss4.str();
+  transformationFile2.open(filename);
+  transformationFile2 << "Duration" << "," << "x" << "," << "y" << "," << "z" << "," << "x" << "," << "y" << "," << "z" << "," << "w" << std::endl;
 }
 
 Mapper::~Mapper() {
   timingFile.close();
   metricsFile.close();
   transformationFile.close();
+  transformationFile2.close();
 }
 
 bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req,
@@ -334,7 +342,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     }
 
     tf::StampedTransform transform;
-    tf_listener_.lookupTransform("marker2", parameters_.tf_map_frame, ros::Time(0), transform); // from tf_map_frame to "marker2"
+    tf_listener_.lookupTransform("marker2", parameters_.tf_map_frame, stamp, transform); // from tf_map_frame to "marker2"
     Eigen::Matrix3d rotation;
     tf::matrixTFToEigen(transform.getBasis(), rotation);
     Eigen::Vector3d translation;
@@ -342,11 +350,18 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     Eigen::Matrix4d T_map_to_marker2 = Eigen::Matrix4d::Identity();
     T_map_to_marker2.block(0, 0, 3, 3) = rotation;
     T_map_to_marker2.block(0, 3, 3, 1) = translation;
+
+    Eigen::Matrix4d T_leica_to_lidar = Eigen::Matrix4d::Identity();
+    // these values are only valid for current setup and estimated by measurements at different times:
+    T_leica_to_lidar(0,3) = 0.214;
+    T_leica_to_lidar(1,3) = 0.198;
+    T_leica_to_lidar(2,3) = 0.396;
     
     Eigen::Matrix4f T_float = T_updated_scanner_to_map;
     Eigen::Matrix4d T_double_updated_scanner_to_map = T_float.cast <double> ();
 
     // the naming of the Transformation matrices is confusing, since normally you would switch the names
+    Eigen::Matrix4d T_prisma_to_marker2 = T_map_to_marker2 * T_double_updated_scanner_to_map * T_leica_to_lidar;
     Eigen::Matrix4d T_scanner_to_marker2 = T_map_to_marker2 * T_double_updated_scanner_to_map;
     
     // Save complete matrix to file
@@ -364,6 +379,22 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     Eigen::Quaterniond rot(rotationMatrix);
 
     transformationFile << stamp << "," << T_scanner_to_marker2(0,3) << "," << T_scanner_to_marker2(1,3) << "," << T_scanner_to_marker2(2,3) << "," << rot.x() << "," << rot.y() << "," << rot.z() << "," << rot.w() << std::endl;
+
+  // Save complete matrix to file
+    rotationMatrix(0,0) = T_prisma_to_marker2(0,0);
+    rotationMatrix(0,1) = T_prisma_to_marker2(0,1);
+    rotationMatrix(0,2) = T_prisma_to_marker2(0,2);
+    rotationMatrix(1,0) = T_prisma_to_marker2(1,0);
+    rotationMatrix(1,1) = T_prisma_to_marker2(1,1);
+    rotationMatrix(1,2) = T_prisma_to_marker2(1,2);
+    rotationMatrix(2,0) = T_prisma_to_marker2(2,0);
+    rotationMatrix(2,1) = T_prisma_to_marker2(2,1);
+    rotationMatrix(2,2) = T_prisma_to_marker2(2,2);
+
+    rot = Eigen::Quaterniond(rotationMatrix);
+
+    transformationFile2 << stamp << "," << T_prisma_to_marker2(0,3) << "," << T_prisma_to_marker2(1,3) << "," << T_prisma_to_marker2(2,3) << "," << rot.x() << "," << rot.y() << "," << rot.z() << "," << rot.w() << std::endl;
+
 
     /**
      * Publish
