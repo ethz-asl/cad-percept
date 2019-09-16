@@ -4,10 +4,6 @@ from interactive_markers.menu_handler import MenuHandler
 from visualization_msgs.msg import Marker, InteractiveMarker, InteractiveMarkerControl
 from geometry_msgs.msg import Point, Quaternion
 
-# TODO: replace FacetID again and remove srv folder
-#from cpt_selective_icp.srv import FacetID
-from cpt_meshcad_interface.srv import FacetID
-
 
 def makeBox(msg, scale=0.35, color=[0.5, 0.5, 0.5, 1]):
     """
