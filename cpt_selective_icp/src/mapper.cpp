@@ -483,7 +483,7 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
     // Ensure minimum overlap between scans.
     const double estimated_overlap = selective_icp_.errorMinimizer->getOverlap();
     ROS_DEBUG_STREAM("[Selective ICP] Overlap: " << estimated_overlap);
-    metricsFile << stamp << "," << "," << "," << "," << "," << "," << "," << "," << estimated_overlap << std::endl;
+    metricsFile << stamp << "," << "," << "," << "," << "," << "," << "," << "," << estimated_overlap << "," << "," << std::endl;
     if (estimated_overlap < parameters_.min_overlap) {
       ROS_ERROR_STREAM(
           "[Selective ICP] Estimated overlap too small, ignoring ICP correction!");
@@ -545,7 +545,7 @@ bool Mapper::normalICP(const DP &cloud, PM::TransformationParameters *T_updated_
     // Ensure minimum overlap between scans.
     const double estimated_overlap = icp_.errorMinimizer->getOverlap();
     ROS_DEBUG_STREAM("[ICP] Overlap: " << estimated_overlap);
-    metricsFile << stamp << "," << "," << "," << "," << "," << "," << "," << "," << "," << estimated_overlap << std::endl;
+    metricsFile << stamp << "," << "," << "," << "," << "," << "," << "," << "," << "," << estimated_overlap << "," << std::endl;
     if (estimated_overlap < parameters_.min_overlap) {
       ROS_ERROR_STREAM(
           "[ICP] Estimated overlap too small, ignoring ICP correction!");
@@ -581,7 +581,7 @@ double Mapper::getICPErrorToRef(const DP &aligned_dp) {
     }
   }
   std::cout << "Approximation of ICP error to selected references is: " << result/point_count << std::endl;
-  metricsFile << stamp << "," << "," << "," << "," << "," << "," << "," << result/point_count << std::endl;
+  metricsFile << stamp << "," << "," << "," << "," << "," << "," << "," << result/point_count << "," << "," << "," << std::endl;
   return result/point_count;
 }
 
@@ -597,7 +597,7 @@ double Mapper::getICPError(const DP &aligned_dp) {
     }
   }
   std::cout << "Approximation of ICP error to complete model is: " << result/point_count << std::endl;
-  metricsFile << stamp << "," << result/point_count << std::endl;
+  metricsFile << stamp << "," << result/point_count << "," << "," << "," << "," << "," << "," << "," << "," << "," << std::endl;
   return result/point_count;
 }
 
@@ -675,7 +675,7 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
   std::cout << "Haussdorff distance: " << std::sqrt(haussdorffDist) << " m" << std::endl;
 	std::cout << "Haussdorff quantile distance: " << std::sqrt(haussdorffQuantileDist) <<  " m" << std::endl;
   
-  metricsFile << stamp << "," << "," << error/nbMatchedPoints << "," << meanDist << "," << nbMatchedPoints << "," << std::sqrt(haussdorffDist) << "," << std::sqrt(haussdorffQuantileDist) << std::endl;
+  metricsFile << stamp << "," << "," << error/nbMatchedPoints << "," << meanDist << "," << nbMatchedPoints << "," << std::sqrt(haussdorffDist) << "," << std::sqrt(haussdorffQuantileDist) << "," << "," << "," << "," << std::endl;
 }
 
 // this is general pre-processing of dp cloud for map and reading cloud
@@ -746,7 +746,7 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
   }
 
   std::cout << "New map created with " << mapPointCloud.features.cols() << " points." << std::endl;
-  metricsFile << stamp << "," << "," << "," << "," << "," << "," << "," << "," << "," << "," << mapPointCloud.features.cols() << std::endl;
+  metricsFile << stamp << "," << "," << "," << "," << "," << "," << "," << "," << "," << "," << mapPointCloud.getNbPoints() << std::endl;
 
   if (parameters_.update_icp_ref_trigger == true) {
     DP ref_pc = mapPointCloud; // add references 
