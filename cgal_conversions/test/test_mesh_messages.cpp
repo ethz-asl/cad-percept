@@ -82,10 +82,8 @@ TEST(CGALConversionsTest, msg_to_triangle_mesh) {
   // this is a bit cumbersome since Polyhedrones can not be compared
   std::vector<int> vertices1;
   std::vector<int> vertices2;
-  for (Polyhedron::Facet_iterator facet = m1.facets_begin();
-       facet != m1.facets_end(); ++facet) {
-    Polyhedron::Halfedge_around_facet_const_circulator hit =
-        facet->facet_begin();
+  for (Polyhedron::Facet_iterator facet = m1.facets_begin(); facet != m1.facets_end(); ++facet) {
+    Polyhedron::Halfedge_around_facet_const_circulator hit = facet->facet_begin();
     do {
       Point p = hit->vertex()->point();
       vertices1.push_back(p.x());
@@ -93,10 +91,8 @@ TEST(CGALConversionsTest, msg_to_triangle_mesh) {
       vertices1.push_back(p.z());
     } while (++hit != facet->facet_begin());
   }
-  for (Polyhedron::Facet_iterator facet = m2.facets_begin();
-       facet != m2.facets_end(); ++facet) {
-    Polyhedron::Halfedge_around_facet_const_circulator hit =
-        facet->facet_begin();
+  for (Polyhedron::Facet_iterator facet = m2.facets_begin(); facet != m2.facets_end(); ++facet) {
+    Polyhedron::Halfedge_around_facet_const_circulator hit = facet->facet_begin();
     do {
       Point p = hit->vertex()->point();
       vertices2.push_back(p.x());
@@ -125,8 +121,7 @@ TEST(CGALConversionsTest, mesh_to_vertice_point_cloud) {
   std::vector<int> vertices;
   std::vector<int> points;
 
-  for (auto vertex_point = m.points_begin(); vertex_point != m.points_end();
-       ++vertex_point) {
+  for (auto vertex_point = m.points_begin(); vertex_point != m.points_end(); ++vertex_point) {
     vertices.push_back(vertex_point->x());
     vertices.push_back(vertex_point->y());
     vertices.push_back(vertex_point->z());

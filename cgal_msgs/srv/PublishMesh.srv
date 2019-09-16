@@ -1,0 +1,5 @@
+string path
+---
+bool success
+string message
+
