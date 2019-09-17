@@ -1,5 +1,7 @@
 #include "cpt_utils/pc_processing.h"
 
+#include <random>
+
 namespace cad_percept {
 namespace cpt_utils {
 

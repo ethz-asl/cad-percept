@@ -88,7 +88,7 @@ PointAndPrimitiveId MeshModel::getClosestTriangle(const Point &p) const {
 PointAndPrimitiveId MeshModel::getClosestTriangle(const double x, const double y,
                                                   const double z) const {
   Point pt = Point(x, y, z);
-  return getClosestPrimitive(pt);
+  return getClosestTriangle(pt);
 }
 
 // directed to positive side of h

@@ -129,7 +129,6 @@ class MeshModel {
 
 
  private:
-  MeshModel() {}                           // private default constructor
   MeshModel(Polyhedron &p, bool verbose);  // Constructor to be used by factory method
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;
