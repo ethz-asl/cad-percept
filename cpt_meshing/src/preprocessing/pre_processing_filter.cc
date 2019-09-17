@@ -54,5 +54,5 @@ void PreProcessingFilter::estimateNormals(cad_percept::meshing::InputPointCloud:
   ne.setRadiusSearch(normal_search_radius_);
   ne.compute(*normals);
 }
-}
-}
+}  // namespace meshing
+}  // namespace cad_percept

@@ -12,29 +12,20 @@ void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *po
   PM::ICP icp;
   icp.setDefault();
   DP mapPointCloud, newCloud;
-  TP T_to_map_from_new = TP::Identity(4,4);
+  TP T_to_map_from_new = TP::Identity(4, 4);
 
   // Rigid transformation
   std::shared_ptr<PM::Transformation> rigidTrans;
   rigidTrans = PM::get().REG(Transformation).create("RigidTransformation");
 
   // Create filters manually to clean the global map
-	std::shared_ptr<PM::DataPointsFilter> densityFilter =
-					PM::get().DataPointsFilterRegistrar.create(
-						"SurfaceNormalDataPointsFilter",
-						{
-							{"knn", "10"},
-							{"epsilon", "5"},
-							{"keepNormals", "0"},
-							{"keepDensities", "1"}
-						}
-          );
+  std::shared_ptr<PM::DataPointsFilter> densityFilter = PM::get().DataPointsFilterRegistrar.create(
+      "SurfaceNormalDataPointsFilter",
+      {{"knn", "10"}, {"epsilon", "5"}, {"keepNormals", "0"}, {"keepDensities", "1"}});
 
-	std::shared_ptr<PM::DataPointsFilter> maxDensitySubsample =
-					PM::get().DataPointsFilterRegistrar.create(
-						"MaxDensityDataPointsFilter",
-						{{"maxDensity", PointMatcherSupport::toParam(30)}}
-          );
+  std::shared_ptr<PM::DataPointsFilter> maxDensitySubsample =
+      PM::get().DataPointsFilterRegistrar.create(
+          "MaxDensityDataPointsFilter", {{"maxDensity", PointMatcherSupport::toParam(30)}});
 
   int i = 0;
   for (auto pointcloud : cb) {
@@ -51,8 +42,7 @@ void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *po
       // use last transformation as a prior makes no sense in map frame
       // const TP prior = T_to_map_from_new;
       T_to_map_from_new = icp(newCloud, mapPointCloud);
-    }
-    catch (PM::ConvergenceError &error) {
+    } catch (PM::ConvergenceError &error) {
       std::cout << "ERROR PM::ICP alignment failed to converge: " << std::endl;
       std::cout << " " << error.what() << std::endl;
       continue;
@@ -72,7 +62,9 @@ void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *po
     mapPointCloud = maxDensitySubsample->filter(mapPointCloud);
   }
   *pointcloud_out = dpToPointCloud(mapPointCloud);
-  mapPointCloud.save("/home/julian/megabot_ws/src/cad-percept/srd_relative_deviations/resources/pc_align_sequence.pcd");
+  mapPointCloud.save(
+      "/home/julian/megabot_ws/src/cad-percept/srd_relative_deviations/resources/"
+      "pc_align_sequence.pcd");
 }
 
 PointCloud dpToPointCloud(const DP &dppointcloud) {
@@ -107,19 +99,18 @@ DP pointCloudToDP(const PointCloud &pointcloud) {
   featLabels.push_back(DP::Label("z", 1));
   featLabels.push_back(DP::Label("pad", 1));
 
-  DP dppointcloud = DP(feat, featLabels); // construct a point cloud from existing features without any descriptor
+  DP dppointcloud = DP(
+      feat, featLabels);  // construct a point cloud from existing features without any descriptor
 
   return dppointcloud;
 }
 
 void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform) {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ> ());
-  pcl::transformPointCloud (*pointcloud, *pointcloud, transform);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::transformPointCloud(*pointcloud, *pointcloud, transform);
 }
 
-void sample_pc_from_mesh(const cgal::Polyhedron &P, 
-                         const int no_of_points,
-                         const double stddev,
+void sample_pc_from_mesh(const cgal::Polyhedron &P, const int no_of_points, const double stddev,
                          PointCloud *pointcloud) {
   // generate random point sets on triangle mesh
   std::vector<cgal::Point> points;
@@ -130,7 +121,7 @@ void sample_pc_from_mesh(const cgal::Polyhedron &P,
   // Check that we have really created no_of_points points.
   assert(points.size() == no_of_points);
   // print the first point that was generated
-  //std::cout << points[0] << std::endl;  
+  // std::cout << points[0] << std::endl;
 
   // add random noise with Gaussian distribution
   const double mean = 0.0;
@@ -140,9 +131,8 @@ void sample_pc_from_mesh(const cgal::Polyhedron &P,
   std::vector<cgal::Point> points_noise;
   for (auto point : points) {
     cgal::Point p_noise;
-    p_noise = cgal::Point(point.x() + dist(generator),
-                    point.y() + dist(generator),
-                    point.z() + dist(generator));
+    p_noise = cgal::Point(point.x() + dist(generator), point.y() + dist(generator),
+                          point.z() + dist(generator));
     points_noise.push_back(p_noise);
   }
 
@@ -160,13 +150,14 @@ void sample_pc_from_mesh(const cgal::Polyhedron &P,
     pointcloud->push_back(cloudpoint);
   }
 
-  //std::stringstream ss;
-  //ss << "/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/" << file_name << ".pcd";
-  //pcl::io::savePCDFileASCII(ss.str(), *pointcloud);
-  //std::cerr << "Saved " << pointcloud->points.size() << " data points to pcd" << std::endl;
+  // std::stringstream ss;
+  // ss << "/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/" << file_name <<
+  // ".pcd"; pcl::io::savePCDFileASCII(ss.str(), *pointcloud); std::cerr << "Saved " <<
+  // pointcloud->points.size() << " data points to pcd" << std::endl;
 }
 
-void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3 &plane, PointCloud *cloud_out) {
+void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3 &plane,
+                    PointCloud *cloud_out) {
   for (auto point : cloud_in) {
     cgal::ShapeKernel::Point_3 p_proj;
     p_proj = plane.projection(cgal::ShapeKernel::Point_3(point.x, point.y, point.z));
@@ -182,7 +173,9 @@ void projectToPlane(const PointCloud &cloud_in, const cgal::Plane &plane, PointC
   }
 }
 
-void projectToPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, const pcl::ModelCoefficients::Ptr coefficients, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out) {
+void projectToPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in,
+                    const pcl::ModelCoefficients::Ptr coefficients,
+                    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out) {
   pcl::ProjectInliers<pcl::PointXYZ> proj;
   proj.setModelType(pcl::SACMODEL_PLANE);
   proj.setInputCloud(cloud_in);
@@ -195,7 +188,8 @@ double getArea(const PointCloud &pointcloud) {
 
   // copy pointer
   pcl::PointCloud<pcl::PointXYZ>::Ptr mycloudPtr;
-  mycloudPtr = boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ> >(new pcl::PointCloud<pcl::PointXYZ>(pointcloud)); 
+  mycloudPtr = boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ> >(
+      new pcl::PointCloud<pcl::PointXYZ>(pointcloud));
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::ConvexHull<pcl::PointXYZ> chull;
@@ -216,17 +210,18 @@ void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox) {
 void removeOutliers(PointCloud *pointcloud, int knn, float thresh_mult) {
   // copy pointer
   pcl::PointCloud<pcl::PointXYZ>::Ptr mycloudPtr;
-  mycloudPtr = boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ> >(new pcl::PointCloud<pcl::PointXYZ>(*pointcloud)); 
+  mycloudPtr = boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ> >(
+      new pcl::PointCloud<pcl::PointXYZ>(*pointcloud));
 
-  //std::cout << "Cloud before statistical outlier removal: " << mycloudPtr->size() << std::endl;
+  // std::cout << "Cloud before statistical outlier removal: " << mycloudPtr->size() << std::endl;
   // Create the filtering object
   pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
   sor.setInputCloud(mycloudPtr);
   sor.setMeanK(knn);
   sor.setStddevMulThresh(thresh_mult);
   sor.filter(*pointcloud);
-  //std::cout << "Cloud after statistical outlier removal: " << pointcloud->size() << std::endl;
+  // std::cout << "Cloud after statistical outlier removal: " << pointcloud->size() << std::endl;
 }
 
-}
-}
+}  // namespace cpt_utils
+}  // namespace cad_percept

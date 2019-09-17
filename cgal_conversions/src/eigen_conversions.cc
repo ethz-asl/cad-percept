@@ -92,5 +92,5 @@ Transformation eigenTransformationToCgalTransformation(const Eigen::Matrix4d &tr
   eigenTransformationToCgalTransformation(transformation, &ctransformation);
   return ctransformation;
 }
-}
-}
+}  // namespace cgal
+}  // namespace cad_percept

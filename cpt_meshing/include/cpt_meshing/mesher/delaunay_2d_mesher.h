@@ -44,7 +44,7 @@ typedef CGAL::Delaunay_triangulation_2<ProjectionTraits, TriangulationDataStruct
 typedef CGAL::Surface_mesh_simplification::Edge_profile<cad_percept::cgal::Polyhedron> EdgeProfile;
 
 typedef DelaunayXDMesher<TriangulationType> Mesher;
-}
-}
-}
+}  // namespace Delaunay2DMesher
+}  // namespace meshing
+}  // namespace cad_percept
 #endif  // CPT_MESHING_DELAUNAY_2D_MESHER_H

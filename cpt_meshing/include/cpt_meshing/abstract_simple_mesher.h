@@ -36,6 +36,6 @@ class AbstractSimpleMesher : public MesherInterface {
   InputPointCloud::Ptr points_;
   InputNormals::Ptr normals_;
 };
-}
-}
+}  // namespace meshing
+}  // namespace cad_percept
 #endif  // CPT_MESHING_ABSTRACT_SIMPLE_MESHER_H
