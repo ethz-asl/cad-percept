@@ -2,22 +2,23 @@
 #define CGAL_DEFINITIONS_MESH_MODEL_H
 
 #include <math.h>
+#include <algorithm>
+#include <boost/bimap.hpp>
+#include <boost/bimap/multiset_of.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
 #include <fstream>
 #include <iostream>
-#include <algorithm>
 #include <map>
-#include <unordered_set>
 #include <queue>
-#include <boost/bimap.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
-#include <boost/bimap/multiset_of.hpp>
+#include <unordered_set>
 
 #include "cgal_typedefs.h"
 
 namespace cad_percept {
 namespace cgal {
 
-typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::multiset_of<int>> association_bimap;
+typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::multiset_of<int>>
+    association_bimap;
 typedef association_bimap::value_type bi_association;
 
 struct Intersection {
@@ -33,7 +34,7 @@ class MeshModel {
 
   MeshModel(const Polyhedron &mesh, bool verbose = false);
 
-  MeshModel(); // necessary to create class object which will be initialized later
+  MeshModel();  // necessary to create class object which will be initialized later
 
   void init(const std::string &off_path, bool verbose = false);
 
@@ -87,14 +88,16 @@ class MeshModel {
    * Get facet handle
    */
   Polyhedron::Facet_handle getFacetHandle(const uint facet_id);
-  Polyhedron::Facet_handle getFacetHandle(Polyhedron &P, const uint facet_id); // for the case we want to know from other Polyhedron
+  Polyhedron::Facet_handle getFacetHandle(
+      Polyhedron &P, const uint facet_id);  // for the case we want to know from other Polyhedron
 
   int getFacetIndex(const Polyhedron::Facet_handle &handle);
 
   /**
    * Check coplanarity of two facets described by halfedge handle h1 and h2
    */
-  bool coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2, double eps) const;
+  bool coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2,
+                double eps) const;
 
   void printFacetsOfHalfedges();
 
@@ -127,7 +130,6 @@ class MeshModel {
    */
   double squaredDistance(const Point &point) const;
 
-
  private:
   MeshModel(Polyhedron &p, bool verbose);  // Constructor to be used by factory method
   Polyhedron P_;
@@ -135,7 +137,6 @@ class MeshModel {
   bool verbose_;
 
   void initializeFacetIndices();
-
 };
 }  // namespace cgal
 }  // namespace cad_percept

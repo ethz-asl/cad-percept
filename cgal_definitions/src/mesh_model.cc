@@ -156,18 +156,18 @@ std::map<int, Vector> MeshModel::computeNormals() const {
   std::map<face_descriptor, Vector> fnormals;
   std::map<vertex_descriptor, Vector> vnormals;
 
-  CGAL::Polygon_mesh_processing::compute_normals(P_,
-                                                boost::make_assoc_property_map(vnormals),
-                                                boost::make_assoc_property_map(fnormals));
-  //std::cout << "Face normals :" << std::endl;
-  for(face_descriptor fd: faces(P_)){ // faces returns iterator range over faces, range over all face indices
-    //std::cout << fnormals[fd] << std::endl;
-    //std::cout << fd->id() << std::endl; // not sure why this even works, since not documented
+  CGAL::Polygon_mesh_processing::compute_normals(P_, boost::make_assoc_property_map(vnormals),
+                                                 boost::make_assoc_property_map(fnormals));
+  // std::cout << "Face normals :" << std::endl;
+  for (face_descriptor fd :
+       faces(P_)) {  // faces returns iterator range over faces, range over all face indices
+    // std::cout << fnormals[fd] << std::endl;
+    // std::cout << fd->id() << std::endl; // not sure why this even works, since not documented
     normals.insert(std::pair<int, Vector>(fd->id(), fnormals[fd]));
   }
-  //std::cout << "Vertex normals :" << std::endl;
-  for(vertex_descriptor vd: vertices(P_)){
-    //std::cout << vnormals[vd] << std::endl;
+  // std::cout << "Vertex normals :" << std::endl;
+  for (vertex_descriptor vd : vertices(P_)) {
+    // std::cout << vnormals[vd] << std::endl;
   }
 
   return normals;
@@ -176,7 +176,8 @@ std::map<int, Vector> MeshModel::computeNormals() const {
 Vector MeshModel::computeFaceNormal(face_descriptor &fd) const {
   // unclear how to get face descriptor from facet, but works with Facet_handle
   Vector face_normal;
-  face_normal = CGAL::Polygon_mesh_processing::compute_face_normal(fd, P_); // not sure if this works properly with handle
+  face_normal = CGAL::Polygon_mesh_processing::compute_face_normal(
+      fd, P_);  // not sure if this works properly with handle
   return face_normal;
 }
 
@@ -186,27 +187,32 @@ Vector MeshModel::computeFaceNormal2(const Polyhedron::Facet_handle &facet_handl
   Point p1 = he->next()->vertex()->point();
   Point p2 = he->next()->next()->vertex()->point();
   // alternatively: Vector n = CGAL::normal(p0, p1, p2); check directions
-  Vector n = CGAL::cross_product(p0-p2, p1-p2);
+  Vector n = CGAL::cross_product(p0 - p2, p1 - p2);
   n = n / sqrt(n.squared_length());
   return n;
 }
 
-bool MeshModel::coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2, double eps) const {
+bool MeshModel::coplanar(const Polyhedron::Halfedge_handle &h1,
+                         const Polyhedron::Halfedge_handle &h2, double eps) const {
   // not sure about rounding errors when computing normals, so for eps = 0 use:
   if (eps == 0) {
     // check coplanarity of at least three points from the new triangle
-    if (CGAL::coplanar(h1->vertex()->point(), h1->next()->vertex()->point(), h1->next()->next()->vertex()->point(), h2->vertex()->point())
-        && CGAL::coplanar(h1->vertex()->point(), h1->next()->vertex()->point(), h1->next()->next()->vertex()->point(), h2->next()->vertex()->point())
-        && CGAL::coplanar(h1->vertex()->point(), h1->next()->vertex()->point(), h1->next()->next()->vertex()->point(), h2->next()->next()->vertex()->point()))
-          return true;
+    if (CGAL::coplanar(h1->vertex()->point(), h1->next()->vertex()->point(),
+                       h1->next()->next()->vertex()->point(), h2->vertex()->point()) &&
+        CGAL::coplanar(h1->vertex()->point(), h1->next()->vertex()->point(),
+                       h1->next()->next()->vertex()->point(), h2->next()->vertex()->point()) &&
+        CGAL::coplanar(h1->vertex()->point(), h1->next()->vertex()->point(),
+                       h1->next()->next()->vertex()->point(),
+                       h2->next()->next()->vertex()->point()))
+      return true;
     else
       return false;
   } else {
     Vector n1 = computeFaceNormal2(h1->facet());
     Vector n2 = computeFaceNormal2(h2->facet());
     // calculate angle between the two normal vectors
-    double phi = acos(CGAL::to_double(CGAL::scalar_product(n1, n2))); // rad
-    if(phi > eps)
+    double phi = acos(CGAL::to_double(CGAL::scalar_product(n1, n2)));  // rad
+    if (phi > eps)
       return false;
     else
       return true;
@@ -215,7 +221,7 @@ bool MeshModel::coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron
 
 void MeshModel::printFacetsOfHalfedges() {
   for (Polyhedron::Halfedge_iterator j = P_.halfedges_begin(); j != P_.halfedges_end(); ++j) {
-    if(j->is_border_edge()) {
+    if (j->is_border_edge()) {
       continue;
     }
     std::cout << "Facet is: " << j->facet()->id() << std::endl;
@@ -223,28 +229,30 @@ void MeshModel::printFacetsOfHalfedges() {
   }
 }
 
-void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *result, const double eps) {
+void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *result,
+                                   const double eps) {
   // we can use the "result" pointer here directly even if there are already results there, because
   // they are coplanar and we check results, there is no need to check again
   if (facet_id > P_.size_of_facets()) {
     std::cerr << "Facet ID not part of facets." << std::endl;
     return;
   }
-  std::queue<Polyhedron::Facet_handle> coplanar_to_check; // queue of coplanar facets of which we need to check the neighbors
+  std::queue<Polyhedron::Facet_handle>
+      coplanar_to_check;  // queue of coplanar facets of which we need to check the neighbors
   Polyhedron::Facet_handle start_handle = getFacetHandle(facet_id);
   coplanar_to_check.push(start_handle);
   result->insert(facet_id);
 
-  while(!coplanar_to_check.empty()) {
+  while (!coplanar_to_check.empty()) {
     Polyhedron::Facet_handle handle = coplanar_to_check.front();
     coplanar_to_check.pop();
     Polyhedron::Halfedge_around_facet_circulator hit = handle->facet_begin();
     do {
       if (!(hit->is_border_edge())) {
-        if (coplanar(hit, hit->opposite(), eps)) { // play with eps to get whole plane
-          if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3
-              && CGAL::circulator_size(hit->vertex_begin()) >= 3
-              && hit->facet()->id() != hit->opposite()->facet()->id()) {
+        if (coplanar(hit, hit->opposite(), eps)) {  // play with eps to get whole plane
+          if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3 &&
+              CGAL::circulator_size(hit->vertex_begin()) >= 3 &&
+              hit->facet()->id() != hit->opposite()->facet()->id()) {
             if (result->find(hit->opposite()->facet()->id()) == result->end()) {
               result->insert(hit->opposite()->facet()->id());
               coplanar_to_check.push(hit->opposite()->facet());
@@ -257,9 +265,11 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
 }
 
 void MeshModel::findAllCoplanarFacets(association_bimap *bimap, const double eps) {
-int plane_id = 0; // arbitrary plane_id associated to found coplanar facets
+  int plane_id = 0;  // arbitrary plane_id associated to found coplanar facets
   for (uint id = 0; id < P_.size_of_facets(); ++id) {
-    if (bimap->left.find(id) == bimap->left.end()) { // only find Coplanar Facets if Facet is not already associated to plane
+    if (bimap->left.find(id) ==
+        bimap->left
+            .end()) {  // only find Coplanar Facets if Facet is not already associated to plane
       std::unordered_set<int> current_result;
       findCoplanarFacets(id, &current_result, eps);
 
@@ -274,8 +284,7 @@ int plane_id = 0; // arbitrary plane_id associated to found coplanar facets
 }
 
 Plane MeshModel::getPlaneFromHandle(Polyhedron::Facet_handle &f) const {
-  return Plane(f->halfedge()->vertex()->point(),
-               f->halfedge()->next()->vertex()->point(),
+  return Plane(f->halfedge()->vertex()->point(), f->halfedge()->next()->vertex()->point(),
                f->halfedge()->next()->next()->vertex()->point());
 }
 
@@ -285,9 +294,8 @@ Plane MeshModel::getPlaneFromID(uint facet_id) {
 }
 
 Triangle MeshModel::getTriangleFromHandle(Polyhedron::Facet_handle &f) const {
-  return Triangle(f->halfedge()->vertex()->point(),
-               f->halfedge()->next()->vertex()->point(),
-               f->halfedge()->next()->next()->vertex()->point());
+  return Triangle(f->halfedge()->vertex()->point(), f->halfedge()->next()->vertex()->point(),
+                  f->halfedge()->next()->next()->vertex()->point());
 }
 
 Triangle MeshModel::getTriangleFromID(uint facet_id) {
