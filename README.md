@@ -10,6 +10,7 @@ See the [maplab tutorial](https://github.com/ethz-asl/maplab/wiki/Installation-U
 for instructions to install ros and ccache.
 
 For cad-percept, we require the following dependencies:
+
 ```
 sudo apt install clang-format libgmp-dev libboost-all-dev libmpfr-dev ros-melodic-geometric-shapes
 ```
@@ -18,7 +19,8 @@ sudo apt install clang-format libgmp-dev libboost-all-dev libmpfr-dev ros-melodi
 
 (optional) create a python environment separate from your system-wide pyhton 
 to avoid version conflicts.
-``
+
+```
 virtualenv --pyhton=python2 --no-site-packages py2
 source py2/bin/activate
 pip install --upgrade pip
@@ -26,6 +28,7 @@ pip install wstool catkin-tools empy
 ```
 
 Now set up a catkin workspace
+
 ```
 mkdir -p <workspace_name>/src
 cd <workspace_name>
