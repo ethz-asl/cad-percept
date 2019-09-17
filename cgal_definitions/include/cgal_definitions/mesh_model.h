@@ -27,10 +27,12 @@ struct Intersection {
 
 class MeshModel {
  public:
-  MeshModel(const std::string &off_pathm, bool verbose = false);
+  typedef std::shared_ptr<MeshModel> Ptr;
+  static bool create(const std::string &off_pathm, MeshModel::Ptr *meshmodel_ptr,
+                     bool verbose = false);
 
   MeshModel(const Polyhedron &mesh, bool verbose = false);
-  
+
   MeshModel(); // necessary to create class object which will be initialized later
 
   void init(const std::string &off_path, bool verbose = false);
@@ -39,42 +41,41 @@ class MeshModel {
 
   /**
    * Check if there is an intersection
-   */ 
+   */
   bool isIntersection(const Ray &query) const;
 
   /**
- * Get the intersection between the ray and the mesh model.
- */
+   * Get the intersection between the ray and the mesh model.
+   */
   Intersection getIntersection(const Ray &query) const;
   /**
- * Get the distance of the intersection with the mesh from the ray origin.
- */
+   * Get the distance of the intersection with the mesh from the ray origin.
+   */
   double getDistance(const Ray &query) const;
 
   /**
- * Get closest point on surface and surface id to a given point. (renamed since it works on every Polyhedron, not only triangle)
- */
-  PointAndPrimitiveId getClosestPrimitive(const Point &p) const;
-  PointAndPrimitiveId getClosestPrimitive(const double x, const double y,
-                                         const double z) const;
+   * Get closest point on surface and surface id to a given point.
+   */
+  PointAndPrimitiveId getClosestTriangle(const Point &p) const;
+  PointAndPrimitiveId getClosestTriangle(const double x, const double y, const double z) const;
 
   /**
-   * Get normal (different implementations, same result)
+   * Get normal of primitive.
    */
-  Vector getNormal(const Polyhedron::Facet_handle &facet_handle) const;
+  Vector getNormal(const Polyhedron::Face_handle &face_handle) const;
   Vector getNormal(const PointAndPrimitiveId &ppid) const;
   std::map<int, Vector> computeNormals() const;
   Vector computeFaceNormal(face_descriptor &fd) const;
   Vector computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle) const;
 
   /**
- * Transform the mesh model.
- */
+   * Transform the mesh model.
+   */
   void transform(const Transformation &transform);
 
   /**
- * Return size of mesh (number of facet primitives).
- */
+   * Return size of mesh (number of facet primitives).
+   */
   int size() const;
 
   /**
@@ -110,7 +111,7 @@ class MeshModel {
   Triangle getTriangleFromID(uint facet_id);
 
   void findCoplanarFacets(uint facet_id, std::unordered_set<int> *result, const double eps);
-  
+
   /**
    * This function is super slow. Only execute it once in beginning.
    */
@@ -128,6 +129,8 @@ class MeshModel {
 
 
  private:
+  MeshModel() {}                           // private default constructor
+  MeshModel(Polyhedron &p, bool verbose);  // Constructor to be used by factory method
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;
   bool verbose_;
@@ -135,6 +138,6 @@ class MeshModel {
   void initializeFacetIndices();
 
 };
-}
-}
+}  // namespace cgal
+}  // namespace cad_percept
 #endif

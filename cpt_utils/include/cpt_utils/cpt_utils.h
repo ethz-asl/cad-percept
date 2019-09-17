@@ -2,13 +2,14 @@
 #define CPT_UTILS_H
 
 #include <kindr/minimal/quat-transformation-gtsam.h>
-#include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
 
+#include <cgal_conversions/eigen_conversions.h>
+#include <cgal_conversions/mesh_conversions.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
-#include <cgal_conversions/mesh_conversions.h>
-#include <cgal_conversions/eigen_conversions.h>
+
 #include "cpt_utils/pc_processing.h"
 
 namespace cad_percept {
@@ -19,10 +20,10 @@ typedef SE3::Rotation SO3;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 struct Associations {
-  Eigen::Matrix3Xd points_from; // dynamic, double
+  Eigen::Matrix3Xd points_from;  // dynamic, double
   Eigen::Matrix3Xd points_to;
   Eigen::VectorXd distances;
-  Eigen::VectorXd triangles_to; // triangle ID association
+  Eigen::VectorXd triangles_to;  // triangle ID association
 };
 
 /**
@@ -38,12 +39,11 @@ void intersection(const cgal::Plane &plane, const cgal::Line &line, cgal::Point 
 cgal::Vector getNormalFromPlane(const cgal::Plane &plane);
 
 // Associate point-cloud with architect model.
-Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh_model);
+Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel::Ptr mesh_model);
 
 cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox);
 cgal::Point centerOfBbox(const PointCloud &pointcloud);
+}  // namespace cpt_utils
+}  // namespace cad_percept
 
-}
-}
-
-#endif // CPT_UTILS_H
+#endif  // CPT_UTILS_H
