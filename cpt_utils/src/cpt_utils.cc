@@ -86,5 +86,13 @@ cgal::Point centerOfBbox(const PointCloud &pointcloud) {
   return centerOfBbox(bbox);
 }
 
+Polyhedron::Facet_handle getFacetHandle(Polyhedron &P, const uint facet_id) {
+  Polyhedron::Facet_iterator iterator = P.facets_begin();
+  while (iterator->id() != facet_id) {
+    ++iterator;
+  }
+  return iterator;
+}
+
 }  // namespace cpt_utils
 }  // namespace cad_percept

@@ -3,23 +3,17 @@
 
 #include <math.h>
 #include <algorithm>
-#include <boost/bimap.hpp>
-#include <boost/bimap/multiset_of.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <queue>
 #include <unordered_set>
+#include <unordered_map>
 
 #include "cgal_typedefs.h"
 
 namespace cad_percept {
 namespace cgal {
-
-typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::multiset_of<int>>
-    association_bimap;
-typedef association_bimap::value_type bi_association;
 
 struct Intersection {
   Point intersected_point;
@@ -31,14 +25,7 @@ class MeshModel {
   typedef std::shared_ptr<MeshModel> Ptr;
   static bool create(const std::string &off_pathm, MeshModel::Ptr *meshmodel_ptr,
                      bool verbose = false);
-
-  MeshModel(const Polyhedron &mesh, bool verbose = false);
-
-  MeshModel();  // necessary to create class object which will be initialized later
-
-  void init(const std::string &off_path, bool verbose = false);
-
-  void init(const Polyhedron &mesh, bool verbose = false);
+  static bool create(Polyhedron &p, MeshModel::Ptr *meshmodel_ptr, bool verbose = false);
 
   /**
    * Check if there is an intersection
@@ -85,13 +72,10 @@ class MeshModel {
   Polyhedron getMesh() const;
 
   /**
-   * Get facet handle
+   * ID Lookups
    */
-  Polyhedron::Facet_handle getFacetHandle(const uint facet_id);
-  Polyhedron::Facet_handle getFacetHandle(
-      Polyhedron &P, const uint facet_id);  // for the case we want to know from other Polyhedron
-
-  int getFacetIndex(const Polyhedron::Facet_handle &handle);
+  Polyhedron::Facet_handle getFacetHandleFromId(const uint facet_id);
+  int getIdFromFacetHandle(const Polyhedron::Facet_handle &handle);
 
   /**
    * Check coplanarity of two facets described by halfedge handle h1 and h2
@@ -118,7 +102,8 @@ class MeshModel {
   /**
    * This function is super slow. Only execute it once in beginning.
    */
-  void findAllCoplanarFacets(association_bimap *bimap, const double eps);
+  void findAllCoplanarFacets(std::unordered_map<int, int> *facetToPlane,
+                             std::unordered_multimap<int, int> *planeToFacets, const double eps);
 
   double getArea() const;
 
@@ -137,6 +122,10 @@ class MeshModel {
   bool verbose_;
 
   void initializeFacetIndices();
+
+  // ID associations between elements
+  std::unordered_map<int, int> _facetToPlane;
+  std::unordered_multimap<int, int> _planeToFacets;
 };
 }  // namespace cgal
 }  // namespace cad_percept

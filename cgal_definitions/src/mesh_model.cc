@@ -11,7 +11,7 @@ MeshModel::MeshModel(Polyhedron &p, bool verbose) : P_(std::move(p)), verbose_(v
   initializeFacetIndices();  // set fixed facet IDs for whole class
 }
 
-// Static factory method.
+// Static factory methods.
 bool MeshModel::create(const std::string &off_path, MeshModel::Ptr *ptr, bool verbose) {
   Polyhedron p;
   std::ifstream off_file(off_path.c_str(), std::ios::binary);
@@ -28,6 +28,18 @@ bool MeshModel::create(const std::string &off_path, MeshModel::Ptr *ptr, bool ve
     return false;
   }
 
+  // check polyhedron structure
+  if (!p.is_valid() || p.empty()) {
+    std::cerr << "Error: Invalid facegraph" << std::endl;
+    return false;
+  }
+
+  // Create new object and assign (note cannot use make_shared here because constructor is private)
+  ptr->reset(new MeshModel(p, verbose));
+  return true;
+}
+
+bool MeshModel::create(Polyhedron &p, MeshModel::Ptr *ptr, bool verbose) {
   // check polyhedron structure
   if (!p.is_valid() || p.empty()) {
     std::cerr << "Error: Invalid facegraph" << std::endl;
@@ -127,23 +139,16 @@ void MeshModel::initializeFacetIndices() {
   }
 }
 
-int MeshModel::getFacetIndex(const Polyhedron::Facet_handle &handle) {
+int MeshModel::getIdFromFacetHandle(const Polyhedron::Facet_handle &handle) {
   int facet_id;
   facet_id = handle->id();
   return facet_id;
 }
 
-Polyhedron::Facet_handle MeshModel::getFacetHandle(const uint facet_id) {
+// TODO (Hermann) Impement cashing in an unordered map
+Polyhedron::Facet_handle MeshModel::getFacetHandleFromId(const uint facet_id) {
   Polyhedron::Facet_iterator iterator = P_.facets_begin();
   // TODO: This could be faster if we just increment pointer by facet_id number
-  while (iterator->id() != facet_id) {
-    ++iterator;
-  }
-  return iterator;
-}
-
-Polyhedron::Facet_handle MeshModel::getFacetHandle(Polyhedron &P, const uint facet_id) {
-  Polyhedron::Facet_iterator iterator = P.facets_begin();
   while (iterator->id() != facet_id) {
     ++iterator;
   }
@@ -239,7 +244,7 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
   }
   std::queue<Polyhedron::Facet_handle>
       coplanar_to_check;  // queue of coplanar facets of which we need to check the neighbors
-  Polyhedron::Facet_handle start_handle = getFacetHandle(facet_id);
+  Polyhedron::Facet_handle start_handle = getFacetHandleFromId(facet_id);
   coplanar_to_check.push(start_handle);
   result->insert(facet_id);
 
@@ -264,23 +269,36 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
   }
 }
 
-void MeshModel::findAllCoplanarFacets(association_bimap *bimap, const double eps) {
-  int plane_id = 0;  // arbitrary plane_id associated to found coplanar facets
-  for (uint id = 0; id < P_.size_of_facets(); ++id) {
-    if (bimap->left.find(id) ==
-        bimap->left
-            .end()) {  // only find Coplanar Facets if Facet is not already associated to plane
-      std::unordered_set<int> current_result;
-      findCoplanarFacets(id, &current_result, eps);
+void MeshModel::findAllCoplanarFacets(std::unordered_map<int, int> *facetToPlane,
+                                      std::unordered_multimap<int, int> *planeToFacets,
+                                      const double eps) {
+  if (_facetToPlane.size() == 0) {
+    // only do actual computation once
+    int plane_id = 0;  // arbitrary plane_id associated to found coplanar facets
+    for (uint current_facet = 0; current_facet < P_.size_of_facets(); ++current_facet) {
+      if (facetToPlane->count(current_facet) ==
+          0) {  // only find Coplanar Facets if Facet is not already associated to plane
+        std::unordered_set<int> current_coplanar_facets;
+        findCoplanarFacets(current_facet, &current_coplanar_facets, eps);
 
-      // iterate over current_result and add this to bimap as current_result<->plane_id
-      for (auto current_id : current_result) {
-        bimap->insert(bi_association(current_id, plane_id));
+        // iterate over current_coplanar_facets and add this to bimap as
+        // current_coplanar_facets<->plane_id
+        for (auto facet_id : current_coplanar_facets) {
+          _facetToPlane[facet_id] = plane_id;
+          _planeToFacets.insert(std::make_pair(plane_id, facet_id));
+        }
+        plane_id++;
       }
-      plane_id++;
     }
+    std::cout << plane_id << " planes from coplanar facets found." << std::endl;
   }
-  std::cout << plane_id << " coplanar facets found." << std::endl;
+  // Deep copy both maps
+  for (auto elem : _facetToPlane) {
+    facetToPlane->insert(std::make_pair(elem.first, elem.second));
+  }
+  for (auto elem : _planeToFacets) {
+    planeToFacets->insert(std::make_pair(elem.first, elem.second));
+  }
 }
 
 Plane MeshModel::getPlaneFromHandle(Polyhedron::Facet_handle &f) const {
@@ -289,7 +307,7 @@ Plane MeshModel::getPlaneFromHandle(Polyhedron::Facet_handle &f) const {
 }
 
 Plane MeshModel::getPlaneFromID(uint facet_id) {
-  Polyhedron::Facet_handle handle = getFacetHandle(facet_id);
+  Polyhedron::Facet_handle handle = getFacetHandleFromId(facet_id);
   return getPlaneFromHandle(handle);
 }
 
@@ -299,7 +317,7 @@ Triangle MeshModel::getTriangleFromHandle(Polyhedron::Facet_handle &f) const {
 }
 
 Triangle MeshModel::getTriangleFromID(uint facet_id) {
-  Polyhedron::Facet_handle handle = getFacetHandle(facet_id);
+  Polyhedron::Facet_handle handle = getFacetHandleFromId(facet_id);
   return getTriangleFromHandle(handle);
 }
 
@@ -316,7 +334,7 @@ double MeshModel::getArea(Polyhedron::Facet_handle &f) const {
 }
 
 double MeshModel::getArea(uint facet_id) {
-  Polyhedron::Facet_handle handle = getFacetHandle(facet_id);
+  Polyhedron::Facet_handle handle = getFacetHandleFromId(facet_id);
   return getArea(handle);
 }
 
