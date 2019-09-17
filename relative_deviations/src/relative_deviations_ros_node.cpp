@@ -9,7 +9,8 @@ int main(int argc, char **argv) {
   std::shared_ptr<cad_percept::deviations::RelativeDeviations> relative_deviations_ros_node;
 
   // Hand over the handle to the object
-  relative_deviations_ros_node = std::make_shared<cad_percept::deviations::RelativeDeviations>(nh, nh_private);
+  relative_deviations_ros_node =
+      std::make_shared<cad_percept::deviations::RelativeDeviations>(nh, nh_private);
 
   ros::spin();
 
