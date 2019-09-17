@@ -7,8 +7,8 @@
 #include <iostream>
 #include <map>
 #include <queue>
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "cgal_typedefs.h"
 
