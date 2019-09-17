@@ -394,8 +394,10 @@ void RelativeDeviations::publishBboxesAndNormals(
       marker.type = visualization_msgs::Marker::CUBE;
       marker.action = visualization_msgs::Marker::ADD;
       marker.id = marker_id;
-      marker.color = c_associated[deviations.bimap.right.find(umit->first)
-                                      ->second];  // get color of one of the corresponding facets
+      marker.color =
+          c_associated[deviations.bimap.right.find(umit->first)->second];  // get color of one of
+                                                                           // the corresponding
+                                                                           // facets
       marker.color.a = 0.7f;
 
       CGAL::Bbox_3 bbox;
