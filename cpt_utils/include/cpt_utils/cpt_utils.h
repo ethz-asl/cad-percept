@@ -43,6 +43,8 @@ Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel::Ptr 
 
 cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox);
 cgal::Point centerOfBbox(const PointCloud &pointcloud);
+
+Polyhedron::Facet_handle getFacetHandle(Polyhedron &P, const uint facet_id);
 }  // namespace cpt_utils
 }  // namespace cad_percept
 
