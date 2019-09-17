@@ -16,8 +16,7 @@ namespace visualizations {
 
 unsigned int MeshVisual::instance_counter_ = 0;
 
-MeshVisual::MeshVisual(Ogre::SceneManager* scene_manager,
-                       Ogre::SceneNode* parent_node)
+MeshVisual::MeshVisual(Ogre::SceneManager* scene_manager, Ogre::SceneNode* parent_node)
     : visualize_covariances_(false),
       backface_culling_(false),
       visualize_color_(false),
@@ -31,8 +30,7 @@ MeshVisual::MeshVisual(Ogre::SceneManager* scene_manager,
 
   using namespace std::chrono;
   unsigned long long ticks =
-      duration_cast<milliseconds>(steady_clock::now().time_since_epoch())
-          .count();
+      duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
   object_name_ = std::to_string(ticks);
 }
 
@@ -42,20 +40,19 @@ void MeshVisual::initResourcePaths() {
 
   // Adds folders with materials and script such that generic rviz materials
   // become available inside this plugin.
-  Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-      rviz_path + "/ogre_media/models", "FileSystem", ROS_PACKAGE_NAME);
+  Ogre::ResourceGroupManager::getSingleton().addResourceLocation(rviz_path + "/ogre_media/models",
+                                                                 "FileSystem", ROS_PACKAGE_NAME);
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
       rviz_path + "/ogre_media/materials", "FileSystem", ROS_PACKAGE_NAME);
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-      rviz_path + "/ogre_media/materials/scripts", "FileSystem",
-      ROS_PACKAGE_NAME);
+      rviz_path + "/ogre_media/materials/scripts", "FileSystem", ROS_PACKAGE_NAME);
 
   // Add paths exported to the "media_export" package.
   std::vector<std::string> media_paths;
   ros::package::getPlugins("media_export", "ogre_media_path", media_paths);
   std::string delim(":");
-  for (std::vector<std::string>::iterator iter = media_paths.begin();
-       iter != media_paths.end(); ++iter) {
+  for (std::vector<std::string>::iterator iter = media_paths.begin(); iter != media_paths.end();
+       ++iter) {
     if (!iter->empty()) {
       std::string path;
       int pos1 = 0;
@@ -63,32 +60,32 @@ void MeshVisual::initResourcePaths() {
       while (pos2 != (int)std::string::npos) {
         path = iter->substr(pos1, pos2 - pos1);
         ROS_DEBUG("adding resource location: '%s'\n", path.c_str());
-        Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-            path, "FileSystem", ROS_PACKAGE_NAME);
+        Ogre::ResourceGroupManager::getSingleton().addResourceLocation(path, "FileSystem",
+                                                                       ROS_PACKAGE_NAME);
         pos1 = pos2 + 1;
         pos2 = iter->find(delim, pos2 + 1);
       }
       path = iter->substr(pos1, iter->size() - pos1);
       ROS_DEBUG("adding resource location: '%s'\n", path.c_str());
-      Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-          path, "FileSystem", ROS_PACKAGE_NAME);
+      Ogre::ResourceGroupManager::getSingleton().addResourceLocation(path, "FileSystem",
+                                                                     ROS_PACKAGE_NAME);
     }
   }
 }
 
 // overloaded setMessage sets display mode
-void MeshVisual::setMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr &msg) {
+void MeshVisual::setMessage(const cgal_msgs::TriangleMeshStamped::ConstPtr& msg) {
   triangle_mesh_msg_ = msg->mesh;
 }
 
-void MeshVisual::setMessage(const cgal_msgs::ColoredMesh::ConstPtr &msg) {
+void MeshVisual::setMessage(const cgal_msgs::ColoredMesh::ConstPtr& msg) {
   triangle_mesh_msg_ = msg->mesh;
   mesh_color_msg_ = msg->color;
   surface_colors_msg_ = msg->colors;
   visualize_color_ = true;
 }
 
-void MeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr &msg) {
+void MeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr& msg) {
   triangle_mesh_msg_ = msg->mesh;
   normals_msg_ = msg->normals;
   cov_vertices_msg_ = msg->cov_vertices;
@@ -98,6 +95,13 @@ void MeshVisual::setMessage(const cgal_msgs::ProbabilisticMesh::ConstPtr &msg) {
 MeshVisual::~MeshVisual() {}
 
 void MeshVisual::update() {
+  // check if there is a valid mesh
+  // RVIZ crashes with empty meshes
+  if (triangle_mesh_msg_.vertices.empty() || triangle_mesh_msg_.triangles.empty()) {
+    ROS_WARN("Ignoring empty mesh.");
+    return;
+  }
+
   Ogre::ManualObject* ogre_object;
 
   if (scene_manager_->hasManualObject(object_name_)) {
@@ -110,8 +114,7 @@ void MeshVisual::update() {
   assert(ogre_object != nullptr);
 
   ogre_object->estimateVertexCount(3 * triangle_mesh_msg_.triangles.size());
-  ogre_object->begin("BaseWhiteNoLighting",
-                     Ogre::RenderOperation::OT_TRIANGLE_LIST);
+  ogre_object->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
   // Displaying Triangles in color defined by 3 vertex points
   uint vertex_count = 0;
@@ -120,26 +123,21 @@ void MeshVisual::update() {
     // every triangle needs distinct vertices such that colors do not interfere
     // possibility of color gradients over triangles is now removed
     for (uint i = 0; i < 3; i++) {
-      ogre_object->position(
-          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].x,
-          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].y,
-          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].z);
+      ogre_object->position(triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].x,
+                            triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].y,
+                            triangle_mesh_msg_.vertices[triangle.vertex_indices[i]].z);
       if (visualize_color_) {
         if (surface_colors_msg_.size() != 0) {
-          ogre_object->colour(Ogre::ColourValue(surface_colors_msg_[triangle_count].r,
-                              surface_colors_msg_[triangle_count].g,
-                              surface_colors_msg_[triangle_count].b,
-                              surface_colors_msg_[triangle_count].a));
-        }
-        else if (mesh_color_msg_.r != 0 || mesh_color_msg_.g != 0 || mesh_color_msg_.b != 0) {
-          ogre_object->colour(Ogre::ColourValue(mesh_color_msg_.r, mesh_color_msg_.g, 
-                              mesh_color_msg_.b, mesh_color_msg_.a));
-        }
-        else {
+          ogre_object->colour(Ogre::ColourValue(
+              surface_colors_msg_[triangle_count].r, surface_colors_msg_[triangle_count].g,
+              surface_colors_msg_[triangle_count].b, surface_colors_msg_[triangle_count].a));
+        } else if (mesh_color_msg_.r != 0 || mesh_color_msg_.g != 0 || mesh_color_msg_.b != 0) {
+          ogre_object->colour(Ogre::ColourValue(mesh_color_msg_.r, mesh_color_msg_.g,
+                                                mesh_color_msg_.b, mesh_color_msg_.a));
+        } else {
           ogre_object->colour(std_surface_color_);
         }
-      }
-      else {
+      } else {
         ogre_object->colour(std_surface_color_);
       }
     }
@@ -150,18 +148,15 @@ void MeshVisual::update() {
   ogre_object->end();
 
   // Displaying Edges
-  ogre_object->begin("BaseWhiteNoLighting",
-                     Ogre::RenderOperation::OT_LINE_LIST);
+  ogre_object->begin("BaseWhiteNoLighting", Ogre::RenderOperation::OT_LINE_LIST);
   for (auto triangle : triangle_mesh_msg_.triangles) {
     for (int i = 0; i < 3; ++i) {
-      const auto& vrtx_a =
-          triangle_mesh_msg_.vertices[triangle.vertex_indices[i]];
+      const auto& vrtx_a = triangle_mesh_msg_.vertices[triangle.vertex_indices[i]];
       ogre_object->position(vrtx_a.x, vrtx_a.y, vrtx_a.z);
 
       ogre_object->colour(std_edge_color_);
 
-      const auto& vrtx_b =
-          triangle_mesh_msg_.vertices[triangle.vertex_indices[(i + 1) % 3]];
+      const auto& vrtx_b = triangle_mesh_msg_.vertices[triangle.vertex_indices[(i + 1) % 3]];
       ogre_object->position(vrtx_b.x, vrtx_b.y, vrtx_b.z);
     }
   }
@@ -215,11 +210,11 @@ void MeshVisual::clear() {
   }
 }
 
-void MeshVisual::setFramePosition(const Ogre::Vector3 &position) {
+void MeshVisual::setFramePosition(const Ogre::Vector3& position) {
   frame_node_->setPosition(position);
 }
 
-void MeshVisual::setFrameOrientation(const Ogre::Quaternion &orientation) {
+void MeshVisual::setFrameOrientation(const Ogre::Quaternion& orientation) {
   frame_node_->setOrientation(orientation);
 }
 
