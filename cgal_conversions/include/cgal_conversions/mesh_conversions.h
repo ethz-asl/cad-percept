@@ -29,7 +29,7 @@ class BuildMesh : public CGAL::Modifier_base<HDS> {
  private:
   const cgal_msgs::TriangleMesh *msg_;
 };
-}
-}
+}  // namespace cgal
+}  // namespace cad_percept
 
 #endif  // MESH_CONVERSIONS_H

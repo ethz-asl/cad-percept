@@ -25,4 +25,4 @@ void IsoSurfaceManifold::getAsMesh(cad_percept::cgal::Polyhedron* mesh) {
 }
 
 }  // namespace collision_manifolds
-}
+}  // namespace cad_percept

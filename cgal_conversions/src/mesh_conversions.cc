@@ -102,5 +102,5 @@ void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *pc) {
     pc->push_back(point);
   }
 }
-}
-}
+}  // namespace cgal
+}  // namespace cad_percept

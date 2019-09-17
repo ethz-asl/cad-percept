@@ -36,6 +36,6 @@ class CadPerceptMeshingNode {
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
 };
-}
-}
+}  // namespace meshing
+}  // namespace cad_percept
 #endif  // CPT_MESHING_MESHING_NODE_H
