@@ -186,9 +186,9 @@ class SamplePolyhedronDeviated : public CGAL::Modifier_base<HDS> {
     Point p7(4, 0, 2);
     Point p8(4, 1.5, 2);
     Point p9(5, 1.5, 2);
-    Point p10(6, 4, 2);    
+    Point p10(6, 4, 2);
     Point p11(0, 3, 2);
-    
+
     // adding a wrong wall:
     Point p12(4, 0.75, 0);
     Point p13(4, 0.75, 2);
@@ -348,7 +348,7 @@ class SamplePolyhedronDeviated : public CGAL::Modifier_base<HDS> {
   }
 };
 
-void build_sample_polyhedrons(Polyhedron *P, Polyhedron *P_deviated) {
+void build_sample_polyhedrons(Polyhedron* P, Polyhedron* P_deviated) {
   SamplePolyhedron<HalfedgeDS> samplepoly;
   SamplePolyhedronDeviated<HalfedgeDS> samplepolydev;
   P->delegate(samplepoly);
@@ -360,12 +360,16 @@ void build_sample_polyhedrons(Polyhedron *P, Polyhedron *P_deviated) {
     std::cout << "P_deviated is valid" << std::endl;
   }
 
-  std::ofstream off_file1("/home/julian/megabot_ws/src/cad-percept/srd_relative_deviations/resources/room.off", std::ios::binary);
+  std::ofstream off_file1(
+      "/home/julian/megabot_ws/src/cad-percept/srd_relative_deviations/resources/room.off",
+      std::ios::binary);
   CGAL::write_off(off_file1, *P);
 
-  std::ofstream off_file2("/home/julian/megabot_ws/src/cad-percept/srd_relative_deviations/resources/room_deviated.off", std::ios::binary);
+  std::ofstream off_file2(
+      "/home/julian/megabot_ws/src/cad-percept/srd_relative_deviations/resources/room_deviated.off",
+      std::ios::binary);
   CGAL::write_off(off_file2, *P_deviated);
 }
 
-}
-}
+}  // namespace cgal
+}  // namespace cad_percept
