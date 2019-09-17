@@ -77,6 +77,7 @@ class RosMarker:
         parent_frame = parent_frame or rospy.get_param('map_frame')
         marker.header.frame_id = parent_frame
         marker.pose.position = Point(*position)
+        marker.pose.orientation = normalized_quaternion(1, 0, 0, 1)
         marker.scale = 1
 
         marker.name = name
