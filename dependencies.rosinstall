@@ -37,4 +37,5 @@
     uri: https://github.com/ethz-asl/libnabo.git
 - git:
     local-name: ethzasl_icp_mapping
-    uri: https://github.com/ethz-asl/ethzasl_icp_mapping.git
+    uri: https://github.com/gawela/ethzasl_icp_mapping.git
+    version: reintegrate/master_into_indigo_devel
