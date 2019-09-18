@@ -29,3 +29,12 @@
 - git:
     local-name: minkindr_gtsam
     uri: git@github.com:ethz-asl/minkindr_gtsam.git
+- git:
+    local-name: libpointmatcher
+    uri: https://github.com/ethz-asl/libpointmatcher.git
+- git:
+    local-name: libnabo
+    uri: https://github.com/ethz-asl/libnabo.git
+- git:
+    local-name: ethzasl_icp_mapping
+    uri: https://github.com/ethz-asl/ethzasl_icp_mapping.git
