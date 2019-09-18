@@ -147,7 +147,7 @@ void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
 
 void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   std::vector<reconstructed_plane> rec_planes;
-  std::vector<reconstructed_plane> remaining_plane_cloud_vector; // put everything in here what we can't segment as planes
+  std::vector<reconstructed_plane> remaining_plane_cloud_vector; // put everything in here what can't be associated
     
   PointMatcherSupport::timer t_processCloud;
 

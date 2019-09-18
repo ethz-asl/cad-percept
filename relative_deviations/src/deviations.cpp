@@ -12,8 +12,18 @@ namespace deviations {
 Deviations::Deviations() {}
 
 Deviations::~Deviations() {
+  /**
+   *  Save the informations for analysis
+   */
+  for (auto it = transformation_map.begin(); it != transformation_map.end(); ++it) {
+    averageDeviationFile << it->first << "," << it->second.count << "," << it->second.aa.angle() << "," << it->second.aa.axis().x() << "," << it->second.aa.axis().y() << "," << it->second.aa.axis().z() << "," << it->second.quat.x() << "," << it->second.quat.y() << "," << it->second.quat.z() << "," << it->second.quat.w() << "," << it->second.translation.x() << "," << it->second.translation.y() << "," << it->second.translation.z() << "," << it->second.score << std::endl;
+  }
+
   timingFile.close();
   performanceFile.close();
+  averageDeviationFile.close();
+  currentDeviationFile.close();
+  mapDeviationFile.close();
 }
 
 void Deviations::init(const cgal::Polyhedron &P) {
@@ -33,6 +43,34 @@ void Deviations::init(const cgal::Polyhedron &P) {
   performanceFile.open(filename);
   performanceFile << "Duration" << "," << "noOfRecPlanes" << "," << "noOfAssocPlanes" << std::endl;
 
+  // Create output file for averageDeviations
+  std::stringstream ss3;
+  ss3 << params.path << "/exports/average_deviations_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  filename = ss3.str();
+  averageDeviationFile.open(filename);
+  averageDeviationFile << "plane_id" << "," << "count" << "," << "aa_angle" << "," << "aa_x" << "," << "aa_y" << "," << "aa_z" << "," << "quat_x" << "," << "quat_y" << "," << "quat_z" << "," << "quat_w" << "," << "translation_x" << "," << "translation_y" << "," << "translation_z" << "," << "score" << std::endl;
+
+  // Create output file for currentDeviations
+  std::stringstream ss4;
+  ss4 << params.path << "/exports/current_deviations_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  filename = ss4.str();
+  currentDeviationFile.open(filename);
+  currentDeviationFile << "plane_id" << "," << "count" << "," << "aa_angle" << "," << "aa_x" << "," << "aa_y" << "," << "aa_z" << "," << "quat_x" << "," << "quat_y" << "," << "quat_z" << "," << "quat_w" << "," << "translation_x" << "," << "translation_y" << "," << "translation_z" << "," << "score" << std::endl;
+
+  // Create output file for mapDeviations
+  std::stringstream ss5;
+  ss5 << params.path << "/exports/map_deviations_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  filename = ss5.str();
+  mapDeviationFile.open(filename);
+  mapDeviationFile << "plane_id" << "," << "count" << "," << "aa_angle" << "," << "aa_x" << "," << "aa_y" << "," << "aa_z" << "," << "quat_x" << "," << "quat_y" << "," << "quat_z" << "," << "quat_w" << "," << "translation_x" << "," << "translation_y" << "," << "translation_z" << "," << "score" << std::endl;
+
+  // Create output file for facet->plane IDs
+  std::stringstream ss6;
+  ss6 << params.path << "/exports/planeID_" << std::put_time(&tm, "%H%M%S_%d%m%Y") <<".csv";
+  filename = ss6.str();
+  planeIDFile.open(filename);
+  planeIDFile << "facet_id" << "," << "plane_id" << std::endl;
+
   path_ = params.path;
   // create MeshModel of reference
   reference_mesh.init(P);
@@ -45,6 +83,14 @@ void Deviations::init(const cgal::Polyhedron &P) {
   initPlaneMap();
   computeCGALBboxes();
   computeFacetNormals(reference_mesh);
+
+  /**
+   *  Save the informations for analysis
+   */
+  for (association_bimap::left_const_iterator i = bimap.left.begin(); i != bimap.left.end(); ++i) {
+    planeIDFile << i->first << "," << i->second << std::endl;
+  }
+  planeIDFile.close();
 }
 
 void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_plane_cloud_vector) {
@@ -86,6 +132,14 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes, con
   PointMatcherSupport::timer t_average;
   updateAveragePlaneDeviation(current_transformation_map);
   timingFile << ros::Time::now() << "," << "," << "," << "," << t_average.elapsed() << "," << "," << "," << std::endl;
+
+  /**
+   *  Save the informations for analysis
+   */
+  for (auto it = current_transformation_map.begin(); it != current_transformation_map.end(); ++it) {
+    currentDeviationFile << it->first << "," << it->second.count << "," << it->second.aa.angle() << "," << it->second.aa.axis().x() << "," << it->second.aa.axis().y() << "," << it->second.aa.axis().z() << "," << it->second.quat.x() << "," << it->second.quat.y() << "," << it->second.quat.z() << "," << it->second.quat.w() << "," << it->second.translation.x() << "," << it->second.translation.y() << "," << it->second.translation.z() << "," << it->second.score << std::endl;
+  }
+
 }
 
 /**
@@ -110,6 +164,13 @@ void Deviations::detectMapChanges(std::vector<reconstructed_plane> *rec_planes, 
   findPlaneDeviation(current_transformation_map, 1);
   timingFile << ros::Time::now() << "," << "," << "," << "," << "," << "," << "," << t_deviation_map.elapsed() << std::endl;
   performanceFile << ros::Time::now() << "," << rec_planes->size() << "," << rec_planes->size() - remaining_plane_cloud_vector->size() << std::endl;
+
+  /**
+   *  Save the informations for analysis
+   */
+  for (auto it = current_transformation_map->begin(); it != current_transformation_map->end(); ++it) {
+    mapDeviationFile << it->first << "," << it->second.count << "," << it->second.aa.angle() << "," << it->second.aa.axis().x() << "," << it->second.aa.axis().y() << "," << it->second.aa.axis().z() << "," << it->second.quat.x() << "," << it->second.quat.y() << "," << it->second.quat.z() << "," << it->second.quat.w() << "," << it->second.translation.x() << "," << it->second.translation.y() << "," << it->second.translation.z() << "," << it->second.score << std::endl;
+  }
 }
 
 void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const {
@@ -295,7 +356,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
   typename ShapeDetection::Shape_range shapes = shape_detection.shapes();
   cgal::FT best_coverage = 0;
 
-  for (size_t i = 0; i<3; i++) {
+  for (size_t i = 0; i<1; i++) { // choose number of iterations here
     // Reset timer
     time.reset();
     time.start();
@@ -563,7 +624,7 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
         }
       }
       transformation trafo;
-      trafo.score = umit->second.match_score; // since we set it equal before
+      trafo.score = umit->second.match_score;
 
       // - find translation (also in normal direction is hard since we don't have point association,
       // every point has different translation even in normal direction)
@@ -576,28 +637,18 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
         pc_normal = -pc_normal;
       }
 
-      // find angle
+      /**
+       *  Quaternion
+       */
+      // no need to normalize first
+      Eigen::Quaterniond quat = Eigen::Quaterniond::FromTwoVectors(pc_normal, umit->second.normal);
+      trafo.quat = quat;
 
       /**
        *  Angle Axis
        */ 
-      Eigen::Vector3d axis = pc_normal.cross(umit->second.normal);
-      // std::cout << "Vector pc: " << umit->second.rec_plane.pc_normal << ", Vector facet: " << umit->second.normal << std::endl;
-      axis.normalize();
-      // std::cout << "Axis: " << axis << std::endl;
-      double angle = acos(pc_normal.dot(umit->second.normal));
-      // std::cout << "Angle: " << angle << std::endl;
-      Eigen::AngleAxisd aa(angle, axis);
+      Eigen::AngleAxisd aa(quat);
       trafo.aa = aa;
-
-      /**
-       *  Quaternion
-       */
-      // TODO: check that aa and quat are same
-      // no need to normalize first
-      Eigen::Quaterniond quat;
-      quat.FromTwoVectors(pc_normal, umit->second.normal);
-      trafo.quat = quat;
 
       // could convert quaternion to euler angles, but these are ambiguous, better work with
       // quaternions 
@@ -622,31 +673,39 @@ void Deviations::updateAveragePlaneDeviation(const std::unordered_map<int, trans
   // - prediction based on this distribution, but what does it help to know error distribution?
   // - how is update filtering indended to work normally?
   // - now just compute average
-  // - since there is no bullet-proof way to average rotations, we additionally save avg_normal of all
-  // associated normals and update average rotation from these
-  // - also because rotations before can not be used to calculate average, this fct. is independent of 
-  // current_transformation_map
 
   for (auto it = current_transformation_map.begin(); it != current_transformation_map.end(); ++it) {
-    ++transformation_map[it->first].count;
+    // if entry in transformation map does not yet exist for this ID, then just copy current_transformation_map
+    if (transformation_map.find(it->first) == transformation_map.end()) {
+      transformation_map[it->first] = it->second;
+      transformation_map[it->first].count = 1;
+      continue;
+    }
+    
     transformation trafo;
+
+    trafo.count = transformation_map[it->first].count + 1;
 
     // update score average
     double current_score = it->second.score;
-    trafo.score = transformation_map[it->first].score + (current_score - transformation_map[it->first].score) / transformation_map[it->first].count;
+    trafo.score = transformation_map[it->first].score + (current_score - transformation_map[it->first].score) / trafo.count;
     // update translation average
     Eigen::Vector3d current_translation = it->second.translation;
-    trafo.translation = transformation_map[it->first].translation + (current_translation - transformation_map[it->first].translation) / transformation_map[it->first].count;
+    trafo.translation = transformation_map[it->first].translation + (current_translation - transformation_map[it->first].translation) / trafo.count;
     // update rotation average using unit vector rotation 
-    // TODO: check this
     Eigen::Vector3d v_unit(1,0,0);
+    v_unit.normalize();
     Eigen::Vector3d u = it->second.quat * v_unit;
+    u.normalize();
     Eigen::Vector3d u_avg = transformation_map[it->first].quat * v_unit;
     u_avg.normalize();
-    u.normalize();
-    Eigen::Vector3d u_avg_new = u_avg + (u - u_avg) / transformation_map[it->first].count;
-    Eigen::Quaterniond quat;
-    trafo.quat = quat.FromTwoVectors(v_unit, u_avg_new);
+    Eigen::Vector3d u_avg_new = u_avg + (u - u_avg) / trafo.count;
+    u_avg_new.normalize();
+
+    Eigen::Quaterniond quat = Eigen::Quaterniond::FromTwoVectors(v_unit, u_avg_new);
+    trafo.quat = quat;
+    Eigen::AngleAxisd aa(quat);
+    trafo.aa = aa;
 
     transformation_map[it->first] = trafo;
   }

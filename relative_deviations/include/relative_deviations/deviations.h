@@ -131,7 +131,7 @@ class Deviations {
     /**
      * Read-in reading pc and execute detection
      */
-    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_cloud_vector);
+    void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish, const PointCloud &reading_cloud, std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
     void detectMapChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud, std::vector<reconstructed_plane> *remaining_plane_cloud_vector, std::unordered_map<int, transformation> *current_transformation_map);
     void init(const cgal::Polyhedron &P);
     std::unordered_map<int, polyhedron_plane> plane_map; // plane map saving the ID of coplanar plane associated to plane properties
@@ -151,6 +151,10 @@ class Deviations {
     //PointCloud ref_pc; remove
     std::ofstream timingFile;
     std::ofstream performanceFile;
+    std::ofstream averageDeviationFile;
+    std::ofstream currentDeviationFile;
+    std::ofstream mapDeviationFile;
+    std::ofstream planeIDFile;
 
     void planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const;
     void planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const;
