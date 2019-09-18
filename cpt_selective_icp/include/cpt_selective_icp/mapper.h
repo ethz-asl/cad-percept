@@ -36,23 +36,14 @@
 namespace cad_percept {
 namespace selective_icp {
 
-typedef boost::bimap<boost::bimaps::unordered_set_of<int>,
-                     boost::bimaps::unordered_multiset_of<int>>
-    association_bimap;
-typedef association_bimap::value_type bi_association;
-
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-typedef std::map<int, int>::iterator Miterator;
-typedef std::multimap<int, int>::iterator Mmiterator;
-
 class Mapper {
  public:
   Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
-  ~Mapper();
 
  private:
   ros::NodeHandle &nh_, &nh_private_;

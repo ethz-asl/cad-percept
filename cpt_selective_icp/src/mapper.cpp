@@ -38,112 +38,15 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   point_pub_ = nh_.advertise<geometry_msgs::PointStamped>("point_pub_", 2, true);
   map_pub_ = nh_.advertise<PointCloud>("map", 1, true);
 
+  // TODO (Hermann) What is this???
   std::cout << "Wait for start-up" << std::endl;
   sleep(5);  // wait to set up stuff
   std::cout << "Ready!" << std::endl;
 
   loadConfig();
-
-  // Create output file for timing information
-  std::stringstream ss;
-  auto t = std::time(nullptr);
-  auto tm = *std::localtime(&t);
-  ss << parameters_.path << "/exports/timing_" << std::put_time(&tm, "%H%M%S_%d%m%Y") << ".csv";
-  std::string filename = ss.str();
-  timingFile.open(filename);
-  timingFile << "Duration"
-             << ","
-             << "selectiveICP"
-             << ","
-             << "normalICP"
-             << ","
-             << "gotCloud"
-             << ","
-             << "processCloud"
-             << ","
-             << "mapping"
-             << ","
-             << "realTimeCap" << std::endl;
-
-  // Create output file for metrics information
-  std::stringstream ss2;
-  ss2 << parameters_.path << "/exports/metrics_" << std::put_time(&tm, "%H%M%S_%d%m%Y") << ".csv";
-  filename = ss2.str();
-  metricsFile.open(filename);
-  metricsFile << "Duration"
-              << ","
-              << "ICPErrorClosestFacetAll"
-              << ","
-              << "ResidualError"
-              << ","
-              << "RobustMeanDist"
-              << ","
-              << "NbPointsRobMeanDist"
-              << ","
-              << "HaussdorffDist"
-              << ","
-              << "HaussdorffQuantileDist"
-              << ","
-              << "ICPErrorClosestFacetRef"
-              << ","
-              << "selectiveICPOverlap"
-              << ","
-              << "normalICPOverlap"
-              << ","
-              << "sizeOfMap" << std::endl;
-
-  // Create output file saving the transformation from scanner to marker2
-  std::stringstream ss3;
-  ss3 << parameters_.path << "/exports/T_scanner_to_marker2_" << std::put_time(&tm, "%H%M%S_%d%m%Y")
-      << ".csv";
-  filename = ss3.str();
-  transformationFile.open(filename);
-  transformationFile << "Duration"
-                     << ","
-                     << "x"
-                     << ","
-                     << "y"
-                     << ","
-                     << "z"
-                     << ","
-                     << "x"
-                     << ","
-                     << "y"
-                     << ","
-                     << "z"
-                     << ","
-                     << "w" << std::endl;
-
-  // Create output file saving the transformation from prisma to marker2
-  std::stringstream ss4;
-  ss4 << parameters_.path << "/exports/T_prisma_to_marker2_" << std::put_time(&tm, "%H%M%S_%d%m%Y")
-      << ".csv";
-  filename = ss4.str();
-  transformationFile2.open(filename);
-  transformationFile2 << "Duration"
-                      << ","
-                      << "x"
-                      << ","
-                      << "y"
-                      << ","
-                      << "z"
-                      << ","
-                      << "x"
-                      << ","
-                      << "y"
-                      << ","
-                      << "z"
-                      << ","
-                      << "w" << std::endl;
 }
 
-Mapper::~Mapper() {
-  timingFile.close();
-  metricsFile.close();
-  transformationFile.close();
-  transformationFile2.close();
-}
-
+// TODO (Hermann, Abel) do we need this still?
 bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
   // Since CAD is published all the time, we need a trigger when to load it
   cad_trigger = true;
@@ -240,9 +143,9 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   }
 }
 
-void Mapper::publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const {
+void Mapper::publishMesh(const cgal::MeshModel::Ptr model, ros::Publisher *publisher) const {
   cgal::Polyhedron P;
-  P = model.getMesh();
+  P = model->getMesh();
   cgal_msgs::TriangleMesh t_msg;
   cgal_msgs::TriangleMeshStamped s_msg;
   cgal::triangleMeshToMsg(P, &t_msg);
@@ -385,6 +288,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       }
     }
 
+    // TODO (Hermann): Ca we remove this hardcoded stuff?
     tf::StampedTransform transform;
     tf_listener_.lookupTransform("marker2", parameters_.tf_map_frame, stamp,
                                  transform);  // from tf_map_frame to "marker2"
@@ -402,52 +306,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     T_leica_to_lidar(0, 3) = 0.214;
     T_leica_to_lidar(1, 3) = 0.198;
     T_leica_to_lidar(2, 3) = 0.396;
-
-    Eigen::Matrix4f T_float = T_updated_scanner_to_map;
-    Eigen::Matrix4d T_double_updated_scanner_to_map = T_float.cast<double>();
-
-    // the order of the multiplication seems confusing since normally you would write the names in
-    // different order for each T
-    Eigen::Matrix4d T_prisma_to_marker2 =
-        T_map_to_marker2 * T_double_updated_scanner_to_map * T_leica_to_lidar;
-    Eigen::Matrix4d T_scanner_to_marker2 = T_map_to_marker2 * T_double_updated_scanner_to_map;
-
-    // Save complete matrix to file
-    Eigen::Matrix<double, 3, 3> rotationMatrix;
-    rotationMatrix(0, 0) = T_scanner_to_marker2(0, 0);
-    rotationMatrix(0, 1) = T_scanner_to_marker2(0, 1);
-    rotationMatrix(0, 2) = T_scanner_to_marker2(0, 2);
-    rotationMatrix(1, 0) = T_scanner_to_marker2(1, 0);
-    rotationMatrix(1, 1) = T_scanner_to_marker2(1, 1);
-    rotationMatrix(1, 2) = T_scanner_to_marker2(1, 2);
-    rotationMatrix(2, 0) = T_scanner_to_marker2(2, 0);
-    rotationMatrix(2, 1) = T_scanner_to_marker2(2, 1);
-    rotationMatrix(2, 2) = T_scanner_to_marker2(2, 2);
-
-    Eigen::Quaterniond rot(rotationMatrix);
-
-    transformationFile << stamp << "," << T_scanner_to_marker2(0, 3) << ","
-                       << T_scanner_to_marker2(1, 3) << "," << T_scanner_to_marker2(2, 3) << ","
-                       << rot.x() << "," << rot.y() << "," << rot.z() << "," << rot.w()
-                       << std::endl;
-
-    // Save complete matrix to file
-    rotationMatrix(0, 0) = T_prisma_to_marker2(0, 0);
-    rotationMatrix(0, 1) = T_prisma_to_marker2(0, 1);
-    rotationMatrix(0, 2) = T_prisma_to_marker2(0, 2);
-    rotationMatrix(1, 0) = T_prisma_to_marker2(1, 0);
-    rotationMatrix(1, 1) = T_prisma_to_marker2(1, 1);
-    rotationMatrix(1, 2) = T_prisma_to_marker2(1, 2);
-    rotationMatrix(2, 0) = T_prisma_to_marker2(2, 0);
-    rotationMatrix(2, 1) = T_prisma_to_marker2(2, 1);
-    rotationMatrix(2, 2) = T_prisma_to_marker2(2, 2);
-
-    rot = Eigen::Quaterniond(rotationMatrix);
-
-    transformationFile2 << stamp << "," << T_prisma_to_marker2(0, 3) << ","
-                        << T_prisma_to_marker2(1, 3) << "," << T_prisma_to_marker2(2, 3) << ","
-                        << rot.x() << "," << rot.y() << "," << rot.z() << "," << rot.w()
-                        << std::endl;
 
     /**
      * Publish
@@ -472,12 +330,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       scan_pub_.publish(
           PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc, parameters_.tf_map_frame, stamp));
     }
-
-    timingFile << ros::Time::now() << ","
-               << ","
-               << "," << t_gotCloud.elapsed() << ","
-               << ","
-               << "," << std::endl;
 
     /**
      *  ICP error metrics
@@ -504,13 +356,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     else
       ROS_WARN_STREAM("[TIME] Real-time capability: " << real_time_ratio << "%");
 
-    timingFile << ros::Time::now() << ","
-               << ","
-               << ","
-               << ","
-               << ","
-               << "," << real_time_ratio << std::endl;
-
     last_point_cloud_time_ = stamp;
     last_point_cloud_seq_ = seq;
   }
@@ -534,15 +379,6 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
     // Ensure minimum overlap between scans.
     const double estimated_overlap = selective_icp_.errorMinimizer->getOverlap();
     ROS_DEBUG_STREAM("[Selective ICP] Overlap: " << estimated_overlap);
-    metricsFile << stamp << ","
-                << ","
-                << ","
-                << ","
-                << ","
-                << ","
-                << ","
-                << "," << estimated_overlap << ","
-                << "," << std::endl;
     if (estimated_overlap < parameters_.min_overlap) {
       ROS_ERROR_STREAM("[Selective ICP] Estimated overlap too small, ignoring ICP correction!");
       return false;
@@ -560,11 +396,6 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
       selective_icp_scan_pub_.publish(
           PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc, parameters_.tf_map_frame, stamp));
     }
-    timingFile << ros::Time::now() << "," << t_selectiveICP.elapsed() << ","
-               << ","
-               << ","
-               << ","
-               << "," << std::endl;
 
     if (parameters_.output) {
       getError(selective_ref_dp, pc, 1);
@@ -600,25 +431,12 @@ bool Mapper::normalICP(const DP &cloud, PM::TransformationParameters *T_updated_
     // Ensure minimum overlap between scans.
     const double estimated_overlap = icp_.errorMinimizer->getOverlap();
     ROS_DEBUG_STREAM("[ICP] Overlap: " << estimated_overlap);
-    metricsFile << stamp << ","
-                << ","
-                << ","
-                << ","
-                << ","
-                << ","
-                << ","
-                << ","
-                << "," << estimated_overlap << "," << std::endl;
+
     if (estimated_overlap < parameters_.min_overlap) {
       ROS_ERROR_STREAM("[ICP] Estimated overlap too small, ignoring ICP correction!");
       return false;
     }
 
-    timingFile << ros::Time::now() << ","
-               << "," << t_normalICP.elapsed() << ","
-               << ","
-               << ","
-               << "," << std::endl;
     return true;
 
   } catch (PM::ConvergenceError error) {
@@ -650,15 +468,6 @@ double Mapper::getICPErrorToRef(const DP &aligned_dp) {
   }
   std::cout << "Approximation of ICP error to selected references is: " << result / point_count
             << std::endl;
-  metricsFile << stamp << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << "," << result / point_count << ","
-              << ","
-              << "," << std::endl;
   return result / point_count;
 }
 
@@ -676,15 +485,6 @@ double Mapper::getICPError(const DP &aligned_dp) {
   }
   std::cout << "Approximation of ICP error to complete model is: " << result / point_count
             << std::endl;
-  metricsFile << stamp << "," << result / point_count << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << "," << std::endl;
   return result / point_count;
 }
 
@@ -765,13 +565,6 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
   std::cout << "Haussdorff distance: " << std::sqrt(haussdorffDist) << " m" << std::endl;
   std::cout << "Haussdorff quantile distance: " << std::sqrt(haussdorffQuantileDist) << " m"
             << std::endl;
-
-  metricsFile << stamp << ","
-              << "," << error / nbMatchedPoints << "," << meanDist << "," << nbMatchedPoints << ","
-              << std::sqrt(haussdorffDist) << "," << std::sqrt(haussdorffQuantileDist) << ","
-              << ","
-              << ","
-              << "," << std::endl;
 }
 
 // this is general pre-processing of dp cloud for map and reading cloud
@@ -812,11 +605,6 @@ void Mapper::processCloud(DP *point_cloud, const ros::Time &stamp) {
   if (pts_count < parameters_.min_reading_point_count) {
     ROS_ERROR_STREAM("[ICP] Not enough points in newPointCloud: only " << pts_count << " pts.");
   }
-  timingFile << ros::Time::now() << ","
-             << ","
-             << ","
-             << "," << t_processCloud.elapsed() << ","
-             << "," << std::endl;
 }
 
 void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
@@ -839,16 +627,6 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
   }
 
   std::cout << "New map created with " << mapPointCloud.features.cols() << " points." << std::endl;
-  metricsFile << stamp << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << ","
-              << "," << mapPointCloud.getNbPoints() << std::endl;
 
   if (parameters_.update_icp_ref_trigger == true) {
     DP ref_pc = mapPointCloud;  // add references
@@ -857,11 +635,6 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
     selective_icp_.setMap(ref_pc);
     std::cout << "New map set" << std::endl;
   }
-  timingFile << ros::Time::now() << ","
-             << ","
-             << ","
-             << ","
-             << "," << t_mapping.elapsed() << "," << std::endl;
 }
 
 bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
@@ -979,16 +752,17 @@ void Mapper::publishCloud(T *cloud, ros::Publisher *publisher) const {
   publisher->publish(*cloud);
 }
 
-void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh,
+void Mapper::extractReferenceFacets(const int density, cgal::MeshModel::Ptr &reference_mesh,
                                     std::unordered_set<int> &references, PointCloud *pointcloud) {
   pointcloud->clear();
   // if reference set is empty, extract whole point cloud
-  if (references.empty() == 1) {
+  if (references.empty()) {
     std::cout << "Extract whole point cloud (normal ICP)" << std::endl;
-    int n_points = reference_mesh.getArea() * density;
+    int n_points = reference_mesh->getArea() * density;
     std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
-    cpt_utils::sample_pc_from_mesh(reference_mesh.getMesh(), n_points, 0.0, pointcloud);
-    publishReferenceMesh(reference_mesh, references);
+    cpt_utils::sample_pc_from_mesh(reference_mesh->getMesh(), n_points, 0.0, pointcloud);
+    // TODO (Hermann) What are references? They are not defined in meshmodel.cc
+    publishReferenceMesh(reference_mesh->references);
   } else {
     std::cout << "Extract selected reference point clouds (selective ICP)" << std::endl;
 
@@ -997,19 +771,19 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
     // get coplanar facets
     references_new.clear();
     std::cout << "Choosen reference facets:" << std::endl;
-    std::unordered_set<int>::iterator uitr;
-    for (uitr = references.begin(); uitr != references.end(); uitr++) {
-      std::cout << *uitr << std::endl;
-      reference_mesh.findCoplanarFacets(*uitr, &references_new, 0.01);
+    for (auto ref : references) {
+      std::cout << ref << std::endl;
+      reference_mesh->findCoplanarFacets(ref, &references_new, 0.01);
     }
 
     if (references_new.empty()) {
+      // TODO (Hermann) There should be proper error handling here.
       return;
     }
 
     std::cout << "Computed reference facets:" << std::endl;
-    for (uitr = references_new.begin(); uitr != references_new.end(); uitr++) {
-      std::cout << *uitr << std::endl;
+    for (auto ref : references_new) {
+      std::cout << ref << std::endl;
     }
 
     publishReferenceMesh(reference_mesh, references_new);
@@ -1021,7 +795,9 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel &referenc
     // create input triangles
     std::vector<cgal::Triangle> triangles;
     double reference_area = 0;
-    cgal::Polyhedron P = reference_mesh.getMesh();
+    cgal::Polyhedron P = reference_mesh->getMesh();
+    // TODO (Hermann) This should iterate over references and then get the triangles with a function
+    // from the mesh-model
     for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
       if (references_new.find(j->id()) != references_new.end()) {
         cgal::Triangle t(j->halfedge()->vertex()->point(), j->halfedge()->next()->vertex()->point(),
