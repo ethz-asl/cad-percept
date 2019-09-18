@@ -1,4 +1,5 @@
 import rospy
+import numpy as np
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from interactive_markers.menu_handler import MenuHandler
 from visualization_msgs.msg import Marker, InteractiveMarker, InteractiveMarkerControl
@@ -41,8 +42,7 @@ def normalized_quaternion(x, y, z, w):
     """
     Creates a normalized Quaternion.
     """
-    norm = x**2 + y**2 + z**2 + w**2
-    s = norm ** (-0.5)
+    s = 1.0 / np.linalg.norm([x, y, z, w])
     ret = Quaternion()
     ret.x = s * x
     ret.y = s * y
