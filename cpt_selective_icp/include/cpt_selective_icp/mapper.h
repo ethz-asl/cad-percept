@@ -53,7 +53,7 @@ class Mapper {
   std::ofstream metricsFile;
   std::ofstream transformationFile;
   std::ofstream transformationFile2;
-  cgal::MeshModel reference_mesh_;
+  cgal::MeshModel::Ptr reference_mesh_;
   ros::Time stamp;
   void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
   void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
@@ -79,10 +79,9 @@ class Mapper {
                           cpt_selective_icp::References::Response &res);
   bool setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
   bool setSelectiveICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
-  void publishReferenceMesh(cgal::MeshModel &reference_mesh, std::unordered_set<int> &references);
   template <class T>
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
-  void extractReferenceFacets(const int density, cgal::MeshModel &reference_mesh,
+  void extractReferenceFacets(const int density, cgal::MeshModel::Ptr reference_mesh,
                               std::unordered_set<int> &references, PointCloud *pointcloud);
   std::unordered_set<int> references_new;
 
@@ -97,7 +96,9 @@ class Mapper {
 
   void addScanToMap(DP &corrected_cloud, ros::Time &stamp);
 
-  void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
+  void publishMesh(const cgal::MeshModel::Ptr model, ros::Publisher *publisher);
+  void publishReferenceMesh(const cgal::MeshModel::Ptr reference_mesh,
+                            const std::unordered_set<int> &references);
 
   // Subscribers
   ros::Subscriber cloud_sub_;

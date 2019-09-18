@@ -58,10 +58,10 @@ bool Mapper::getClosestFacet(cpt_selective_icp::FacetID::Request &req,
   if (ref_mesh_ready == false) {
     std::cerr << "Reference mesh not loaded yet or not ready!" << std::endl;
   } else {
-    cgal::PointAndPrimitiveId ppid = reference_mesh_.getClosestPrimitive(
+    cgal::PointAndPrimitiveId ppid = reference_mesh_->getClosestTriangle(
         (double)req.point.x, (double)req.point.y, (double)req.point.z);
     cgal::Point pt = ppid.first;
-    int facet_id = reference_mesh_.getFacetIndex(ppid.second);
+    int facet_id = reference_mesh_->getIdFromFacetHandle(ppid.second);
     res.facet_id = facet_id;
 
     // project this point on corresponding facet
@@ -102,8 +102,8 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
       std::cerr << "P is not closed => no consistent normal directions" << std::endl;
     }
 
-    reference_mesh_.init(P);
-    metricsFile << "Number of Facets in Model: " << reference_mesh_.size() << std::endl;
+    cgal::MeshModel::create(P, &reference_mesh_);
+    metricsFile << "Number of Facets in Model: " << reference_mesh_->size() << std::endl;
 
     tf::StampedTransform transform;
     tf_listener_.lookupTransform(parameters_.tf_map_frame, frame_id, ros::Time(0),
@@ -117,7 +117,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     transformation.block(0, 3, 3, 1) = translation;
     cgal::Transformation ctransformation;
     cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
-    reference_mesh_.transform(ctransformation);
+    reference_mesh_->transform(ctransformation);
     ref_mesh_ready = true;
 
     // TODO: extract reference facets of all facets ==> get complete point cloud, then do p.c.
@@ -143,7 +143,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   }
 }
 
-void Mapper::publishMesh(const cgal::MeshModel::Ptr model, ros::Publisher *publisher) const {
+void Mapper::publishMesh(const cgal::MeshModel::Ptr model, ros::Publisher *publisher) {
   cgal::Polyhedron P;
   P = model->getMesh();
   cgal_msgs::TriangleMesh t_msg;
@@ -457,10 +457,11 @@ double Mapper::getICPErrorToRef(const DP &aligned_dp) {
   int point_count = 0;
   double result = 0;
   for (auto point : aligned_pc) {
-    cgal::PointAndPrimitiveId ppid = reference_mesh_.getClosestPrimitive(point.x, point.y, point.z);
+    cgal::PointAndPrimitiveId ppid = reference_mesh_->getClosestTriangle(point.x, point.y, point.z);
     double squared_distance =
-        reference_mesh_.squaredDistance(cgal::Point(point.x, point.y, point.z));
-    if (references_new.find(reference_mesh_.getFacetIndex(ppid.second)) != references_new.end() &&
+        reference_mesh_->squaredDistance(cgal::Point(point.x, point.y, point.z));
+    if (references_new.find(reference_mesh_->getIdFromFacetHandle(ppid.second)) !=
+            references_new.end() &&
         sqrt(squared_distance) < 0.5) {
       ++point_count;
       result += sqrt(squared_distance);
@@ -477,7 +478,7 @@ double Mapper::getICPError(const DP &aligned_dp) {
   double result = 0;
   for (auto point : aligned_pc) {
     double squared_distance =
-        reference_mesh_.squaredDistance(cgal::Point(point.x, point.y, point.z));
+        reference_mesh_->squaredDistance(cgal::Point(point.x, point.y, point.z));
     if (sqrt(squared_distance) < 0.5) {
       ++point_count;
       result += sqrt(squared_distance);
@@ -642,7 +643,7 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
   std::unordered_set<int> references;
   for (auto id : req.data) {
     // check that every request is in mesh
-    if (id < reference_mesh_.size()) {
+    if (id < reference_mesh_->size()) {
       references.insert(id);
     }
   }
@@ -711,10 +712,10 @@ bool Mapper::setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Re
   return true;
 }
 
-void Mapper::publishReferenceMesh(cgal::MeshModel &reference_mesh,
-                                  std::unordered_set<int> &references) {
+void Mapper::publishReferenceMesh(const cgal::MeshModel::Ptr reference_mesh,
+                                  const std::unordered_set<int> &references) {
   cgal::Polyhedron P;
-  P = reference_mesh.getMesh();
+  P = reference_mesh->getMesh();
   cgal_msgs::TriangleMesh t_msg;
   cgal_msgs::ColoredMesh c_msg;
   cgal::triangleMeshToMsg(P, &t_msg);
@@ -752,7 +753,7 @@ void Mapper::publishCloud(T *cloud, ros::Publisher *publisher) const {
   publisher->publish(*cloud);
 }
 
-void Mapper::extractReferenceFacets(const int density, cgal::MeshModel::Ptr &reference_mesh,
+void Mapper::extractReferenceFacets(const int density, cgal::MeshModel::Ptr reference_mesh,
                                     std::unordered_set<int> &references, PointCloud *pointcloud) {
   pointcloud->clear();
   // if reference set is empty, extract whole point cloud
@@ -762,7 +763,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel::Ptr &ref
     std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
     cpt_utils::sample_pc_from_mesh(reference_mesh->getMesh(), n_points, 0.0, pointcloud);
     // TODO (Hermann) What are references? They are not defined in meshmodel.cc
-    publishReferenceMesh(reference_mesh->references);
+    publishReferenceMesh(reference_mesh, references);
   } else {
     std::cout << "Extract selected reference point clouds (selective ICP)" << std::endl;
 
