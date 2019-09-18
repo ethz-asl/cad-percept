@@ -48,7 +48,7 @@ Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel::Ptr 
         mesh_model->getClosestTriangle(pc_msg[i].x, pc_msg[i].y, pc_msg[i].z);
     cgal::Point pt = ppid.first;
 
-    int triangle_id = mesh_model->getFacetIndex(ppid.second);
+    int triangle_id = mesh_model->getIdFromFacetHandle(ppid.second);
 
     associations.points_from(0, i) = pc_msg[i].x;
     associations.points_from(1, i) = pc_msg[i].y;
@@ -86,8 +86,8 @@ cgal::Point centerOfBbox(const PointCloud &pointcloud) {
   return centerOfBbox(bbox);
 }
 
-Polyhedron::Facet_handle getFacetHandle(Polyhedron &P, const uint facet_id) {
-  Polyhedron::Facet_iterator iterator = P.facets_begin();
+cgal::Polyhedron::Facet_handle getFacetHandle(cgal::Polyhedron &P, const uint facet_id) {
+  cgal::Polyhedron::Facet_iterator iterator = P.facets_begin();
   while (iterator->id() != facet_id) {
     ++iterator;
   }
