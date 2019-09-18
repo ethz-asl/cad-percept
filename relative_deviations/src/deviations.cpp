@@ -16,7 +16,7 @@ Deviations::~Deviations() {
   performanceFile.close();
 }
 
-void Deviations::init(const cgal::Polyhedron &P) {
+void Deviations::init(cgal::Polyhedron &P) {
   // Create output file for timing information
   std::stringstream ss;
   auto t = std::time(nullptr);
@@ -53,16 +53,17 @@ void Deviations::init(const cgal::Polyhedron &P) {
 
   path_ = params.path;
   // create MeshModel of reference
-  reference_mesh.init(P);
+  // Create mesh model.
+  cgal::MeshModel::create(P, &reference_mesh);
 
   // process model here, what stays the same between scans
 
-  // Find coplanar facets and create bimap Facet ID <-> Plane ID (arbitrary iterated)
-  bimap.clear();
-  reference_mesh.findAllCoplanarFacets(&bimap, 0.01);
+  // Find coplanar facets and create unordered_map Facet ID <-> Plane ID (arbitrary iterated)
+  std::unordered_map<int, int> facetToPlane;
+  reference_mesh->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 0.01);
   initPlaneMap();
   computeCGALBboxes();
-  computeFacetNormals(reference_mesh);
+  computeFacetNormals(*reference_mesh);
 }
 
 void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
@@ -96,7 +97,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
 
   PointMatcherSupport::timer t_association;
 
-  findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
+  findBestPlaneAssociation(*rec_planes, *reference_mesh, remaining_plane_cloud_vector);
 
   performanceFile << ros::Time::now() << "," << rec_planes->size() << ","
                   << rec_planes->size() - remaining_plane_cloud_vector->size() << std::endl;
@@ -153,7 +154,7 @@ void Deviations::detectMapChanges(
              << "," << t_segmentation_map.elapsed() << ","
              << "," << std::endl;
   PointMatcherSupport::timer t_association_map;
-  findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
+  findBestPlaneAssociation(*rec_planes, *reference_mesh, remaining_plane_cloud_vector);
   timingFile << ros::Time::now() << ","
              << ","
              << ","
@@ -470,17 +471,16 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
   double best_angle;
 
   // iterate over all planes
-  for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end();
-       i = bimap.right.upper_bound(i->first)) {
-    // first check if Polyhedron plane even has size to be associated
-    if (plane_map[i->first].area < params.minPolyhedronArea) {
+  for (std::pair<int, int> i : planeToFacets) {
+    // first check if plane even has size to be associated
+    if (plane_map[i.first].area < params.minPolyhedronArea) {
       continue;
     }
 
     // now check area ratio
-    double ratio = pc_area / plane_map[i->first].area;
+    double ratio = pc_area / plane_map[i.second].area;
     if (ratio > params.assocAreaRatioUpperLimit ||
-        (plane_map[i->first].area < params.assocAreaLowerLimitThreshold &&
+        (plane_map[i.first].area < params.assocAreaLowerLimitThreshold &&
          ratio < params.assocAreaRatioLowerLimit)) {
       continue;
     }
@@ -491,7 +491,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     // std::cout << "Checking Plane ID: " << i->first << std::endl;
 
     // distance_score of squared distances
-    uint facet_id = i->second;
+    uint facet_id = i.second;
     cgal::FT d = 0;
     for (auto point : cloud.points) {
       d += sqrt(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z),
@@ -510,10 +510,13 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     double dist = 0;
     for (auto point : cloud.points) {
       double d = std::numeric_limits<double>::max();
-      for (auto plane : boost::make_iterator_range(bimap.right.equal_range(i->first))) {
+
+      auto planes = planeToFacets.equal_range(i.first);
+      for (auto plane = planes.first; plane != planes.second; ++plane) {
         d = std::min(
             d, CGAL::to_double(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z),
-                                                      mesh_model.getTriangleFromID(plane.second))));
+                                                      mesh_model.getTriangleFromID(plane->second)
+                                                      )));
       }
       d_min = std::min(d, d_min);
       dist += sqrt(d);
@@ -535,7 +538,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     // TODO: this needs fix because of different orientation of normals
     // angle (not sure if necessary since already somehow contained in distance_score)
     // we just care about angle of axis angle representation
-    double angle = acos(rec_plane.pc_normal.dot(plane_map[i->first].normal));
+    double angle = acos(rec_plane.pc_normal.dot(plane_map[i.first].normal));
     // std::cout << "Angle is: " << angle << std::endl;
     // std::cout << "Angles: " << angle << "/ " << std::abs(angle - M_PI) << std::endl;
     // Bring angle to first quadrant
@@ -567,13 +570,13 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
 
     // lower match_score is better fit!
     if (match_score_new < *match_score) {
-      if (match_score_new == plane_map[i->first].match_score) {
+      if (match_score_new == plane_map[i.first].match_score) {
         // std::cout << "Match score new is: " << match_score_new << ", map score is: " <<
         // plane_map[i->first].match_score << std::endl; std::cerr << "Pointcloud with same match
         // score. Keeping preceding result." << std::endl;
-      } else if (match_score_new < plane_map[i->first].match_score) {
+      } else if (match_score_new < plane_map[i.first].match_score) {
         // std::cout << "Replacing score by new score" << std::endl;
-        *id = i->first;
+        *id = i.first;
         *match_score = match_score_new;
         *success = true;
 
@@ -631,11 +634,11 @@ void Deviations::findBestPlaneAssociation(
 }
 
 void Deviations::computeFacetNormals(cgal::MeshModel &mesh_model) {
-  for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end();
-       i = bimap.right.upper_bound(i->first)) {
-    cgal::Vector cnormal = mesh_model.computeFaceNormal2(mesh_model.getFacetHandle(i->second));
+
+  for (std::pair<int, int> i : planeToFacets) {
+    cgal::Vector cnormal = mesh_model.computeFaceNormal2(mesh_model.getFacetHandleFromId(i.second));
     Eigen::Vector3d normal = cgal::cgalVectorToEigenVector(cnormal);
-    plane_map[i->first].normal = normal;
+    plane_map[i.first].normal = normal;
   }
 }
 
@@ -764,13 +767,11 @@ void Deviations::reset() {
 }
 
 void Deviations::initPlaneMap() {
-  std::cout << "Size of bimap is: " << bimap.size() << std::endl;
-  for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end();) {
-    // std::cout << "First element is: " << i->first << std::endl;
-
+  std::cout << "Size of associations is: " << planeToFacets.size() << std::endl;
+  for (auto i = planeToFacets.begin(); i != planeToFacets.end();) {
     polyhedron_plane plane;
     plane.associated = false;
-    plane.plane = reference_mesh.getPlaneFromID(
+    plane.plane = reference_mesh->getPlaneFromID(
         i->second);  // getPlane from the first facet of this plane (arbitrary)
     plane_map.insert(std::make_pair(i->first, plane));
 
@@ -780,35 +781,22 @@ void Deviations::initPlaneMap() {
     int key = i->first;
     double area = 0;
     do {
-      area += reference_mesh.getArea(i->second);
+      area += reference_mesh->getArea(i->second);
       ++i;
-    } while (i != bimap.right.end() && key == i->first);  // multidset is ordered
+    } while (i != planeToFacets.end() && key == i->first);  // multidset is ordered
     // save area to struct
     plane_map.at(key).area = area;
   }
 }
 
 void Deviations::computeCGALBboxes() {
-  for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end();
-       ++i) {
-    cgal::Polyhedron::Facet_handle facet_handle = reference_mesh.getFacetHandle(i->second);
+  for (std::pair<int, int> i : planeToFacets) {
+    cgal::Polyhedron::Facet_handle facet_handle = reference_mesh->getFacetHandleFromId(i.second);
     CGAL::Bbox_3 bbox =
-        CGAL::Polygon_mesh_processing::face_bbox(facet_handle, reference_mesh.getMesh());
+        CGAL::Polygon_mesh_processing::face_bbox(facet_handle, reference_mesh->getMesh());
     // update bbox
-    plane_map.at(i->first).bbox += bbox;
+    plane_map.at(i.first).bbox += bbox;
   }
-
-  /**
-    // Make a check what we have there now
-    for (association_bimap::right_const_iterator i = bimap.right.begin(); i != bimap.right.end(); )
-    { int dim = plane_map.at(i->first).bbox.dimension(); std::cout << "Dimension: " << dim <<
-    std::endl; double max = plane_map.at(i->first).bbox.max(0); double min =
-    plane_map.at(i->first).bbox.min(0); std::cout << "Min/ max of bbox: " << min << "/ " << max <<
-    std::endl; int key = i->first; do {
-        ++i;
-      } while (i != bimap.right.end() && key == i->first); // multidset is ordered
-    }
-  */
 }
 
 }  // namespace deviations

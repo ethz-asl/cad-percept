@@ -199,11 +199,11 @@ void RelativeDeviations::publish(
     const std::vector<reconstructed_plane> &remaining_plane_cloud_vector,
     std::unordered_map<int, transformation> &transformation_map) {
   publishReconstructedPlanes(rec_planes, &reconstructed_planes_pub_);
-  publishAssociations(deviations.reference_mesh, deviations.plane_map,
+  publishAssociations(*deviations.reference_mesh, deviations.plane_map,
                       remaining_plane_cloud_vector);
   publishBboxesAndNormals(deviations.plane_map);
   publishModelNormals(deviations.plane_map);  // only of the associated ones
-  publishDeviations(deviations.reference_mesh, transformation_map);
+  publishDeviations(*deviations.reference_mesh, transformation_map);
 }
 
 void RelativeDeviations::publishMesh(const cgal::MeshModel &model,
@@ -325,13 +325,13 @@ void RelativeDeviations::publishAssociations(
       // std::cout << "Visualize Facet: " << umit->first << std::endl;
       uint8_t r = std::rand() % 256, g = std::rand() % 256, b = 0;
 
-      auto iit = deviations.bimap.right.equal_range(umit->first);
-      for (auto itr = iit.first; itr != iit.second; ++itr) {
+      auto planes = deviations.planeToFacets.equal_range(umit->first);
+      for (auto plane = planes.first; plane != planes.second; ++plane) {
         c.r = r / 255.;
         c.g = g / 255.;
         c.b = b / 255.;
         c.a = 0.4;
-        c_msg.colors[itr->second] = c;
+        c_msg.colors[plane->second] = c;
       }
 
       pcl::copyPointCloud(umit->second.rec_plane.pointcloud, pointcloud_plane_rgb);
@@ -395,7 +395,7 @@ void RelativeDeviations::publishBboxesAndNormals(
       marker.action = visualization_msgs::Marker::ADD;
       marker.id = marker_id;
       marker.color =
-          c_associated[deviations.bimap.right.find(umit->first)->second];  // get color of one of
+          c_associated[deviations.planeToFacets.find(umit->first)->second];  // get color of one of
                                                                            // the corresponding
                                                                            // facets
       marker.color.a = 0.7f;
@@ -422,7 +422,7 @@ void RelativeDeviations::publishBboxesAndNormals(
       marker_2.type = visualization_msgs::Marker::ARROW;
       marker_2.action = visualization_msgs::Marker::ADD;
       marker_2.id = marker_id;
-      marker_2.color = c_associated[deviations.bimap.right.find(umit->first)->second];
+      marker_2.color = c_associated[deviations.planeToFacets.find(umit->first)->second];
       marker_2.color.a = 0.7f;
       marker_2.scale.x = 0.05;
       marker_2.scale.y = 0.1;
@@ -589,7 +589,7 @@ void RelativeDeviations::publishDeviations(
       }
     }
 
-    auto iit = deviations.bimap.right.equal_range(it->first);
+    auto iit = deviations.planeToFacets.equal_range(it->first);
     for (auto itr = iit.first; itr != iit.second; ++itr) {
       c_msg.colors[itr->second] = c;
     }
