@@ -9,7 +9,7 @@ from cgal_msgs.srv import PublishMesh
 from cpt_utils.marker import RosMarker
 
 
-def frame_callback(marker_msg, tf_broadcaster, update_mesh, map_frame):
+def frame_callback(marker_msg, tf_broadcaster, map_frame):
     time = rospy.Time.now()
     pose = marker_msg.pose
     tf_broadcaster.sendTransform(
@@ -17,7 +17,6 @@ def frame_callback(marker_msg, tf_broadcaster, update_mesh, map_frame):
         (pose.orientation.x, pose.orientation.y, pose.orientation.z,
          pose.orientation.w),
         time, 'marker_position', map_frame)
-    update_mesh('')
 
 
 if __name__ == "__main__":
@@ -32,10 +31,8 @@ if __name__ == "__main__":
                        InteractiveMarkerControl.MOVE_ROTATE_3D, show_6dof=True,
                        parent_frame='world')
 
-    update_mesh = rospy.ServiceProxy('/mesh_publisher/publish', PublishMesh)
-
     # Create a timer to update the published transforms
     rospy.Timer(rospy.Duration(0.01), lambda msg: frame_callback(
-        marker.marker, tf_broadcaster, update_mesh, 'world'))
+        marker.marker, tf_broadcaster, 'world'))
 
     rospy.spin()
