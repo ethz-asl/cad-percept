@@ -31,16 +31,11 @@
 #include <list>
 #include <utility>  // defines std::pair
 
-// #include <CGAL/point_generators_3.h> remove
 #include <CGAL/Polygon_mesh_processing/bbox.h>
 
 #include <map>
 #include <queue>
 #include <unordered_map>
-
-#include <boost/bimap.hpp>
-#include <boost/bimap/multiset_of.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
 
 #include <pointmatcher/Timer.h>
 
@@ -52,9 +47,9 @@ namespace deviations {
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::multiset_of<int>>
-    association_bimap;
-typedef association_bimap::value_type bi_association;
+//typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::multiset_of<int>>
+//    association_bimap;
+//typedef association_bimap::value_type bi_association;
 
 // Concurrency
 #ifdef CGAL_LINKED_WITH_TBB
@@ -129,7 +124,7 @@ class Deviations {
   ~Deviations();
 
   parameters params;
-  cgal::MeshModel reference_mesh;
+  cgal::MeshModel::Ptr reference_mesh;
   /**
    * Read-in reading pc and execute detection
    */
@@ -139,17 +134,17 @@ class Deviations {
   void detectMapChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
                         std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
                         std::unordered_map<int, transformation> *current_transformation_map);
-  void init(const cgal::Polyhedron &P);
+  void init(cgal::Polyhedron &P);
   std::unordered_map<int, polyhedron_plane>
       plane_map;  // plane map saving the ID of coplanar plane associated to plane properties
   std::unordered_map<int, transformation>
       transformation_map;  // here we keep all the latest updated transformations
 
   /**
-   * Bimap saving associations between triangles and planes: Facet ID <-> Plane ID (arbitrary
-   * iterated)
+   * unordered map saving associations between triangles and planes: Facet IDs <-> Plane ID
+   * (arbitrary iterated)
    */
-  association_bimap bimap;
+  std::unordered_multimap<int, int> planeToFacets;
 
   /**
    * Reset stuff after evaluation of current scan
