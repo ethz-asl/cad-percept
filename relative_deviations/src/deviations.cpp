@@ -211,13 +211,13 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in,
   // Create the filtering object
   pcl::ExtractIndices<pcl::PointXYZ> extract;
 
-  int i = 0, nr_points = (int)cloud_filtered->points.size();
+  int i = 0, nr_points = (int) cloud_filtered->points.size();
   // While 1% of the original cloud is still there
   while (cloud_filtered->points.size() > 0.01 * nr_points) {
     // Segment the largest planar component from the remaining cloud
     seg.setInputCloud(cloud_filtered);
     seg.segment(*inliers, *coefficients);
-    if (inliers->indices.size() < (uint)params.minNumberOfPlanePoints) {
+    if (inliers->indices.size() < (uint) params.minNumberOfPlanePoints) {
       std::cerr
           << "Could not estimate a planar model for the remaining dataset. Not enought points."
           << std::endl;
@@ -281,7 +281,7 @@ void Deviations::planarSegmentationCGAL(const PointCloud &cloud,
 }
 
 // This works for RANSAC and Region Growing
-template <typename ShapeDetection>
+template<typename ShapeDetection>
 void Deviations::runShapeDetection(const PointCloud &cloud,
                                    std::vector<reconstructed_plane> *rec_planes,
                                    PointCloud *remaining_cloud) const {
@@ -383,7 +383,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
 
     // Compute coverage, i.e. ratio of the points assigned to a shape
     cgal::FT coverage = cgal::FT(points.size() - shape_detection.number_of_unassigned_points()) /
-                        cgal::FT(points.size());
+        cgal::FT(points.size());
 
     // Prints number of assigned shapes and unassigned points
     std::cout << "time: " << time.time() * 1000 << "ms" << std::endl;
@@ -481,7 +481,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     double ratio = pc_area / plane_map[i.second].area;
     if (ratio > params.assocAreaRatioUpperLimit ||
         (plane_map[i.first].area < params.assocAreaLowerLimitThreshold &&
-         ratio < params.assocAreaRatioLowerLimit)) {
+            ratio < params.assocAreaRatioLowerLimit)) {
       continue;
     }
 
@@ -516,7 +516,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
         d = std::min(
             d, CGAL::to_double(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z),
                                                       mesh_model.getTriangleFromID(plane->second)
-                                                      )));
+            )));
       }
       d_min = std::min(d, d_min);
       dist += sqrt(d);
@@ -554,7 +554,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     }
 
     match_score_new = params.distWeight * avg_dist + params.minDistWeight * min_dist +
-                      params.distanceScoreWeight * distance_score + params.angleWeight * angle;
+        params.distanceScoreWeight * distance_score + params.angleWeight * angle;
     // std::cout << "Match score new is: " << match_score_new << std::endl;
     // std::cout << "Match score before is: " << *match_score << std::endl;
 
@@ -654,7 +654,7 @@ void Deviations::findPlaneDeviation(
         double pc_area = cpt_utils::getArea(umit->second.rec_plane.pointcloud);
         if (pc_area < 0.6 * umit->second.area ||
             pc_area > 1.4 * umit->second.area) {  // better use [0.9, 1.1], but keep in mind that
-                                                  // current lidar does not have full view
+          // current lidar does not have full view
           // std::cout << "Area: " << pc_area << "/ " << umit->second.area << std::endl;
           continue;
         }
@@ -706,7 +706,7 @@ void Deviations::findPlaneDeviation(
        *  If we have full scan of wall, this might be correct, otherwise not
        */
       cgal::Vector translation = cpt_utils::centerOfBbox(umit->second.bbox) -
-                                 cpt_utils::centerOfBbox(umit->second.rec_plane.pointcloud);
+          cpt_utils::centerOfBbox(umit->second.rec_plane.pointcloud);
       trafo.translation = cgal::cgalVectorToEigenVector(translation);
 
       // create separate map with only facets ID match_score != 0 (only facets which we associated
@@ -736,12 +736,13 @@ void Deviations::updateAveragePlaneDeviation(
     double current_score = it->second.score;
     trafo.score =
         transformation_map[it->first].score +
-        (current_score - transformation_map[it->first].score) / transformation_map[it->first].count;
+            (current_score - transformation_map[it->first].score)
+                / transformation_map[it->first].count;
     // update translation average
     Eigen::Vector3d current_translation = it->second.translation;
     trafo.translation = transformation_map[it->first].translation +
-                        (current_translation - transformation_map[it->first].translation) /
-                            transformation_map[it->first].count;
+        (current_translation - transformation_map[it->first].translation) /
+            transformation_map[it->first].count;
     // update rotation average using unit vector rotation
     // TODO: check this
     Eigen::Vector3d v_unit(1, 0, 0);

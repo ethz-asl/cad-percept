@@ -47,10 +47,6 @@ namespace deviations {
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-//typedef boost::bimap<boost::bimaps::unordered_set_of<int>, boost::bimaps::multiset_of<int>>
-//    association_bimap;
-//typedef association_bimap::value_type bi_association;
-
 // Concurrency
 #ifdef CGAL_LINKED_WITH_TBB
 typedef CGAL::Parallel_tag Concurrency_tag;
