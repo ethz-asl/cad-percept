@@ -5,10 +5,12 @@ Launch file for Selective ICP
 
 <launch>
 
+	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/CLA_CAD_simplified_single_wall_no_ceiling_no_pillars.off" />
+
 	<node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen" >
     <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
     <param name="scanTopic" value="/rslidar_points" />
-		<param name="cadTopic" value="cad_interface_node/cad_model" />
+		<param name="cadTopic" value="mesh_publisher/mesh_out" />
 		<param name="icpConfig"
 			   value="$(find cpt_selective_icp)/config/icp_dynamic.yaml" />
 		<param name="selectiveIcpConfig"
@@ -22,6 +24,19 @@ Launch file for Selective ICP
 		<param name="path"
 				 value="$(find cpt_selective_icp)" />
 	</node>
+
+	<node name="mesh_positioning"
+          pkg="cpt_selective_icp"
+          type="position_cad_with_marker.py"
+          output="screen">
+    	<param name="marker_parent_frame" value="map" />
+  	</node>
+
+	<node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node" output="screen">
+    	<param name="publish_on_start" value="true"/>
+    	<param name="default_filename" value="$(arg cad_file)"/>
+    	<param name="frame_name" value="marker_position"/>
+  	</node>
 
 	<node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_selective_icp)/launch/rviz.rviz" />
 
