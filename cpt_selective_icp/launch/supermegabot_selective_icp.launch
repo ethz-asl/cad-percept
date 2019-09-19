@@ -32,6 +32,12 @@ Launch file for Selective ICP
     	<param name="marker_parent_frame" value="map" />
   	</node>
 
+	<node name="find_id_in_mesh"
+          pkg="cpt_selective_icp"
+          type="find_closest_id_in_mesh.py"
+          output="screen">
+  	</node>
+
 	<node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node" output="screen">
     	<param name="publish_on_start" value="true"/>
     	<param name="default_filename" value="$(arg cad_file)"/>
