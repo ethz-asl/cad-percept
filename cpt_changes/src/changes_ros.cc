@@ -10,13 +10,14 @@ typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      mesh_model_(nh_private.param<std::string>("off_model", "fail")),
       map_frame_(nh_private.param<std::string>("map_frame", "fail")),
       cad_frame_(nh_private.param<std::string>("cad_frame", "fail")),
       distance_threshold_(nh_private.param<double>("distance_threshold", 0.2)),
       discrete_color_(nh_private.param<bool>("discrete_color", false)) {
   if (!nh_private_.hasParam("off_model"))
     std::cerr << "ERROR 'off_model' not set as parameter." << std::endl;
+  cgal::MeshModel::create(nh_private.param<std::string>("off_model", "fail"), &mesh_model_);
+
   good_matches_pub_ = nh_.advertise<visualization_msgs::Marker>("good_cad_matches", 100);
   bad_matches_pub_ = nh_.advertise<visualization_msgs::Marker>("bad_cad_matches", 100);
   model_pub_ = nh_.advertise<visualization_msgs::Marker>("architect_model", 100);
@@ -183,7 +184,7 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
   cgal_msgs::TriangleMesh t_msg;
   cgal_msgs::ColoredMesh c_msg;
   cgal::Polyhedron mesh;
-  mesh = mesh_model_.getMesh();
+  mesh = mesh_model_->getMesh();
   cgal::triangleMeshToMsg(mesh, &t_msg);
 
   // triangle to colored msg
@@ -289,7 +290,6 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
   c_msg.header.seq = 0;
   distance_triangles_pub_.publish(c_msg);
 }
-}  // namespace changes
-}  // namespace cad_percept
+
 }  // namespace changes
 }  // namespace cad_percept
