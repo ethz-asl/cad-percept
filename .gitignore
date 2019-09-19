@@ -6,6 +6,7 @@
 *.lo
 *.o
 *.obj
+*.pyc
 
 # Precompiled Headers
 *.gch
@@ -34,6 +35,7 @@
 *.out
 *.app
 
-# CLION excludes
+# Editor excludes
 **/cmake-build-debug/*
 **/.idea/*
+**/.vscode/
