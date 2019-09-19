@@ -8,6 +8,7 @@ Panels:
         - /Status1
         - /InteractiveMarkers1
         - /TriangleMeshDisplay1
+        - /InteractiveMarkers2
       Splitter Ratio: 0.5
     Tree Height: 849
   - Class: rviz/Selection
@@ -204,7 +205,7 @@ Visualization Manager:
       Show Axes: false
       Show Descriptions: true
       Show Visual Aids: false
-      Update Topic: /facet_selector/update
+      Update Topic: /mesh_id_marker/update
       Value: true
     - Alpha: 1
       Class: rviz/PointStamped
@@ -274,7 +275,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 23.86767578125
+      Distance: 10.767318725585938
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -289,10 +290,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8547970056533813
+      Pitch: 1.1597968339920044
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.789919912815094
+      Yaw: 2.179920196533203
     Saved: ~
 Window Geometry:
   Displays:

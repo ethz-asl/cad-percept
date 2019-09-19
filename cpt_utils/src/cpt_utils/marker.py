@@ -125,6 +125,10 @@ class RosMarker:
         self.menu_handler.reApply(self.server)
         self.server.applyChanges()
 
+    def change_description(self, new_description):
+        self.marker.description = new_description
+        self.server.insert(self.marker, self.processFeedback)
+
 
 if __name__ == "__main__":
     rospy.init_node("marker_example")
