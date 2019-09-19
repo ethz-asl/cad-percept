@@ -49,11 +49,7 @@ class Mapper {
   ros::NodeHandle &nh_, &nh_private_;
   tf::TransformListener tf_listener_;
   MapperParameters parameters_;
-  std::ofstream timingFile;
-  std::ofstream metricsFile;
-  std::ofstream transformationFile;
-  std::ofstream transformationFile2;
-  cgal::MeshModel::Ptr reference_mesh_;
+
   ros::Time stamp;
   void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
   void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
@@ -71,19 +67,31 @@ class Mapper {
    */
   double getICPError(const DP &aligned_dp);
   void getError(DP dpref, DP dppointcloud_out, bool selective);
+
+  // filtering of pc
   void processCloud(DP *point_cloud, const ros::Time &stamp);
+
+  // performs ICP with a given scan
   bool selectiveICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map,
                     const ros::Time &stamp);
   bool normalICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map);
+
+  /*
+   * Service Calls for dynamic settings
+   */
   bool setReferenceFacets(cpt_selective_icp::References::Request &req,
                           cpt_selective_icp::References::Response &res);
   bool setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
   bool setSelectiveICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+
   template <class T>
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
-  void extractReferenceFacets(const int density, cgal::MeshModel::Ptr reference_mesh,
-                              std::unordered_set<int> &references, PointCloud *pointcloud);
-  std::unordered_set<int> references_new;
+  // publishes the reference_mesh_ with all reference triangles marked red
+  void publishReferenceMesh(const std::unordered_set<int> &references);
+
+  // Sample a pc from selected triangles in the reference_mesh_
+  void sampleFromReferenceFacets(const int density, std::unordered_set<int> &references,
+                                 PointCloud *pointcloud);
 
   bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
   bool getClosestFacet(cpt_selective_icp::FacetID::Request &req,
@@ -95,10 +103,6 @@ class Mapper {
   bool reloadConfig(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
   void addScanToMap(DP &corrected_cloud, ros::Time &stamp);
-
-  void publishMesh(const cgal::MeshModel::Ptr model, ros::Publisher *publisher);
-  void publishReferenceMesh(const cgal::MeshModel::Ptr reference_mesh,
-                            const std::unordered_set<int> &references);
 
   // Subscribers
   ros::Subscriber cloud_sub_;
@@ -124,6 +128,12 @@ class Mapper {
   ros::ServiceServer reload_icp_config_srv_;
 
   int odom_received_;
+
+  // Reference Mesh for localization
+  cgal::MeshModel::Ptr reference_mesh_;
+
+  // TODO (Hermann) What is this?
+  std::unordered_set<int> references_new;
 
   // libpointmatcher
   PM::ICPSequence icp_;

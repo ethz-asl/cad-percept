@@ -53,6 +53,7 @@ bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Re
   return true;
 }
 
+// TODO (Hermann) This should be moved to the mesh_publisher in cpt_utils
 bool Mapper::getClosestFacet(cpt_selective_icp::FacetID::Request &req,
                              cpt_selective_icp::FacetID::Response &res) {
   if (ref_mesh_ready == false) {
@@ -103,11 +104,10 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     }
 
     cgal::MeshModel::create(P, &reference_mesh_);
-    metricsFile << "Number of Facets in Model: " << reference_mesh_->size() << std::endl;
 
     tf::StampedTransform transform;
     tf_listener_.lookupTransform(parameters_.tf_map_frame, frame_id, ros::Time(0),
-                                 transform);  // from tf_map_frame to "marker2"
+                                 transform);  // from tf_map_frame to origin of cad model
     Eigen::Matrix3d rotation;
     tf::matrixTFToEigen(transform.getBasis(), rotation);
     Eigen::Vector3d translation;
@@ -126,8 +126,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     // first extract whole pointcloud
     std::unordered_set<int> references;  // empty
     PointCloud pointcloud;
-    extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references,
-                           &pointcloud);
+    sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
 
     ref_dp = cpt_utils::pointCloudToDP(pointcloud);
     processCloud(&ref_dp, ros::Time(0));
@@ -136,26 +135,11 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     icp_.clearMap();
     icp_.setMap(ref_dp);
 
-    // publish transformed reference mesh once for relative_deviations (avoid reloading)
-    publishMesh(reference_mesh_, &cad_mesh_pub_);
-
     cad_trigger = false;
   }
 }
 
-void Mapper::publishMesh(const cgal::MeshModel::Ptr model, ros::Publisher *publisher) {
-  cgal::Polyhedron P;
-  P = model->getMesh();
-  cgal_msgs::TriangleMesh t_msg;
-  cgal_msgs::TriangleMeshStamped s_msg;
-  cgal::triangleMeshToMsg(P, &t_msg);
-  s_msg.mesh = t_msg;
-
-  s_msg.header.frame_id = parameters_.tf_map_frame;
-  s_msg.header.stamp = {secs : 0, nsecs : 0};
-  publisher->publish(s_msg);
-}
-
+// TODO (Hermann) Rename to 'gotScan'?
 void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
   /**
    * Wait until tf_listener gets results
@@ -288,25 +272,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       }
     }
 
-    // TODO (Hermann): Ca we remove this hardcoded stuff?
-    tf::StampedTransform transform;
-    tf_listener_.lookupTransform("marker2", parameters_.tf_map_frame, stamp,
-                                 transform);  // from tf_map_frame to "marker2"
-    Eigen::Matrix3d rotation;
-    tf::matrixTFToEigen(transform.getBasis(), rotation);
-    Eigen::Vector3d translation;
-    tf::vectorTFToEigen(transform.getOrigin(), translation);
-    Eigen::Matrix4d T_map_to_marker2 = Eigen::Matrix4d::Identity();
-    T_map_to_marker2.block(0, 0, 3, 3) = rotation;
-    T_map_to_marker2.block(0, 3, 3, 1) = translation;
-
-    Eigen::Matrix4d T_leica_to_lidar = Eigen::Matrix4d::Identity();
-    // these values are only valid for current setup and estimated by measurements at different
-    // times:
-    T_leica_to_lidar(0, 3) = 0.214;
-    T_leica_to_lidar(1, 3) = 0.198;
-    T_leica_to_lidar(2, 3) = 0.396;
-
     /**
      * Publish
      */
@@ -407,6 +372,7 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
     ROS_ERROR_STREAM("[Selective ICP] failed to converge: " << error.what());
     return false;
   } catch (const std::exception &ex) {
+    // TODO (Hermann) convert to ros-error-stream
     std::cerr << "Error occured: " << ex.what() << std::endl;
     return false;
   } catch (...) {
@@ -416,6 +382,7 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
   }
 }
 
+// TODO (Hermann) rename to fullICP?
 bool Mapper::normalICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map) {
   std::cout << "Perform normal ICP" << std::endl;
   PointMatcherSupport::timer t_normalICP;
@@ -656,8 +623,7 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
   std::cout << "Mode set to selective ICP" << std::endl;
 
   PointCloud pointcloud;
-  extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references,
-                         &pointcloud);
+  sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
 
   selective_ref_dp = cpt_utils::pointCloudToDP(pointcloud);
   processCloud(&selective_ref_dp, ros::Time(0));
@@ -696,11 +662,12 @@ bool Mapper::setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Re
     parameters_.normal_icp_primer_trigger = true;
     std::cout << "Mode set to normal ICP" << std::endl;
 
+    // TODO (Hermann) This seems unnecessary, why sample from pc again and then not do anything?
+
     // just called to publish ref mesh and p.c. again:
     std::unordered_set<int> references;  // empty
     PointCloud pointcloud;
-    extractReferenceFacets(parameters_.map_sampling_density, reference_mesh_, references,
-                           &pointcloud);
+    sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
   } else {
     if (selective_icp_trigger == true)
       parameters_.normal_icp_primer_trigger = false;
@@ -712,10 +679,9 @@ bool Mapper::setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Re
   return true;
 }
 
-void Mapper::publishReferenceMesh(const cgal::MeshModel::Ptr reference_mesh,
-                                  const std::unordered_set<int> &references) {
+void Mapper::publishReferenceMesh(const std::unordered_set<int> &references) {
   cgal::Polyhedron P;
-  P = reference_mesh->getMesh();
+  P = reference_mesh_->getMesh();
   cgal_msgs::TriangleMesh t_msg;
   cgal_msgs::ColoredMesh c_msg;
   cgal::triangleMeshToMsg(P, &t_msg);
@@ -741,6 +707,8 @@ void Mapper::publishReferenceMesh(const cgal::MeshModel::Ptr reference_mesh,
     c.g = 0.0;
     c.b = 0.0;
     c.a = 0.4;
+    // TODO (Hermann): Dangerous, this assumes consecutive ids and correct serialization in
+    //                 triangleMeshToMsg
     c_msg.colors[reference] = c;
   }
   ref_mesh_pub_.publish(c_msg);
@@ -753,17 +721,16 @@ void Mapper::publishCloud(T *cloud, ros::Publisher *publisher) const {
   publisher->publish(*cloud);
 }
 
-void Mapper::extractReferenceFacets(const int density, cgal::MeshModel::Ptr reference_mesh,
-                                    std::unordered_set<int> &references, PointCloud *pointcloud) {
+void Mapper::sampleFromReferenceFacets(const int density, std::unordered_set<int> &references,
+                                       PointCloud *pointcloud) {
   pointcloud->clear();
   // if reference set is empty, extract whole point cloud
   if (references.empty()) {
     std::cout << "Extract whole point cloud (normal ICP)" << std::endl;
-    int n_points = reference_mesh->getArea() * density;
+    int n_points = reference_mesh_->getArea() * density;
     std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
-    cpt_utils::sample_pc_from_mesh(reference_mesh->getMesh(), n_points, 0.0, pointcloud);
-    // TODO (Hermann) What are references? They are not defined in meshmodel.cc
-    publishReferenceMesh(reference_mesh, references);
+    cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0, pointcloud);
+    publishReferenceMesh(references);
   } else {
     std::cout << "Extract selected reference point clouds (selective ICP)" << std::endl;
 
@@ -774,7 +741,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel::Ptr refe
     std::cout << "Choosen reference facets:" << std::endl;
     for (auto ref : references) {
       std::cout << ref << std::endl;
-      reference_mesh->findCoplanarFacets(ref, &references_new, 0.01);
+      reference_mesh_->findCoplanarFacets(ref, &references_new, 0.01);
     }
 
     if (references_new.empty()) {
@@ -787,7 +754,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel::Ptr refe
       std::cout << ref << std::endl;
     }
 
-    publishReferenceMesh(reference_mesh, references_new);
+    publishReferenceMesh(references_new);
 
     // create sampled point cloud from reference_new
 
@@ -796,7 +763,7 @@ void Mapper::extractReferenceFacets(const int density, cgal::MeshModel::Ptr refe
     // create input triangles
     std::vector<cgal::Triangle> triangles;
     double reference_area = 0;
-    cgal::Polyhedron P = reference_mesh->getMesh();
+    cgal::Polyhedron P = reference_mesh_->getMesh();
     // TODO (Hermann) This should iterate over references and then get the triangles with a function
     // from the mesh-model
     for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
