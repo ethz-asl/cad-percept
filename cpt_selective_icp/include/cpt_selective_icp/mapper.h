@@ -24,7 +24,6 @@
 #include <std_msgs/ColorRGBA.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
-#include "cpt_selective_icp/FacetID.h"
 #include "cpt_selective_icp/References.h"
 
 #include <pointmatcher/Timer.h>
@@ -94,8 +93,7 @@ class Mapper {
                                  PointCloud *pointcloud);
 
   bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
-  bool getClosestFacet(cpt_selective_icp::FacetID::Request &req,
-                       cpt_selective_icp::FacetID::Response &res);
+
   /**
    * Load parameters for libpointmatcher from yaml
    */
