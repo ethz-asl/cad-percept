@@ -21,8 +21,6 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
   load_published_map_srv_ =
       nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
-  get_closest_facet_srv_ =
-      nh_private_.advertiseService("get_closest_facet", &Mapper::getClosestFacet, this);
   set_ref_srv_ = nh_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
   set_normal_icp_srv_ = nh_.advertiseService("normal_icp", &Mapper::setNormalICP, this);
   set_selective_icp_srv_ = nh_.advertiseService("selective_icp", &Mapper::setSelectiveICP, this);
@@ -50,32 +48,6 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
   // Since CAD is published all the time, we need a trigger when to load it
   cad_trigger = true;
-  return true;
-}
-
-// TODO (Hermann) This should be moved to the mesh_publisher in cpt_utils
-bool Mapper::getClosestFacet(cpt_selective_icp::FacetID::Request &req,
-                             cpt_selective_icp::FacetID::Response &res) {
-  if (ref_mesh_ready == false) {
-    std::cerr << "Reference mesh not loaded yet or not ready!" << std::endl;
-  } else {
-    cgal::PointAndPrimitiveId ppid = reference_mesh_->getClosestTriangle(
-        (double)req.point.x, (double)req.point.y, (double)req.point.z);
-    cgal::Point pt = ppid.first;
-    int facet_id = reference_mesh_->getIdFromFacetHandle(ppid.second);
-    res.facet_id = facet_id;
-
-    // project this point on corresponding facet
-    geometry_msgs::Point msg;
-    geometry_msgs::PointStamped smsg;
-    cgal::pointToMsg(pt, &msg);
-    smsg.point = msg;
-    smsg.header.seq = projection_count;
-    smsg.header.frame_id = parameters_.tf_map_frame;
-    smsg.header.stamp = ros::Time(0);
-    point_pub_.publish(smsg);
-    projection_count++;
-  }
   return true;
 }
 

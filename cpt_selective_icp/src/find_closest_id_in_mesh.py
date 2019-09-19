@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import rospy
-from geometry_msgs.msg import Transform, Vector3, Quaternion
+from geometry_msgs.msg import Transform, Vector3, Quaternion, Point
 from visualization_msgs.msg import InteractiveMarkerControl
 from tf import TransformListener
 from std_srvs.srv import Empty, EmptyRequest
 
-from cgal_msgs.srv import PublishMesh
+from cgal_msgs.srv import FacetID
 from cpt_utils.marker import RosMarker
 
 
@@ -19,15 +19,19 @@ class FindIdMarkerState:
             return True
         return False
 
-def loop(marker, state):
+def loop(marker, state, get_id):
     if state.pose_changed(marker.marker.pose):
-        marker.change_description('pose changed')
+        position = marker.marker.pose.position
+        current_point = Point(x=position.x, y=position.y, z=position.z)
+        resp = get_id(current_point)
+        print(resp)
+        marker.change_description('Primitive ID: {}'.format(resp.facet_id))
 
 
 if __name__ == "__main__":
     rospy.init_node("find_id_in_mesh")
     marker = RosMarker('FindIDS',
-                       'description',
+                       'Move to search for ids.',
                        'mesh_id_marker',
                        InteractiveMarkerControl.MOVE_3D,
                        show_6dof=False,
@@ -35,10 +39,10 @@ if __name__ == "__main__":
                        parent_frame='marker_position')
     state = FindIdMarkerState(marker.marker.pose)
 
-    publish_mesh = rospy.ServiceProxy('/mesh_publisher/publish', PublishMesh)
+    get_id = rospy.ServiceProxy('/mesh_publisher/get_triangle_id', FacetID)
 
     # Create a timer to regularly query for new IDs
     rospy.Timer(rospy.Duration(0.01), lambda msg: loop(
-        marker, state))
+        marker, state, get_id))
 
     rospy.spin()
