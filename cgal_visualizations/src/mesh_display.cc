@@ -66,6 +66,14 @@ void MeshDisplay<T>::appearencePropertyChanged() {
 }
 
 template <typename T>
+void MeshDisplay<T>::update(float wall_dt, float ros_dt) {
+  if (visual_ != nullptr && updateTF()) {
+    // update visual with new position
+    visual_->update();
+  }
+}
+
+template <typename T>
 void MeshDisplay<T>::updateVisualProperties() {
   // call all propertychanged functions to update underlying visual.
   backfaceCullingPropertyChanged();
@@ -74,17 +82,7 @@ void MeshDisplay<T>::updateVisualProperties() {
 
 template <typename T>
 void MeshDisplay<T>::processMessage(const typename T::ConstPtr &msg) {
-  // Here we call the rviz::FrameManager to get the transform from the
-  // fixed frame to the frame in the header of this Imu message.  If
-  // it fails, we can't do anything else so we return.
-  Ogre::Quaternion orientation;
-  Ogre::Vector3 position;
-  if (!rviz::MessageFilterDisplay<T>::context_->getFrameManager()->getTransform(
-          msg->header.frame_id, msg->header.stamp, position, orientation)) {
-    ROS_DEBUG("Error transforming from frame '%s' to frame '%s'", msg->header.frame_id.c_str(),
-              qPrintable(rviz::MessageFilterDisplay<T>::fixed_frame_));
-    return;
-  }
+  parent_frame_ = msg->header.frame_id;
 
   if (visual_ == nullptr) {
     visual_.reset(new MeshVisual(rviz::MessageFilterDisplay<T>::context_->getSceneManager(),
@@ -93,13 +91,35 @@ void MeshDisplay<T>::processMessage(const typename T::ConstPtr &msg) {
 
   // Now set or update the contents of the chosen visual.
   visual_->setMessage(msg);
-  visual_->setFramePosition(position);
-  visual_->setFrameOrientation(orientation);
-
+  updateTF();
   // update visuals.
   updateVisualProperties();
-
   visual_->update();
+}
+
+template <typename T>
+bool MeshDisplay<T>::updateTF() {
+  if (visual_ != nullptr && parent_frame_ != "") {
+    // Here we call the rviz::FrameManager to get the transform from the
+    // fixed frame to the frame in the header of this Imu message.  If
+    // it fails, we can't do anything else so we return.
+    Ogre::Quaternion new_orientation;
+    Ogre::Vector3 new_position;
+    if (!rviz::MessageFilterDisplay<T>::context_->getFrameManager()->getTransform(
+            parent_frame_, ros::Time(), new_position, new_orientation)) {
+      ROS_DEBUG("Error transforming from frame '%s' to frame '%s'", parent_frame_.c_str(),
+                qPrintable(rviz::MessageFilterDisplay<T>::fixed_frame_));
+      return false;
+    }
+    if (position_ != new_position || orientation_ != new_orientation) {
+      position_ = new_position;
+      orientation_ = new_orientation;
+      visual_->setFramePosition(position_);
+      visual_->setFrameOrientation(orientation_);
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace visualizations
