@@ -72,13 +72,14 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
 }
 
 void RelativeDeviations::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
-  std::cout << "[RD] Received transformed CAD mesh from cpt_selective_icp" << std::endl;
-  tf::StampedTransform transform;
-  tf_listener_.lookupTransform(map_topic, cad_mesh_in.header.frame_id, ros::Time(0), transform);
-  cgal::Polyhedron P;
-  cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
-  deviations.init(P, transform);
-  publishAllModelNormals(deviations.plane_map);
+  if (tf_listener_.canTransform(map_topic, cad_mesh_in.header.frame_id, ros::Time(0))) {
+    tf::StampedTransform transform;
+    tf_listener_.lookupTransform(map_topic, cad_mesh_in.header.frame_id, ros::Time(0), transform);
+    cgal::Polyhedron P;
+    cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
+    deviations.init(P, transform);
+    publishAllModelNormals(deviations.plane_map);
+  }
 }
 
 void RelativeDeviations::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
