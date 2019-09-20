@@ -11,49 +11,9 @@ namespace deviations {
 
 Deviations::Deviations() {}
 
-Deviations::~Deviations() {
-  timingFile.close();
-  performanceFile.close();
-}
-
 void Deviations::init(cgal::Polyhedron &P) {
-  // Create output file for timing information
-  std::stringstream ss;
-  auto t = std::time(nullptr);
-  auto tm = *std::localtime(&t);
-  ss << params.path << "/exports/timing_" << std::put_time(&tm, "%H%M%S_%d%m%Y") << ".csv";
-  std::string filename = ss.str();
-  timingFile.open(filename);
-  timingFile << "Duration"
-             << ","
-             << "segmentation"
-             << ","
-             << "association"
-             << ","
-             << "deviation"
-             << ","
-             << "average"
-             << ","
-             << "segmentationMap"
-             << ","
-             << "associationMap"
-             << ","
-             << "deviationMap" << std::endl;
-
-  // Create output file for performance information
-  std::stringstream ss2;
-  ss2 << params.path << "/exports/performance_" << std::put_time(&tm, "%H%M%S_%d%m%Y") << ".csv";
-  filename = ss2.str();
-  performanceFile.open(filename);
-  performanceFile << "Duration"
-                  << ","
-                  << "noOfRecPlanes"
-                  << ","
-                  << "noOfAssocPlanes" << std::endl;
-
   path_ = params.path;
   // create MeshModel of reference
-  // Create mesh model.
   cgal::MeshModel::create(P, &reference_mesh);
 
   // process model here, what stays the same between scans
@@ -84,12 +44,6 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
   } else if (params.planarSegmentation == "PCL") {
     planarSegmentationPCL(reading_cloud, rec_planes, &remaining_cloud);
   }
-  timingFile << ros::Time::now() << "," << t_segmentation.elapsed() << ","
-             << ","
-             << ","
-             << ","
-             << ","
-             << "," << std::endl;
 
   /**
    *  Plane association
@@ -99,15 +53,6 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
 
   findBestPlaneAssociation(*rec_planes, *reference_mesh, remaining_plane_cloud_vector);
 
-  performanceFile << ros::Time::now() << "," << rec_planes->size() << ","
-                  << rec_planes->size() - remaining_plane_cloud_vector->size() << std::endl;
-  timingFile << ros::Time::now() << ","
-             << "," << t_association.elapsed() << ","
-             << ","
-             << ","
-             << ","
-             << "," << std::endl;
-
   /**
    *  Find current transformation_map and update transformation_map
    */
@@ -115,20 +60,8 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
       current_transformation_map;  // the latest transformation result
   PointMatcherSupport::timer t_deviation;
   findPlaneDeviation(&current_transformation_map, 0);
-  timingFile << ros::Time::now() << ","
-             << ","
-             << "," << t_deviation.elapsed() << ","
-             << ","
-             << ","
-             << "," << std::endl;
   PointMatcherSupport::timer t_average;
   updateAveragePlaneDeviation(current_transformation_map);
-  timingFile << ros::Time::now() << ","
-             << ","
-             << ","
-             << "," << t_average.elapsed() << ","
-             << ","
-             << "," << std::endl;
 }
 
 /**
@@ -147,31 +80,10 @@ void Deviations::detectMapChanges(
   } else if (params.planarSegmentation == "PCL") {
     planarSegmentationPCL(map_cloud, rec_planes, &remaining_cloud);
   }
-  timingFile << ros::Time::now() << ","
-             << ","
-             << ","
-             << ","
-             << "," << t_segmentation_map.elapsed() << ","
-             << "," << std::endl;
   PointMatcherSupport::timer t_association_map;
   findBestPlaneAssociation(*rec_planes, *reference_mesh, remaining_plane_cloud_vector);
-  timingFile << ros::Time::now() << ","
-             << ","
-             << ","
-             << ","
-             << ","
-             << "," << t_association_map.elapsed() << "," << std::endl;
   PointMatcherSupport::timer t_deviation_map;
   findPlaneDeviation(current_transformation_map, 1);
-  timingFile << ros::Time::now() << ","
-             << ","
-             << ","
-             << ","
-             << ","
-             << ","
-             << "," << t_deviation_map.elapsed() << std::endl;
-  performanceFile << ros::Time::now() << "," << rec_planes->size() << ","
-                  << rec_planes->size() - remaining_plane_cloud_vector->size() << std::endl;
 }
 
 void Deviations::planarSegmentationPCL(const PointCloud &cloud_in,
@@ -370,7 +282,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
   typename ShapeDetection::Shape_range shapes = shape_detection.shapes();
   cgal::FT best_coverage = 0;
 
-  int number_of_iterations = 1; // these iteration give almost the same estimates
+  int number_of_iterations = 1;  // these iteration give almost the same estimates
 
   for (size_t i = 0; i < number_of_iterations; i++) {
     // Reset timer
@@ -660,7 +572,7 @@ void Deviations::findPlaneDeviation(
         }
       }
       transformation trafo;
-      trafo.score = umit->second.match_score; 
+      trafo.score = umit->second.match_score;
 
       // - find translation (also in normal direction is hard since we don't have point association,
       // every point has different translation even in normal direction)
@@ -683,7 +595,7 @@ void Deviations::findPlaneDeviation(
 
       /**
        *  Angle Axis
-       */ 
+       */
       Eigen::AngleAxisd aa(quat);
       trafo.aa = aa;
 
@@ -714,25 +626,27 @@ void Deviations::updateAveragePlaneDeviation(
   // - now just compute average
 
   for (auto it = current_transformation_map.begin(); it != current_transformation_map.end(); ++it) {
-    // if entry in transformation map does not yet exist for this ID, then just copy current_transformation_map
+    // if entry in transformation map does not yet exist for this ID, then just copy
+    // current_transformation_map
     if (transformation_map.find(it->first) == transformation_map.end()) {
       transformation_map[it->first] = it->second;
       transformation_map[it->first].count = 1;
       continue;
     }
-    
+
     transformation trafo;
 
     trafo.count = transformation_map[it->first].count + 1;
 
     // update score average
     double current_score = it->second.score;
-    trafo.score = transformation_map[it->first].score + 
+    trafo.score = transformation_map[it->first].score +
                   (current_score - transformation_map[it->first].score) / trafo.count;
     // update translation average
     Eigen::Vector3d current_translation = it->second.translation;
-    trafo.translation = transformation_map[it->first].translation + 
-                        (current_translation - transformation_map[it->first].translation) / trafo.count;
+    trafo.translation =
+        transformation_map[it->first].translation +
+        (current_translation - transformation_map[it->first].translation) / trafo.count;
     // update rotation average using unit vector rotation
     Eigen::Vector3d v_unit(1, 0, 0);
     v_unit.normalize();

@@ -16,6 +16,7 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
       input_queue_size(nh_private.param<int>("inputQueueSize", 10)),
       visualize(nh_private.param<std::string>("visualize", "current")),
       map_analyzer_trigger(false) {
+  // TODO (Hermann) rewrite to use config-provider
   // set parameters for Deviations object (public struct)
   deviations.params.planarSegmentation = nh_private.param<std::string>("planarSegmentation", "PCL");
   deviations.params.planarSegmentationMethod =
@@ -68,25 +69,7 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   cloud_sub_ = nh_.subscribe(scan_topic, input_queue_size, &RelativeDeviations::gotCloud, this);
 
   map_sub_ = nh_.subscribe(map_topic, input_queue_size, &RelativeDeviations::gotMap, this);
-
-  // Create output file for timing information
-  std::stringstream ss;
-  auto t = std::time(nullptr);
-  auto tm = *std::localtime(&t);
-  ss << deviations.params.path << "/exports/timing_ros_" << std::put_time(&tm, "%H%M%S_%d%m%Y")
-     << ".csv";
-  std::string filename = ss.str();
-  timingFile.open(filename);
-  timingFile << "Duration"
-             << ","
-             << "processBuffer"
-             << ","
-             << "processMap"
-             << ","
-             << "processCloud" << std::endl;
 }
-
-RelativeDeviations::~RelativeDeviations() { timingFile.close(); }
 
 void RelativeDeviations::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   std::cout << "[RD] Received transformed CAD mesh from cpt_selective_icp" << std::endl;
@@ -145,23 +128,16 @@ void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
     publishCloud<PointCloud>(&cloud_filtered, &buffer_pc_pub_);
     processCloud(cloud_filtered);
   }
-
-  timingFile << ros::Time::now() << "," << t_processBuffer.elapsed() << ","
-             << "," << std::endl;
 }
 
 void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   std::vector<reconstructed_plane> rec_planes;
-   std::vector<reconstructed_plane> 
-      remaining_plane_cloud_vector; // put everything in here what can't be associated
+  std::vector<reconstructed_plane>
+      remaining_plane_cloud_vector;  // put everything in here what can't be associated
 
   PointMatcherSupport::timer t_processCloud;
 
   deviations.detectChanges(&rec_planes, reading_pc, &remaining_plane_cloud_vector);
-
-  timingFile << ros::Time::now() << ","
-             << ","
-             << "," << t_processCloud.elapsed() << std::endl;
 
   if (visualize == "current") {
     publish(rec_planes, remaining_plane_cloud_vector, deviations.transformation_map);
@@ -183,8 +159,6 @@ void RelativeDeviations::processMap(PointCloud &map_pc) {
                               &current_transformation_map);
 
   std::cout << "Transformation map has size: " << current_transformation_map.size() << std::endl;
-  timingFile << ros::Time::now() << ","
-             << "," << t_processMap.elapsed() << "," << std::endl;
 
   if (visualize == "map") {
     publish(rec_planes, remaining_plane_cloud_vector, current_transformation_map);
@@ -238,6 +212,7 @@ void RelativeDeviations::publishCloud(T *cloud, ros::Publisher *publisher) const
 void RelativeDeviations::publishPolyhedron(cgal::Polyhedron &P) {
   // use this as long there is no rviz Polyhedron Display for non-triangles
   for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
+    // TODO (Hermann) Can we remove this?
     sleep(5);
     std::cout << "Publish Polyhedron" << std::endl;
     geometry_msgs::PolygonStamped msg;

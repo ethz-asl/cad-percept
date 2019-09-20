@@ -117,7 +117,6 @@ typedef std::unordered_map<int, int>::iterator Umiterator2;
 class Deviations {
  public:
   Deviations();
-  ~Deviations();
 
   parameters params;
   cgal::MeshModel::Ptr reference_mesh;
@@ -148,9 +147,6 @@ class Deviations {
   void reset();
 
  private:
-  std::ofstream timingFile;
-  std::ofstream performanceFile;
-
   void planarSegmentationPCL(const PointCloud &cloud_in,
                              std::vector<reconstructed_plane> *rec_planes,
                              PointCloud *remaining_cloud) const;

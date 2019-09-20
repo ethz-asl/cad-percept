@@ -34,12 +34,10 @@ typedef pcl::PointCloud<pcl::PointXYZRGB> ColoredPointCloud;
 class RelativeDeviations {
  public:
   RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
-  ~RelativeDeviations();
 
  private:
   Deviations deviations;
   ros::NodeHandle &nh_, nh_private_;
-  std::ofstream timingFile;
   void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
   template <class T>
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
