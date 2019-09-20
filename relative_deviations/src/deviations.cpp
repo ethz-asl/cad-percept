@@ -19,11 +19,10 @@ void Deviations::init(cgal::Polyhedron &P) {
   // process model here, what stays the same between scans
 
   // Find coplanar facets and create unordered_map Facet ID <-> Plane ID (arbitrary iterated)
-  std::unordered_map<int, int> facetToPlane;
   reference_mesh->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 0.01);
   initPlaneMap();
   computeCGALBboxes();
-  computeFacetNormals(*reference_mesh);
+  computeFacetNormals();
 }
 
 void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
@@ -546,11 +545,11 @@ void Deviations::findBestPlaneAssociation(
   }
 }
 
-void Deviations::computeFacetNormals(cgal::MeshModel &mesh_model) {
-  for (std::pair<int, int> i : planeToFacets) {
-    cgal::Vector cnormal = mesh_model.computeFaceNormal2(mesh_model.getFacetHandleFromId(i.second));
-    Eigen::Vector3d normal = cgal::cgalVectorToEigenVector(cnormal);
-    plane_map[i.first].normal = normal;
+void Deviations::computeFacetNormals() {
+  for (std::pair<int, int> planeAndFacet : planeToFacets) {
+    cgal::Vector cnormal = reference_mesh->computeFaceNormal2(
+        reference_mesh->getFacetHandleFromId(planeAndFacet.second));
+    plane_map[planeAndFacet.first].normal = cgal::cgalVectorToEigenVector(cnormal);
   }
 }
 
@@ -677,34 +676,36 @@ void Deviations::reset() {
 
 void Deviations::initPlaneMap() {
   std::cout << "Size of associations is: " << planeToFacets.size() << std::endl;
-  for (auto i = planeToFacets.begin(); i != planeToFacets.end();) {
+  for (auto planeAndFacetIt = planeToFacets.begin(); planeAndFacetIt != planeToFacets.end();) {
     polyhedron_plane plane;
     plane.associated = false;
-    plane.plane = reference_mesh->getPlaneFromID(
-        i->second);  // getPlane from the first facet of this plane (arbitrary)
-    plane_map.insert(std::make_pair(i->first, plane));
+    // getPlane from the first facet of this plane (arbitrary)
+    plane.plane = reference_mesh->getPlaneFromID(planeAndFacetIt->second);
+    plane_map.insert(std::make_pair(planeAndFacetIt->first, plane));
 
     // TODO: Decide if using this while-loop or upper_bound as in other functions
     // https://stackoverflow.com/questions/9371236/is-there-an-iterator-across-unique-keys-in-a-stdmultimap
     // Advance to next non-duplicate entry and calculated polyhedron area meanwhile.
-    int key = i->first;
+    int key = planeAndFacetIt->first;
     double area = 0;
     do {
-      area += reference_mesh->getArea(i->second);
-      ++i;
-    } while (i != planeToFacets.end() && key == i->first);  // multidset is ordered
+      area += reference_mesh->getArea(planeAndFacetIt->second);
+      ++planeAndFacetIt;
+    } while (planeAndFacetIt != planeToFacets.end() &&
+             key == planeAndFacetIt->first);  // multidset is ordered
     // save area to struct
     plane_map.at(key).area = area;
   }
 }
 
 void Deviations::computeCGALBboxes() {
-  for (std::pair<int, int> i : planeToFacets) {
-    cgal::Polyhedron::Facet_handle facet_handle = reference_mesh->getFacetHandleFromId(i.second);
+  for (std::pair<int, int> planeAndFacet : planeToFacets) {
+    cgal::Polyhedron::Facet_handle facet_handle =
+        reference_mesh->getFacetHandleFromId(planeAndFacet.second);
     CGAL::Bbox_3 bbox =
         CGAL::Polygon_mesh_processing::face_bbox(facet_handle, reference_mesh->getMesh());
     // update bbox
-    plane_map.at(i.first).bbox += bbox;
+    plane_map.at(planeAndFacet.first).bbox += bbox;
   }
 }
 
