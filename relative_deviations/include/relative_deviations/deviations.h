@@ -9,6 +9,8 @@
 #include <cpt_utils/pc_processing.h>
 #include <glog/logging.h>
 #include <pcl_ros/point_cloud.h>
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
 #include <unistd.h>
 
 // Planar segmentation:
@@ -130,7 +132,7 @@ class Deviations {
   void detectMapChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
                         std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
                         std::unordered_map<int, transformation> *current_transformation_map);
-  void init(cgal::Polyhedron &P);
+  void init(cgal::Polyhedron &P, const tf::StampedTransform& transform);
   std::unordered_map<int, polyhedron_plane>
       plane_map;  // plane map saving the ID of coplanar plane associated to plane properties
   std::unordered_map<int, transformation>

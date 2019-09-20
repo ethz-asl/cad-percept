@@ -90,9 +90,11 @@ RelativeDeviations::~RelativeDeviations() { timingFile.close(); }
 
 void RelativeDeviations::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   std::cout << "[RD] Received transformed CAD mesh from cpt_selective_icp" << std::endl;
+  tf::StampedTransform transform;
+  tf_listener_.lookupTransform(map_topic, cad_mesh_in.header.frame_id, ros::Time(0), transform);
   cgal::Polyhedron P;
   cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
-  deviations.init(P);
+  deviations.init(P, transform);
   publishAllModelNormals(deviations.plane_map);
 }
 
