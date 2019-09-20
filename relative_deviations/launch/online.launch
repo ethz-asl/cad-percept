@@ -7,7 +7,7 @@
   <arg name="discrete_color" default="false" />
   <arg name="score_threshold" default="0.0015" />
   <arg name="path" default="$(find relative_deviations)" />
-  <arg name="cad_topic" default="cad_mesh_pub" />
+  <arg name="cad_topic" default="mesh_publisher/mesh_out" />
   <arg name="scan_topic" default="ref_corrected_scan" />
   <arg name="map_topic" default="map" />
 
@@ -15,7 +15,7 @@
         pkg="relative_deviations"
         type="relative_deviations_node"
         output="screen"
-        respawn="true">
+        respawn="false">
     <rosparam command="load" file="$(find relative_deviations)/launch/parameters.yaml" />
     <param name="map_frame" value="$(arg map_frame)" />
     <param name="discrete_color" value="$(arg discrete_color)" />
