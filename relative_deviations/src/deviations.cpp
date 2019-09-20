@@ -11,11 +11,22 @@ namespace deviations {
 
 Deviations::Deviations() {}
 
-void Deviations::init(cgal::Polyhedron &P) {
+void Deviations::init(cgal::Polyhedron &P, const tf::StampedTransform& transform) {
   path_ = params.path;
   // create MeshModel of reference
   cgal::MeshModel::create(P, &reference_mesh);
 
+  // Transform mesh model into localized frame
+  Eigen::Matrix3d rotation;
+  tf::matrixTFToEigen(transform.getBasis(), rotation);
+  Eigen::Vector3d translation;
+  tf::vectorTFToEigen(transform.getOrigin(), translation);
+  Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
+  transformation.block(0, 0, 3, 3) = rotation;
+  transformation.block(0, 3, 3, 1) = translation;
+  cgal::Transformation ctransformation;
+  cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
+  reference_mesh->transform(ctransformation);
   // process model here, what stays the same between scans
 
   // Find coplanar facets and create unordered_map Facet ID <-> Plane ID (arbitrary iterated)

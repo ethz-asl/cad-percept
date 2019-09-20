@@ -38,6 +38,8 @@ class RelativeDeviations {
  private:
   Deviations deviations;
   ros::NodeHandle &nh_, nh_private_;
+  tf::TransformListener tf_listener_;
+  std::ofstream timingFile;
   void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
   template <class T>
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
