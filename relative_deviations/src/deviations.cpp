@@ -75,7 +75,6 @@ void Deviations::detectMapChanges(
 
   if (params.planarSegmentation == "CGAL") {
     planarSegmentationCGAL(map_cloud, rec_planes, &remaining_cloud);
-
   } else if (params.planarSegmentation == "PCL") {
     planarSegmentationPCL(map_cloud, rec_planes, &remaining_cloud);
   }
@@ -201,8 +200,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
   // More about Region Growing
   // https://cgal.geometryfactory.com/CGAL/doc/master/Shape_detection/index.html
 
-  // Points with normals.
-  cgal::Pwn_vector points;
+  cgal::Pwn_vector points;  // Points with normals.
 
   // load points from pcl cloud
   for (auto point : cloud.points) {
@@ -210,10 +208,6 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
     pwn.first = cgal::ShapeKernel::Point_3(point.x, point.y, point.z);
     points.push_back(pwn);
   }
-
-  // Is this needed at all?
-  // CGAL::First_of_pair_property_map<cgal::Point_with_normal> point_map;
-  // point_map = CGAL::make_first_of_pair_property_map(points[0]);
 
   // Normal estimation with cgal
   // jet_estimate_normals() is slower than pca_estimate_normals()
@@ -224,38 +218,13 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
       points, nb_neighbors,
       CGAL::parameters::point_map(cgal::Point_map()).normal_map(cgal::Normal_map()));
 
-  /* not necessary
-  // Orient normals, successfully oriented points first, then points with unoriented normals
-  (iterator begin) cgal::Pwn_vector::iterator unoriented_points_begin =
-  CGAL::mst_orient_normals(points, nb_neighbors, CGAL::parameters::point_map(cgal::Point_map()).
-                                                                                                              normal_map(cgal::Normal_map()));
-
-  // Delete points with unoriented normal
-  points.erase(unoriented_points_begin, points.end());
-  */
-
-  // std::cout << "Size of pwn_vector: " << points.size() << std::endl;
-
   // Instantiate shape detection engine.
   ShapeDetection shape_detection;
-
-  // Provide input data.
   shape_detection.set_input(points);
-
   // Registers planar shapes via template method (could also register other shapes)
   shape_detection.template add_shape_factory<cgal::ShapePlane>();
-
-  // Measures time before setting up the shape detection.
-  CGAL::Timer time;
-  time.start();
-
   // Build internal data structures.
   shape_detection.preprocess();
-
-  // Measures time after preprocessing.
-  time.stop();
-
-  std::cout << "preprocessing took: " << time.time() * 1000 << "ms" << std::endl;
 
   // Sets parameters for shape detection.
   typename ShapeDetection::Parameters parameters;
@@ -264,42 +233,31 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
   // not for region growing
   // parameters.probability = params.segmentationProbability;
 
-  // Detect shapes with at least 500 points.
+  // Detect shapes with at least X points.
   parameters.min_points = params.minNumberOfPlanePoints;
-
   // Sets maximum Euclidean distance between a point and a shape.
   parameters.epsilon = params.segmentationDistanceThreshold;
-
   // Sets maximum Euclidean distance between points to be clustered.
   parameters.cluster_epsilon = params.segmentationClusterDistance;
-
   // Sets maximum normal deviation.
   // 0.9 < dot(surface_normal, point_normal);
   parameters.normal_threshold = params.segmentationNormalThreshold;
-
   // Perform detection several times and choose result with highest coverage
   typename ShapeDetection::Shape_range shapes = shape_detection.shapes();
   cgal::FT best_coverage = 0;
 
+  // TODO (Hermann) Simplify to only use one iteration
   int number_of_iterations = 1;  // these iteration give almost the same estimates
 
   for (size_t i = 0; i < number_of_iterations; i++) {
-    // Reset timer
-    time.reset();
-    time.start();
-
     // Detect registered shapes with parameters.
     shape_detection.detect(parameters);
-
-    // Measures time after detection
-    time.stop();
 
     // Compute coverage, i.e. ratio of the points assigned to a shape
     cgal::FT coverage = cgal::FT(points.size() - shape_detection.number_of_unassigned_points()) /
                         cgal::FT(points.size());
 
     // Prints number of assigned shapes and unassigned points
-    std::cout << "time: " << time.time() * 1000 << "ms" << std::endl;
     std::cout << shape_detection.shapes().end() - shape_detection.shapes().begin()
               << " primitives, " << coverage << " coverage" << std::endl;
 
@@ -320,11 +278,12 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
     }
   }
 
+  // TODO (Hermann) Why does a standard for-loop not work? gives weird compiler errors with a lot
+  //                of template problems
   // Characterize shapes
-  typename ShapeDetection::Shape_range::iterator it = shapes.begin();
-
-  while (it != shapes.end()) {
-    cgal::ShapePlane *plane = dynamic_cast<cgal::ShapePlane *>(it->get());
+  typename ShapeDetection::Shape_range::iterator shapeIt = shapes.begin();
+  while (shapeIt != shapes.end()) {
+    cgal::ShapePlane *plane = dynamic_cast<cgal::ShapePlane *>(shapeIt->get());
     cgal::ShapeKernel::Vector_3 normal = plane->plane_normal();
     // std::cout << (*it)->info() << std::endl; // parameters of detected shape
     // std::cout << "Plane with normal " << normal << std::endl;
@@ -334,13 +293,15 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
     cgal::FT sum_distances = 0;
     reconstructed_plane rec_plane;
     // Iterates through point indices assigned to each detected shape
-    std::vector<std::size_t>::const_iterator index_it = (*it)->indices_of_assigned_points().begin();
+    std::vector<std::size_t>::const_iterator index_it =
+        (*shapeIt)->indices_of_assigned_points().begin();
     PointCloud pointcloud;
-    while (index_it != (*it)->indices_of_assigned_points().end()) {
+    while (index_it != (*shapeIt)->indices_of_assigned_points().end()) {
       // Retrieve point
+      // TODO (Hermann)  DANGEROUS POINTER MAGIC
       const cgal::Point_with_normal &p = *(points.begin() + (*index_it));
       // Adds Euclidean distance between point and shape
-      sum_distances += CGAL::sqrt((*it)->squared_distance(p.first));
+      sum_distances += CGAL::sqrt((*shapeIt)->squared_distance(p.first));
 
       // Generating point cloud
       pcl::PointXYZ pc_point(p.first.x(), p.first.y(), p.first.z());
@@ -365,14 +326,14 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
     rec_plane.pc_normal = pc_normal;
 
     rec_planes->push_back(rec_plane);
-    it++;
+    shapeIt++;
   }
 }
 
-void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed_plane &rec_plane,
-                                int *id, double *match_score, bool *success) {
+bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed_plane &rec_plane,
+                                int *id, double *match_score) {
+  bool success = false;
   // TODO check every metrics function used here
-  *success = false;
   PointCloud cloud = rec_plane.pointcloud;
   // Area ratio check
   double pc_area = cpt_utils::getArea(cloud);
@@ -384,16 +345,16 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
   double best_angle;
 
   // iterate over all planes
-  for (std::pair<int, int> i : planeToFacets) {
+  for (std::pair<int, int> planeAndFacet : planeToFacets) {
     // first check if plane even has size to be associated
-    if (plane_map[i.first].area < params.minPolyhedronArea) {
+    if (plane_map[planeAndFacet.first].area < params.minPolyhedronArea) {
       continue;
     }
 
     // now check area ratio
-    double ratio = pc_area / plane_map[i.second].area;
+    double ratio = pc_area / plane_map[planeAndFacet.first].area;
     if (ratio > params.assocAreaRatioUpperLimit ||
-        (plane_map[i.first].area < params.assocAreaLowerLimitThreshold &&
+        (plane_map[planeAndFacet.first].area < params.assocAreaLowerLimitThreshold &&
          ratio < params.assocAreaRatioLowerLimit)) {
       continue;
     }
@@ -404,11 +365,13 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     // std::cout << "Checking Plane ID: " << i->first << std::endl;
 
     // distance_score of squared distances
-    uint facet_id = i.second;
+    int facet_id = planeAndFacet.second;
     cgal::FT d = 0;
+    cgal::Plane plane_of_current_facet = mesh_model.getPlaneFromID(facet_id);
+
     for (auto point : cloud.points) {
-      d += sqrt(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z),
-                                       mesh_model.getPlaneFromID(facet_id)));
+      d += sqrt(
+          CGAL::squared_distance(cgal::Point(point.x, point.y, point.z), plane_of_current_facet));
     }
     d = d / cloud.size();
     double distance_score = CGAL::to_double(d);
@@ -421,14 +384,17 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     // dist and min_dist (cancels most of assoc, slow)
     double d_min = std::numeric_limits<double>::max();
     double dist = 0;
+    // TODO (Hermann) maybe there is a parallellized version?
     for (auto point : cloud.points) {
       double d = std::numeric_limits<double>::max();
 
-      auto planes = planeToFacets.equal_range(i.first);
-      for (auto plane = planes.first; plane != planes.second; ++plane) {
-        d = std::min(d, CGAL::to_double(
-                            CGAL::squared_distance(cgal::Point(point.x, point.y, point.z),
-                                                   mesh_model.getTriangleFromID(plane->second))));
+      // iterate through all triangles associated to the current plane
+      // TODO (Hermann) This could be done more efficiently in an AABB tree
+      auto range = planeToFacets.equal_range(planeAndFacet.first);
+      for (auto i = range.first; i != range.second; ++i) {
+        d = std::min(
+            d, CGAL::to_double(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z),
+                                                      mesh_model.getTriangleFromID(i->second))));
       }
       d_min = std::min(d, d_min);
       dist += sqrt(d);
@@ -450,7 +416,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     // TODO: this needs fix because of different orientation of normals
     // angle (not sure if necessary since already somehow contained in distance_score)
     // we just care about angle of axis angle representation
-    double angle = acos(rec_plane.pc_normal.dot(plane_map[i.first].normal));
+    double angle = acos(rec_plane.pc_normal.dot(plane_map[planeAndFacet.first].normal));
     // std::cout << "Angle is: " << angle << std::endl;
     // std::cout << "Angles: " << angle << "/ " << std::abs(angle - M_PI) << std::endl;
     // Bring angle to first quadrant
@@ -482,15 +448,15 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
 
     // lower match_score is better fit!
     if (match_score_new < *match_score) {
-      if (match_score_new == plane_map[i.first].match_score) {
+      if (match_score_new == plane_map[planeAndFacet.first].match_score) {
         // std::cout << "Match score new is: " << match_score_new << ", map score is: " <<
         // plane_map[i->first].match_score << std::endl; std::cerr << "Pointcloud with same match
         // score. Keeping preceding result." << std::endl;
-      } else if (match_score_new < plane_map[i.first].match_score) {
+      } else if (match_score_new < plane_map[planeAndFacet.first].match_score) {
         // std::cout << "Replacing score by new score" << std::endl;
-        *id = i.first;
+        *id = planeAndFacet.first;
         *match_score = match_score_new;
-        *success = true;
+        success = true;
 
         // Save parameters for later use
         best_avg_dist = avg_dist;
@@ -503,7 +469,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     }
   }
   // Output parameters of best fit
-  if (*success) {
+  if (success) {
     std::cout << "PointCloud associated to plane: " << *id << std::endl;
     std::cout << "Match score: " << *match_score << std::endl;
     std::cout << "Min_dist: " << best_min_dist << std::endl;
@@ -511,6 +477,8 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     std::cout << "Distance score: " << best_distance_score << std::endl;
     std::cout << "Angle: " << best_angle << std::endl;
   }
+
+  return success;
 }
 
 void Deviations::findBestPlaneAssociation(
@@ -526,9 +494,7 @@ void Deviations::findBestPlaneAssociation(
   while (!cloud_queue.empty()) {  // while queue not empty
     int id;
     double match_score_new = std::numeric_limits<double>::max();  // smaller is better
-    bool success = false;
-    associatePlane(mesh_model, cloud_queue.front(), &id, &match_score_new, &success);
-    if (success) {
+    if (associatePlane(mesh_model, cloud_queue.front(), &id, &match_score_new)) {
       if (plane_map[id].associated) {
         cloud_queue.push(plane_map[id].rec_plane);  // re-add pointcloud to queue
       }

@@ -162,8 +162,8 @@ class Deviations {
    * every cloud point is associated to the same Polyhedron while testing
    * and then a score is evaluated.
    */
-  void associatePlane(cgal::MeshModel &mesh_model, const reconstructed_plane &rec_plane, int *id,
-                      double *match_score, bool *success);
+  bool associatePlane(cgal::MeshModel &mesh_model, const reconstructed_plane &rec_plane, int *id,
+                      double *match_score);
   /**
    * This function finds best association between all p.c. planes and facets based on match_score
    * from associatePlane(). Could additionally output non associated facets and point clouds.
