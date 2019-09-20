@@ -33,7 +33,7 @@ if __name__ == "__main__":
                        'Move to search for ids.',
                        'mesh_id_marker',
                        InteractiveMarkerControl.MOVE_3D,
-                       show_6dof=False,
+                       show_controls=True,
                        position=[1, 1, 1],
                        parent_frame='marker_position')
     state = FindIdMarkerState(marker.marker.pose)
