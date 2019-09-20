@@ -34,7 +34,7 @@ if __name__ == "__main__":
     publish_mesh = rospy.ServiceProxy('/mesh_publisher/publish', PublishMesh)
     marker.add_menu_item('republish mesh', lambda msg: publish_mesh())
 
-    load_cad = rospy.ServiceProxy('/load_published_map', Empty)
+    load_cad = rospy.ServiceProxy('/mapper/load_published_map', Empty)
     marker.add_menu_item('load CAD', lambda msg: load_cad())
 
     # Create a timer to update the published transforms
