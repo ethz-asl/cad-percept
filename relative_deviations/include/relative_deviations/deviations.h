@@ -119,7 +119,6 @@ typedef std::unordered_map<int, int>::iterator Umiterator2;
 class Deviations {
  public:
   Deviations();
-  ~Deviations();
 
   parameters params;
   cgal::MeshModel::Ptr reference_mesh;
@@ -143,6 +142,7 @@ class Deviations {
    * (arbitrary iterated)
    */
   std::unordered_multimap<int, int> planeToFacets;
+  std::unordered_map<int, int> facetToPlane;
 
   /**
    * Reset stuff after evaluation of current scan
@@ -150,9 +150,6 @@ class Deviations {
   void reset();
 
  private:
-  std::ofstream timingFile;
-  std::ofstream performanceFile;
-
   void planarSegmentationPCL(const PointCloud &cloud_in,
                              std::vector<reconstructed_plane> *rec_planes,
                              PointCloud *remaining_cloud) const;
@@ -176,7 +173,7 @@ class Deviations {
   void findBestPlaneAssociation(std::vector<reconstructed_plane> cloud_vector,
                                 cgal::MeshModel &mesh_model,
                                 std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
-  void computeFacetNormals(cgal::MeshModel &mesh_model);
+  void computeFacetNormals();
   void findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map,
                           bool size_check);
   /**

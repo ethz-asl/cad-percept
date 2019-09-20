@@ -34,7 +34,6 @@ typedef pcl::PointCloud<pcl::PointXYZRGB> ColoredPointCloud;
 class RelativeDeviations {
  public:
   RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
-  ~RelativeDeviations();
 
  private:
   Deviations deviations;
