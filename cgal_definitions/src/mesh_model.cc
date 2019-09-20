@@ -131,11 +131,12 @@ int MeshModel::size() const { return P_.size_of_facets(); }
 Polyhedron MeshModel::getMesh() const { return P_; }
 
 void MeshModel::initializeFacetIndices() {
-  // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for
-  // facets
+  // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for facets
   std::size_t i = 0;
   for (Polyhedron::Facet_iterator facet = P_.facets_begin(); facet != P_.facets_end(); ++facet) {
-    facet->id() = i++;
+    facet->id() = i;
+    facetIdToHandle_[i] = &(*facet);
+    ++i;
   }
 }
 
@@ -147,12 +148,7 @@ int MeshModel::getIdFromFacetHandle(const Polyhedron::Facet_handle &handle) {
 
 // TODO (Hermann) Impement cashing in an unordered map
 Polyhedron::Facet_handle MeshModel::getFacetHandleFromId(const uint facet_id) {
-  Polyhedron::Facet_iterator iterator = P_.facets_begin();
-  // TODO: This could be faster if we just increment pointer by facet_id number
-  while (iterator->id() != facet_id) {
-    ++iterator;
-  }
-  return iterator;
+  return facetIdToHandle_[facet_id];
 }
 
 std::map<int, Vector> MeshModel::computeNormals() const {
@@ -272,7 +268,7 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
 void MeshModel::findAllCoplanarFacets(std::unordered_map<int, int> *facetToPlane,
                                       std::unordered_multimap<int, int> *planeToFacets,
                                       const double eps) {
-  if (_facetToPlane.size() == 0) {
+  if (facetToPlane_.size() == 0) {
     // only do actual computation once
     int plane_id = 0;  // arbitrary plane_id associated to found coplanar facets
     for (uint current_facet = 0; current_facet < P_.size_of_facets(); ++current_facet) {
@@ -284,8 +280,8 @@ void MeshModel::findAllCoplanarFacets(std::unordered_map<int, int> *facetToPlane
         // iterate over current_coplanar_facets and add this to bimap as
         // current_coplanar_facets<->plane_id
         for (auto facet_id : current_coplanar_facets) {
-          _facetToPlane[facet_id] = plane_id;
-          _planeToFacets.insert(std::make_pair(plane_id, facet_id));
+          facetToPlane_[facet_id] = plane_id;
+          planeToFacets_.insert(std::make_pair(plane_id, facet_id));
         }
         plane_id++;
       }
@@ -293,10 +289,10 @@ void MeshModel::findAllCoplanarFacets(std::unordered_map<int, int> *facetToPlane
     std::cout << plane_id << " planes from coplanar facets found." << std::endl;
   }
   // Deep copy both maps
-  for (auto elem : _facetToPlane) {
+  for (auto elem : facetToPlane_) {
     facetToPlane->insert(std::make_pair(elem.first, elem.second));
   }
-  for (auto elem : _planeToFacets) {
+  for (auto elem : planeToFacets_) {
     planeToFacets->insert(std::make_pair(elem.first, elem.second));
   }
 }
