@@ -4,7 +4,7 @@
  * in separate package cpt_selective_icp.
  * Eventually add a check here if selective ICP was successfully executed!
  */
-#include "relative_deviations/deviations.h"
+#include "cpt_deviation_analysis/deviations.h"
 
 namespace cad_percept {
 namespace deviations {

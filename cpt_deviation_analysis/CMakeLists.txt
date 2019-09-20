@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(relative_deviations)
+project(cpt_deviation_analysis)
 
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
@@ -19,11 +19,11 @@ cs_add_library(${PROJECT_NAME}
 ############
 # BINARIES #
 ############
-cs_add_executable(${PROJECT_NAME}_node
+cs_add_executable(relative_deviations_node
         src/relative_deviations_ros_node.cpp
         )
 
-target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
+target_link_libraries(relative_deviations_node ${PROJECT_NAME})
 
 ############
 #  TESTS   #

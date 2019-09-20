@@ -18,7 +18,8 @@
 #include <unistd.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-#include "relative_deviations/deviations.h"
+
+#include "cpt_deviation_analysis/deviations.h"
 
 #include <boost/circular_buffer.hpp>
 

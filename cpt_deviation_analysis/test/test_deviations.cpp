@@ -1,7 +1,7 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#include "relative_deviations/deviations.h"
+#include "cpt_deviation_analysis/deviations.h"
 
 using namespace cad_percept::deviations;
 

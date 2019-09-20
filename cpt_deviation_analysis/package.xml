@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>relative_deviations</name>
+  <name>cpt_deviation_analysis</name>
   <version>0.1.0</version>
   <description>
     ROS package to detect and evaluate deviations from building (as-built) to a mesh model.
