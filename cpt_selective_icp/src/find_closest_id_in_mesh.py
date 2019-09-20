@@ -24,7 +24,6 @@ def loop(marker, state, get_id):
         position = marker.marker.pose.position
         current_point = Point(x=position.x, y=position.y, z=position.z)
         resp = get_id(current_point)
-        print(resp)
         marker.change_description('Primitive ID: {}'.format(resp.facet_id))
 
 
