@@ -28,7 +28,7 @@ if __name__ == "__main__":
                        'Position this marker to initialize\n'
                        'the position of the building model.',
                        'interactive_mesh_marker_controls',
-                       InteractiveMarkerControl.MOVE_ROTATE_3D, show_6dof=True,
+                       InteractiveMarkerControl.MOVE_ROTATE_3D, show_controls=True,
                        parent_frame='world')
 
     # Create a timer to update the published transforms

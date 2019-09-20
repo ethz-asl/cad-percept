@@ -28,7 +28,7 @@ if __name__ == "__main__":
                        'Position this marker to initialize\n'
                        'the position of the building model.',
                        'mesh_position_marker',
-                       InteractiveMarkerControl.MOVE_ROTATE_3D, show_6dof=True,
+                       InteractiveMarkerControl.MOVE_ROTATE_3D, show_controls=True,
                        parent_frame='map')
 
     publish_mesh = rospy.ServiceProxy('/mesh_publisher/publish', PublishMesh)
