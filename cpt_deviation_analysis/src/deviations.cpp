@@ -376,6 +376,10 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     double match_score_new = std::numeric_limits<double>::max();
     // std::cout << "Checking Plane ID: " << i->first << std::endl;
 
+
+    /*
+     * Distance to plane captures planes that should be associated to pcs that are laterally moved.
+     */
     // distance_score of squared distances
     int facet_id = planeToFacets.find(plane_id)->second;
     cgal::FT d = 0;
@@ -393,6 +397,12 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
       continue;
     }
 
+    /*
+     * Low distance to triangles shoudl capture small rotational deviations or shifts along normal.
+     * min-dist will show if the pc-segment comes close to the mesh-plane in question.
+     *
+     * see more here: https://github.com/ethz-asl/cad-percept/pull/41#discussion_r326790402
+     */
     // dist and min_dist (cancels most of assoc, slow)
     double d_min = std::numeric_limits<double>::max();
     double dist = 0;
@@ -654,6 +664,7 @@ void Deviations::reset() {
 
 void Deviations::initPlaneMap() {
   std::cout << "Size of associations is: " << planeToFacets.size() << std::endl;
+  // iterate over all planes
   for (auto planeAndFacetIt = planeToFacets.begin(); planeAndFacetIt != planeToFacets.end();) {
     polyhedron_plane plane;
     plane.associated = false;
