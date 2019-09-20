@@ -328,6 +328,8 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
       map_thread = boost::thread(&Mapper::addScanToMap, this, pc, stamp);
     }
 
+    // TODO (Hermann) It would amke more sense to just publish the transform for the corresponding
+    // scan sequence number
     if (selective_icp_scan_pub_.getNumSubscribers()) {
       std::cout << "Selective ICP scan publishing " << pc.getNbPoints() << " points" << std::endl;
       selective_icp_scan_pub_.publish(
