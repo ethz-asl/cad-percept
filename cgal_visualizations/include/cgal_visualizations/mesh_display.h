@@ -41,8 +41,16 @@ class MeshDisplay : public rviz::MessageFilterDisplay<T> {
   void onInitialize() override;
   void reset() override;
 
+  // regular update from rviy::Display
+  void update(float wall_dt, float ros_dt) override;
+
   void updateVisualProperties();
+
+  // processes new messages
   void processMessage(const typename T::ConstPtr& msg) override;
+
+  // updates model position, returns true if the position changed.
+  bool updateTF();
 
   struct {
     rviz::BoolProperty* BackfaceCulling;
@@ -52,6 +60,14 @@ class MeshDisplay : public rviz::MessageFilterDisplay<T> {
 
   } properties_;
   std::unique_ptr<MeshVisual> visual_;
+
+  // utilities for tracking the tf state
+  std::string parent_frame_;
+  Ogre::Quaternion orientation_;
+  Ogre::Vector3 position_;
+
+  // message_filters::Subscriber<T> tf_sub_;
+  // tf2_ros::MessageFilter<T>* parent_tf_filter_;
 };
 
 }  // namespace visualizations

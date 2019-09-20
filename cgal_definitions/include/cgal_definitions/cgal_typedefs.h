@@ -20,6 +20,8 @@
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_tree.h>
 
+#include <CGAL/Polygon_mesh_processing/stitch_borders.h>
+
 namespace cad_percept {
 namespace cgal {
 
