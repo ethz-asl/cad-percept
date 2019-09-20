@@ -370,7 +370,9 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
   typename ShapeDetection::Shape_range shapes = shape_detection.shapes();
   cgal::FT best_coverage = 0;
 
-  for (size_t i = 0; i < 3; i++) {
+  int number_of_iterations = 1; // these iteration give almost the same estimates
+
+  for (size_t i = 0; i < number_of_iterations; i++) {
     // Reset timer
     time.reset();
     time.start();
@@ -658,7 +660,7 @@ void Deviations::findPlaneDeviation(
         }
       }
       transformation trafo;
-      trafo.score = umit->second.match_score;  // since we set it equal before
+      trafo.score = umit->second.match_score; 
 
       // - find translation (also in normal direction is hard since we don't have point association,
       // every point has different translation even in normal direction)
@@ -672,29 +674,18 @@ void Deviations::findPlaneDeviation(
         pc_normal = -pc_normal;
       }
 
-      // find angle
-
-      /**
-       *  Angle Axis
-       */
-      Eigen::Vector3d axis = pc_normal.cross(umit->second.normal);
-      // std::cout << "Vector pc: " << umit->second.rec_plane.pc_normal << ", Vector facet: " <<
-      // umit->second.normal << std::endl;
-      axis.normalize();
-      // std::cout << "Axis: " << axis << std::endl;
-      double angle = acos(pc_normal.dot(umit->second.normal));
-      // std::cout << "Angle: " << angle << std::endl;
-      Eigen::AngleAxisd aa(angle, axis);
-      trafo.aa = aa;
-
       /**
        *  Quaternion
        */
-      // TODO: check that aa and quat are same
       // no need to normalize first
-      Eigen::Quaterniond quat;
-      quat.FromTwoVectors(pc_normal, umit->second.normal);
+      Eigen::Quaterniond quat = Eigen::Quaterniond::FromTwoVectors(pc_normal, umit->second.normal);
       trafo.quat = quat;
+
+      /**
+       *  Angle Axis
+       */ 
+      Eigen::AngleAxisd aa(quat);
+      trafo.aa = aa;
 
       // could convert quaternion to euler angles, but these are ambiguous, better work with
       // quaternions
@@ -721,35 +712,41 @@ void Deviations::updateAveragePlaneDeviation(
   // - prediction based on this distribution, but what does it help to know error distribution?
   // - how is update filtering indended to work normally?
   // - now just compute average
-  // - since there is no bullet-proof way to average rotations, we additionally save avg_normal of
-  // all associated normals and update average rotation from these
-  // - also because rotations before can not be used to calculate average, this fct. is independent
-  // of current_transformation_map
 
   for (auto it = current_transformation_map.begin(); it != current_transformation_map.end(); ++it) {
-    ++transformation_map[it->first].count;
+    // if entry in transformation map does not yet exist for this ID, then just copy current_transformation_map
+    if (transformation_map.find(it->first) == transformation_map.end()) {
+      transformation_map[it->first] = it->second;
+      transformation_map[it->first].count = 1;
+      continue;
+    }
+    
     transformation trafo;
+
+    trafo.count = transformation_map[it->first].count + 1;
 
     // update score average
     double current_score = it->second.score;
-    trafo.score =
-        transformation_map[it->first].score +
-        (current_score - transformation_map[it->first].score) / transformation_map[it->first].count;
+    trafo.score = transformation_map[it->first].score + 
+                  (current_score - transformation_map[it->first].score) / trafo.count;
     // update translation average
     Eigen::Vector3d current_translation = it->second.translation;
-    trafo.translation = transformation_map[it->first].translation +
-                        (current_translation - transformation_map[it->first].translation) /
-                            transformation_map[it->first].count;
+    trafo.translation = transformation_map[it->first].translation + 
+                        (current_translation - transformation_map[it->first].translation) / trafo.count;
     // update rotation average using unit vector rotation
-    // TODO: check this
     Eigen::Vector3d v_unit(1, 0, 0);
+    v_unit.normalize();
     Eigen::Vector3d u = it->second.quat * v_unit;
+    u.normalize();
     Eigen::Vector3d u_avg = transformation_map[it->first].quat * v_unit;
     u_avg.normalize();
-    u.normalize();
-    Eigen::Vector3d u_avg_new = u_avg + (u - u_avg) / transformation_map[it->first].count;
-    Eigen::Quaterniond quat;
-    trafo.quat = quat.FromTwoVectors(v_unit, u_avg_new);
+    Eigen::Vector3d u_avg_new = u_avg + (u - u_avg) / trafo.count;
+    u_avg_new.normalize();
+
+    Eigen::Quaterniond quat = Eigen::Quaterniond::FromTwoVectors(v_unit, u_avg_new);
+    trafo.quat = quat;
+    Eigen::AngleAxisd aa(quat);
+    trafo.aa = aa;
 
     transformation_map[it->first] = trafo;
   }

@@ -126,7 +126,7 @@ class Deviations {
    */
   void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish,
                      const PointCloud &reading_cloud,
-                     std::vector<reconstructed_plane> *remaining_cloud_vector);
+                     std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
   void detectMapChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
                         std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
                         std::unordered_map<int, transformation> *current_transformation_map);
@@ -148,7 +148,6 @@ class Deviations {
   void reset();
 
  private:
-  // PointCloud ref_pc; remove
   std::ofstream timingFile;
   std::ofstream performanceFile;
 
