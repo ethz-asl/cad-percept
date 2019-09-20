@@ -21,7 +21,7 @@ matchScoreUpperLimit: 1.0 # above this limit, don't do any association since we 
 matchDistScoreThresh: 1.0 # max distance_score limit between pc and facet
 matchMinDistThresh: 0.15 # max. min_distance limit between pc and facet
 matchDistThresh: 1.0
-matchAngleThresh: 0.8 # max angle between pc and facet [rad], works with 1.8
+matchAngleThresh: 0.8 # max angle between pc and facet [rad]
 assocAreaRatioUpperLimit: 100.0 # ratio = (rec. area)/(ref. copl. area), don't do any assoc. if we reach these limits
 assocAreaRatioLowerLimit: 0.2
 assocAreaLowerLimitThreshold: 0.1 # lower ratio only taken into account if a threshold in m² is not fulfilled

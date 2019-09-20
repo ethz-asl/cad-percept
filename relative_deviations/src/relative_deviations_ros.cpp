@@ -152,8 +152,8 @@ void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
 
 void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   std::vector<reconstructed_plane> rec_planes;
-  std::vector<reconstructed_plane>
-      remaining_plane_cloud_vector;  // put everything in here what we can't segment as planes
+   std::vector<reconstructed_plane> 
+      remaining_plane_cloud_vector; // put everything in here what can't be associated
 
   PointMatcherSupport::timer t_processCloud;
 
@@ -568,14 +568,14 @@ void RelativeDeviations::publishDeviations(
         c.b = 0.0;
         c.a = 0.4;
       } else {
-        if (score > 0.25) {
+        if (score > 0.12) {
           c.r = 1.0;
           c.g = 0.0;
           c.b = 0.0;
           c.a = 0.4;
         } else {
           // create a gradient
-          float g = score / 0.25;  // 1 for red, 0 for green
+          float g = score / 0.12;  // 1 for red, 0 for green
           if (g > 0.5) {
             c.r = 1.0;
             c.g = 2.0 * (1 - g);
