@@ -140,6 +140,7 @@ class Deviations {
    * (arbitrary iterated)
    */
   std::unordered_multimap<int, int> planeToFacets;
+  std::unordered_map<int, int> facetToPlane;
 
   /**
    * Reset stuff after evaluation of current scan
@@ -170,7 +171,7 @@ class Deviations {
   void findBestPlaneAssociation(std::vector<reconstructed_plane> cloud_vector,
                                 cgal::MeshModel &mesh_model,
                                 std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
-  void computeFacetNormals(cgal::MeshModel &mesh_model);
+  void computeFacetNormals();
   void findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map,
                           bool size_check);
   /**
