@@ -115,7 +115,7 @@ roslaunch smb_state_estimator smb_state_estimator_standalone.launch
 Terminal D:
 
 ```
-roslaunch cpt_selective_icp supermegabot_selective_icp_no_rviz.launch
+roslaunch cpt_selective_icp supermegabot_selective_icp.launch
 ```
 
 Terminal E:
