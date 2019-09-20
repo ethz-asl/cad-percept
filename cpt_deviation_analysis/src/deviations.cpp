@@ -356,16 +356,17 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
   double best_angle;
 
   // iterate over all planes
-  for (std::pair<int, int> planeAndFacet : planeToFacets) {
+  for (const auto keyAndPlane : plane_map) {
+    int plane_id = keyAndPlane.first;
     // first check if plane even has size to be associated
-    if (plane_map[planeAndFacet.first].area < params.minPolyhedronArea) {
+    if (keyAndPlane.second.area < params.minPolyhedronArea) {
       continue;
     }
 
     // now check area ratio
-    double ratio = pc_area / plane_map[planeAndFacet.first].area;
+    double ratio = pc_area / keyAndPlane.second.area;
     if (ratio > params.assocAreaRatioUpperLimit ||
-        (plane_map[planeAndFacet.first].area < params.assocAreaLowerLimitThreshold &&
+        (keyAndPlane.second.area < params.assocAreaLowerLimitThreshold &&
          ratio < params.assocAreaRatioLowerLimit)) {
       continue;
     }
@@ -376,7 +377,7 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     // std::cout << "Checking Plane ID: " << i->first << std::endl;
 
     // distance_score of squared distances
-    int facet_id = planeAndFacet.second;
+    int facet_id = planeToFacets.find(plane_id)->second;
     cgal::FT d = 0;
     cgal::Plane plane_of_current_facet = mesh_model.getPlaneFromID(facet_id);
 
@@ -401,7 +402,7 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
 
       // iterate through all triangles associated to the current plane
       // TODO (Hermann) This could be done more efficiently in an AABB tree
-      auto range = planeToFacets.equal_range(planeAndFacet.first);
+      auto range = planeToFacets.equal_range(plane_id);
       for (auto i = range.first; i != range.second; ++i) {
         d = std::min(
             d, CGAL::to_double(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z),
@@ -427,7 +428,7 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     // TODO: this needs fix because of different orientation of normals
     // angle (not sure if necessary since already somehow contained in distance_score)
     // we just care about angle of axis angle representation
-    double angle = acos(rec_plane.pc_normal.dot(plane_map[planeAndFacet.first].normal));
+    double angle = acos(rec_plane.pc_normal.dot(keyAndPlane.second.normal));
     // std::cout << "Angle is: " << angle << std::endl;
     // std::cout << "Angles: " << angle << "/ " << std::abs(angle - M_PI) << std::endl;
     // Bring angle to first quadrant
@@ -459,13 +460,13 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
 
     // lower match_score is better fit!
     if (match_score_new < *match_score) {
-      if (match_score_new == plane_map[planeAndFacet.first].match_score) {
+      if (match_score_new == keyAndPlane.second.match_score) {
         // std::cout << "Match score new is: " << match_score_new << ", map score is: " <<
         // plane_map[i->first].match_score << std::endl; std::cerr << "Pointcloud with same match
         // score. Keeping preceding result." << std::endl;
-      } else if (match_score_new < plane_map[planeAndFacet.first].match_score) {
+      } else if (match_score_new < keyAndPlane.second.match_score) {
         // std::cout << "Replacing score by new score" << std::endl;
-        *id = planeAndFacet.first;
+        *id = plane_id;
         *match_score = match_score_new;
         success = true;
 
