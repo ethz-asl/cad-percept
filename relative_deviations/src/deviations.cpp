@@ -11,7 +11,7 @@ namespace deviations {
 
 Deviations::Deviations() {}
 
-void Deviations::init(cgal::Polyhedron &P, const tf::StampedTransform& transform) {
+void Deviations::init(cgal::Polyhedron &P, const tf::StampedTransform &transform) {
   path_ = params.path;
   // create MeshModel of reference
   cgal::MeshModel::create(P, &reference_mesh);
