@@ -1,9 +1,8 @@
 <launch>
-  <arg name="cad_file" default="$(find cpt_selective_icp)/resources/CLA_CAD_simplified_single_wall.off" />
+  <arg name="cad_file" default="$(find cpt_utils)/resources/simple_meshes/complex1.off" />
 
   <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node" output="screen">
     <param name="publish_on_start" value="true"/>
-    <param name="latch_topic" value="true"/>
     <param name="default_filename" value="$(arg cad_file)"/>
     <param name="frame_name" value="marker_position"/>
   </node>
@@ -12,6 +11,6 @@
         pkg="cpt_utils"
         type="position_mesh_with_marker.py"
         output="screen">
-    <param name="marker_parent_frame" value="map" />
+    <param name="marker_parent_frame" value="world" />
   </node>
 </launch>
