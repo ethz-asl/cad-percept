@@ -13,7 +13,7 @@ The package "Relative Deviations" implements the necessary tools and pipeline to
 "srd.launch" launches a demonstration of the pipeline. A mesh model and a corresponding deviated reading pointcloud is created. The pipeline is executed just once on this static data. Parameter "test" is set to "true".
 
 ```
-roslaunch srd_relative_deviations srd.launch
+roslaunch srd_cpt_deviation_analysis srd.launch
 ```
 
 ![Result](resources/discrete_deviation_threshold_15mm_2.png)
@@ -44,7 +44,7 @@ catkin run_tests <package_name>
 
 Un-tick and tick backface culling for correct visualization.
 
-## Installation 
+## Installation
 
 Pay attention not to overlay or chain other workspaces by sourcing ROS installation first:
 ```
@@ -66,7 +66,7 @@ cd ~/megabot_ws/src/
 git clone git@github.com:ethz-asl/cad-percept.git
 wstool init
 wstool merge cad-percept/dependencies.rosinstall
-wstool merge cad-percept/relative_deviations/dependencies.rosinstall
+wstool merge cad-percept/cpt_deviation_analysis/dependencies.rosinstall
 wstool update
 wstool merge eth_robotics_summer_school_2019/dependencies.rosinstall
 wstool update
@@ -74,7 +74,7 @@ wstool update
 
 ```
 cd ~/megabot_ws/
-catkin build relative_deviations
+catkin build cpt_deviation_analysis
 ```
 
 ```
@@ -85,7 +85,7 @@ echo "source ~/megabot_ws/devel/setup.bash" >> ~/.bashrc
 Currently, from summer school only following packages and dependencies needed:
 
 ```
-catkin build ethzasl_icp_mapper smb_tf_publisher smb_state_estimator 
+catkin build ethzasl_icp_mapper smb_tf_publisher smb_state_estimator
 ```
 
 If necessary install other dependencies of summer school by apt.
@@ -121,7 +121,7 @@ roslaunch cpt_selective_icp supermegabot_selective_icp.launch
 Terminal E:
 
 ```
-roslaunch relative_deviations online.launch
+roslaunch cpt_deviation_analysis online.launch
 ```
 
 Terminal F:

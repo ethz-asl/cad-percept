@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 
-#include "relative_deviations/relative_deviations_ros.h"
+#include "cpt_deviation_analysis/relative_deviations_ros.h"
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "relative_deviations_node");
