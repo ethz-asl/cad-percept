@@ -171,6 +171,7 @@ void Deviations::detectMapChanges(std::vector<reconstructed_plane> *rec_planes, 
   for (auto it = current_transformation_map->begin(); it != current_transformation_map->end(); ++it) {
     mapDeviationFile << it->first << "," << it->second.count << "," << it->second.aa.angle() << "," << it->second.aa.axis().x() << "," << it->second.aa.axis().y() << "," << it->second.aa.axis().z() << "," << it->second.quat.x() << "," << it->second.quat.y() << "," << it->second.quat.z() << "," << it->second.quat.w() << "," << it->second.translation.x() << "," << it->second.translation.y() << "," << it->second.translation.z() << "," << it->second.score << std::endl;
   }
+  std::cout << "Detecting Map changes finished" << std::endl;
 }
 
 void Deviations::planarSegmentationPCL(const PointCloud &cloud_in, std::vector<reconstructed_plane> *rec_planes, PointCloud *remaining_cloud) const {
@@ -617,9 +618,10 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
     if (umit->second.associated == true) {
       // equal size check in case of full transformations
       if (size_check) {
+        std::cout << "Entered size check" << std::endl;
         double pc_area = cpt_utils::getArea(umit->second.rec_plane.pointcloud);
         if (pc_area < 0.6 * umit->second.area || pc_area > 1.4 * umit->second.area) { // better use [0.9, 1.1], but keep in mind that current lidar does not have full view
-          //std::cout << "Area: " << pc_area << "/ " << umit->second.area << std::endl;
+          std::cout << "Size wrong, area: " << pc_area << "/ " << umit->second.area << std::endl;
           continue;
         }
       }
