@@ -376,7 +376,6 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
     double match_score_new = std::numeric_limits<double>::max();
     // std::cout << "Checking Plane ID: " << i->first << std::endl;
 
-
     /*
      * Distance to plane captures planes that should be associated to pcs that are laterally moved.
      */
