@@ -124,8 +124,9 @@ class MeshModel {
   void initializeFacetIndices();
 
   // ID associations between elements
-  std::unordered_map<int, int> _facetToPlane;
-  std::unordered_multimap<int, int> _planeToFacets;
+  std::unordered_map<int, int> facetToPlane_;
+  std::unordered_map<int, Polyhedron::Facet_handle> facetIdToHandle_;
+  std::unordered_multimap<int, int> planeToFacets_;
 };
 }  // namespace cgal
 }  // namespace cad_percept
