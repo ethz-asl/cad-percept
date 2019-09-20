@@ -132,8 +132,7 @@ class Deviations {
                         std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
                         std::unordered_map<int, transformation> *current_transformation_map);
   void init(cgal::Polyhedron &P, const tf::StampedTransform &transform);
-  std::unordered_map<int, polyhedron_plane>
-      plane_map;  // plane map saving the ID of coplanar plane associated to plane properties
+
   std::unordered_map<int, transformation>
       transformation_map;  // here we keep all the latest updated transformations
 
@@ -143,6 +142,8 @@ class Deviations {
    */
   std::unordered_multimap<int, int> planeToFacets;
   std::unordered_map<int, int> facetToPlane;
+  // plane map saving the ID of coplanar plane associated to plane properties
+  std::unordered_map<int, polyhedron_plane> plane_map;
 
   /**
    * Reset stuff after evaluation of current scan
