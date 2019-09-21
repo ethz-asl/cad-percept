@@ -17,7 +17,7 @@ sudo apt install clang-format libgmp-dev libboost-all-dev libmpfr-dev ros-melodi
 
 ## Set up a workspace
 
-(optional) create a python environment separate from your system-wide pyhton 
+(optional) create a python environment separate from your system-wide pyhton
 to avoid version conflicts.
 
 ```
@@ -43,7 +43,14 @@ wstool merge cad-perpect/dependencies.rosinstall
 wstool update
 ```
 
-To activate your environment next time, first activate the python environment 
-with `source py2/bin/activate` and then activate the catkin environment with 
+To activate your environment next time, first activate the python environment
+with `source py2/bin/activate` and then activate the catkin environment with
 `source <workscape_name>/devel/setup.bash`.
 
+# Tests
+
+Run GTests:
+
+```
+catkin run_tests <package_name>
+```

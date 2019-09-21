@@ -26,7 +26,7 @@ typedef CGAL::Delaunay_triangulation_3<ReconstructionKernel, TriangulationDataSt
     TriangulationType;
 
 typedef DelaunayXDMesher<TriangulationType> Mesher;
-}
-}
-}
+}  // namespace Delaunay3DMesher
+}  // namespace meshing
+}  // namespace cad_percept
 #endif  // CPT_MESHING_DELAUNAY_3D_MESHER_H

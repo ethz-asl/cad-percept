@@ -7,6 +7,7 @@
   <arg name="scan_topic" default="/corrected_scan" />
   <arg name="distance_threshold" default="0.2" />
   <arg name="discrete_color" default="false" />
+  <arg name="test" default="0" />
 
   <!-- changes node -->
   <node name="cpt_changes"
@@ -20,7 +21,8 @@
     <param name="cad_frame" value="$(arg cad_frame)" />
     <param name="scan_topic" value="$(arg scan_topic)" />
     <param name="distance_threshold" value="$(arg distance_threshold)" />
-    <param name="discrete_color" value="$(arg discrete_color" />
+    <param name="discrete_color" value="$(arg discrete_color)" />
+    <param name="test" value="$(arg test)" />
 
   </node>
 </launch>

@@ -27,6 +27,9 @@
 *.a
 *.lib
 
+# Python stuff
+*.pyc
+
 # Executables
 *.exe
 *.out
@@ -36,3 +39,6 @@
 **/cmake-build-debug/*
 **/.idea/*
 **/.vscode/
+
+# ignore marker state
+cpt_selective_icp/state

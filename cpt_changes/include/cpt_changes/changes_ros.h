@@ -4,12 +4,14 @@
 #include <cgal_msgs/ColoredMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <kindr/minimal/quat-transformation-gtsam.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl_ros/point_cloud.h>
 #include <ros/ros.h>
 #include <shape_msgs/Mesh.h>
 #include <std_srvs/Empty.h>
 #include <tf/transform_listener.h>
 #include <visualization_msgs/Marker.h>
+#include <unordered_map>
 #include "cgal_conversions/mesh_conversions.h"
 #include "cgal_definitions/mesh_model.h"
 #include "cpt_utils/cpt_utils.h"
@@ -25,6 +27,9 @@ class ChangesRos {
  public:
   ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
   ~ChangesRos();
+
+  // Manually start test
+  void associatePCDCloud();
 
   // Associate point-cloud with architect model.
   void associatePointCloud(const PointCloud &pc_msg);

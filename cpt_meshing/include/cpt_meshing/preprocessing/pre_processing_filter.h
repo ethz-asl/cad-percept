@@ -27,7 +27,7 @@ class PreProcessingFilter {
   std::vector<std::shared_ptr<InputPointCloudFilter>> filter_list_;
   double normal_search_radius_;  // radius for estimating normals in [m]
 };
-}
-}
+}  // namespace meshing
+}  // namespace cad_percept
 
 #endif  // CPT_MESHING_PRE_PROCESSING_FILTER_H

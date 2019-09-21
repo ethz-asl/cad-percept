@@ -14,27 +14,19 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       cad_frame_(nh_private.param<std::string>("cad_frame", "fail")),
       distance_threshold_(nh_private.param<double>("distance_threshold", 0.2)),
       discrete_color_(nh_private.param<bool>("discrete_color", false)) {
-  if (!nh_private_.hasParam("off_model")) {
+  if (!nh_private_.hasParam("off_model"))
     std::cerr << "ERROR 'off_model' not set as parameter." << std::endl;
-  }
-
-  // Create mesh model.
-  // ToDo: Handle case where it could not be created.
   cgal::MeshModel::create(nh_private.param<std::string>("off_model", "fail"), &mesh_model_);
 
   good_matches_pub_ = nh_.advertise<visualization_msgs::Marker>("good_cad_matches", 100);
   bad_matches_pub_ = nh_.advertise<visualization_msgs::Marker>("bad_cad_matches", 100);
   model_pub_ = nh_.advertise<visualization_msgs::Marker>("architect_model", 100);
-  arch_pub_ = nh_.advertise<PointCloud>("architect_model_pcl", 100,
-                                        true);  // latching to true (saves last
-                                                // messages and sends to future
-                                                // subscriber)
+  arch_pub_ = nh_.advertise<PointCloud>(
+      "architect_model_pcl", 100,
+      true);  // latching to true (saves last messages and sends to future subscriber)
   mesh_pub_ =
       nh_.advertise<cgal_msgs::TriangleMeshStamped>("mesh_model", 100, true);  // latching to true
   distance_triangles_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("distance_mesh", 100, true);
-
-  pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10,
-                                          &ChangesRos::associatePointCloud, this);
 
   // start defining visualization_msgs Marker, this is just a block, right?
   model_.type = visualization_msgs::Marker::MESH_RESOURCE;
@@ -59,11 +51,27 @@ ChangesRos::ChangesRos(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   model_.color.b = 0.0f;
 
   transformSrv_ = nh.advertiseService("transformModel", &ChangesRos::transformModelCb, this);
+
+  // manually starting test case
+  if (nh_private_.param<bool>("test", "fail") == 1) {
+    associatePCDCloud();
+  } else {
+    pointcloud_sub_ = nh_private_.subscribe(nh_private.param<std::string>("scan_topic", "fail"), 10,
+                                            &ChangesRos::associatePointCloud, this);
+  }
 }
 
 ChangesRos::~ChangesRos() {}
 
-// callback for each p.c. scan topic
+void ChangesRos::associatePCDCloud() {
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::io::loadPCDFile<pcl::PointXYZ>(
+      "/home/julian/cadify_ws/src/cad-percept/cpt_changes/resources/"
+      "demo_reading_pc_additional_wall.pcd",
+      *cloud);
+  associatePointCloud(*cloud);
+}
+
 void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
   cpt_utils::Associations associations = cpt_utils::associatePointCloud(pc_msg, mesh_model_);
   CHECK_EQ(associations.points_from.cols(), pc_msg.width);  // glog, checks equality
@@ -148,7 +156,6 @@ bool ChangesRos::transformModelCb(std_srvs::Empty::Request &request,
   return true;
 }
 
-// publishes architect model mesh as point cloud of vertices
 void ChangesRos::publishArchitectModel() const {
   PointCloud pc_msg;
   cgal::meshToVerticePointCloud(mesh_model_->getMesh(), &pc_msg);
@@ -157,7 +164,6 @@ void ChangesRos::publishArchitectModel() const {
   arch_pub_.publish(pc_msg);
 }
 
-// publish architect model mesh as triangle mesh
 void ChangesRos::publishArchitectModelMesh() const {
   cgal_msgs::TriangleMeshStamped p_msg;
   cgal::Polyhedron mesh;
@@ -199,7 +205,15 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
   }
 
   // change color of associated triangles
-  // wip, overwrites color with last value of triangle and not average
+  struct Visualization {
+    double r;
+    double g;
+    double b;
+    int no_of_points;
+  };
+
+  std::unordered_map<int, Visualization> color_map;
+
   for (uint i = 0; i < associations.triangles_to.rows(); ++i) {
     int id = associations.triangles_to(i);
     double length = associations.distances(i);
@@ -237,7 +251,38 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
         c.a = 0.8;
       }
     }
-    c_msg.colors[id] = c;
+
+    // average color
+    std::unordered_map<int, Visualization>::iterator it = color_map.find(id);
+    if (it == color_map.end()) {
+      // add it to map
+      Visualization vis;
+      vis.r = c.r;
+      vis.g = c.g;
+      vis.b = c.b;
+      vis.no_of_points = 1;
+      color_map[id] = vis;
+    } else {
+      Visualization vis;
+      vis.r = it->second.r + c.r;
+      vis.g = it->second.g + c.g;
+      vis.b = it->second.b + c.b;
+      vis.no_of_points = it->second.no_of_points + 1;
+      it->second = vis;
+    }
+  }
+
+  // iterate through map to set colors
+  std::unordered_map<int, Visualization>::iterator it = color_map.begin();
+  while (it != color_map.end()) {
+    std_msgs::ColorRGBA color;
+    color.r = (it->second.r) / (it->second.no_of_points);
+    color.g = (it->second.g) / (it->second.no_of_points);
+    color.b = (it->second.b) / (it->second.no_of_points);
+    color.a = 0.8;
+
+    c_msg.colors[it->first] = color;
+    it++;
   }
 
   c_msg.header.frame_id = map_frame_;
@@ -245,5 +290,6 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
   c_msg.header.seq = 0;
   distance_triangles_pub_.publish(c_msg);
 }
+
 }  // namespace changes
 }  // namespace cad_percept

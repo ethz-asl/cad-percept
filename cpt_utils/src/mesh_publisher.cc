@@ -14,7 +14,11 @@ MeshPublisher::MeshPublisher(ros::NodeHandle nh, ros::NodeHandle nh_private)
 
   // Set-up of node.
   pub_mesh_ = nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("mesh_out", 1, latch_topic_);
-  publish_service_ = nh_private_.advertiseService("publish", &MeshPublisher::triggerService, this);
+  publish_service_ =
+      nh_private_.advertiseService("publish", &MeshPublisher::triggerPublishMesh, this);
+  id_service_ =
+      nh_private_.advertiseService("get_triangle_id", &MeshPublisher::getClosestTriangle, this);
+
   default_filename_ = nh_private_.param<std::string>("default_filename", "mesh.off");
   frame_name_ = nh_private_.param<std::string>("frame_name", "world");
 
@@ -34,13 +38,12 @@ bool MeshPublisher::publishOffFile(std::string filename) {
   }
 
   // Create mesh model.
-  cgal::MeshModel::Ptr model;
-  if (!cgal::MeshModel::create(filename, &model)) {
+  if (!cgal::MeshModel::create(filename, &mesh_model_)) {
     return false;
   }
 
   // Read Off file into polyhedron type
-  cgal::Polyhedron mesh = model->getMesh();
+  cgal::Polyhedron mesh = mesh_model_->getMesh();
 
   // publish as mesh msg
   cgal_msgs::TriangleMeshStamped mesh_msg;
@@ -51,12 +54,23 @@ bool MeshPublisher::publishOffFile(std::string filename) {
   return true;
 }
 
-bool MeshPublisher::triggerService(cgal_msgs::PublishMesh::Request &req,
-                                   cgal_msgs::PublishMesh::Response &res) {
+bool MeshPublisher::triggerPublishMesh(cgal_msgs::PublishMesh::Request &req,
+                                       cgal_msgs::PublishMesh::Response &res) {
   bool result = publishOffFile(req.path);
   res.success = result;
   res.message = result ? "Published Mesh" : "Mesh not published";
   return true;
 }
+
+bool MeshPublisher::getClosestTriangle(cgal_msgs::FacetID::Request &req,
+                                       cgal_msgs::FacetID::Response &res) {
+  if (mesh_model_ == nullptr) return false;
+  cgal::PointAndPrimitiveId ppid = mesh_model_->getClosestTriangle(
+      (double)req.point.x, (double)req.point.y, (double)req.point.z);
+  int facet_id = mesh_model_->getIdFromFacetHandle(ppid.second);
+  res.facet_id = facet_id;
+  return true;
+}
+
 }  // namespace cpt_utils
 }  // namespace cad_percept

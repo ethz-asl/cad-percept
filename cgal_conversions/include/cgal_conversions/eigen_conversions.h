@@ -25,7 +25,7 @@ void eigenTransformationToCgalTransformation(const Eigen::Matrix4d &transformati
                                              Transformation *ctransformation);
 Eigen::Matrix4d cgalTransformationToEigenTransformation(const Transformation &ctransformation);
 Transformation eigenTransformationToCgalTransformation(const Eigen::Matrix4d &transformation);
-}
-}
+}  // namespace cgal
+}  // namespace cad_percept
 
 #endif  // CGAL_CONVERSIONS_EIGEN_CONVERSIONS_H
