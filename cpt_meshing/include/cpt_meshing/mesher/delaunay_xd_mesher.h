@@ -101,6 +101,6 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
     const DelaunayTriangulation& triangulation_;
   };
 };
-}
-}
+}  // namespace meshing
+}  // namespace cad_percept
 #endif  // CPT_MESHING_DELAUNAY_XD_MESHER_H

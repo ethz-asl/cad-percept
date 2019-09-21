@@ -1,0 +1,10 @@
+minReadingPointCount: 1000
+inputQueueSize: 1
+mapSamplingDensity: 100
+tfMapFrame: /map
+lidarFrame: lidar
+minOverlap: 0.5
+mappingTrigger: false 
+updateICPRefTrigger: false
+normalICPPrimerTrigger: false # use a normal ICP Primer for selectiveICP
+output: false # error metrics are incredible slow 

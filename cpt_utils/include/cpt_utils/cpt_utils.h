@@ -10,6 +10,8 @@
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 
+#include "cpt_utils/pc_processing.h"
+
 namespace cad_percept {
 namespace cpt_utils {
 
@@ -24,9 +26,26 @@ struct Associations {
   Eigen::VectorXd triangles_to;  // triangle ID association
 };
 
+/**
+ * Computes closest Point on Plane for a given point
+ */
+cgal::Point closestPointOnPlane(const cgal::Plane &plane, const cgal::Point &point);
+
+/**
+ * Computes intersection point between a plane and a line
+ */
+void intersection(const cgal::Plane &plane, const cgal::Line &line, cgal::Point *point);
+
+cgal::Vector getNormalFromPlane(const cgal::Plane &plane);
+
 // Associate point-cloud with architect model.
 Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel::Ptr mesh_model);
-}
-}
+
+cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox);
+cgal::Point centerOfBbox(const PointCloud &pointcloud);
+
+cgal::Polyhedron::Facet_handle getFacetHandle(cgal::Polyhedron &P, const uint facet_id);
+}  // namespace cpt_utils
+}  // namespace cad_percept
 
 #endif  // CPT_UTILS_H
