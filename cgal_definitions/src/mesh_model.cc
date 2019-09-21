@@ -3,6 +3,44 @@
 namespace cad_percept {
 namespace cgal {
 
+// A modifier creating a triangle with the incremental builder.
+template <class HDS>
+void MeshFromJSON<HDS>::operator()(HDS &hds) {
+  CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
+  B.begin_surface(j_["vertex"].size(), j_["face"].size());
+  // add all vertices first
+  for (auto &[id, pos] : j_["vertex"].items()) {
+    B.add_vertex(Point(pos["x"], pos["y"], pos["z"]));
+    vertex_to_index_[id] = vertex_order_.size();
+    vertex_order_.push_back(id);
+  }
+  std::vector<std::string> triangle_order;  // keep track of which triangle was inserted when
+  for (auto &[id, vertices] : j_["face"].items()) {
+    B.begin_facet();
+    for (std::string vertex : vertices) {
+      B.add_vertex_to_facet(vertex_to_index_[vertex]);
+    }
+    B.end_facet();
+    triangle_order_.push_back(id);
+  }
+  B.end_surface();
+}
+
+template <class HDS>
+void MeshFromJSON<HDS>::setJson(const nlohmann::json &j) {
+  j_ = j;
+}
+
+template <class HDS>
+void MeshFromJSON<HDS>::getVertexIds(std::vector<std::string> *vertex_ids) {
+  vertex_ids = &vertex_order_;
+}
+
+template <class HDS>
+void MeshFromJSON<HDS>::getTriangleIds(std::vector<std::string> *triangle_ids) {
+  triangle_ids = &triangle_order_;
+}
+
 MeshModel::MeshModel(Polyhedron &p, bool verbose) : P_(std::move(p)), verbose_(verbose) {
   // Initlaize trees and facet index
   tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first, CGAL::faces(P_).second, P_);
@@ -12,30 +50,57 @@ MeshModel::MeshModel(Polyhedron &p, bool verbose) : P_(std::move(p)), verbose_(v
 }
 
 // Static factory methods.
-bool MeshModel::create(const std::string &off_path, MeshModel::Ptr *ptr, bool verbose) {
+bool MeshModel::create(const std::string &filepath, MeshModel::Ptr *ptr, bool verbose) {
   Polyhedron p;
-  std::ifstream off_file(off_path.c_str(), std::ios::binary);
 
-  // Check if file is accessible
-  if (!off_file.good()) {
-    std::cerr << "Error: File not readable " << off_path << std::endl;
+  if (0 == filepath.compare(filepath.length() - 4, 4, ".off")) {
+    // .off files
+    std::ifstream off_file(filepath.c_str(), std::ios::binary);
+
+    // Check if file is accessible
+    if (!off_file.good()) {
+      std::cerr << "Error: File not readable " << filepath << std::endl;
+      return false;
+    }
+
+    // check if cgal could read it
+    if (!CGAL::read_off(off_file, p)) {
+      std::cerr << "Error: invalid STL file" << std::endl;
+      return false;
+    }
+
+    // check polyhedron structure
+    if (!p.is_valid() || p.empty()) {
+      std::cerr << "Error: Invalid facegraph" << std::endl;
+      return false;
+    }
+
+    // Create new object and assign (note cannot use make_shared here because constructor is
+    // private)
+    ptr->reset(new MeshModel(p, verbose));
+  } else if (0 == filepath.compare(filepath.length() - 5, 5, ".json")) {
+    std::ifstream json_file(filepath.c_str());
+    nlohmann::json j;
+    json_file >> j;
+
+    // read mesh
+    MeshFromJSON<HalfedgeDS> mesh_generator;
+    mesh_generator.setJson(j);
+    p.delegate(mesh_generator);
+
+    // Create new object and assign (note cannot use make_shared here because constructor is
+    // private)
+    ptr->reset(new MeshModel(p, verbose));
+
+    // read IDs
+    std::vector<std::string> triangle_ids;
+    mesh_generator.getTriangleIds(&triangle_ids);
+    (*ptr)->setTriangleIds(triangle_ids);
+  } else {
+    std::cerr << "File " << filepath << " does not match any of the supported filetypes "
+              << "(.off, .json)." << std::endl;
     return false;
   }
-
-  // check if cgal could read it
-  if (!CGAL::read_off(off_file, p)) {
-    std::cerr << "Error: invalid STL file" << std::endl;
-    return false;
-  }
-
-  // check polyhedron structure
-  if (!p.is_valid() || p.empty()) {
-    std::cerr << "Error: Invalid facegraph" << std::endl;
-    return false;
-  }
-
-  // Create new object and assign (note cannot use make_shared here because constructor is private)
-  ptr->reset(new MeshModel(p, verbose));
   return true;
 }
 
@@ -49,6 +114,47 @@ bool MeshModel::create(Polyhedron &p, MeshModel::Ptr *ptr, bool verbose) {
   // Create new object and assign (note cannot use make_shared here because constructor is private)
   ptr->reset(new MeshModel(p, verbose));
   return true;
+}
+
+void MeshModel::initializeFacetIndices() {
+  // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for facets
+  std::size_t i = 0;
+  for (Polyhedron::Facet_iterator facet = P_.facets_begin(); facet != P_.facets_end(); ++facet) {
+    facet->id() = i;
+    facetToHandle_[std::to_string(i)] = &(*facet);
+    facetIdxToId_[i] = std::to_string(i);
+    ++i;
+  }
+}
+
+void MeshModel::setTriangleIds(const std::vector<std::string> &triangle_ids) {
+  if (triangle_ids.size() != P_.size_of_facets()) {
+    std::cerr << "Cannot set triangle ids. Mesh has " << P_.size_of_facets() << " facets and "
+              << triangle_ids.size() << "ids were provided." << std::endl;
+    return;
+  }
+  std::unordered_map<int, std::string> facetIdxToId_new;
+  std::unordered_map<std::string, Polyhedron::Facet_handle> facetToHandle_new;
+  std::unordered_map<std::string, std::string> facetToPlane_new;
+  std::unordered_multimap<std::string, std::string> planeToFacets_new;
+  for (std::size_t facet_idx = 0; facet_idx < P_.size_of_facets(); ++facet_idx) {
+    std::string new_id = triangle_ids[facet_idx];
+    std::string old_id = facetIdxToId_[facet_idx];
+    facetIdxToId_new[facet_idx] = new_id;
+    facetToHandle_new[new_id] = facetToHandle_[old_id];
+    if (facetToPlane_.size() != 0) {
+      // planes are already defined
+      facetToPlane_new[new_id] = facetToPlane_[old_id];
+      auto range = planeToFacets_.equal_range(old_id);
+      for (auto it = range.first; it != range.second; ++it) {
+        planeToFacets_new.insert(std::make_pair(new_id, it->second));
+      }
+    }
+  }
+  facetIdxToId_ = facetIdxToId_new;
+  facetToHandle_ = facetToHandle_new;
+  facetToPlane_ = facetToPlane_new;
+  planeToFacets_ = planeToFacets_new;
 }
 
 // checks if there is an intersection at all
@@ -130,47 +236,26 @@ int MeshModel::size() const { return P_.size_of_facets(); }
 
 Polyhedron MeshModel::getMesh() const { return P_; }
 
-void MeshModel::initializeFacetIndices() {
-  // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for facets
-  std::size_t i = 0;
-  for (Polyhedron::Facet_iterator facet = P_.facets_begin(); facet != P_.facets_end(); ++facet) {
-    facet->id() = i;
-    facetIdToHandle_[i] = &(*facet);
-    ++i;
-  }
+std::string MeshModel::getIdFromFacetHandle(const Polyhedron::Facet_handle &handle) const {
+  return facetIdxToId_.at(handle->id());
 }
 
-int MeshModel::getIdFromFacetHandle(const Polyhedron::Facet_handle &handle) {
-  int facet_id;
-  facet_id = handle->id();
-  return facet_id;
+Polyhedron::Facet_handle MeshModel::getFacetHandleFromId(const std::string facet_id) const {
+  return facetToHandle_.at(facet_id);
 }
 
-// TODO (Hermann) Impement cashing in an unordered map
-Polyhedron::Facet_handle MeshModel::getFacetHandleFromId(const uint facet_id) {
-  return facetIdToHandle_[facet_id];
-}
-
-std::map<int, Vector> MeshModel::computeNormals() const {
+std::map<std::string, Vector> MeshModel::computeNormals() const {
   // computes all Polyhedron normals and return only normal map with ID
-  std::map<int, Vector> normals;
+  std::map<std::string, Vector> normals;
   std::map<face_descriptor, Vector> fnormals;
   std::map<vertex_descriptor, Vector> vnormals;
 
   CGAL::Polygon_mesh_processing::compute_normals(P_, boost::make_assoc_property_map(vnormals),
                                                  boost::make_assoc_property_map(fnormals));
-  // std::cout << "Face normals :" << std::endl;
-  for (face_descriptor fd :
-       faces(P_)) {  // faces returns iterator range over faces, range over all face indices
-    // std::cout << fnormals[fd] << std::endl;
-    // std::cout << fd->id() << std::endl; // not sure why this even works, since not documented
-    normals.insert(std::pair<int, Vector>(fd->id(), fnormals[fd]));
+  // faces returns iterator range over faces, range over all face indices
+  for (face_descriptor fd : faces(P_)) {
+    normals[facetIdxToId_.at(fd->id())] = fnormals[fd];
   }
-  // std::cout << "Vertex normals :" << std::endl;
-  for (vertex_descriptor vd : vertices(P_)) {
-    // std::cout << vnormals[vd] << std::endl;
-  }
-
   return normals;
 }
 
@@ -220,26 +305,16 @@ bool MeshModel::coplanar(const Polyhedron::Halfedge_handle &h1,
   }
 }
 
-void MeshModel::printFacetsOfHalfedges() {
-  for (Polyhedron::Halfedge_iterator j = P_.halfedges_begin(); j != P_.halfedges_end(); ++j) {
-    if (j->is_border_edge()) {
-      continue;
-    }
-    std::cout << "Facet is: " << j->facet()->id() << std::endl;
-    std::cout << "Opposite facet is: " << j->opposite()->facet()->id() << std::endl;
-  }
-}
-
-void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *result,
+void MeshModel::findCoplanarFacets(std::string facet_id, std::unordered_set<std::string> *result,
                                    const double eps) {
-  // we can use the "result" pointer here directly even if there are already results there, because
-  // they are coplanar and we check results, there is no need to check again
-  if (facet_id > P_.size_of_facets()) {
-    std::cerr << "Facet ID not part of facets." << std::endl;
+  // we can use the "result" pointer here directly even if there are already results there,
+  // because they are coplanar and we check results, there is no need to check again
+  if (facetToHandle_.find(facet_id) == facetToHandle_.end()) {
+    std::cerr << "Facet ID not part of this MeshModel." << std::endl;
     return;
   }
-  std::queue<Polyhedron::Facet_handle>
-      coplanar_to_check;  // queue of coplanar facets of which we need to check the neighbors
+  // queue of coplanar facets of which we need to check the neighbors
+  std::queue<Polyhedron::Facet_handle> coplanar_to_check;
   Polyhedron::Facet_handle start_handle = getFacetHandleFromId(facet_id);
   coplanar_to_check.push(start_handle);
   result->insert(facet_id);
@@ -250,12 +325,14 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
     Polyhedron::Halfedge_around_facet_circulator hit = handle->facet_begin();
     do {
       if (!(hit->is_border_edge())) {
+        // check if neighboring facets are coplanar
         if (coplanar(hit, hit->opposite(), eps)) {  // play with eps to get whole plane
           if (CGAL::circulator_size(hit->opposite()->vertex_begin()) >= 3 &&
               CGAL::circulator_size(hit->vertex_begin()) >= 3 &&
               hit->facet()->id() != hit->opposite()->facet()->id()) {
-            if (result->find(hit->opposite()->facet()->id()) == result->end()) {
-              result->insert(hit->opposite()->facet()->id());
+            std::string next_facet_id = facetIdxToId_[hit->opposite()->facet()->id()];
+            if (result->find(next_facet_id) == result->end()) {
+              result->insert(next_facet_id);
               coplanar_to_check.push(hit->opposite()->facet());
             }
           }
@@ -265,28 +342,28 @@ void MeshModel::findCoplanarFacets(uint facet_id, std::unordered_set<int> *resul
   }
 }
 
-void MeshModel::findAllCoplanarFacets(std::unordered_map<int, int> *facetToPlane,
-                                      std::unordered_multimap<int, int> *planeToFacets,
-                                      const double eps) {
+void MeshModel::findAllCoplanarFacets(
+    std::unordered_map<std::string, std::string> *facetToPlane,
+    std::unordered_multimap<std::string, std::string> *planeToFacets, const double eps) {
+  // only do actual computation once
   if (facetToPlane_.size() == 0) {
-    // only do actual computation once
-    int plane_id = 0;  // arbitrary plane_id associated to found coplanar facets
-    for (uint current_facet = 0; current_facet < P_.size_of_facets(); ++current_facet) {
-      if (facetToPlane->count(current_facet) ==
-          0) {  // only find Coplanar Facets if Facet is not already associated to plane
-        std::unordered_set<int> current_coplanar_facets;
-        findCoplanarFacets(current_facet, &current_coplanar_facets, eps);
-
-        // iterate over current_coplanar_facets and add this to bimap as
-        // current_coplanar_facets<->plane_id
+    int plane_counter = 0;  // we generate ids from counting up an integer
+    for (uint current_facet_idx = 0; current_facet_idx < P_.size_of_facets(); ++current_facet_idx) {
+      // only find Coplanar Facets if Facet is not already associated to a plane
+      if (facetToPlane->count(facetIdxToId_[current_facet_idx]) == 0) {
+        // we found a facet that is part of a new plane
+        std::string plane_id = std::to_string(plane_counter);
+        std::unordered_set<std::string> current_coplanar_facets;
+        findCoplanarFacets(facetIdxToId_[current_facet_idx], &current_coplanar_facets, eps);
+        // add result into lookup maps
         for (auto facet_id : current_coplanar_facets) {
           facetToPlane_[facet_id] = plane_id;
           planeToFacets_.insert(std::make_pair(plane_id, facet_id));
         }
-        plane_id++;
+        ++plane_counter;
       }
     }
-    std::cout << plane_id << " planes from coplanar facets found." << std::endl;
+    std::cout << plane_counter << " planes from coplanar facets found." << std::endl;
   }
   // Deep copy both maps
   for (auto elem : facetToPlane_) {
@@ -297,24 +374,22 @@ void MeshModel::findAllCoplanarFacets(std::unordered_map<int, int> *facetToPlane
   }
 }
 
-Plane MeshModel::getPlaneFromHandle(Polyhedron::Facet_handle &f) const {
+Plane MeshModel::getPlane(const Polyhedron::Facet_handle &f) const {
   return Plane(f->halfedge()->vertex()->point(), f->halfedge()->next()->vertex()->point(),
                f->halfedge()->next()->next()->vertex()->point());
 }
 
-Plane MeshModel::getPlaneFromID(uint facet_id) {
-  Polyhedron::Facet_handle handle = getFacetHandleFromId(facet_id);
-  return getPlaneFromHandle(handle);
+Plane MeshModel::getPlane(const std::string facet_id) const {
+  return getPlane(getFacetHandleFromId(facet_id));
 }
 
-Triangle MeshModel::getTriangleFromHandle(Polyhedron::Facet_handle &f) const {
+Triangle MeshModel::getTriangle(const Polyhedron::Facet_handle &f) const {
   return Triangle(f->halfedge()->vertex()->point(), f->halfedge()->next()->vertex()->point(),
                   f->halfedge()->next()->next()->vertex()->point());
 }
 
-Triangle MeshModel::getTriangleFromID(uint facet_id) {
-  Polyhedron::Facet_handle handle = getFacetHandleFromId(facet_id);
-  return getTriangleFromHandle(handle);
+Triangle MeshModel::getTriangle(const std::string facet_id) const {
+  return getTriangle(getFacetHandleFromId(facet_id));
 }
 
 double MeshModel::getArea() const {
@@ -323,15 +398,14 @@ double MeshModel::getArea() const {
   return CGAL::to_double(area);
 }
 
-double MeshModel::getArea(Polyhedron::Facet_handle &f) const {
+double MeshModel::getArea(const Polyhedron::Facet_handle &f) const {
   FT area;
   area = CGAL::Polygon_mesh_processing::face_area(f, P_);
   return CGAL::to_double(area);
 }
 
-double MeshModel::getArea(uint facet_id) {
-  Polyhedron::Facet_handle handle = getFacetHandleFromId(facet_id);
-  return getArea(handle);
+double MeshModel::getArea(const std::string facet_id) const {
+  return getArea(getFacetHandleFromId(facet_id));
 }
 
 double MeshModel::squaredDistance(const Point &point) const {
