@@ -72,12 +72,13 @@ def make_control(orientation, name, rotation=False, fixed=False):
 
 class RosMarker:
     def __init__(self, name, description, server_name, interaction_mode,
-                 position=[0, 0, 0], parent_frame=None, fixed=False, show_controls=False):
+                 position=[0, 0, 0], orientation=[0, 0, 1, 1], parent_frame=None,
+                 fixed=False, show_controls=False):
         marker = InteractiveMarker()
         parent_frame = parent_frame or rospy.get_param('map_frame')
         marker.header.frame_id = parent_frame
         marker.pose.position = Point(*position)
-        marker.pose.orientation = normalized_quaternion(0, 0, 1, 1)
+        marker.pose.orientation = normalized_quaternion(*orientation)
         marker.scale = 1
 
         marker.name = name
