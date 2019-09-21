@@ -12,6 +12,9 @@
 
 #include "cgal_typedefs.h"
 
+#include <CGAL/Polyhedron_incremental_builder_3.h>
+#include <nlohmann/json.hpp>
+
 namespace cad_percept {
 namespace cgal {
 
@@ -20,10 +23,30 @@ struct Intersection {
   Vector surface_normal;
 };
 
+// For reading from json files
+template <class HDS>
+class MeshFromJSON : public CGAL::Modifier_base<HDS> {
+ public:
+  MeshFromJSON() {}
+
+  void operator()(HDS &hds);
+  void setJson(const nlohmann::json &j);
+  void getVertexIds(std::vector<std::string> *vertex_ids);
+  void getTriangleIds(std::vector<std::string> *triangle_ids);
+
+ private:
+  nlohmann::json j_;
+  // keep track of which vertex was inserted when
+  std::vector<std::string> vertex_order_;
+  std::unordered_map<std::string, int> vertex_to_index_;
+  // keep track of which triangle was inserted when
+  std::vector<std::string> triangle_order_;
+};
+
 class MeshModel {
  public:
   typedef std::shared_ptr<MeshModel> Ptr;
-  static bool create(const std::string &off_pathm, MeshModel::Ptr *meshmodel_ptr,
+  static bool create(const std::string &filepath, MeshModel::Ptr *meshmodel_ptr,
                      bool verbose = false);
   static bool create(Polyhedron &p, MeshModel::Ptr *meshmodel_ptr, bool verbose = false);
 
@@ -52,7 +75,7 @@ class MeshModel {
    */
   Vector getNormal(const Polyhedron::Face_handle &face_handle) const;
   Vector getNormal(const PointAndPrimitiveId &ppid) const;
-  std::map<int, Vector> computeNormals() const;
+  std::map<std::string, Vector> computeNormals() const;
   Vector computeFaceNormal(face_descriptor &fd) const;
   Vector computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle) const;
 
@@ -72,43 +95,39 @@ class MeshModel {
   Polyhedron getMesh() const;
 
   /**
-   * ID Lookups
-   */
-  Polyhedron::Facet_handle getFacetHandleFromId(const uint facet_id);
-  int getIdFromFacetHandle(const Polyhedron::Facet_handle &handle);
-
-  /**
    * Check coplanarity of two facets described by halfedge handle h1 and h2
    */
   bool coplanar(const Polyhedron::Halfedge_handle &h1, const Polyhedron::Halfedge_handle &h2,
                 double eps) const;
 
-  void printFacetsOfHalfedges();
-
   /**
-   * Compute Plane from facet_handle
+   * IDs and Lookup handling
    */
-  Plane getPlaneFromHandle(Polyhedron::Facet_handle &f) const;
-  Plane getPlaneFromID(uint facet_id);
+  void setTriangleIds(const std::vector<std::string> &triangle_ids);
 
-  /**
-   *  Compute Triangle from facet
-   */
-  Triangle getTriangleFromHandle(Polyhedron::Facet_handle &f) const;
-  Triangle getTriangleFromID(uint facet_id);
+  Polyhedron::Facet_handle getFacetHandleFromId(const std::string facet_id) const;
+  std::string getIdFromFacetHandle(const Polyhedron::Facet_handle &handle) const;
 
-  void findCoplanarFacets(uint facet_id, std::unordered_set<int> *result, const double eps);
+  Triangle getTriangle(const Polyhedron::Facet_handle &f) const;
+  Triangle getTriangle(const std::string facet_id) const;
+
+  Plane getPlane(const Polyhedron::Facet_handle &f) const;
+  Plane getPlane(const std::string facet_id) const;
+
+  void findCoplanarFacets(std::string facet_id, std::unordered_set<std::string> *result,
+                          const double eps);
 
   /**
    * This function is super slow. Only execute it once in beginning.
    */
-  void findAllCoplanarFacets(std::unordered_map<int, int> *facetToPlane,
-                             std::unordered_multimap<int, int> *planeToFacets, const double eps);
+  void findAllCoplanarFacets(std::unordered_map<std::string, std::string> *facetToPlane,
+                             std::unordered_multimap<std::string, std::string> *planeToFacets,
+                             const double eps);
 
   double getArea() const;
 
-  double getArea(Polyhedron::Facet_handle &f) const;
-  double getArea(uint facet_id);
+  double getArea(const Polyhedron::Facet_handle &f) const;
+  double getArea(const std::string facet_id) const;
 
   /**
    * Compute squared distance from point to closest mesh facet
@@ -124,9 +143,10 @@ class MeshModel {
   void initializeFacetIndices();
 
   // ID associations between elements
-  std::unordered_map<int, int> facetToPlane_;
-  std::unordered_map<int, Polyhedron::Facet_handle> facetIdToHandle_;
-  std::unordered_multimap<int, int> planeToFacets_;
+  std::unordered_map<int, std::string> facetIdxToId_;
+  std::unordered_map<std::string, Polyhedron::Facet_handle> facetToHandle_;
+  std::unordered_map<std::string, std::string> facetToPlane_;
+  std::unordered_multimap<std::string, std::string> planeToFacets_;
 };
 }  // namespace cgal
 }  // namespace cad_percept
