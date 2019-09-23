@@ -96,7 +96,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     // pre-processing, then set as map in ICPSeq
 
     // first extract whole pointcloud
-    std::unordered_set<int> references;  // empty
+    std::unordered_set<std::string> references;  // empty
     PointCloud pointcloud;
     sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
 
@@ -274,7 +274,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     if (parameters_.output) {
       getICPError(pc);
       getError(ref_dp, pc, 0);
-      if (!references_new.empty()) {
+      if (!all_coplanar_references.empty()) {
         getICPErrorToRef(pc);
       }
     }
@@ -401,8 +401,8 @@ double Mapper::getICPErrorToRef(const DP &aligned_dp) {
     cgal::PointAndPrimitiveId ppid = reference_mesh_->getClosestTriangle(point.x, point.y, point.z);
     double squared_distance =
         reference_mesh_->squaredDistance(cgal::Point(point.x, point.y, point.z));
-    if (references_new.find(reference_mesh_->getIdFromFacetHandle(ppid.second)) !=
-            references_new.end() &&
+    if (all_coplanar_references.find(reference_mesh_->getIdFromFacetHandle(ppid.second)) !=
+            all_coplanar_references.end() &&
         sqrt(squared_distance) < 0.5) {
       ++point_count;
       result += sqrt(squared_distance);
@@ -581,10 +581,10 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
 
 bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
                                 cpt_selective_icp::References::Response &res) {
-  std::unordered_set<int> references;
-  for (auto id : req.data) {
+  std::unordered_set<std::string> references;
+  for (std::string id : req.data) {
     // check that every request is in mesh
-    if (id < reference_mesh_->size()) {
+    if (reference_mesh_->isCorrectId(id)) {
       references.insert(id);
     }
   }
@@ -639,7 +639,7 @@ bool Mapper::setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Re
     // TODO (Hermann) This seems unnecessary, why sample from pc again and then not do anything?
 
     // just called to publish ref mesh and p.c. again:
-    std::unordered_set<int> references;  // empty
+    std::unordered_set<std::string> references;  // empty
     PointCloud pointcloud;
     sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
   } else {
@@ -653,12 +653,10 @@ bool Mapper::setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Re
   return true;
 }
 
-void Mapper::publishReferenceMesh(const std::unordered_set<int> &references) {
-  cgal::Polyhedron P;
-  P = reference_mesh_->getMesh();
+void Mapper::publishReferenceMesh(const std::unordered_set<std::string> &references) {
   cgal_msgs::TriangleMesh t_msg;
   cgal_msgs::ColoredMesh c_msg;
-  cgal::triangleMeshToMsg(P, &t_msg);
+  cgal::meshModelToMsg(reference_mesh_, &t_msg);
   c_msg.mesh = t_msg;
   c_msg.header.frame_id = parameters_.tf_map_frame;
   c_msg.header.stamp = {secs : 0, nsecs : 0};
@@ -667,7 +665,7 @@ void Mapper::publishReferenceMesh(const std::unordered_set<int> &references) {
   std_msgs::ColorRGBA c;
 
   // set al facet colors to blue
-  for (uint i = 0; i < c_msg.mesh.triangles.size(); ++i) {
+  for (size_t i = 0; i < c_msg.mesh.triangles.size(); ++i) {
     c.r = 0.0;
     c.g = 0.0;
     c.b = 1.0;
@@ -681,9 +679,16 @@ void Mapper::publishReferenceMesh(const std::unordered_set<int> &references) {
     c.g = 0.0;
     c.b = 0.0;
     c.a = 0.4;
-    // TODO (Hermann): Dangerous, this assumes consecutive ids and correct serialization in
-    //                 triangleMeshToMsg
-    c_msg.colors[reference] = c;
+    // find index of triangle with this id
+    std::vector<std::string>::iterator it =
+        std::find(c_msg.mesh.triangle_ids.begin(), c_msg.mesh.triangle_ids.end(), reference);
+    if (it != c_msg.mesh.triangle_ids.end()) {
+      size_t index = std::distance(c_msg.mesh.triangle_ids.begin(), it);
+      c_msg.colors[index] = c;
+    } else {
+      std::cerr << "[Selective ICP] could find reference triangle with id \'" << reference
+                << "\' in message, it did not get colored." << std::endl;
+    }
   }
   ref_mesh_pub_.publish(c_msg);
 }
@@ -695,7 +700,8 @@ void Mapper::publishCloud(T *cloud, ros::Publisher *publisher) const {
   publisher->publish(*cloud);
 }
 
-void Mapper::sampleFromReferenceFacets(const int density, std::unordered_set<int> &references,
+void Mapper::sampleFromReferenceFacets(const int density,
+                                       std::unordered_set<std::string> &references,
                                        PointCloud *pointcloud) {
   pointcloud->clear();
   // if reference set is empty, extract whole point cloud
@@ -711,24 +717,24 @@ void Mapper::sampleFromReferenceFacets(const int density, std::unordered_set<int
     // sample reference point cloud from mesh
 
     // get coplanar facets
-    references_new.clear();
+    all_coplanar_references.clear();
     std::cout << "Choosen reference facets:" << std::endl;
     for (auto ref : references) {
       std::cout << ref << std::endl;
-      reference_mesh_->findCoplanarFacets(ref, &references_new, 0.01);
+      reference_mesh_->findCoplanarFacets(ref, &all_coplanar_references, 0.01);
     }
 
-    if (references_new.empty()) {
+    if (all_coplanar_references.empty()) {
       // TODO (Hermann) There should be proper error handling here.
       return;
     }
 
     std::cout << "Computed reference facets:" << std::endl;
-    for (auto ref : references_new) {
+    for (auto ref : all_coplanar_references) {
       std::cout << ref << std::endl;
     }
 
-    publishReferenceMesh(references_new);
+    publishReferenceMesh(all_coplanar_references);
 
     // create sampled point cloud from reference_new
 
@@ -737,16 +743,10 @@ void Mapper::sampleFromReferenceFacets(const int density, std::unordered_set<int
     // create input triangles
     std::vector<cgal::Triangle> triangles;
     double reference_area = 0;
-    cgal::Polyhedron P = reference_mesh_->getMesh();
-    // TODO (Hermann) This should iterate over references and then get the triangles with a function
-    // from the mesh-model
-    for (cgal::Polyhedron::Facet_iterator j = P.facets_begin(); j != P.facets_end(); ++j) {
-      if (references_new.find(j->id()) != references_new.end()) {
-        cgal::Triangle t(j->halfedge()->vertex()->point(), j->halfedge()->next()->vertex()->point(),
-                         j->halfedge()->next()->next()->vertex()->point());
-        reference_area += CGAL::to_double(sqrt(t.squared_area()));
-        triangles.push_back(t);
-      }
+    for (auto reference : all_coplanar_references) {
+      cgal::Triangle t = reference_mesh_->getTriangle(reference);
+      reference_area += CGAL::to_double(sqrt(t.squared_area()));
+      triangles.push_back(t);
     }
 
     // Create the generator, input is the vector of Triangle

@@ -148,6 +148,10 @@ void MeshModel::setTriangleIds(const std::vector<std::string> &triangle_ids) {
   planeToFacets_ = planeToFacets_new;
 }
 
+bool MeshModel::isCorrectId(const std::string &facet_id) const {
+  return facetToHandle_.find(facet_id) != facetToHandle_.end();
+}
+
 // checks if there is an intersection at all
 bool MeshModel::isIntersection(const Ray &query) const {
   PolyhedronRayIntersection intersection = tree_->first_intersection(query);
