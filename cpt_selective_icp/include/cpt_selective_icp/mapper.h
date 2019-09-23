@@ -86,10 +86,10 @@ class Mapper {
   template <class T>
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
   // publishes the reference_mesh_ with all reference triangles marked red
-  void publishReferenceMesh(const std::unordered_set<int> &references);
+  void publishReferenceMesh(const std::unordered_set<std::string> &references);
 
   // Sample a pc from selected triangles in the reference_mesh_
-  void sampleFromReferenceFacets(const int density, std::unordered_set<int> &references,
+  void sampleFromReferenceFacets(const int density, std::unordered_set<std::string> &references,
                                  PointCloud *pointcloud);
 
   bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
@@ -131,7 +131,7 @@ class Mapper {
   cgal::MeshModel::Ptr reference_mesh_;
 
   // TODO (Hermann) What is this?
-  std::unordered_set<int> references_new;
+  std::unordered_set<std::string> all_coplanar_references;
 
   // libpointmatcher
   PM::ICPSequence icp_;

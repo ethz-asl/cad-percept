@@ -106,6 +106,7 @@ class MeshModel {
    */
   void setTriangleIds(const std::vector<std::string> &triangle_ids);
 
+  bool isCorrectId(const std::string &facet_id) const;
   Polyhedron::Facet_handle getFacetHandleFromId(const std::string facet_id) const;
   std::string getIdFromFacetHandle(const Polyhedron::Facet_handle &handle) const;
 
