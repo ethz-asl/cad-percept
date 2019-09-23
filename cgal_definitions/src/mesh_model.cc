@@ -14,7 +14,6 @@ void MeshFromJSON<HDS>::operator()(HDS &hds) {
     vertex_to_index_[id] = vertex_order_.size();
     vertex_order_.push_back(id);
   }
-  std::vector<std::string> triangle_order;  // keep track of which triangle was inserted when
   for (auto &[id, vertices] : j_["face"].items()) {
     B.begin_facet();
     for (std::string vertex : vertices) {
@@ -32,13 +31,13 @@ void MeshFromJSON<HDS>::setJson(const nlohmann::json &j) {
 }
 
 template <class HDS>
-void MeshFromJSON<HDS>::getVertexIds(std::vector<std::string> *vertex_ids) {
-  vertex_ids = &vertex_order_;
+std::vector<std::string> MeshFromJSON<HDS>::getVertexIds() {
+  return vertex_order_;
 }
 
 template <class HDS>
-void MeshFromJSON<HDS>::getTriangleIds(std::vector<std::string> *triangle_ids) {
-  triangle_ids = &triangle_order_;
+std::vector<std::string> MeshFromJSON<HDS>::getTriangleIds() {
+  return triangle_order_;
 }
 
 MeshModel::MeshModel(Polyhedron &p, bool verbose) : P_(std::move(p)), verbose_(verbose) {
@@ -50,9 +49,34 @@ MeshModel::MeshModel(Polyhedron &p, bool verbose) : P_(std::move(p)), verbose_(v
 }
 
 // Static factory methods.
-bool MeshModel::create(const std::string &filepath, MeshModel::Ptr *ptr, bool verbose) {
-  Polyhedron p;
+bool MeshModel::create(Polyhedron &p, MeshModel::Ptr *ptr, bool verbose) {
+  // check polyhedron structure
+  if (!p.is_valid() || p.empty()) {
+    std::cerr << "Error: Invalid facegraph" << std::endl;
+    return false;
+  }
+  // Create new object and assign (note cannot use make_shared here because constructor is private)
+  ptr->reset(new MeshModel(p, verbose));
+  return true;
+}
 
+bool MeshModel::create(nlohmann::json &j, MeshModel::Ptr *ptr, bool verbose) {
+  // read mesh
+  Polyhedron p;
+  MeshFromJSON<HalfedgeDS> mesh_generator;
+  mesh_generator.setJson(j);
+  p.delegate(mesh_generator);
+
+  // Create new object and assign (note cannot use make_shared here because constructor is
+  // private)
+  ptr->reset(new MeshModel(p, verbose));
+
+  // read IDs
+  (*ptr)->setTriangleIds(mesh_generator.getTriangleIds());
+  return true;
+}
+
+bool MeshModel::create(const std::string &filepath, MeshModel::Ptr *ptr, bool verbose) {
   if (0 == filepath.compare(filepath.length() - 4, 4, ".off")) {
     // .off files
     std::ifstream off_file(filepath.c_str(), std::ios::binary);
@@ -62,58 +86,25 @@ bool MeshModel::create(const std::string &filepath, MeshModel::Ptr *ptr, bool ve
       std::cerr << "Error: File not readable " << filepath << std::endl;
       return false;
     }
-
+    Polyhedron p;
     // check if cgal could read it
     if (!CGAL::read_off(off_file, p)) {
       std::cerr << "Error: invalid STL file" << std::endl;
       return false;
     }
 
-    // check polyhedron structure
-    if (!p.is_valid() || p.empty()) {
-      std::cerr << "Error: Invalid facegraph" << std::endl;
-      return false;
-    }
-
-    // Create new object and assign (note cannot use make_shared here because constructor is
-    // private)
-    ptr->reset(new MeshModel(p, verbose));
+    return create(p, ptr, verbose);
   } else if (0 == filepath.compare(filepath.length() - 5, 5, ".json")) {
     std::ifstream json_file(filepath.c_str());
     nlohmann::json j;
     json_file >> j;
 
-    // read mesh
-    MeshFromJSON<HalfedgeDS> mesh_generator;
-    mesh_generator.setJson(j);
-    p.delegate(mesh_generator);
-
-    // Create new object and assign (note cannot use make_shared here because constructor is
-    // private)
-    ptr->reset(new MeshModel(p, verbose));
-
-    // read IDs
-    std::vector<std::string> triangle_ids;
-    mesh_generator.getTriangleIds(&triangle_ids);
-    (*ptr)->setTriangleIds(triangle_ids);
+    return create(j, ptr, verbose);
   } else {
     std::cerr << "File " << filepath << " does not match any of the supported filetypes "
               << "(.off, .json)." << std::endl;
-    return false;
   }
-  return true;
-}
-
-bool MeshModel::create(Polyhedron &p, MeshModel::Ptr *ptr, bool verbose) {
-  // check polyhedron structure
-  if (!p.is_valid() || p.empty()) {
-    std::cerr << "Error: Invalid facegraph" << std::endl;
-    return false;
-  }
-
-  // Create new object and assign (note cannot use make_shared here because constructor is private)
-  ptr->reset(new MeshModel(p, verbose));
-  return true;
+  return false;
 }
 
 void MeshModel::initializeFacetIndices() {
@@ -129,8 +120,8 @@ void MeshModel::initializeFacetIndices() {
 
 void MeshModel::setTriangleIds(const std::vector<std::string> &triangle_ids) {
   if (triangle_ids.size() != P_.size_of_facets()) {
-    std::cerr << "Cannot set triangle ids. Mesh has " << P_.size_of_facets() << " facets and "
-              << triangle_ids.size() << "ids were provided." << std::endl;
+    std::cerr << "[MeshModel] Cannot set triangle ids. Mesh has " << P_.size_of_facets()
+              << " facets and " << triangle_ids.size() << "ids were provided." << std::endl;
     return;
   }
   std::unordered_map<int, std::string> facetIdxToId_new;

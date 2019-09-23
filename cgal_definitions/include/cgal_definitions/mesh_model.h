@@ -31,8 +31,8 @@ class MeshFromJSON : public CGAL::Modifier_base<HDS> {
 
   void operator()(HDS &hds);
   void setJson(const nlohmann::json &j);
-  void getVertexIds(std::vector<std::string> *vertex_ids);
-  void getTriangleIds(std::vector<std::string> *triangle_ids);
+  std::vector<std::string> getVertexIds();
+  std::vector<std::string> getTriangleIds();
 
  private:
   nlohmann::json j_;
@@ -49,6 +49,7 @@ class MeshModel {
   static bool create(const std::string &filepath, MeshModel::Ptr *meshmodel_ptr,
                      bool verbose = false);
   static bool create(Polyhedron &p, MeshModel::Ptr *meshmodel_ptr, bool verbose = false);
+  static bool create(nlohmann::json &j, MeshModel::Ptr *meshmodel_ptr, bool verbose = false);
 
   /**
    * Check if there is an intersection
