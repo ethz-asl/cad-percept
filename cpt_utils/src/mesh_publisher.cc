@@ -67,7 +67,7 @@ bool MeshPublisher::getClosestTriangle(cgal_msgs::FacetID::Request &req,
   if (mesh_model_ == nullptr) return false;
   cgal::PointAndPrimitiveId ppid = mesh_model_->getClosestTriangle(
       (double)req.point.x, (double)req.point.y, (double)req.point.z);
-  int facet_id = mesh_model_->getIdFromFacetHandle(ppid.second);
+  std::string facet_id = mesh_model_->getIdFromFacetHandle(ppid.second);
   res.facet_id = facet_id;
   return true;
 }
