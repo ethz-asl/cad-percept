@@ -20,7 +20,7 @@ def frame_callback(marker_msg, tf_broadcaster, map_frame):
 
 
 if __name__ == "__main__":
-    rospy.init_node("mesh_postitioning")
+    rospy.init_node("mesh_positioning")
     transform_pub = rospy.Publisher('/T_map_marker', Transform, queue_size=10)
     tf_broadcaster = TransformBroadcaster()
 
@@ -30,6 +30,9 @@ if __name__ == "__main__":
                        'interactive_mesh_marker_controls',
                        InteractiveMarkerControl.MOVE_ROTATE_3D, show_controls=True,
                        parent_frame='world')
+
+    publish_mesh = rospy.ServiceProxy('/mesh_publisher/publish', PublishMesh)
+    marker.add_menu_item('republish mesh', lambda msg: publish_mesh())
 
     # Create a timer to update the published transforms
     rospy.Timer(rospy.Duration(0.01), lambda msg: frame_callback(

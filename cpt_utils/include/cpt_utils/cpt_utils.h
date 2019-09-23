@@ -23,7 +23,7 @@ struct Associations {
   Eigen::Matrix3Xd points_from;  // dynamic, double
   Eigen::Matrix3Xd points_to;
   Eigen::VectorXd distances;
-  Eigen::VectorXd triangles_to;  // triangle ID association
+  std::vector<std::string> triangles_to;  // triangle ID association
 };
 
 /**
