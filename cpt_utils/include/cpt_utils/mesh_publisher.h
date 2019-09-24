@@ -24,7 +24,7 @@ class MeshPublisher {
   /*
    * Reads off file and publishes it via pub_mesh_
    */
-  bool publishOffFile(std::string filename = std::string());
+  bool publishMeshFile(std::string filename = std::string());
 
   /*
    * Service callback for publishing a mesh file.

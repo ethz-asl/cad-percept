@@ -23,7 +23,7 @@ MeshPublisher::MeshPublisher(ros::NodeHandle nh, ros::NodeHandle nh_private)
   frame_name_ = nh_private_.param<std::string>("frame_name", "world");
 
   if (publish_on_start_) {
-    if (publishOffFile()) {
+    if (publishMeshFile()) {
       ROS_INFO_STREAM("Published Mesh on Start");
     } else {
       ROS_WARN_STREAM("Could not publish Mesh on Start");
@@ -31,32 +31,27 @@ MeshPublisher::MeshPublisher(ros::NodeHandle nh, ros::NodeHandle nh_private)
   }
 }
 
-bool MeshPublisher::publishOffFile(std::string filename) {
+bool MeshPublisher::publishMeshFile(std::string filename) {
   // default parameter => replace by default filename.
   if (filename.empty()) {
     filename = default_filename_;
   }
-
   // Create mesh model.
   if (!cgal::MeshModel::create(filename, &mesh_model_)) {
     return false;
   }
-
-  // Read Off file into polyhedron type
-  cgal::Polyhedron mesh = mesh_model_->getMesh();
-
   // publish as mesh msg
   cgal_msgs::TriangleMeshStamped mesh_msg;
   mesh_msg.header.stamp = ros::Time::now();
   mesh_msg.header.frame_id = frame_name_;
-  cgal::triangleMeshToMsg(mesh, &mesh_msg.mesh);
+  cgal::meshModelToMsg(mesh_model_, &mesh_msg.mesh);
   pub_mesh_.publish(mesh_msg);
   return true;
 }
 
 bool MeshPublisher::triggerPublishMesh(cgal_msgs::PublishMesh::Request &req,
                                        cgal_msgs::PublishMesh::Response &res) {
-  bool result = publishOffFile(req.path);
+  bool result = publishMeshFile(req.path);
   res.success = result;
   res.message = result ? "Published Mesh" : "Mesh not published";
   return true;

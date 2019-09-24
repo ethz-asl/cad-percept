@@ -41,7 +41,7 @@ class RelativeDeviations {
   ros::NodeHandle &nh_, nh_private_;
   tf::TransformListener tf_listener_;
   std::ofstream timingFile;
-  void publishMesh(const cgal::MeshModel &model, ros::Publisher *publisher) const;
+  void publishMesh(const cgal::MeshModel::Ptr &model, ros::Publisher *publisher) const;
   template <class T>
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
   ros::Publisher buffer_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_,
@@ -69,16 +69,16 @@ class RelativeDeviations {
 
   void publish(const std::vector<reconstructed_plane> &rec_planes,
                const std::vector<reconstructed_plane> &remaining_plane_cloud_vector,
-               std::unordered_map<int, transformation> &transformation_map);
+               std::unordered_map<std::string, transformation> &transformation_map);
 
-  void publishAssociations(const cgal::MeshModel &model,
-                           std::unordered_map<int, polyhedron_plane> &plane_map,
+  void publishAssociations(const cgal::MeshModel::Ptr &model,
+                           std::unordered_map<std::string, polyhedron_plane> &plane_map,
                            const std::vector<reconstructed_plane> &remaining_plane_cloud_vector);
-  void publishBboxesAndNormals(std::unordered_map<int, polyhedron_plane> &plane_map);
-  void publishModelNormals(std::unordered_map<int, polyhedron_plane> &plane_map);
-  void publishAllModelNormals(std::unordered_map<int, polyhedron_plane> &plane_map);
-  void publishDeviations(const cgal::MeshModel &model,
-                         std::unordered_map<int, transformation> &transformation_map);
+  void publishBboxesAndNormals(std::unordered_map<std::string, polyhedron_plane> &plane_map);
+  void publishModelNormals(std::unordered_map<std::string, polyhedron_plane> &plane_map);
+  void publishAllModelNormals(std::unordered_map<std::string, polyhedron_plane> &plane_map);
+  void publishDeviations(const cgal::MeshModel::Ptr &model,
+                         std::unordered_map<std::string, transformation> &transformation_map);
 
   std::string cad_topic;
   std::string scan_topic;
@@ -98,7 +98,8 @@ class RelativeDeviations {
   void gotMap(const sensor_msgs::PointCloud2 &cloud_msg_in);
   bool analyzeMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
-  std::vector<std_msgs::ColorRGBA> c_associated;  // keep association colors in current callback
+  // Colors associated to planes
+  std::unordered_map<std::string, std_msgs::ColorRGBA> c_associated_;
 };
 
 }  // namespace deviations

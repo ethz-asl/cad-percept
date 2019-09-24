@@ -193,7 +193,7 @@ Visualization Manager:
       Max Color: 255; 255; 255
       Max Intensity: 255
       Min Color: 0; 0; 0
-      Min Intensity: 0.5531608462333679
+      Min Intensity: 0.5729166269302368
       Name: Before ICP PointCloud
       Position Transformer: XYZ
       Queue Size: 10
@@ -383,21 +383,21 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /bboxes_marker_pub
       Name: PC Bboxes, Normals
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /all_mesh_normals_marker_pub
       Name: All Model Normals
       Namespaces:
-        {}
+        total_mesh_normals: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: false
       Marker Topic: /mesh_normals_marker_pub
@@ -410,22 +410,22 @@ Visualization Manager:
       Backface Culling: false
       Class: cgal_visualizations/ColoredMeshDisplay
       Edge Color: 0; 0; 0
-      Enabled: false
+      Enabled: true
       Name: Deviations
       Surface Color: 0; 0; 255
       Topic: /deviations_mesh_pub
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 0.800000011920929
       Backface Culling: false
       Class: cgal_visualizations/ColoredMeshDisplay
       Edge Color: 0; 0; 0
-      Enabled: true
+      Enabled: false
       Name: ColoredMeshDisplay
       Surface Color: 0; 0; 255
       Topic: /ref_mesh
       Unreliable: false
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

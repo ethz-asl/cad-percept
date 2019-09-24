@@ -101,12 +101,12 @@ void msgToTriangleMesh(const cgal_msgs::TriangleMesh &msg, Polyhedron *mesh) {
   mesh->delegate(mesh_generator);
 }
 
-void msgToMeshModel(const cgal_msgs::TriangleMesh &msg, MeshModel::Ptr model) {
+void msgToMeshModel(const cgal_msgs::TriangleMesh &msg, MeshModel::Ptr *model_ptr) {
   Polyhedron P;
   msgToTriangleMesh(msg, &P);
-  cgal::MeshModel::create(P, &model);
+  cgal::MeshModel::create(P, model_ptr);
   if (msg.triangle_ids.size() > 0) {
-    model->setTriangleIds(msg.triangle_ids);
+    (*model_ptr)->setTriangleIds(msg.triangle_ids);
   }
 }
 

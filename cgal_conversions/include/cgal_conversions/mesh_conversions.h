@@ -18,7 +18,7 @@ geometry_msgs::Point pointToMsg(const Point &p);
 void triangleMeshToMsg(Polyhedron &m, cgal_msgs::TriangleMesh *msg);
 void msgToTriangleMesh(const cgal_msgs::TriangleMesh &msg, Polyhedron *mesh);
 void meshModelToMsg(const MeshModel::Ptr &model, cgal_msgs::TriangleMesh *msg);
-void msgToMeshModel(const cgal_msgs::TriangleMesh &msg, MeshModel::Ptr model);
+void msgToMeshModel(const cgal_msgs::TriangleMesh &msg, MeshModel::Ptr *model);
 void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *msg);
 
 template <class HDS>

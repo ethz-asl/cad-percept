@@ -55,10 +55,10 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   if (cad_trigger) {
     std::cout << "Processing CAD mesh" << std::endl;
     std::string frame_id = cad_mesh_in.header.frame_id;  // should be "marker2"
-    cgal::Polyhedron P;
-    cgal::msgToTriangleMesh(cad_mesh_in.mesh, &P);
+    cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh_);
 
     // Make some checks:
+    cgal::Polyhedron P = reference_mesh_->getMesh();
     if (P.is_valid()) {
       std::cout << "P is valid" << std::endl;
     } else {
@@ -74,8 +74,6 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     } else {
       std::cerr << "P is not closed => no consistent normal directions" << std::endl;
     }
-
-    cgal::MeshModel::create(P, &reference_mesh_);
 
     tf::StampedTransform transform;
     tf_listener_.lookupTransform(parameters_.tf_map_frame, frame_id, ros::Time(0),
