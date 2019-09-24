@@ -111,11 +111,6 @@ struct polyhedron_plane {
   // is already an update filter for translations I guess)
 };
 
-typedef std::map<int, int>::iterator Miterator;
-typedef std::multimap<int, int>::iterator Mmiterator;
-typedef std::unordered_map<int, polyhedron_plane>::iterator Umiterator;
-typedef std::unordered_map<int, int>::iterator Umiterator2;
-
 class Deviations {
  public:
   Deviations();
@@ -128,22 +123,23 @@ class Deviations {
   void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish,
                      const PointCloud &reading_cloud,
                      std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
-  void detectMapChanges(std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
-                        std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
-                        std::unordered_map<int, transformation> *current_transformation_map);
-  void init(cgal::Polyhedron &P, const tf::StampedTransform &transform);
+  void detectMapChanges(
+      std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
+      std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
+      std::unordered_map<std::string, transformation> *current_transformation_map);
+  void init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransform &transform);
 
-  std::unordered_map<int, transformation>
+  std::unordered_map<std::string, transformation>
       transformation_map;  // here we keep all the latest updated transformations
 
   /**
    * unordered map saving associations between triangles and planes: Facet IDs <-> Plane ID
    * (arbitrary iterated)
    */
-  std::unordered_multimap<int, int> planeToFacets;
-  std::unordered_map<int, int> facetToPlane;
+  std::unordered_multimap<std::string, std::string> planeToFacets;
+  std::unordered_map<std::string, std::string> facetToPlane;
   // plane map saving the ID of coplanar plane associated to plane properties
-  std::unordered_map<int, polyhedron_plane> plane_map;
+  std::unordered_map<std::string, polyhedron_plane> plane_map;
 
   /**
    * Reset stuff after evaluation of current scan
@@ -165,23 +161,23 @@ class Deviations {
    * every cloud point is associated to the same Polyhedron while testing
    * and then a score is evaluated.
    */
-  bool associatePlane(cgal::MeshModel &mesh_model, const reconstructed_plane &rec_plane, int *id,
-                      double *match_score);
+  bool associatePlane(cgal::MeshModel::Ptr &mesh_model, const reconstructed_plane &rec_plane,
+                      std::string *id, double *match_score);
   /**
    * This function finds best association between all p.c. planes and facets based on match_score
    * from associatePlane(). Could additionally output non associated facets and point clouds.
    */
   void findBestPlaneAssociation(std::vector<reconstructed_plane> cloud_vector,
-                                cgal::MeshModel &mesh_model,
+                                cgal::MeshModel::Ptr &mesh_model,
                                 std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
   void computeFacetNormals();
-  void findPlaneDeviation(std::unordered_map<int, transformation> *current_transformation_map,
-                          bool size_check);
+  void findPlaneDeviation(
+      std::unordered_map<std::string, transformation> *current_transformation_map, bool size_check);
   /**
    *  Update filtering of overall transformation_map
    */
   void updateAveragePlaneDeviation(
-      const std::unordered_map<int, transformation> &current_transformation_map);
+      const std::unordered_map<std::string, transformation> &current_transformation_map);
 
   void initPlaneMap();
 
