@@ -77,7 +77,7 @@ void ChangesRos::associatePointCloud(const PointCloud &pc_msg) {
   CHECK_EQ(associations.points_from.cols(), pc_msg.width);  // glog, checks equality
   CHECK_EQ(associations.points_to.cols(), pc_msg.width);
   CHECK_EQ(associations.distances.rows(), pc_msg.width);
-  CHECK_EQ(associations.triangles_to.rows(), pc_msg.width);
+  CHECK_EQ(associations.triangles_to.size(), pc_msg.width);
 
   publishArchitectModelMesh();
   publishArchitectModel();
@@ -214,8 +214,8 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
 
   std::unordered_map<int, Visualization> color_map;
 
-  for (uint i = 0; i < associations.triangles_to.rows(); ++i) {
-    int id = associations.triangles_to(i);
+  for (uint i = 0; i < associations.triangles_to.size(); ++i) {
+    std::string id = associations.triangles_to[i];
     double length = associations.distances(i);
     std_msgs::ColorRGBA c;
 
@@ -253,7 +253,7 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
     }
 
     // average color
-    std::unordered_map<int, Visualization>::iterator it = color_map.find(id);
+    std::unordered_map<int, Visualization>::iterator it = color_map.find(i);
     if (it == color_map.end()) {
       // add it to map
       Visualization vis;
