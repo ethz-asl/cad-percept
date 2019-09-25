@@ -261,7 +261,7 @@ void ChangesRos::publishColorizedAssocTriangles(const cpt_utils::Associations as
       vis.g = c.g;
       vis.b = c.b;
       vis.no_of_points = 1;
-      color_map[id] = vis;
+      color_map[i] = vis;
     } else {
       Visualization vis;
       vis.r = it->second.r + c.r;
