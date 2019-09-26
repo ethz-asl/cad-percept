@@ -140,8 +140,7 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
 
   PointMatcherSupport::timer t_processCloud;
 
-  cgal_msgs::GeomDeviation deviation_msg;
-  deviations.detectChanges(&rec_planes, reading_pc, &remaining_plane_cloud_vector, &deviation_msg);
+  deviations.detectChanges(&rec_planes, reading_pc, &remaining_plane_cloud_vector);
 
   if (visualize == "current") {
     publish(rec_planes, remaining_plane_cloud_vector, deviations.transformation_map);
@@ -149,6 +148,16 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
 
   // reset here in case we still want to access something, otherwise can put in detectChanges
   deviations.reset();
+
+  /**
+  *  Create geometric deviation messages and associated point cloud portions
+  */
+  for (auto &[plane_id, transform] : deviations.transformation_map) {
+    cgal_msgs::GeomDeviation deviation_msg;
+    deviation_msg.element_id = plane_id;
+    cpt_utils::toRosTransform(transform.translation, transform.quat, &
+        (deviation_msg.deviation_transform));
+  }
 }
 
 void RelativeDeviations::processMap(PointCloud &map_pc) {
