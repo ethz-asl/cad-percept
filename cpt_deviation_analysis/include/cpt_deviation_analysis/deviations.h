@@ -124,8 +124,7 @@ class Deviations {
    */
   void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish,
                      const PointCloud &reading_cloud,
-                     std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
-                     cgal_msgs::GeomDeviation *deviation_msg);
+                     std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
   void detectMapChanges(
       std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
       std::vector<reconstructed_plane> *remaining_plane_cloud_vector,

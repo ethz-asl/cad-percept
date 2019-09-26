@@ -38,8 +38,7 @@ void Deviations::init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransfor
 
 void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
                                const PointCloud &reading_cloud,
-                               std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
-                               cgal_msgs::GeomDeviation *deviation_msg) {
+                               std::vector<reconstructed_plane> *remaining_plane_cloud_vector) {
   // remaining_cloud contains a P.C. with non-segmented points, whereas remaining_plane_cloud_vector
   // a vector of P.C.s of non-associated planes
   /**
@@ -73,15 +72,6 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
   findPlaneDeviation(&current_transformation_map, 0);
   PointMatcherSupport::timer t_average;
   updateAveragePlaneDeviation(current_transformation_map);
-
-  /**
-  *  Create and publish geometric deviation messages and associated point cloud portions
-  */
-  for (auto &[plane_id, transform] : current_transformation_map) {
-    deviation_msg->element_id = plane_id;
-    cpt_utils::toRosTransform(transform.translation, transform.quat, &
-    (deviation_msg->deviation_transform));
-  }
 }
 
 /**

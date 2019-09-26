@@ -5,6 +5,7 @@
 #include <cgal_msgs/ColoredMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cgal_msgs/GeomDeviation.h>
+#include <cpt_utils/conversions.h>
 #include <cpt_utils/cpt_utils.h>
 #include <cpt_utils/pc_processing.h>
 #include <geometry_msgs/Point.h>
