@@ -37,6 +37,7 @@ Launch file for Selective ICP
           pkg="cpt_utils"
           type="find_closest_id_in_mesh.py"
           output="screen">
+		<param name="marker_parent_frame" value="marker" />
   	</node>
 
 	<node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node" output="screen">
