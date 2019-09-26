@@ -34,8 +34,7 @@ if __name__ == "__main__":
                        'mesh_id_marker',
                        InteractiveMarkerControl.MOVE_3D,
                        show_controls=True,
-                       position=[1, 1, 1],
-                       parent_frame='marker_position')
+                       position=[1, 1, 1])
     state = FindIdMarkerState(marker.marker.pose)
 
     get_id = rospy.ServiceProxy('/mesh_publisher/get_triangle_id', FacetID)
