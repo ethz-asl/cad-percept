@@ -75,7 +75,7 @@ class RosMarker:
                  position=[0, 0, 0], orientation=[0, 0, 1, 1], parent_frame=None,
                  fixed=False, show_controls=False):
         marker = InteractiveMarker()
-        parent_frame = parent_frame or rospy.get_param('map_frame')
+        parent_frame = parent_frame or rospy.get_param('~marker_parent_frame')
         marker.header.frame_id = parent_frame
         marker.pose.position = Point(*position)
         marker.pose.orientation = normalized_quaternion(*orientation)
