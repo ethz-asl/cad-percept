@@ -38,7 +38,7 @@ class MeshPublisher {
    */
   bool getClosestTriangle(cgal_msgs::FacetID::Request &req, cgal_msgs::FacetID::Response &res);
 
- private:
+ protected:
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
   ros::ServiceServer publish_service_;
