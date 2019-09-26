@@ -20,7 +20,7 @@ def frame_callback(marker_msg, tf_broadcaster, map_frame):
         (pose.position.x, pose.position.y, pose.position.z),
         (pose.orientation.x, pose.orientation.y, pose.orientation.z,
          pose.orientation.w),
-        time, 'marker_position', map_frame)
+        time, rospy.get_param('~marker_frame_name'), map_frame)
 
 
 if __name__ == "__main__":
