@@ -30,10 +30,11 @@ Launch file for Selective ICP
           type="position_cad_with_marker.py"
           output="screen">
     	<param name="marker_parent_frame" value="map" />
+		<param name="marker_frame_name" value="marker" />
   	</node>
 
 	<node name="find_id_in_mesh"
-          pkg="cpt_selective_icp"
+          pkg="cpt_utils"
           type="find_closest_id_in_mesh.py"
           output="screen">
   	</node>
@@ -41,7 +42,7 @@ Launch file for Selective ICP
 	<node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node" output="screen">
     	<param name="publish_on_start" value="true"/>
     	<param name="default_filename" value="$(arg cad_file)"/>
-    	<param name="frame_name" value="marker_position"/>
+    	<param name="frame_name" value="marker"/>
   	</node>
 
 	<node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
