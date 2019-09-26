@@ -19,4 +19,5 @@
 
   <depend>glog_catkin</depend>
   <depend>cgal_catkin</depend>
+  <depend>json_catkin</depend>
 </package>

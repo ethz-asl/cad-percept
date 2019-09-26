@@ -67,8 +67,8 @@ TEST(CGALMeshModelTest, normal_computation) {
   std::cout << "Normal with descriptor is: " << test_normal2 << std::endl;
   test_normal3 = model->computeFaceNormal2(fh);
   std::cout << "Normal with cross product is: " << test_normal3 << std::endl;
-  std::map<int, Vector> normals_map = model->computeNormals();
-  test_normal4 = normals_map[fh->id()];
+  std::map<std::string, Vector> normals_map = model->computeNormals();
+  test_normal4 = normals_map[model->getIdFromFacetHandle(fh)];
   std::cout << "Normal in map is: " << test_normal4 << std::endl;
 
   EXPECT_TRUE(test_normal1 == test_normal2 && test_normal2 == test_normal3 &&
