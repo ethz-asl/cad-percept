@@ -140,7 +140,8 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
 
   PointMatcherSupport::timer t_processCloud;
 
-  deviations.detectChanges(&rec_planes, reading_pc, &remaining_plane_cloud_vector);
+  cgal_msgs::GeomDeviation deviation_msg;
+  deviations.detectChanges(&rec_planes, reading_pc, &remaining_plane_cloud_vector, &deviation_msg);
 
   if (visualize == "current") {
     publish(rec_planes, remaining_plane_cloud_vector, deviations.transformation_map);
