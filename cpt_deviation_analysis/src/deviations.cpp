@@ -11,10 +11,10 @@ namespace deviations {
 
 Deviations::Deviations() {}
 
-void Deviations::init(cgal::Polyhedron &P, const tf::StampedTransform &transform) {
+void Deviations::init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransform &transform) {
   path_ = params.path;
   // create MeshModel of reference
-  cgal::MeshModel::create(P, &reference_mesh);
+  reference_mesh = model_ptr;
 
   // Transform mesh model into localized frame
   Eigen::Matrix3d rotation;
@@ -61,13 +61,13 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
 
   PointMatcherSupport::timer t_association;
 
-  findBestPlaneAssociation(*rec_planes, *reference_mesh, remaining_plane_cloud_vector);
+  findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
 
   /**
    *  Find current transformation_map and update transformation_map
    */
-  std::unordered_map<int, transformation>
-      current_transformation_map;  // the latest transformation result
+  // the latest transformation result
+  std::unordered_map<std::string, transformation> current_transformation_map;
   PointMatcherSupport::timer t_deviation;
   findPlaneDeviation(&current_transformation_map, 0);
   PointMatcherSupport::timer t_average;
@@ -80,7 +80,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
 void Deviations::detectMapChanges(
     std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
     std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
-    std::unordered_map<int, transformation> *current_transformation_map) {
+    std::unordered_map<std::string, transformation> *current_transformation_map) {
   PointCloud remaining_cloud;
   PointMatcherSupport::timer t_segmentation_map;
 
@@ -90,7 +90,7 @@ void Deviations::detectMapChanges(
     planarSegmentationPCL(map_cloud, rec_planes, &remaining_cloud);
   }
   PointMatcherSupport::timer t_association_map;
-  findBestPlaneAssociation(*rec_planes, *reference_mesh, remaining_plane_cloud_vector);
+  findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
   PointMatcherSupport::timer t_deviation_map;
   findPlaneDeviation(current_transformation_map, 1);
 }
@@ -341,8 +341,9 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
   }
 }
 
-bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed_plane &rec_plane,
-                                int *id, double *match_score) {
+bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
+                                const reconstructed_plane &rec_plane, std::string *id,
+                                double *match_score) {
   bool success = false;
   // TODO check every metrics function used here
   PointCloud cloud = rec_plane.pointcloud;
@@ -357,7 +358,7 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
 
   // iterate over all planes
   for (const auto keyAndPlane : plane_map) {
-    int plane_id = keyAndPlane.first;
+    std::string plane_id = keyAndPlane.first;
     // first check if plane even has size to be associated
     if (keyAndPlane.second.area < params.minPolyhedronArea) {
       continue;
@@ -380,9 +381,9 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
      * Distance to plane captures planes that should be associated to pcs that are laterally moved.
      */
     // distance_score of squared distances
-    int facet_id = planeToFacets.find(plane_id)->second;
+    std::string facet_id = planeToFacets.find(plane_id)->second;
     cgal::FT d = 0;
-    cgal::Plane plane_of_current_facet = mesh_model.getPlaneFromID(facet_id);
+    cgal::Plane plane_of_current_facet = model_ptr->getPlane(facet_id);
 
     for (auto point : cloud.points) {
       d += sqrt(
@@ -413,9 +414,9 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
       // TODO (Hermann) This could be done more efficiently in an AABB tree
       auto range = planeToFacets.equal_range(plane_id);
       for (auto i = range.first; i != range.second; ++i) {
-        d = std::min(
-            d, CGAL::to_double(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z),
-                                                      mesh_model.getTriangleFromID(i->second))));
+        d = std::min(d,
+                     CGAL::to_double(CGAL::squared_distance(cgal::Point(point.x, point.y, point.z),
+                                                            model_ptr->getTriangle(i->second))));
       }
       d_min = std::min(d, d_min);
       dist += sqrt(d);
@@ -503,7 +504,7 @@ bool Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
 }
 
 void Deviations::findBestPlaneAssociation(
-    std::vector<reconstructed_plane> cloud_vector, cgal::MeshModel &mesh_model,
+    std::vector<reconstructed_plane> cloud_vector, cgal::MeshModel::Ptr &mesh_model,
     std::vector<reconstructed_plane> *remaining_plane_cloud_vector) {
   // create queue and apply outlier filter
   std::queue<reconstructed_plane> cloud_queue;
@@ -513,7 +514,7 @@ void Deviations::findBestPlaneAssociation(
   }
 
   while (!cloud_queue.empty()) {  // while queue not empty
-    int id;
+    std::string id;
     double match_score_new = std::numeric_limits<double>::max();  // smaller is better
     if (associatePlane(mesh_model, cloud_queue.front(), &id, &match_score_new)) {
       if (plane_map[id].associated) {
@@ -533,7 +534,7 @@ void Deviations::findBestPlaneAssociation(
 }
 
 void Deviations::computeFacetNormals() {
-  for (std::pair<int, int> planeAndFacet : planeToFacets) {
+  for (std::pair<std::string, std::string> planeAndFacet : planeToFacets) {
     cgal::Vector cnormal = reference_mesh->computeFaceNormal2(
         reference_mesh->getFacetHandleFromId(planeAndFacet.second));
     plane_map[planeAndFacet.first].normal = cgal::cgalVectorToEigenVector(cnormal);
@@ -544,21 +545,19 @@ void Deviations::computeFacetNormals() {
  *  PC to Model
  */
 void Deviations::findPlaneDeviation(
-    std::unordered_map<int, transformation> *current_transformation_map, bool size_check) {
-  for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
-    if (umit->second.associated == true) {
+    std::unordered_map<std::string, transformation> *current_transformation_map, bool size_check) {
+  for (auto &[plane_id, plane] : plane_map) {
+    if (plane.associated == true) {
       // equal size check in case of full transformations
       if (size_check) {
-        double pc_area = cpt_utils::getArea(umit->second.rec_plane.pointcloud);
-        if (pc_area < 0.6 * umit->second.area ||
-            pc_area > 1.4 * umit->second.area) {  // better use [0.9, 1.1], but keep in mind that
-          // current lidar does not have full view
-          // std::cout << "Area: " << pc_area << "/ " << umit->second.area << std::endl;
+        double pc_area = cpt_utils::getArea(plane.rec_plane.pointcloud);
+        if (pc_area < 0.6 * plane.area || pc_area > 1.4 * plane.area) {
+          // better use [0.9, 1.1], but keep in mind that  current lidar does not have full view
           continue;
         }
       }
       transformation trafo;
-      trafo.score = umit->second.match_score;
+      trafo.score = plane.match_score;
 
       // - find translation (also in normal direction is hard since we don't have point association,
       // every point has different translation even in normal direction)
@@ -567,8 +566,8 @@ void Deviations::findPlaneDeviation(
       // distance_score from before
 
       // Check that pc_normal points in same direction as reference normal
-      Eigen::Vector3d pc_normal = umit->second.rec_plane.pc_normal;
-      if (pc_normal.dot(umit->second.normal) < 0) {
+      Eigen::Vector3d pc_normal = plane.rec_plane.pc_normal;
+      if (pc_normal.dot(plane.normal) < 0) {
         pc_normal = -pc_normal;
       }
 
@@ -576,7 +575,7 @@ void Deviations::findPlaneDeviation(
        *  Quaternion
        */
       // no need to normalize first
-      Eigen::Quaterniond quat = Eigen::Quaterniond::FromTwoVectors(pc_normal, umit->second.normal);
+      Eigen::Quaterniond quat = Eigen::Quaterniond::FromTwoVectors(pc_normal, plane.normal);
       trafo.quat = quat;
 
       /**
@@ -592,53 +591,53 @@ void Deviations::findPlaneDeviation(
        *  Translation between the Bbox Center Points
        *  If we have full scan of wall, this might be correct, otherwise not
        */
-      cgal::Vector translation = cpt_utils::centerOfBbox(umit->second.bbox) -
-                                 cpt_utils::centerOfBbox(umit->second.rec_plane.pointcloud);
+      cgal::Vector translation =
+          cpt_utils::centerOfBbox(plane.bbox) - cpt_utils::centerOfBbox(plane.rec_plane.pointcloud);
       trafo.translation = cgal::cgalVectorToEigenVector(translation);
 
       // create separate map with only facets ID match_score != 0 (only facets which we associated
       // in current scan) and  transform to each facet
-      current_transformation_map->insert(std::make_pair(umit->first, trafo));
+      current_transformation_map->insert(std::make_pair(plane_id, trafo));
     }
   }
 }
 
 void Deviations::updateAveragePlaneDeviation(
-    const std::unordered_map<int, transformation> &current_transformation_map) {
+    const std::unordered_map<std::string, transformation> &current_transformation_map) {
   // TODO: Do the real update filtering thing here
   // - try to investigate the distribution using the single current_transformation_map and plot them
   // - prediction based on this distribution, but what does it help to know error distribution?
   // - how is update filtering indended to work normally?
   // - now just compute average
 
-  for (auto it = current_transformation_map.begin(); it != current_transformation_map.end(); ++it) {
+  for (auto &[plane_id, current_transformation] : current_transformation_map) {
     // if entry in transformation map does not yet exist for this ID, then just copy
     // current_transformation_map
-    if (transformation_map.find(it->first) == transformation_map.end()) {
-      transformation_map[it->first] = it->second;
-      transformation_map[it->first].count = 1;
+    if (transformation_map.find(plane_id) == transformation_map.end()) {
+      transformation_map[plane_id] = current_transformation;
+      transformation_map[plane_id].count = 1;
       continue;
     }
 
     transformation trafo;
 
-    trafo.count = transformation_map[it->first].count + 1;
+    trafo.count = transformation_map[plane_id].count + 1;
 
     // update score average
-    double current_score = it->second.score;
-    trafo.score = transformation_map[it->first].score +
-                  (current_score - transformation_map[it->first].score) / trafo.count;
+    double current_score = current_transformation.score;
+    trafo.score = transformation_map[plane_id].score +
+                  (current_score - transformation_map[plane_id].score) / trafo.count;
     // update translation average
-    Eigen::Vector3d current_translation = it->second.translation;
+    Eigen::Vector3d current_translation = current_transformation.translation;
     trafo.translation =
-        transformation_map[it->first].translation +
-        (current_translation - transformation_map[it->first].translation) / trafo.count;
+        transformation_map[plane_id].translation +
+        (current_translation - transformation_map[plane_id].translation) / trafo.count;
     // update rotation average using unit vector rotation
     Eigen::Vector3d v_unit(1, 0, 0);
     v_unit.normalize();
-    Eigen::Vector3d u = it->second.quat * v_unit;
+    Eigen::Vector3d u = current_transformation.quat * v_unit;
     u.normalize();
-    Eigen::Vector3d u_avg = transformation_map[it->first].quat * v_unit;
+    Eigen::Vector3d u_avg = transformation_map[plane_id].quat * v_unit;
     u_avg.normalize();
     Eigen::Vector3d u_avg_new = u_avg + (u - u_avg) / trafo.count;
     u_avg_new.normalize();
@@ -648,16 +647,16 @@ void Deviations::updateAveragePlaneDeviation(
     Eigen::AngleAxisd aa(quat);
     trafo.aa = aa;
 
-    transformation_map[it->first] = trafo;
+    transformation_map[plane_id] = trafo;
   }
 }
 
 void Deviations::reset() {
-  for (Umiterator umit = plane_map.begin(); umit != plane_map.end(); ++umit) {
+  for (auto &[plane_id, plane] : plane_map) {
     reconstructed_plane rec_plane;
-    umit->second.rec_plane = rec_plane;
-    umit->second.associated = false;
-    umit->second.match_score = std::numeric_limits<double>::max();
+    plane.rec_plane = rec_plane;
+    plane.associated = false;
+    plane.match_score = std::numeric_limits<double>::max();
   }
 }
 
@@ -668,13 +667,13 @@ void Deviations::initPlaneMap() {
     polyhedron_plane plane;
     plane.associated = false;
     // getPlane from the first facet of this plane (arbitrary)
-    plane.plane = reference_mesh->getPlaneFromID(planeAndFacetIt->second);
+    plane.plane = reference_mesh->getPlane(planeAndFacetIt->second);
     plane_map.insert(std::make_pair(planeAndFacetIt->first, plane));
 
     // TODO: Decide if using this while-loop or upper_bound as in other functions
     // https://stackoverflow.com/questions/9371236/is-there-an-iterator-across-unique-keys-in-a-stdmultimap
     // Advance to next non-duplicate entry and calculated polyhedron area meanwhile.
-    int key = planeAndFacetIt->first;
+    std::string key = planeAndFacetIt->first;
     double area = 0;
     do {
       area += reference_mesh->getArea(planeAndFacetIt->second);
@@ -687,7 +686,7 @@ void Deviations::initPlaneMap() {
 }
 
 void Deviations::computeCGALBboxes() {
-  for (std::pair<int, int> planeAndFacet : planeToFacets) {
+  for (std::pair<std::string, std::string> planeAndFacet : planeToFacets) {
     cgal::Polyhedron::Facet_handle facet_handle =
         reference_mesh->getFacetHandleFromId(planeAndFacet.second);
     CGAL::Bbox_3 bbox =

@@ -60,6 +60,16 @@ void triangleMeshToMsg(Polyhedron &m, cgal_msgs::TriangleMesh *msg) {
   }
 }
 
+void meshModelToMsg(const MeshModel::Ptr &model, cgal_msgs::TriangleMesh *msg) {
+  Polyhedron p = model->getMesh();
+  triangleMeshToMsg(p, msg);
+  // Iterate in the same order through triangles again and get their ids
+  for (Polyhedron::Facet_iterator facet = p.facets_begin(); facet != p.facets_end(); ++facet) {
+    if (!facet->is_triangle()) continue;
+    msg->triangle_ids.push_back(model->getIdFromFacetHandle(facet));
+  }
+}
+
 // A modifier creating a triangle with the incremental builder.
 template <class HDS>
 void BuildMesh<HDS>::operator()(HDS &hds) {
@@ -89,6 +99,15 @@ void msgToTriangleMesh(const cgal_msgs::TriangleMesh &msg, Polyhedron *mesh) {
   BuildMesh<HalfedgeDS> mesh_generator;
   mesh_generator.setMsg(msg);
   mesh->delegate(mesh_generator);
+}
+
+void msgToMeshModel(const cgal_msgs::TriangleMesh &msg, MeshModel::Ptr *model_ptr) {
+  Polyhedron P;
+  msgToTriangleMesh(msg, &P);
+  cgal::MeshModel::create(P, model_ptr);
+  if (msg.triangle_ids.size() > 0) {
+    (*model_ptr)->setTriangleIds(msg.triangle_ids);
+  }
 }
 
 void meshToVerticePointCloud(const Polyhedron &mesh, PointCloud *pc) {
