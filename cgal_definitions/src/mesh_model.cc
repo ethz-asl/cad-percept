@@ -109,7 +109,7 @@ bool MeshModel::create(const std::string &filepath, MeshModel::Ptr *ptr, bool ve
 
 void MeshModel::initializeFacetIndices() {
   // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for facets
-  std::size_t i = 0;
+  int i = 0;
   for (Polyhedron::Facet_iterator facet = P_.facets_begin(); facet != P_.facets_end(); ++facet) {
     facet->id() = i;
     facetToHandle_[std::to_string(i)] = &(*facet);
@@ -128,7 +128,7 @@ void MeshModel::setTriangleIds(const std::vector<std::string> &triangle_ids) {
   std::unordered_map<std::string, Polyhedron::Facet_handle> facetToHandle_new;
   std::unordered_map<std::string, std::string> facetToPlane_new;
   std::unordered_multimap<std::string, std::string> planeToFacets_new;
-  for (std::size_t facet_idx = 0; facet_idx < P_.size_of_facets(); ++facet_idx) {
+  for (int facet_idx = 0; facet_idx < P_.size_of_facets(); ++facet_idx) {
     std::string new_id = triangle_ids[facet_idx];
     std::string old_id = facetIdxToId_[facet_idx];
     facetIdxToId_new[facet_idx] = new_id;
