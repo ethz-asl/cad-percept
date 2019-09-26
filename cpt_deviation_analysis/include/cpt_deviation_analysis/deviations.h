@@ -5,6 +5,8 @@
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
+#include <cgal_msgs/GeomDeviation.h>
+#include <cpt_utils/conversions.h>
 #include <cpt_utils/cpt_utils.h>
 #include <cpt_utils/pc_processing.h>
 #include <glog/logging.h>
@@ -122,7 +124,8 @@ class Deviations {
    */
   void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish,
                      const PointCloud &reading_cloud,
-                     std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
+                     std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
+                     cgal_msgs::GeomDeviation *deviation_msg);
   void detectMapChanges(
       std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
       std::vector<reconstructed_plane> *remaining_plane_cloud_vector,

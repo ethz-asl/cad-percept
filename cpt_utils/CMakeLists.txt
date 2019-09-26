@@ -12,6 +12,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 # LIBRARIES #
 #############
 cs_add_library(${PROJECT_NAME}
+        src/conversions.cc
         src/cpt_utils.cc
         src/perf.cc
         src/pc_processing.cpp
