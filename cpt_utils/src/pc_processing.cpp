@@ -207,6 +207,13 @@ void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox) {
   *bbox = CGAL::Bbox_3(min_pt.x, min_pt.y, min_pt.z, max_pt.x, max_pt.y, max_pt.z);
 }
 
+void bboxDiameters(const PointCloud &pointcloud, double *width, double *height) {
+  pcl::PointXYZ minPoint, maxPoint;
+  pcl::getMinMax3D(pointcloud, minPoint, maxPoint);
+  *width = sqrt(pow(maxPoint.x - minPoint.x,2) + pow(maxPoint.y - minPoint.y,2));
+  *height = sqrt(maxPoint.z - minPoint.z);
+}
+
 void removeOutliers(PointCloud *pointcloud, int knn, float thresh_mult) {
   // copy pointer
   pcl::PointCloud<pcl::PointXYZ>::Ptr mycloudPtr;
