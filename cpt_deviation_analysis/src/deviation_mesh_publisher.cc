@@ -6,6 +6,9 @@ namespace cpt_deviation_analysis {
 DeviationMeshPublisher::DeviationMeshPublisher(ros::NodeHandle nh, ros::NodeHandle nh_private)
     : MeshPublisher(nh, nh_private) {
   set_references_ = nh_.serviceClient<cpt_selective_icp::References>("/set_ref");
+  publish_service_.shutdown();
+  publish_service_ =
+      nh_private_.advertiseService("publish", &DeviationMeshPublisher::triggerPublishMesh, this);
 }
 
 bool DeviationMeshPublisher::publishMesh(nlohmann::json &j) {
@@ -35,8 +38,12 @@ bool DeviationMeshPublisher::publishMesh(nlohmann::json &j) {
 bool DeviationMeshPublisher::triggerPublishMesh(cgal_msgs::PublishMesh::Request &req,
                                                 cgal_msgs::PublishMesh::Response &res) {
   // read in json file
+  std::string filename = req.path;
   nlohmann::json j;
-  std::ifstream json_file(req.path.c_str());
+  if (filename.empty()) {
+    filename = default_filename_;
+  }
+  std::ifstream json_file(filename.c_str());
   json_file >> j;
   // load mesh from json
   bool result = publishMesh(j);
