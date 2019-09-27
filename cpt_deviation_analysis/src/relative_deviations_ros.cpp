@@ -61,6 +61,7 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   all_mesh_normals_marker_pub_ =
       nh_.advertise<visualization_msgs::MarkerArray>("all_mesh_normals_marker_pub", 100, true);
   deviations_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("deviations_mesh_pub", 1, true);
+  deviations_pub_ = nh_.advertise<cgal_msgs::GeomDeviation>("geometric_deviations", 1, true);
 
   analyze_map_srv_ = nh_.advertiseService("analyze_map", &RelativeDeviations::analyzeMap, this);
 
@@ -146,6 +147,20 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
     publish(rec_planes, remaining_plane_cloud_vector, deviations.transformation_map);
   }
 
+  /**
+   *  Create geometric deviation messages and associated point cloud portions
+   */
+
+  for (auto &[plane_id, transform] : deviations.transformation_map) {
+    cgal_msgs::GeomDeviation deviation_msg;
+    deviation_msg.element_id = plane_id;
+    cpt_utils::toRosTransform(transform.translation, transform.quat,
+                              &(deviation_msg.deviation_transform));
+    pcl::toROSMsg(deviations.plane_map[plane_id].rec_plane.pointcloud, deviation_msg.pointcloud);
+    deviation_msg.pointcloud.header.frame_id = map_frame_;
+    deviation_msg.pointcloud.header.stamp = ros::Time(0);
+    deviations_pub_.publish(deviation_msg);
+  }
   // reset here in case we still want to access something, otherwise can put in detectChanges
   deviations.reset();
 }

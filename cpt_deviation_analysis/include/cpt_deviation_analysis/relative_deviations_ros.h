@@ -3,13 +3,16 @@
 
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_msgs/ColoredMesh.h>
+#include <cgal_msgs/GeomDeviation.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
+#include <cpt_utils/conversions.h>
 #include <cpt_utils/cpt_utils.h>
 #include <cpt_utils/pc_processing.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <glog/logging.h>
 #include <pcl/filters/random_sample.h>
+#include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <pointmatcher/Timer.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -46,7 +49,7 @@ class RelativeDeviations {
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
   ros::Publisher buffer_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_,
       assoc_pc_pub_, assoc_marker_pub_, bboxes_marker_pub_, deviations_mesh_pub_,
-      mesh_normals_marker_pub_, all_mesh_normals_marker_pub_;
+      mesh_normals_marker_pub_, all_mesh_normals_marker_pub_, deviations_pub_;
   ros::ServiceServer analyze_map_srv_;
   std::string map_frame_;
   bool discrete_color_;
