@@ -161,16 +161,18 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
             << deviations.transformation_map.count(selected_plane_) << " deviations." << std::endl;
 
   if (deviations.transformation_map.count(selected_plane_) > 0) {
-    auto transform = deviations.transformation_map[selected_plane_];
-    cgal_msgs::GeomDeviation deviation_msg;
-    deviation_msg.element_id = selected_plane_;
-    cpt_utils::toRosTransform(transform.translation, transform.quat,
-                              &(deviation_msg.deviation_transform));
-    pcl::toROSMsg(deviations.plane_map[selected_plane_].rec_plane.pointcloud,
-                  deviation_msg.pointcloud);
-    deviation_msg.pointcloud.header.frame_id = map_frame_;
-    deviation_msg.pointcloud.header.stamp = ros::Time(0);
-    deviations_pub_.publish(deviation_msg);
+    if (deviations.plane_map[selected_plane_].rec_plane.pointcloud.points.size() > 0) {
+      auto transform = deviations.transformation_map[selected_plane_];
+      cgal_msgs::GeomDeviation deviation_msg;
+      deviation_msg.element_id = selected_plane_;
+      cpt_utils::toRosTransform(transform.translation, transform.quat,
+                                &(deviation_msg.deviation_transform));
+      pcl::toROSMsg(deviations.plane_map[selected_plane_].rec_plane.pointcloud,
+                    deviation_msg.pointcloud);
+      deviation_msg.pointcloud.header.frame_id = map_frame_;
+      deviation_msg.pointcloud.header.stamp = ros::Time(0);
+      deviations_pub_.publish(deviation_msg);
+    }
   }
   // reset here in case we still want to access something, otherwise can put in detectChanges
   deviations.reset();
