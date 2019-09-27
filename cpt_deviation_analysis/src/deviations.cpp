@@ -132,13 +132,13 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in,
   // Create the filtering object
   pcl::ExtractIndices<pcl::PointXYZ> extract;
 
-  int i = 0, nr_points = (int) cloud_filtered->points.size();
+  int i = 0, nr_points = (int)cloud_filtered->points.size();
   // While 1% of the original cloud is still there
   while (cloud_filtered->points.size() > 0.01 * nr_points) {
     // Segment the largest planar component from the remaining cloud
     seg.setInputCloud(cloud_filtered);
     seg.segment(*inliers, *coefficients);
-    if (inliers->indices.size() < (uint) params.minNumberOfPlanePoints) {
+    if (inliers->indices.size() < (uint)params.minNumberOfPlanePoints) {
       std::cerr
           << "Could not estimate a planar model for the remaining dataset. Not enought points."
           << std::endl;
@@ -202,7 +202,7 @@ void Deviations::planarSegmentationCGAL(const PointCloud &cloud,
 }
 
 // This works for RANSAC and Region Growing
-template<typename ShapeDetection>
+template <typename ShapeDetection>
 void Deviations::runShapeDetection(const PointCloud &cloud,
                                    std::vector<reconstructed_plane> *rec_planes,
                                    PointCloud *remaining_cloud) const {
@@ -266,7 +266,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
 
     // Compute coverage, i.e. ratio of the points assigned to a shape
     cgal::FT coverage = cgal::FT(points.size() - shape_detection.number_of_unassigned_points()) /
-        cgal::FT(points.size());
+                        cgal::FT(points.size());
 
     // Prints number of assigned shapes and unassigned points
     std::cout << shape_detection.shapes().end() - shape_detection.shapes().begin()
@@ -368,7 +368,7 @@ bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
     double ratio = pc_area / keyAndPlane.second.area;
     if (ratio > params.assocAreaRatioUpperLimit ||
         (keyAndPlane.second.area < params.assocAreaLowerLimitThreshold &&
-            ratio < params.assocAreaRatioLowerLimit)) {
+         ratio < params.assocAreaRatioLowerLimit)) {
       continue;
     }
 
@@ -454,7 +454,7 @@ bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
     }
 
     match_score_new = params.distWeight * avg_dist + params.minDistWeight * min_dist +
-        params.distanceScoreWeight * distance_score + params.angleWeight * angle;
+                      params.distanceScoreWeight * distance_score + params.angleWeight * angle;
     // std::cout << "Match score new is: " << match_score_new << std::endl;
     // std::cout << "Match score before is: " << *match_score << std::endl;
 
@@ -546,7 +546,7 @@ void Deviations::computeFacetNormals() {
  */
 void Deviations::findPlaneDeviation(
     std::unordered_map<std::string, transformation> *current_transformation_map, bool size_check) {
-  for (auto &[plane_id, plane] : plane_map) {
+  for (auto & [ plane_id, plane ] : plane_map) {
     if (plane.associated == true) {
       // equal size check in case of full transformations
       if (size_check) {
@@ -610,7 +610,7 @@ void Deviations::updateAveragePlaneDeviation(
   // - how is update filtering indended to work normally?
   // - now just compute average
 
-  for (auto &[plane_id, current_transformation] : current_transformation_map) {
+  for (auto & [ plane_id, current_transformation ] : current_transformation_map) {
     // if entry in transformation map does not yet exist for this ID, then just copy
     // current_transformation_map
     if (transformation_map.find(plane_id) == transformation_map.end()) {
@@ -626,12 +626,12 @@ void Deviations::updateAveragePlaneDeviation(
     // update score average
     double current_score = current_transformation.score;
     trafo.score = transformation_map[plane_id].score +
-        (current_score - transformation_map[plane_id].score) / trafo.count;
+                  (current_score - transformation_map[plane_id].score) / trafo.count;
     // update translation average
     Eigen::Vector3d current_translation = current_transformation.translation;
     trafo.translation =
         transformation_map[plane_id].translation +
-            (current_translation - transformation_map[plane_id].translation) / trafo.count;
+        (current_translation - transformation_map[plane_id].translation) / trafo.count;
     // update rotation average using unit vector rotation
     Eigen::Vector3d v_unit(1, 0, 0);
     v_unit.normalize();
@@ -652,7 +652,7 @@ void Deviations::updateAveragePlaneDeviation(
 }
 
 void Deviations::reset() {
-  for (auto &[plane_id, plane] : plane_map) {
+  for (auto & [ plane_id, plane ] : plane_map) {
     reconstructed_plane rec_plane;
     plane.rec_plane = rec_plane;
     plane.associated = false;
@@ -679,7 +679,7 @@ void Deviations::initPlaneMap() {
       area += reference_mesh->getArea(planeAndFacetIt->second);
       ++planeAndFacetIt;
     } while (planeAndFacetIt != planeToFacets.end() &&
-        key == planeAndFacetIt->first);  // multidset is ordered
+             key == planeAndFacetIt->first);  // multidset is ordered
     // save area to struct
     plane_map.at(key).area = area;
   }

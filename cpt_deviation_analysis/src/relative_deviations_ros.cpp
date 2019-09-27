@@ -150,13 +150,12 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   /**
   *  Create geometric deviation messages and associated point cloud portions
   */
-  for (auto &[plane_id, transform] : deviations.transformation_map) {
+  for (auto & [ plane_id, transform ] : deviations.transformation_map) {
     cgal_msgs::GeomDeviation deviation_msg;
     deviation_msg.element_id = plane_id;
-    cpt_utils::toRosTransform(transform.translation, transform.quat, &
-        (deviation_msg.deviation_transform));
-    pcl::toROSMsg(deviations.plane_map[plane_id].rec_plane.pointcloud, deviation_msg
-        .pointcloud);
+    cpt_utils::toRosTransform(transform.translation, transform.quat,
+                              &(deviation_msg.deviation_transform));
+    pcl::toROSMsg(deviations.plane_map[plane_id].rec_plane.pointcloud, deviation_msg.pointcloud);
     deviation_msg.pointcloud.header.frame_id = map_frame_;
     deviation_msg.pointcloud.header.stamp = ros::Time(0);
     deviations_pub_.publish(deviation_msg);
@@ -218,7 +217,7 @@ void RelativeDeviations::publishMesh(const cgal::MeshModel::Ptr &model,
   publisher->publish(c_msg);
 }
 
-template<class T>
+template <class T>
 void RelativeDeviations::publishCloud(T *cloud, ros::Publisher *publisher) const {
   cloud->header.frame_id = map_frame_;
   pcl_conversions::toPCL(ros::Time(0), cloud->header.stamp);
@@ -238,9 +237,9 @@ void RelativeDeviations::publishPolyhedron(cgal::Polyhedron &P) {
 
     do {
       geometry_msgs::Point32 p;
-      p.x = (float) (hit->vertex()->point()).x();
-      p.y = (float) (hit->vertex()->point()).y();
-      p.z = (float) (hit->vertex()->point()).z();
+      p.x = (float)(hit->vertex()->point()).x();
+      p.y = (float)(hit->vertex()->point()).y();
+      p.z = (float)(hit->vertex()->point()).z();
       msg.polygon.points.push_back(p);
     } while (++hit != j->facet_begin());
 
@@ -255,7 +254,7 @@ void RelativeDeviations::publishReconstructedPlanes(
     ColoredPointCloud pointcloud_plane_rgb;
     pcl::copyPointCloud(plane.pointcloud, pointcloud_plane_rgb);
     uint8_t r = std::rand() % 256, g = std::rand() % 256, b = std::rand() % 256;
-    uint32_t rgb = ((uint32_t) r << 16 | (uint32_t) g << 8 | (uint32_t) b);
+    uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
     for (uint i = 0; i < pointcloud_plane_rgb.points.size(); ++i) {
       pointcloud_plane_rgb.points[i].rgb = *reinterpret_cast<float *>(&rgb);
     }
@@ -285,7 +284,7 @@ void RelativeDeviations::publishAssociations(
   for (auto plane : remaining_plane_cloud_vector) {
     pcl::copyPointCloud(plane.pointcloud, pointcloud_plane_rgb);
     uint8_t r = 0, g = 0, b = 255;
-    uint32_t rgb = ((uint32_t) r << 16 | (uint32_t) g << 8 | (uint32_t) b);
+    uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
     for (uint i = 0; i < pointcloud_plane_rgb.points.size(); ++i) {
       pointcloud_plane_rgb.points[i].rgb = *reinterpret_cast<float *>(&rgb);
     }
@@ -309,7 +308,7 @@ void RelativeDeviations::publishAssociations(
   // overwrite color of associated planes/triangles
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
-  for (auto &[plane_id, plane] : plane_map) {
+  for (auto & [ plane_id, plane ] : plane_map) {
     if (plane.associated) {
       uint8_t r = std::rand() % 256, g = std::rand() % 256, b = 0;
 
@@ -334,7 +333,7 @@ void RelativeDeviations::publishAssociations(
       }
 
       pcl::copyPointCloud(plane.rec_plane.pointcloud, pointcloud_plane_rgb);
-      uint32_t rgb = ((uint32_t) r << 16 | (uint32_t) g << 8 | (uint32_t) b);
+      uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
       for (uint i = 0; i < pointcloud_plane_rgb.points.size(); ++i) {
         pointcloud_plane_rgb.points[i].rgb = *reinterpret_cast<float *>(&rgb);
       }
@@ -381,7 +380,7 @@ void RelativeDeviations::publishBboxesAndNormals(
     std::unordered_map<std::string, polyhedron_plane> &plane_map) {
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
-  for (auto &[plane_id, plane] : plane_map) {
+  for (auto & [ plane_id, plane ] : plane_map) {
     if (plane.associated) {
       /**
        *  BBox
@@ -444,7 +443,7 @@ void RelativeDeviations::publishModelNormals(
     std::unordered_map<std::string, polyhedron_plane> &plane_map) {
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
-  for (auto &[plane_id, plane] : plane_map) {
+  for (auto & [ plane_id, plane ] : plane_map) {
     if (plane.associated) {
       cgal::Point center = cpt_utils::centerOfBbox(plane.bbox);
 
@@ -483,7 +482,7 @@ void RelativeDeviations::publishAllModelNormals(
     std::unordered_map<std::string, polyhedron_plane> &plane_map) {
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
-  for (auto &[plane_id, plane] : plane_map) {
+  for (auto & [ plane_id, plane ] : plane_map) {
     cgal::Point center = cpt_utils::centerOfBbox(plane.bbox);
 
     visualization_msgs::Marker marker;
@@ -541,7 +540,7 @@ void RelativeDeviations::publishDeviations(
   // - overwrite color of associated planes/triangles with deviation gradient based on e.g.
   // distance score, because distance score includes both angle deviation and distance deviation
   // - set threshold for ok walls
-  for (auto &[plane_id, transformation] : transformation_map) {
+  for (auto & [ plane_id, transformation ] : transformation_map) {
     double score = transformation.score;
 
     if (score < score_threshold_) {
