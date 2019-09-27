@@ -159,6 +159,14 @@ sh publish_references.sh
 
 Analysis of complete map (callback still needs to run and mapping needs to be turned on in cpt_selective_icp):
 
+Requirements:
+
+- Scan callback still needs to run
+- Mapping in cpt_selective_icp turned on
+- "visualize" parameter in relative_deviations to "map" (this will not publish anything until service was executed)
+- RANSAC instead of Region Growing because of computational time
+- full map segmentation is extremely slow
+
 ```
 rosservice call /analyze_map
 ```

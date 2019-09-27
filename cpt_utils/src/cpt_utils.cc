@@ -88,5 +88,10 @@ cgal::Point centerOfBbox(const PointCloud &pointcloud) {
   return centerOfBbox(bbox);
 }
 
+void bboxDiameters(const CGAL::Bbox_3 bbox, double *horDim, double *vertDim) {
+  *horDim = sqrt(pow(bbox.xmax() - bbox.xmin(),2) + pow(bbox.ymax() - bbox.ymin(),2));
+  *vertDim = sqrt(bbox.zmax() - bbox.zmin());
+}
+
 }
 }
