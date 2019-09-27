@@ -579,6 +579,12 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
 
 bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
                                 cpt_selective_icp::References::Response &res) {
+  if (reference_mesh_ == nullptr) {
+    std::cerr << "[cpt_selective_icp] Tried to set references before mesh-model was not loaded."
+              << std::endl;
+    return false;
+  }
+
   std::unordered_set<std::string> references;
   for (std::string id : req.data) {
     // check that every request is in mesh
