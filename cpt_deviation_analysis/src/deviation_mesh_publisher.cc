@@ -39,9 +39,10 @@ bool DeviationMeshPublisher::publishMesh(nlohmann::json &j) {
   cgal_msgs::SetDeviationPlane deviation_call;
   for (auto &[key, val] : j["facedata"].items()) {
     if (val.contains("selected") && val["selected"]) {
-      deviation_call.request.facet_id == key;
+      deviation_call.request.facet_id = key;
     }
   }
+  std::cout << deviation_call.request << std::endl;
   deviation_call.request.task_id = "1";
   return set_deviation_target_.call(deviation_call.request, deviation_call.response);
 }

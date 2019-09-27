@@ -16,7 +16,7 @@ minNumberOfPlanePoints: 100 # minimum number of plane points necessary for segme
 segmentationProbability: 0.05 # only for CGAL Efficient_Ransac
 
 # Association
-minPolyhedronArea: 0.05
+minPolyhedronArea: 0.5
 matchScoreUpperLimit: 1.0 # above this limit, don't do any association since we don't expect wrong walls to be so wrong
 matchDistScoreThresh: 1.0 # max distance_score limit between pc and facet
 matchMinDistThresh: 0.15 # max. min_distance limit between pc and facet
