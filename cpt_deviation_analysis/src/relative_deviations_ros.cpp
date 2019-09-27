@@ -66,6 +66,8 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   analyze_map_srv_ = nh_.advertiseService("analyze_map", &RelativeDeviations::analyzeMap, this);
   set_deviation_plane_ = nh_.advertiseService(
       "set_deviation_target", &RelativeDeviations::deviationTargetServiceCallback, this);
+  cad_sub_ = nh_.subscribe(cad_topic, input_queue_size, &RelativeDeviations::gotCAD, this);
+  cloud_sub_ = nh_.subscribe(scan_topic, input_queue_size, &RelativeDeviations::gotCloud, this);
   map_sub_ = nh_.subscribe(map_topic, input_queue_size, &RelativeDeviations::gotMap, this);
 }
 
@@ -100,6 +102,8 @@ void RelativeDeviations::gotMap(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 bool RelativeDeviations::deviationTargetServiceCallback(
     cgal_msgs::SetDeviationPlane::Request &req, cgal_msgs::SetDeviationPlane::Response &resp) {
   selected_plane_ = deviations.facetToPlane[req.facet_id];
+  std::cout << "Selected plane for facet " << req.facet_id << " is " << selected_plane_
+            << std::endl;
   current_task_id_ = req.task_id;
   return true;
 }
@@ -154,6 +158,9 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   /**
    *  Create geometric deviation messages and associated point cloud portions
    */
+
+  std::cout << "selected plane " << selected_plane_ << " has "
+            << deviations.transformation_map.count(selected_plane_) << " deviations." << std::endl;
 
   if (deviations.transformation_map.count(selected_plane_) > 0) {
     auto transform = deviations.transformation_map[selected_plane_];
