@@ -4,6 +4,7 @@
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_msgs/ColoredMesh.h>
 #include <cgal_msgs/GeomDeviation.h>
+#include <cgal_msgs/SetDeviationPlane.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/conversions.h>
 #include <cpt_utils/cpt_utils.h>
@@ -82,6 +83,13 @@ class RelativeDeviations {
   void publishAllModelNormals(std::unordered_map<std::string, polyhedron_plane> &plane_map);
   void publishDeviations(const cgal::MeshModel::Ptr &model,
                          std::unordered_map<std::string, transformation> &transformation_map);
+
+  // Selection of plane to publish deviation
+  std::string selected_plane_;
+  std::string current_task_id_;
+  ros::ServiceServer set_deviation_plane_;
+  bool deviationTargetServiceCallback(cgal_msgs::SetDeviationPlane::Request &req,
+                                      cgal_msgs::SetDeviationPlane::Response &resp);
 
   std::string cad_topic;
   std::string scan_topic;
