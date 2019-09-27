@@ -3,13 +3,17 @@
 
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_msgs/ColoredMesh.h>
+#include <cgal_msgs/GeomDeviation.h>
+#include <cgal_msgs/SetDeviationPlane.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
+#include <cpt_utils/conversions.h>
 #include <cpt_utils/cpt_utils.h>
 #include <cpt_utils/pc_processing.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <glog/logging.h>
 #include <pcl/filters/random_sample.h>
+#include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <pointmatcher/Timer.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -46,7 +50,7 @@ class RelativeDeviations {
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
   ros::Publisher buffer_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_,
       assoc_pc_pub_, assoc_marker_pub_, bboxes_marker_pub_, deviations_mesh_pub_,
-      mesh_normals_marker_pub_, all_mesh_normals_marker_pub_;
+      mesh_normals_marker_pub_, all_mesh_normals_marker_pub_, deviations_pub_;
   ros::ServiceServer analyze_map_srv_;
   std::string map_frame_;
   bool discrete_color_;
@@ -79,6 +83,13 @@ class RelativeDeviations {
   void publishAllModelNormals(std::unordered_map<std::string, polyhedron_plane> &plane_map);
   void publishDeviations(const cgal::MeshModel::Ptr &model,
                          std::unordered_map<std::string, transformation> &transformation_map);
+
+  // Selection of plane to publish deviation
+  std::string selected_plane_;
+  std::string current_task_id_;
+  ros::ServiceServer set_deviation_plane_;
+  bool deviationTargetServiceCallback(cgal_msgs::SetDeviationPlane::Request &req,
+                                      cgal_msgs::SetDeviationPlane::Response &resp);
 
   std::string cad_topic;
   std::string scan_topic;

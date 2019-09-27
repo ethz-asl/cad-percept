@@ -5,6 +5,8 @@
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
+#include <cgal_msgs/GeomDeviation.h>
+#include <cpt_utils/conversions.h>
 #include <cpt_utils/cpt_utils.h>
 #include <cpt_utils/pc_processing.h>
 #include <glog/logging.h>

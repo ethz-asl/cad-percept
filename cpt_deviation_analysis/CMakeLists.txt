@@ -14,6 +14,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 cs_add_library(${PROJECT_NAME}
         src/relative_deviations_ros.cpp
         src/deviations.cpp
+        src/deviation_mesh_publisher.cc
         )
 
 ############
@@ -22,8 +23,12 @@ cs_add_library(${PROJECT_NAME}
 cs_add_executable(relative_deviations_node
         src/relative_deviations_ros_node.cpp
         )
-
 target_link_libraries(relative_deviations_node ${PROJECT_NAME})
+
+cs_add_executable(mesh_publisher_node
+        src/deviation_mesh_publisher_node.cc
+        )
+target_link_libraries(mesh_publisher_node ${PROJECT_NAME})
 
 ############
 #  TESTS   #
