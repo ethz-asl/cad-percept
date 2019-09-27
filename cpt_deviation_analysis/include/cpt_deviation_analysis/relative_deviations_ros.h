@@ -45,7 +45,7 @@ class RelativeDeviations {
   tf::TransformListener tf_listener_;
   std::ofstream timingFile;
   void publishMesh(const cgal::MeshModel::Ptr &model, ros::Publisher *publisher) const;
-  template <class T>
+  template<class T>
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
   ros::Publisher buffer_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_,
       assoc_pc_pub_, assoc_marker_pub_, bboxes_marker_pub_, deviations_mesh_pub_,
