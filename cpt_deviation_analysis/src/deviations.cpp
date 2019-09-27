@@ -551,8 +551,27 @@ void Deviations::findPlaneDeviation(
       // equal size check in case of full transformations
       if (size_check) {
         double pc_area = cpt_utils::getArea(plane.rec_plane.pointcloud);
-        if (pc_area < 0.6 * plane.area || pc_area > 1.4 * plane.area) {
-          // better use [0.9, 1.1], but keep in mind that  current lidar does not have full view
+        if (pc_area < 0 * plane.area || pc_area > 5 * plane.area) { 
+          // area check is basically off with these parameters
+          // better use [0.9, 1.1], but keep in mind that current lidar does not have full view          
+          std::cout << "Size wrong, area: " << pc_area << "/ " << plane.area << std::endl;
+          continue;
+        }
+        /**
+         *  Better check horizontal and vertical distance ratio here, so that we can analyze in 
+         *  complete x,y-direction (if horizontal ratio is right), and additionally in z-direction 
+         *  (if vertical ratio is right).
+         */
+        double modelHorDim, modelVertDim, recHorDim, recVertDim;
+        cpt_utils::bboxDiameters(plane.bbox, &modelHorDim, &modelVertDim);
+        cpt_utils::bboxDiameters(plane.rec_plane.pointcloud, &recHorDim, &recVertDim);
+        if (recVertDim < 0.2* modelVertDim || recVertDim > 1.5*modelVertDim) {
+          // vertDim basically turned off with these parameters
+          std::cout << "Size wrong, vertical: " << recVertDim << "/ " << modelVertDim << std::endl;
+          continue;
+        }
+        if (recHorDim < 0.8* modelHorDim || recHorDim > 1.2*modelHorDim) {
+          std::cout << "Size wrong, horizontal: " << recHorDim << "/ " << modelHorDim << std::endl;
           continue;
         }
       }
