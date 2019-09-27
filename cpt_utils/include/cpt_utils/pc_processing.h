@@ -76,6 +76,11 @@ double getArea(const PointCloud &pointcloud);
 void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox);
 
 /**
+ *  Estimate of bbox diameter
+ */
+void bboxDiameters(const PointCloud &pointcloud, double *width, double *height);
+
+/**
  *  Statistical removal of outliers from a pointcloud
  */
 void removeOutliers(PointCloud *pointcloud, int knn = 50, float thresh_mult = 1.0);

@@ -61,13 +61,13 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
   all_mesh_normals_marker_pub_ =
       nh_.advertise<visualization_msgs::MarkerArray>("all_mesh_normals_marker_pub", 100, true);
   deviations_mesh_pub_ = nh_.advertise<cgal_msgs::ColoredMesh>("deviations_mesh_pub", 1, true);
+  deviations_pub_ = nh_.advertise<cgal_msgs::GeomDeviation>("geometric_deviations", 1, true);
 
   analyze_map_srv_ = nh_.advertiseService("analyze_map", &RelativeDeviations::analyzeMap, this);
-
+  set_deviation_plane_ = nh_.advertiseService(
+      "set_deviation_target", &RelativeDeviations::deviationTargetServiceCallback, this);
   cad_sub_ = nh_.subscribe(cad_topic, input_queue_size, &RelativeDeviations::gotCAD, this);
-
   cloud_sub_ = nh_.subscribe(scan_topic, input_queue_size, &RelativeDeviations::gotCloud, this);
-
   map_sub_ = nh_.subscribe(map_topic, input_queue_size, &RelativeDeviations::gotMap, this);
 }
 
@@ -97,6 +97,13 @@ void RelativeDeviations::gotMap(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     processMap(cloud);
     map_analyzer_trigger = false;
   }
+}
+
+bool RelativeDeviations::deviationTargetServiceCallback(
+    cgal_msgs::SetDeviationPlane::Request &req, cgal_msgs::SetDeviationPlane::Response &resp) {
+  selected_plane_ = deviations.facetToPlane[req.facet_id];
+  current_task_id_ = req.task_id;
+  return true;
 }
 
 bool RelativeDeviations::analyzeMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
@@ -146,6 +153,25 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
     publish(rec_planes, remaining_plane_cloud_vector, deviations.transformation_map);
   }
 
+  /**
+   *  Create geometric deviation messages and associated point cloud portions
+   */
+
+  std::cout << "selected plane " << selected_plane_ << " has "
+            << deviations.transformation_map.count(selected_plane_) << " deviations." << std::endl;
+
+  if (deviations.transformation_map.count(selected_plane_) > 0) {
+    auto transform = deviations.transformation_map[selected_plane_];
+    cgal_msgs::GeomDeviation deviation_msg;
+    deviation_msg.element_id = selected_plane_;
+    cpt_utils::toRosTransform(transform.translation, transform.quat,
+                              &(deviation_msg.deviation_transform));
+    pcl::toROSMsg(deviations.plane_map[selected_plane_].rec_plane.pointcloud,
+                  deviation_msg.pointcloud);
+    deviation_msg.pointcloud.header.frame_id = map_frame_;
+    deviation_msg.pointcloud.header.stamp = ros::Time(0);
+    deviations_pub_.publish(deviation_msg);
+  }
   // reset here in case we still want to access something, otherwise can put in detectChanges
   deviations.reset();
 }

@@ -18,12 +18,14 @@
 #include "cpt_selective_icp/mapper_parameters.h"
 
 #include <cgal_msgs/ColoredMesh.h>
+#include <cgal_msgs/ReferenceTask.h>
 #include <cgal_msgs/TriangleMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <geometry_msgs/PointStamped.h>
 #include <std_msgs/ColorRGBA.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
+#include "cpt_selective_icp/BuildingTask.h"
 #include "cpt_selective_icp/References.h"
 
 #include <pointmatcher/Timer.h>
@@ -80,6 +82,8 @@ class Mapper {
    */
   bool setReferenceFacets(cpt_selective_icp::References::Request &req,
                           cpt_selective_icp::References::Response &res);
+  bool setReferenceTask(cpt_selective_icp::BuildingTask::Request &req,
+                        cpt_selective_icp::BuildingTask::Response &res);
   bool setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
   bool setSelectiveICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
 
