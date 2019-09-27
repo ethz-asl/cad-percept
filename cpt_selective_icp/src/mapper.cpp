@@ -617,6 +617,39 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
   return true;
 }
 
+bool Mapper::setReferenceTask(cpt_selective_icp::BuildingTask::Request &req, cpt_selective_icp::BuildingTask::Response &res) {
+  std::unordered_set<std::string> references;
+  for (std::string id : req.task.dist_ref_ids) {
+    // check that every request is in mesh
+    if (reference_mesh_->isCorrectId(id)) {
+      references.insert(id);
+    }
+  }
+
+  if (references.empty()) {
+    return false;
+  }
+
+  selective_icp_trigger = true;  // use selective ICP now
+  std::cout << "Mode set to selective ICP" << std::endl;
+
+  PointCloud pointcloud;
+  sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
+
+  selective_ref_dp = cpt_utils::pointCloudToDP(pointcloud);
+  processCloud(&selective_ref_dp, ros::Time(0));
+
+  // set the map
+  selective_icp_.clearMap();
+  selective_icp_.setMap(selective_ref_dp);
+
+  // clear mapPointCloud
+  DP new_cloud;
+  mapPointCloud = new_cloud;
+
+  return true;
+}
+
 bool Mapper::setSelectiveICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res) {
   if (req.data == true) {
     if (!selective_icp_.hasMap()) {
