@@ -47,7 +47,7 @@ cgal::Point centerOfBbox(const PointCloud &pointcloud);
 /**
  *  Estimate of bbox diameter
  */
-void bboxDiameters(const CGAL::Bbox_3 bbox, double *horDim, double *vertDim);
+void bboxDiameters(const CGAL::Bbox_3 bbox, double *width, double *height);
 
 cgal::Polyhedron::Facet_handle getFacetHandle(cgal::Polyhedron &P, const uint facet_id);
 }  // namespace cpt_utils
