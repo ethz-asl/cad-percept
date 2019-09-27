@@ -87,7 +87,7 @@ cgal::Point centerOfBbox(const PointCloud &pointcloud) {
 }
 
 void bboxDiameters(const CGAL::Bbox_3 bbox, double *width, double *height) {
-  *width = sqrt(pow(bbox.xmax() - bbox.xmin(),2) + pow(bbox.ymax() - bbox.ymin(),2));
+  *width = sqrt(pow(bbox.xmax() - bbox.xmin(), 2) + pow(bbox.ymax() - bbox.ymin(), 2));
   *height = sqrt(bbox.zmax() - bbox.zmin());
 }
 

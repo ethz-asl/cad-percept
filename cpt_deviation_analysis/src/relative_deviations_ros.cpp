@@ -102,8 +102,6 @@ void RelativeDeviations::gotMap(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 bool RelativeDeviations::deviationTargetServiceCallback(
     cgal_msgs::SetDeviationPlane::Request &req, cgal_msgs::SetDeviationPlane::Response &resp) {
   selected_plane_ = deviations.facetToPlane[req.facet_id];
-  std::cout << "Selected plane for facet " << req.facet_id << " is " << selected_plane_
-            << std::endl;
   current_task_id_ = req.task_id;
   return true;
 }

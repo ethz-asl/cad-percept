@@ -42,7 +42,6 @@ bool DeviationMeshPublisher::publishMesh(nlohmann::json &j) {
       deviation_call.request.facet_id = key;
     }
   }
-  std::cout << deviation_call.request << std::endl;
   deviation_call.request.task_id = "1";
   return set_deviation_target_.call(deviation_call.request, deviation_call.response);
 }
