@@ -6,6 +6,7 @@ namespace cpt_deviation_analysis {
 DeviationMeshPublisher::DeviationMeshPublisher(ros::NodeHandle nh, ros::NodeHandle nh_private)
     : MeshPublisher(nh, nh_private) {
   set_references_ = nh_.serviceClient<cpt_selective_icp::References>("/set_ref");
+  set_deviation_target_ = nh_.serviceClient<cgal_msgs::SetDeviationPlane>("/set_deviation_target");
   publish_service_.shutdown();
   publish_service_ =
       nh_private_.advertiseService("publish", &DeviationMeshPublisher::triggerPublishMesh, this);
@@ -26,13 +27,23 @@ bool DeviationMeshPublisher::publishMesh(nlohmann::json &j) {
   pub_mesh_.publish(mesh_msg);
 
   // now also set the references
-  cpt_selective_icp::References srv;
+  cpt_selective_icp::References ref_call;
   for (auto &[key, val] : j["facedata"].items()) {
     if (val.contains("reference") && val["reference"]) {
-      srv.request.data.push_back(key);
+      ref_call.request.data.push_back(key);
     }
   }
-  return set_references_.call(srv.request, srv.response);
+  if (!set_references_.call(ref_call.request, ref_call.response)) return false;
+
+  // set the deviation target
+  cgal_msgs::SetDeviationPlane deviation_call;
+  for (auto &[key, val] : j["facedata"].items()) {
+    if (val.contains("selected") && val["selected"]) {
+      deviation_call.request.facet_id == key;
+    }
+  }
+  deviation_call.request.task_id = "1";
+  return set_deviation_target_.call(deviation_call.request, deviation_call.response);
 }
 
 bool DeviationMeshPublisher::triggerPublishMesh(cgal_msgs::PublishMesh::Request &req,

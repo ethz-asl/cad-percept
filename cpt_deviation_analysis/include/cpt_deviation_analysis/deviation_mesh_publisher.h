@@ -8,6 +8,7 @@
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_msgs/FacetID.h>
 #include <cgal_msgs/PublishMesh.h>
+#include <cgal_msgs/SetDeviationPlane.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_selective_icp/References.h>
 #include <cpt_utils/mesh_publisher.h>
@@ -38,6 +39,7 @@ class DeviationMeshPublisher : public cad_percept::cpt_utils::MeshPublisher {
   bool publishMesh(nlohmann::json &j);
 
   ros::ServiceClient set_references_;
+  ros::ServiceClient set_deviation_target_;
 };
 }  // namespace cpt_deviation_analysis
 }  // namespace cad_percept
