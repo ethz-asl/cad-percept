@@ -617,7 +617,8 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
   return true;
 }
 
-bool Mapper::setReferenceTask(cpt_selective_icp::BuildingTask::Request &req, cpt_selective_icp::BuildingTask::Response &res) {
+bool Mapper::setReferenceTask(cpt_selective_icp::BuildingTask::Request &req,
+                              cpt_selective_icp::BuildingTask::Response &res) {
   std::unordered_set<std::string> references;
   for (std::string id : req.task.dist_ref_ids) {
     // check that every request is in mesh

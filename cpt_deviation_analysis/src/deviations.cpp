@@ -69,7 +69,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
   // the latest transformation result
   std::unordered_map<std::string, transformation> current_transformation_map;
   PointMatcherSupport::timer t_deviation;
-  findPlaneDeviation(&current_transformation_map, 0);
+  findPlaneDeviation(&current_transformation_map, 1);
   PointMatcherSupport::timer t_average;
   updateAveragePlaneDeviation(current_transformation_map);
 }
@@ -551,26 +551,26 @@ void Deviations::findPlaneDeviation(
       // equal size check in case of full transformations
       if (size_check) {
         double pc_area = cpt_utils::getArea(plane.rec_plane.pointcloud);
-        if (pc_area < 0 * plane.area || pc_area > 5 * plane.area) { 
+        if (pc_area < 0 * plane.area || pc_area > 5 * plane.area) {
           // area check is basically off with these parameters
-          // better use [0.9, 1.1], but keep in mind that current lidar does not have full view          
+          // better use [0.9, 1.1], but keep in mind that current lidar does not have full view
           std::cout << "Size wrong, area: " << pc_area << "/ " << plane.area << std::endl;
           continue;
         }
         /**
-         *  Better check width and height of wall, so that we can analyze in 
-         *  complete x,y-direction (if width ratio is right), and additionally in z-direction 
+         *  Better check width and height of wall, so that we can analyze in
+         *  complete x,y-direction (if width ratio is right), and additionally in z-direction
          *  (if height ratio is right).
          */
         double modelWidth, modelHeight, recWidth, recHeight;
         cpt_utils::bboxDiameters(plane.bbox, &modelWidth, &modelHeight);
         cpt_utils::bboxDiameters(plane.rec_plane.pointcloud, &recWidth, &recHeight);
-        if (recHeight < 0.2* modelHeight || recHeight > 1.5*modelHeight) {
+        if (recHeight < 0.2 * modelHeight || recHeight > 1.5 * modelHeight) {
           // height basically turned off with these parameters
           std::cout << "Size wrong, height: " << recHeight << "/ " << modelHeight << std::endl;
           continue;
         }
-        if (recWidth < 0.8* modelWidth || recWidth > 1.2*modelWidth) {
+        if (recWidth < 0.8 * modelWidth || recWidth > 1.2 * modelWidth) {
           std::cout << "Size wrong, width: " << recWidth << "/ " << modelWidth << std::endl;
           continue;
         }

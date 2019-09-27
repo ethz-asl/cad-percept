@@ -210,7 +210,7 @@ void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox) {
 void bboxDiameters(const PointCloud &pointcloud, double *width, double *height) {
   pcl::PointXYZ minPoint, maxPoint;
   pcl::getMinMax3D(pointcloud, minPoint, maxPoint);
-  *width = sqrt(pow(maxPoint.x - minPoint.x,2) + pow(maxPoint.y - minPoint.y,2));
+  *width = sqrt(pow(maxPoint.x - minPoint.x, 2) + pow(maxPoint.y - minPoint.y, 2));
   *height = sqrt(maxPoint.z - minPoint.z);
 }
 

@@ -80,7 +80,6 @@ void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox);
  */
 void bboxDiameters(const PointCloud &pointcloud, double *width, double *height);
 
-
 /**
  *  Statistical removal of outliers from a pointcloud
  */
