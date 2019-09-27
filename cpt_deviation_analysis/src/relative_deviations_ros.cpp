@@ -148,9 +148,10 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   }
 
   /**
-  *  Create geometric deviation messages and associated point cloud portions
-  */
-  for (auto & [ plane_id, transform ] : deviations.transformation_map) {
+   *  Create geometric deviation messages and associated point cloud portions
+   */
+
+  for (auto &[plane_id, transform] : deviations.transformation_map) {
     cgal_msgs::GeomDeviation deviation_msg;
     deviation_msg.element_id = plane_id;
     cpt_utils::toRosTransform(transform.translation, transform.quat,
@@ -308,7 +309,7 @@ void RelativeDeviations::publishAssociations(
   // overwrite color of associated planes/triangles
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
-  for (auto & [ plane_id, plane ] : plane_map) {
+  for (auto &[plane_id, plane] : plane_map) {
     if (plane.associated) {
       uint8_t r = std::rand() % 256, g = std::rand() % 256, b = 0;
 
@@ -380,7 +381,7 @@ void RelativeDeviations::publishBboxesAndNormals(
     std::unordered_map<std::string, polyhedron_plane> &plane_map) {
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
-  for (auto & [ plane_id, plane ] : plane_map) {
+  for (auto &[plane_id, plane] : plane_map) {
     if (plane.associated) {
       /**
        *  BBox
@@ -443,7 +444,7 @@ void RelativeDeviations::publishModelNormals(
     std::unordered_map<std::string, polyhedron_plane> &plane_map) {
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
-  for (auto & [ plane_id, plane ] : plane_map) {
+  for (auto &[plane_id, plane] : plane_map) {
     if (plane.associated) {
       cgal::Point center = cpt_utils::centerOfBbox(plane.bbox);
 
@@ -482,7 +483,7 @@ void RelativeDeviations::publishAllModelNormals(
     std::unordered_map<std::string, polyhedron_plane> &plane_map) {
   visualization_msgs::MarkerArray marker_array;
   int marker_id = 0;
-  for (auto & [ plane_id, plane ] : plane_map) {
+  for (auto &[plane_id, plane] : plane_map) {
     cgal::Point center = cpt_utils::centerOfBbox(plane.bbox);
 
     visualization_msgs::Marker marker;
@@ -540,7 +541,7 @@ void RelativeDeviations::publishDeviations(
   // - overwrite color of associated planes/triangles with deviation gradient based on e.g.
   // distance score, because distance score includes both angle deviation and distance deviation
   // - set threshold for ok walls
-  for (auto & [ plane_id, transformation ] : transformation_map) {
+  for (auto &[plane_id, transformation] : transformation_map) {
     double score = transformation.score;
 
     if (score < score_threshold_) {

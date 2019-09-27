@@ -546,7 +546,7 @@ void Deviations::computeFacetNormals() {
  */
 void Deviations::findPlaneDeviation(
     std::unordered_map<std::string, transformation> *current_transformation_map, bool size_check) {
-  for (auto & [ plane_id, plane ] : plane_map) {
+  for (auto &[plane_id, plane] : plane_map) {
     if (plane.associated == true) {
       // equal size check in case of full transformations
       if (size_check) {
@@ -610,7 +610,7 @@ void Deviations::updateAveragePlaneDeviation(
   // - how is update filtering indended to work normally?
   // - now just compute average
 
-  for (auto & [ plane_id, current_transformation ] : current_transformation_map) {
+  for (auto &[plane_id, current_transformation] : current_transformation_map) {
     // if entry in transformation map does not yet exist for this ID, then just copy
     // current_transformation_map
     if (transformation_map.find(plane_id) == transformation_map.end()) {
@@ -652,7 +652,7 @@ void Deviations::updateAveragePlaneDeviation(
 }
 
 void Deviations::reset() {
-  for (auto & [ plane_id, plane ] : plane_map) {
+  for (auto &[plane_id, plane] : plane_map) {
     reconstructed_plane rec_plane;
     plane.rec_plane = rec_plane;
     plane.associated = false;
