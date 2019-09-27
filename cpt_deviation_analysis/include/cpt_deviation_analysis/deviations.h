@@ -154,7 +154,7 @@ class Deviations {
                              PointCloud *remaining_cloud) const;
   void planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes,
                               PointCloud *remaining_cloud) const;
-  template<typename ShapeDetection>
+  template <typename ShapeDetection>
   void runShapeDetection(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes,
                          PointCloud *remaining_cloud) const;
   /**

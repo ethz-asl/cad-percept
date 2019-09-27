@@ -2,8 +2,8 @@
 #define CONVERSIONS_H_
 
 #include <eigen_conversions/eigen_msg.h>
-#include <glog/logging.h>
 #include <geometry_msgs/Transform.h>
+#include <glog/logging.h>
 
 #include <cgal_definitions/cgal_typedefs.h>
 
@@ -15,7 +15,7 @@ namespace cpt_utils {
  * Transform between Eigen and ros.
  */
 void toRosTransform(const Eigen::Vector3d &translation, const Eigen::Quaterniond &rotation,
-                      geometry_msgs::Transform *msg_out);
+                    geometry_msgs::Transform *msg_out);
 
 }  // namespace cpt_utils
 }  // namespace cad_percept
