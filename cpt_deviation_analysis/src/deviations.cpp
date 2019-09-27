@@ -558,20 +558,20 @@ void Deviations::findPlaneDeviation(
           continue;
         }
         /**
-         *  Better check horizontal and vertical distance ratio here, so that we can analyze in 
-         *  complete x,y-direction (if horizontal ratio is right), and additionally in z-direction 
-         *  (if vertical ratio is right).
+         *  Better check width and height of wall, so that we can analyze in 
+         *  complete x,y-direction (if width ratio is right), and additionally in z-direction 
+         *  (if height ratio is right).
          */
-        double modelHorDim, modelVertDim, recHorDim, recVertDim;
-        cpt_utils::bboxDiameters(plane.bbox, &modelHorDim, &modelVertDim);
-        cpt_utils::bboxDiameters(plane.rec_plane.pointcloud, &recHorDim, &recVertDim);
-        if (recVertDim < 0.2* modelVertDim || recVertDim > 1.5*modelVertDim) {
-          // vertDim basically turned off with these parameters
-          std::cout << "Size wrong, vertical: " << recVertDim << "/ " << modelVertDim << std::endl;
+        double modelWidth, modelHeight, recWidth, recHeight;
+        cpt_utils::bboxDiameters(plane.bbox, &modelWidth, &modelHeight);
+        cpt_utils::bboxDiameters(plane.rec_plane.pointcloud, &recWidth, &recHeight);
+        if (recHeight < 0.2* modelHeight || recHeight > 1.5*modelHeight) {
+          // height basically turned off with these parameters
+          std::cout << "Size wrong, height: " << recHeight << "/ " << modelHeight << std::endl;
           continue;
         }
-        if (recHorDim < 0.8* modelHorDim || recHorDim > 1.2*modelHorDim) {
-          std::cout << "Size wrong, horizontal: " << recHorDim << "/ " << modelHorDim << std::endl;
+        if (recWidth < 0.8* modelWidth || recWidth > 1.2*modelWidth) {
+          std::cout << "Size wrong, width: " << recWidth << "/ " << modelWidth << std::endl;
           continue;
         }
       }

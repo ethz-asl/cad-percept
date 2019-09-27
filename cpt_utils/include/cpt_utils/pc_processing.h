@@ -78,7 +78,7 @@ void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox);
 /**
  *  Estimate of bbox diameter
  */
-void bboxDiameters(const PointCloud &pointcloud, double *horDim, double *vertDim);
+void bboxDiameters(const PointCloud &pointcloud, double *width, double *height);
 
 
 /**
