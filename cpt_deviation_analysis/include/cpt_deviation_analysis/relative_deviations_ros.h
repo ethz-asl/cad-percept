@@ -15,6 +15,7 @@
 #include <pcl/filters/random_sample.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
 #include <pointmatcher/Timer.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/ColorRGBA.h>
@@ -103,7 +104,7 @@ class RelativeDeviations {
   ros::Subscriber cad_sub_;
   ros::Subscriber cloud_sub_;
   ros::Subscriber map_sub_;
-
+  std::string cad_frame_;  // remember frame of CAD model
   void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
   void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
   void gotMap(const sensor_msgs::PointCloud2 &cloud_msg_in);
