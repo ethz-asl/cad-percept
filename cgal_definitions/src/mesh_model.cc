@@ -345,7 +345,7 @@ void MeshModel::findAllCoplanarFacets(
     int plane_counter = 0;  // we generate ids from counting up an integer
     for (uint current_facet_idx = 0; current_facet_idx < P_.size_of_facets(); ++current_facet_idx) {
       // only find Coplanar Facets if Facet is not already associated to a plane
-      if (facetToPlane->count(facetIdxToId_[current_facet_idx]) == 0) {
+      if (facetToPlane_.count(facetIdxToId_[current_facet_idx]) == 0) {
         // we found a facet that is part of a new plane
         std::string plane_id = std::to_string(plane_counter);
         std::unordered_set<std::string> current_coplanar_facets;

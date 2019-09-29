@@ -30,6 +30,8 @@ void Deviations::init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransfor
   // process model here, what stays the same between scans
 
   // Find coplanar facets and create unordered_map Facet ID <-> Plane ID (arbitrary iterated)
+  facetToPlane.clear();
+  planeToFacets.clear();
   reference_mesh->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 0.01);
   initPlaneMap();
   computeCGALBboxes();
