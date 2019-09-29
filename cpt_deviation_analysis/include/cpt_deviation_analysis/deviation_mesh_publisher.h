@@ -13,6 +13,7 @@
 #include <cpt_selective_icp/References.h>
 #include <cpt_utils/mesh_publisher.h>
 #include <ros/ros.h>
+#include <std_msgs/String.h>
 #include <std_srvs/Trigger.h>
 
 namespace cad_percept {
@@ -31,6 +32,7 @@ class DeviationMeshPublisher : public cad_percept::cpt_utils::MeshPublisher {
    */
   bool triggerPublishMesh(cgal_msgs::PublishMesh::Request &req,
                           cgal_msgs::PublishMesh::Response &res);
+  void jsonListener(const std_msgs::String &msg);
 
  private:
   /*
@@ -38,6 +40,7 @@ class DeviationMeshPublisher : public cad_percept::cpt_utils::MeshPublisher {
    */
   bool publishMesh(nlohmann::json &j);
 
+  ros::Subscriber json_listener_;
   ros::ServiceClient set_references_;
   ros::ServiceClient set_deviation_target_;
 };
