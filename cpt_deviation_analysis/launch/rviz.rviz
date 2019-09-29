@@ -38,7 +38,7 @@ Visualization Manager:
       Cell Size: 1
       Class: rviz/Grid
       Color: 160; 160; 164
-      Enabled: true
+      Enabled: false
       Line Style:
         Line Width: 0.029999999329447746
         Value: Lines
@@ -51,7 +51,7 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
-      Value: true
+      Value: false
     - Class: rviz/TF
       Enabled: true
       Frame Timeout: 15
@@ -72,12 +72,6 @@ Visualization Manager:
         imu:
           Value: true
         imu0:
-          Value: true
-        leica_body:
-          Value: true
-        leica_pos:
-          Value: true
-        leica_world:
           Value: true
         lidar:
           Value: true
@@ -110,8 +104,6 @@ Visualization Manager:
               lidar:
                 rslidar:
                   {}
-          leica_pos:
-            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -159,9 +151,9 @@ Visualization Manager:
       Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 103
+      Max Intensity: 255
       Min Color: 0; 0; 0
-      Min Intensity: 1
+      Min Intensity: 0.5531608462333679
       Name: Corrected Scan
       Position Transformer: XYZ
       Queue Size: 10
@@ -186,12 +178,12 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 255
       Min Color: 0; 0; 0
-      Min Intensity: 0.5579709410667419
+      Min Intensity: 0.7121211290359497
       Name: Before ICP PointCloud
       Position Transformer: XYZ
       Queue Size: 10
@@ -203,7 +195,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Class: rviz/InteractiveMarkers
       Enable Transparency: true
       Enabled: true
@@ -225,13 +217,13 @@ Visualization Manager:
       Value: false
     - Class: rviz/InteractiveMarkers
       Enable Transparency: true
-      Enabled: true
+      Enabled: false
       Name: Facet ID Detector
       Show Axes: false
       Show Descriptions: true
       Show Visual Aids: false
       Update Topic: /mesh_id_marker/update
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/PointStamped
       Color: 255; 0; 255
@@ -333,13 +325,13 @@ Visualization Manager:
       Use rainbow: true
       Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /assoc_marker_pub
       Name: Assoc Marker
       Namespaces:
-        semantic_graph_matches: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Alpha: 0.800000011920929
       Backface Culling: false
       Class: cgal_visualizations/ColoredMeshDisplay
@@ -389,13 +381,13 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /all_mesh_normals_marker_pub
       Name: All Model Normals
       Namespaces:
-        total_mesh_normals: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: false
       Marker Topic: /mesh_normals_marker_pub
@@ -415,7 +407,7 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Alpha: 0.800000011920929
-      Backface Culling: false
+      Backface Culling: true
       Class: cgal_visualizations/ColoredMeshDisplay
       Edge Color: 0; 0; 0
       Enabled: false
@@ -452,7 +444,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 22.196008682250977
+      Distance: 59.250370025634766
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -467,10 +459,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8697988986968994
+      Pitch: 1.01979660987854
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.928070068359375
+      Yaw: 5.724938869476318
     Saved: ~
 Window Geometry:
   Displays:
@@ -478,7 +470,7 @@ Window Geometry:
   Height: 2049
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd000000040000000000000277000006fffc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e000006ff0000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000016c0000037cfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a0056006900650077007300000000280000037c0000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000e7a0000005afc0100000002fb0000000800540069006d0065010000000000000e7a0000057100fffffffb0000000800540069006d0065010000000000000450000000000000000000000bf7000006ff00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000277000006fffc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e000006ff0000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000016c000006fffc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000006e000006ff0000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000e7a0000005afc0100000002fb0000000800540069006d0065010000000000000e7a0000057100fffffffb0000000800540069006d0065010000000000000450000000000000000000000a7f000006ff00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

@@ -102,7 +102,7 @@ void RelativeDeviations::gotMap(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
 bool RelativeDeviations::deviationTargetServiceCallback(
     cgal_msgs::SetDeviationPlane::Request &req, cgal_msgs::SetDeviationPlane::Response &resp) {
-  selected_plane_ = deviations.facetToPlane[req.facet_id];
+  selected_facet_ = req.facet_id;
   current_task_id_ = req.task_id;
   return true;
 }
@@ -157,18 +157,18 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   /**
    *  Create geometric deviation messages and associated point cloud portions
    */
+  std::string selected_plane = deviations.facetToPlane[selected_facet_];
+  std::cout << "Selected plane " << selected_plane << " of facet " << selected_facet_ << " has "
+            << deviations.transformation_map.count(selected_plane) << " deviations." << std::endl;
 
-  std::cout << "selected plane " << selected_plane_ << " has "
-            << deviations.transformation_map.count(selected_plane_) << " deviations." << std::endl;
-
-  if (deviations.transformation_map.count(selected_plane_) > 0) {
-    auto transform = deviations.transformation_map[selected_plane_];
+  if (deviations.transformation_map.count(selected_plane) > 0) {
+    auto transform = deviations.transformation_map[selected_plane];
     cgal_msgs::GeomDeviation deviation_msg;
-    deviation_msg.element_id = selected_plane_;
+    deviation_msg.element_id = selected_plane;
     cpt_utils::toRosTransform(transform.translation, transform.quat,
                               &(deviation_msg.deviation_transform));
     sensor_msgs::PointCloud2 pc_in_map_frame;
-    pcl::toROSMsg(deviations.plane_map[selected_plane_].rec_plane.pointcloud, pc_in_map_frame);
+    pcl::toROSMsg(deviations.plane_map[selected_plane].rec_plane.pointcloud, pc_in_map_frame);
     pc_in_map_frame.header.frame_id = map_frame_;
     pc_in_map_frame.header.stamp = ros::Time(0);
     // transform PC from map frame to frame of building model

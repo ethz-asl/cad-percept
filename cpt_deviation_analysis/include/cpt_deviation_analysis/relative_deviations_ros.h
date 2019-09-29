@@ -86,7 +86,7 @@ class RelativeDeviations {
                          std::unordered_map<std::string, transformation> &transformation_map);
 
   // Selection of plane to publish deviation
-  std::string selected_plane_;
+  std::string selected_facet_;
   std::string current_task_id_;
   ros::ServiceServer set_deviation_plane_;
   bool deviationTargetServiceCallback(cgal_msgs::SetDeviationPlane::Request &req,
