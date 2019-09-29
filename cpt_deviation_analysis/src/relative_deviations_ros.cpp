@@ -74,7 +74,8 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
 void RelativeDeviations::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   if (tf_listener_.canTransform(map_topic, cad_mesh_in.header.frame_id, ros::Time(0))) {
     tf::StampedTransform transform;
-    tf_listener_.lookupTransform(map_topic, cad_mesh_in.header.frame_id, ros::Time(0), transform);
+    cad_frame_ = cad_mesh_in.header.frame_id;
+    tf_listener_.lookupTransform(map_topic, cad_frame_, ros::Time(0), transform);
     cgal::MeshModel::Ptr model_ptr;
     cgal::msgToMeshModel(cad_mesh_in.mesh, &model_ptr);
     deviations.init(model_ptr, transform);
@@ -166,10 +167,13 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
     deviation_msg.element_id = selected_plane_;
     cpt_utils::toRosTransform(transform.translation, transform.quat,
                               &(deviation_msg.deviation_transform));
-    pcl::toROSMsg(deviations.plane_map[selected_plane_].rec_plane.pointcloud,
-                  deviation_msg.pointcloud);
-    deviation_msg.pointcloud.header.frame_id = map_frame_;
-    deviation_msg.pointcloud.header.stamp = ros::Time(0);
+    sensor_msgs::PointCloud2 pc_in_map_frame;
+    pcl::toROSMsg(deviations.plane_map[selected_plane_].rec_plane.pointcloud, pc_in_map_frame);
+    pc_in_map_frame.header.frame_id = map_frame_;
+    pc_in_map_frame.header.stamp = ros::Time(0);
+    // transform PC from map frame to frame of building model
+    pcl_ros::transformPointCloud(cad_frame_, pc_in_map_frame, deviation_msg.pointcloud,
+                                 tf_listener_);
     deviations_pub_.publish(deviation_msg);
   }
   // reset here in case we still want to access something, otherwise can put in detectChanges
