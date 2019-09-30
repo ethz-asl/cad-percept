@@ -3,7 +3,7 @@
 
 <launch>
 
-  <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
+  <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla_deviated_2.json" />
   <arg name="map_frame" default="/map" />
   <arg name="discrete_color" default="false" />
   <arg name="score_threshold" default="0.0015" />
@@ -30,6 +30,7 @@
   <node name="mesh_positioning"
         pkg="cpt_selective_icp"
         type="position_cad_with_marker.py"
+        respawn="true"
         output="screen">
     <param name="marker_parent_frame" value="map" />
     <param name="marker_frame_name" value="marker" />
@@ -38,6 +39,7 @@
 	<node name="find_id_in_mesh"
           pkg="cpt_utils"
           type="find_closest_id_in_mesh.py"
+          respawn="true"
           output="screen">
 		<param name="marker_parent_frame" value="marker" />
   	</node>
