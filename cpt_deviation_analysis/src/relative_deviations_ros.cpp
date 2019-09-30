@@ -160,22 +160,23 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   std::string selected_plane = deviations.facetToPlane[selected_facet_];
   std::cout << "Selected plane " << selected_plane << " of facet " << selected_facet_ << " has "
             << deviations.transformation_map.count(selected_plane) << " deviations." << std::endl;
-
-  if (deviations.transformation_map.count(selected_plane) > 0) {
-    auto transform = deviations.transformation_map[selected_plane];
-    cgal_msgs::GeomDeviation deviation_msg;
-    deviation_msg.element_id = selected_plane;
-    cpt_utils::toRosTransform(transform.translation, transform.quat,
-                              &(deviation_msg.deviation_transform));
-    sensor_msgs::PointCloud2 pc_in_map_frame;
-    pcl::toROSMsg(deviations.plane_map[selected_plane].rec_plane.pointcloud, pc_in_map_frame);
-    pc_in_map_frame.header.frame_id = map_frame_;
-    pc_in_map_frame.header.stamp = ros::Time(0);
-    // transform PC from map frame to frame of building model
-    pcl_ros::transformPointCloud(cad_frame_, pc_in_map_frame, deviation_msg.pointcloud,
-                                 tf_listener_);
-    deviation_msg.pointcloud.header.stamp = ros::Time::now();
-    deviations_pub_.publish(deviation_msg);
+  if (deviations.transformation_map.count(selected_plane_) > 0) {
+    if (deviations.plane_map[selected_plane_].rec_plane.pointcloud.points.size() > 0) {
+      auto transform = deviations.transformation_map[selected_plane];
+      cgal_msgs::GeomDeviation deviation_msg;
+      deviation_msg.element_id = selected_plane;
+      cpt_utils::toRosTransform(transform.translation, transform.quat,
+                                &(deviation_msg.deviation_transform));
+      sensor_msgs::PointCloud2 pc_in_map_frame;
+      pcl::toROSMsg(deviations.plane_map[selected_plane].rec_plane.pointcloud, pc_in_map_frame);
+      pc_in_map_frame.header.frame_id = map_frame_;
+      pc_in_map_frame.header.stamp = ros::Time(0);
+      // transform PC from map frame to frame of building model
+      pcl_ros::transformPointCloud(cad_frame_, pc_in_map_frame, deviation_msg.pointcloud,
+                                   tf_listener_);
+      deviation_msg.pointcloud.header.stamp = ros::Time::now();
+      deviations_pub_.publish(deviation_msg);
+    }
   }
   // reset here in case we still want to access something, otherwise can put in detectChanges
   deviations.reset();
