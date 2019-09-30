@@ -174,6 +174,7 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
     // transform PC from map frame to frame of building model
     pcl_ros::transformPointCloud(cad_frame_, pc_in_map_frame, deviation_msg.pointcloud,
                                  tf_listener_);
+    deviation_msg.pointcloud.header.stamp = ros::Time::now();
     deviations_pub_.publish(deviation_msg);
   }
   // reset here in case we still want to access something, otherwise can put in detectChanges
@@ -563,20 +564,20 @@ void RelativeDeviations::publishDeviations(
       c.r = 0.0;
       c.g = 1.0;
       c.b = 0.0;
-      c.a = 0.4;
+      c.a = 0.6;
     } else {
       // make gradient based on score here
       if (discrete_color_ == true) {
         c.r = 1.0;
         c.g = 0.0;
         c.b = 0.0;
-        c.a = 0.4;
+        c.a = 0.6;
       } else {
         if (score > 0.12) {
           c.r = 1.0;
           c.g = 0.0;
           c.b = 0.0;
-          c.a = 0.4;
+          c.a = 0.6;
         } else {
           // create a gradient
           float g = score / 0.12;  // 1 for red, 0 for green
@@ -588,7 +589,7 @@ void RelativeDeviations::publishDeviations(
             c.g = 1.0;
           }
           c.b = 0.0;
-          c.a = 0.4;
+          c.a = 0.6;
         }
       }
     }
