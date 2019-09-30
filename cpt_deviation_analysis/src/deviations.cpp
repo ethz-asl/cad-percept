@@ -30,6 +30,10 @@ void Deviations::init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransfor
   // process model here, what stays the same between scans
 
   // Find coplanar facets and create unordered_map Facet ID <-> Plane ID (arbitrary iterated)
+  facetToPlane.clear();
+  planeToFacets.clear();
+  transformation_map.clear();
+  plane_map.clear();
   reference_mesh->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 0.01);
   initPlaneMap();
   computeCGALBboxes();
@@ -69,7 +73,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
   // the latest transformation result
   std::unordered_map<std::string, transformation> current_transformation_map;
   PointMatcherSupport::timer t_deviation;
-  findPlaneDeviation(&current_transformation_map, 1);
+  findPlaneDeviation(&current_transformation_map, false);
   PointMatcherSupport::timer t_average;
   updateAveragePlaneDeviation(current_transformation_map);
 }
@@ -570,7 +574,7 @@ void Deviations::findPlaneDeviation(
           std::cout << "Size wrong, height: " << recHeight << "/ " << modelHeight << std::endl;
           continue;
         }
-        if (recWidth < 0.8 * modelWidth || recWidth > 1.2 * modelWidth) {
+        if (recWidth < 0.4 * modelWidth || recWidth > 1.4 * modelWidth) {
           std::cout << "Size wrong, width: " << recWidth << "/ " << modelWidth << std::endl;
           continue;
         }

@@ -7,6 +7,7 @@ DeviationMeshPublisher::DeviationMeshPublisher(ros::NodeHandle nh, ros::NodeHand
     : MeshPublisher(nh, nh_private) {
   set_references_ = nh_.serviceClient<cpt_selective_icp::References>("/set_ref");
   set_deviation_target_ = nh_.serviceClient<cgal_msgs::SetDeviationPlane>("/set_deviation_target");
+  json_listener_ = nh_.subscribe("/CAD_JSON", 10, &DeviationMeshPublisher::jsonListener, this);
   publish_service_.shutdown();
   publish_service_ =
       nh_private_.advertiseService("publish", &DeviationMeshPublisher::triggerPublishMesh, this);
@@ -25,6 +26,8 @@ bool DeviationMeshPublisher::publishMesh(nlohmann::json &j) {
   mesh_msg.header.frame_id = frame_name_;
   cgal::meshModelToMsg(mesh_model_, &mesh_msg.mesh);
   pub_mesh_.publish(mesh_msg);
+
+  ros::Duration(1.0).sleep();
 
   // now also set the references
   cpt_selective_icp::References ref_call;
@@ -61,6 +64,12 @@ bool DeviationMeshPublisher::triggerPublishMesh(cgal_msgs::PublishMesh::Request 
   res.success = result;
   res.message = result ? "Published Mesh" : "Mesh not published";
   return true;
+}
+
+void DeviationMeshPublisher::jsonListener(const std_msgs::String &msg) {
+  // load mesh from json
+  nlohmann::json j = nlohmann::json::parse(msg.data);
+  publishMesh(j);
 }
 
 }  // namespace cpt_deviation_analysis
