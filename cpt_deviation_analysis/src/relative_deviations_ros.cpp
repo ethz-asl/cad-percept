@@ -160,8 +160,8 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   std::string selected_plane = deviations.facetToPlane[selected_facet_];
   std::cout << "Selected plane " << selected_plane << " of facet " << selected_facet_ << " has "
             << deviations.transformation_map.count(selected_plane) << " deviations." << std::endl;
-  if (deviations.transformation_map.count(selected_plane_) > 0) {
-    if (deviations.plane_map[selected_plane_].rec_plane.pointcloud.points.size() > 0) {
+  if (deviations.transformation_map.count(selected_plane) > 0) {
+    if (deviations.plane_map[selected_plane].rec_plane.pointcloud.points.size() > 0) {
       auto transform = deviations.transformation_map[selected_plane];
       cgal_msgs::GeomDeviation deviation_msg;
       deviation_msg.element_id = selected_plane;
