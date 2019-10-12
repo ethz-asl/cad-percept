@@ -73,6 +73,11 @@ void projectToPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, const pc
  */
 double getArea(const PointCloud &pointcloud);
 
+/**
+ *  Estimate of bbox diameter
+ */
+void bboxDiameters(const PointCloud &pointcloud, double *width, double *height);
+
 void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox);
 
 /**
