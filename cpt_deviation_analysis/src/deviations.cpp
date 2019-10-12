@@ -1,9 +1,3 @@
-/**
- * Relative Deviations (RD)
- * This is the online, real data solution of Relative Deviations. ICP is executed
- * in separate package cpt_selective_icp.
- * Eventually add a check here if selective ICP was successfully executed!
- */
 #include "cpt_deviation_analysis/deviations.h"
 
 namespace cad_percept {
@@ -27,7 +21,8 @@ void Deviations::init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransfor
   cgal::Transformation ctransformation;
   cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
   reference_mesh->transform(ctransformation);
-  // process model here, what stays the same between scans
+  
+  // Process model here, what stays the same between scans
 
   // Find coplanar facets and create unordered_map Facet ID <-> Plane ID (arbitrary iterated)
   facetToPlane.clear();
@@ -45,12 +40,10 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
                                std::vector<reconstructed_plane> *remaining_plane_cloud_vector) {
   // remaining_cloud contains a P.C. with non-segmented points, whereas remaining_plane_cloud_vector
   // a vector of P.C.s of non-associated planes
+
   /**
    *  Planar Segmentation
    */
-
-  PointMatcherSupport::timer t_segmentation;
-
   PointCloud remaining_cloud;
   if (params.planarSegmentation == "CGAL") {
     planarSegmentationCGAL(reading_cloud, rec_planes, &remaining_cloud);
@@ -62,9 +55,6 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
   /**
    *  Plane association
    */
-
-  PointMatcherSupport::timer t_association;
-
   findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
 
   /**
@@ -72,9 +62,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
    */
   // the latest transformation result
   std::unordered_map<std::string, transformation> current_transformation_map;
-  PointMatcherSupport::timer t_deviation;
   findPlaneDeviation(&current_transformation_map, false);
-  PointMatcherSupport::timer t_average;
   updateAveragePlaneDeviation(current_transformation_map);
 }
 
@@ -86,16 +74,13 @@ void Deviations::detectMapChanges(
     std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
     std::unordered_map<std::string, transformation> *current_transformation_map) {
   PointCloud remaining_cloud;
-  PointMatcherSupport::timer t_segmentation_map;
 
   if (params.planarSegmentation == "CGAL") {
     planarSegmentationCGAL(map_cloud, rec_planes, &remaining_cloud);
   } else if (params.planarSegmentation == "PCL") {
     planarSegmentationPCL(map_cloud, rec_planes, &remaining_cloud);
   }
-  PointMatcherSupport::timer t_association_map;
   findBestPlaneAssociation(*rec_planes, reference_mesh, remaining_plane_cloud_vector);
-  PointMatcherSupport::timer t_deviation_map;
   findPlaneDeviation(current_transformation_map, 1);
 }
 
@@ -163,7 +148,7 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in,
               << " data points." << std::endl;
 
     reconstructed_plane rec_plane;
-    rec_plane.coefficients = coefficients->values;  // do we still need this?
+    rec_plane.coefficients = coefficients->values; 
 
     // Compute normalized normal of plane
     Eigen::Vector3d pc_normal(coefficients->values[0], coefficients->values[1],
@@ -265,7 +250,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
   int number_of_iterations = 1;  // these iteration give almost the same estimates
 
   for (size_t i = 0; i < number_of_iterations; i++) {
-    // Detect registered shapes with parameters.
+    // Detect registered shapes with parameters
     shape_detection.detect(parameters);
 
     // Compute coverage, i.e. ratio of the points assigned to a shape
@@ -349,9 +334,7 @@ bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
                                 const reconstructed_plane &rec_plane, std::string *id,
                                 double *match_score) {
   bool success = false;
-  // TODO check every metrics function used here
   PointCloud cloud = rec_plane.pointcloud;
-  // Area ratio check
   double pc_area = cpt_utils::getArea(cloud);
 
   // Parameters of best fit
@@ -363,12 +346,21 @@ bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
   // iterate over all planes
   for (const auto keyAndPlane : plane_map) {
     std::string plane_id = keyAndPlane.first;
-    // first check if plane even has size to be associated
+    /**
+     * Compute all the metrics we want to use for the match score, but cancel as soon
+     * as a hard threshold is reached. Put in computationally least expensive order.
+     */
+
+    /**
+     * First check if plane even has size to be associated.
+     */
     if (keyAndPlane.second.area < params.minPolyhedronArea) {
       continue;
     }
 
-    // now check area ratio
+    /**
+     * Check area ratio
+     */
     double ratio = pc_area / keyAndPlane.second.area;
     if (ratio > params.assocAreaRatioUpperLimit ||
         (keyAndPlane.second.area < params.assocAreaLowerLimitThreshold &&
@@ -376,15 +368,10 @@ bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
       continue;
     }
 
-    // now compute all the metrics which we want to use for score, but cancel as soon as a hard
-    // threshold is reached put in computationally least expensive order
-    double match_score_new = std::numeric_limits<double>::max();
-    // std::cout << "Checking Plane ID: " << i->first << std::endl;
-
-    /*
-     * Distance to plane captures planes that should be associated to pcs that are laterally moved.
+    /**
+     * Average distance to infinitesimaly expanded model plane to capture lateral movements.
+     * Should capture rotational deviations or shifts along the normal direction.
      */
-    // distance_score of squared distances
     std::string facet_id = planeToFacets.find(plane_id)->second;
     cgal::FT d = 0;
     cgal::Plane plane_of_current_facet = model_ptr->getPlane(facet_id);
@@ -395,19 +382,15 @@ bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
     }
     d = d / cloud.size();
     double distance_score = CGAL::to_double(d);
-    if (distance_score > params.matchDistScoreThresh) {
-      // std::cout << "distance_score is: " << distance_score << ", but threshold at: " <<
-      // params.matchDistScoreThresh << std::endl;
+    if (distance_score > params.matchDistPlaneThresh) {
       continue;
     }
 
-    /*
-     * Low distance to triangles shoudl capture small rotational deviations or shifts along normal.
-     * min-dist will show if the pc-segment comes close to the mesh-plane in question.
-     *
-     * see more here: https://github.com/ethz-asl/cad-percept/pull/41#discussion_r326790402
+    /**
+     * Min. distance between finite planes and average distance between finite planes.
+     * Min. dist. shows if segmented plane is close to mesh plane.
+     * See more here: https://github.com/ethz-asl/cad-percept/pull/41#discussion_r326790402
      */
-    // dist and min_dist (cancels most of assoc, slow)
     double d_min = std::numeric_limits<double>::max();
     double dist = 0;
     // TODO (Hermann) maybe there is a parallellized version?
@@ -429,46 +412,34 @@ bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
     double avg_dist = dist / cloud.size();
     double min_dist = sqrt(d_min);
     if (min_dist > params.matchMinDistThresh) {
-      // std::cout << "min_dist is: " << min_dist << ", but threshold at: " <<
-      // params.matchMinDistThresh << std::endl;
       continue;
     }
     if (avg_dist > params.matchDistThresh) {
-      // std::cout << "avg_dist is: " << avg_dist << ", but threshold at: " <<
-      // params.matchDistThresh << std::endl;
       continue;
     }
 
-    // TODO: this needs fix because of different orientation of normals
-    // angle (not sure if necessary since already somehow contained in distance_score)
-    // we just care about angle of axis angle representation
+    /**
+     * Angle between plane normals
+     */
+    // we just care about angle of axis-angle representation
     double angle = acos(rec_plane.pc_normal.dot(keyAndPlane.second.normal));
-    // std::cout << "Angle is: " << angle << std::endl;
-    // std::cout << "Angles: " << angle << "/ " << std::abs(angle - M_PI) << std::endl;
     // Bring angle to first quadrant
     angle = std::min(angle, std::abs(angle - M_PI));
-    // std::cout << "Chosen angle: " << angle << std::endl;
-    // std::cout << "P.C. Normal: " << rec_plane.pc_normal << ", Ref. plane normal: " <<
-    // plane_map[i->first].normal << std::endl;
 
     if (angle > params.matchAngleThresh) {
-      // std::cout << "angle is: " << angle << " or " << angle_2 << ", but threshold at: " <<
-      // params.matchAngleThresh << std::endl;
       continue;
     }
 
+    /**
+     * Compute match score. Smaller is better.
+     */
+    // Set match_score_new to inifinity
+    double match_score_new = std::numeric_limits<double>::max();
     match_score_new = params.distWeight * avg_dist + params.minDistWeight * min_dist +
-                      params.distanceScoreWeight * distance_score + params.angleWeight * angle;
-    // std::cout << "Match score new is: " << match_score_new << std::endl;
-    // std::cout << "Match score before is: " << *match_score << std::endl;
-
-    // comparing normals -> association rather based on distance since angle is rather
-    // a deviation and it's hard to take 2 arguments into account
+                      params.distPlaneWeight * distance_score + params.angleWeight * angle;
 
     // detect if there is no fit (too large deviation) and cancel in that case
     if (match_score_new > params.matchScoreUpperLimit) {
-      // std::cout << "match_score is: " << match_score_new << ", but threshold at: " <<
-      // params.matchScoreUpperLimit << std::endl;
       continue;
     }
 
@@ -545,9 +516,6 @@ void Deviations::computeFacetNormals() {
   }
 }
 
-/**
- *  PC to Model
- */
 void Deviations::findPlaneDeviation(
     std::unordered_map<std::string, transformation> *current_transformation_map, bool size_check) {
   for (auto &[plane_id, plane] : plane_map) {
@@ -582,11 +550,12 @@ void Deviations::findPlaneDeviation(
       transformation trafo;
       trafo.score = plane.match_score;
 
-      // - find translation (also in normal direction is hard since we don't have point association,
-      // every point has different translation even in normal direction)
-      // - using center point of both planes is only meaningful if we have representative scan of
-      // whole plane which is most certainly not the case. So instead of translation better use the
-      // distance_score from before
+      /**
+       * - Finding translation (also in normal direction) is hard, since we don't have a point
+       * association. Every point has a different translation even in normal direction.
+       * - Using center point of both bounding boxes is only meaningful, if we have representative
+       * scan of the whole plane, which is most certainly not the case with the current LiDAR.
+       */
 
       // Check that pc_normal points in same direction as reference normal
       Eigen::Vector3d pc_normal = plane.rec_plane.pc_normal;
@@ -607,9 +576,6 @@ void Deviations::findPlaneDeviation(
       Eigen::AngleAxisd aa(quat);
       trafo.aa = aa;
 
-      // could convert quaternion to euler angles, but these are ambiguous, better work with
-      // quaternions
-
       /**
        *  Translation between the Bbox Center Points
        *  If we have full scan of wall, this might be correct, otherwise not
@@ -619,7 +585,7 @@ void Deviations::findPlaneDeviation(
       trafo.translation = cgal::cgalVectorToEigenVector(translation);
 
       // create separate map with only facets ID match_score != 0 (only facets which we associated
-      // in current scan) and  transform to each facet
+      // in current scan) and  transform for each plane.
       current_transformation_map->insert(std::make_pair(plane_id, trafo));
     }
   }
@@ -627,12 +593,6 @@ void Deviations::findPlaneDeviation(
 
 void Deviations::updateAveragePlaneDeviation(
     const std::unordered_map<std::string, transformation> &current_transformation_map) {
-  // TODO: Do the real update filtering thing here
-  // - try to investigate the distribution using the single current_transformation_map and plot them
-  // - prediction based on this distribution, but what does it help to know error distribution?
-  // - how is update filtering indended to work normally?
-  // - now just compute average
-
   for (auto &[plane_id, current_transformation] : current_transformation_map) {
     // if entry in transformation map does not yet exist for this ID, then just copy
     // current_transformation_map
@@ -702,7 +662,7 @@ void Deviations::initPlaneMap() {
       area += reference_mesh->getArea(planeAndFacetIt->second);
       ++planeAndFacetIt;
     } while (planeAndFacetIt != planeToFacets.end() &&
-             key == planeAndFacetIt->first);  // multidset is ordered
+             key == planeAndFacetIt->first);  // multiset is ordered
     // save area to struct
     plane_map.at(key).area = area;
   }

@@ -11,12 +11,8 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
-#include <boost/bimap.hpp>
-#include <boost/bimap/unordered_multiset_of.hpp>
-#include <boost/bimap/unordered_set_of.hpp>
 #include <unordered_set>
 #include "cpt_selective_icp/mapper_parameters.h"
-
 #include <cgal_msgs/ColoredMesh.h>
 #include <cgal_msgs/ReferenceTask.h>
 #include <cgal_msgs/TriangleMesh.h>
@@ -27,11 +23,9 @@
 #include <std_srvs/SetBool.h>
 #include "cpt_selective_icp/BuildingTask.h"
 #include "cpt_selective_icp/References.h"
-
 #include <pointmatcher/Timer.h>
 #include <pointmatcher_ros/point_cloud.h>
 #include <pointmatcher_ros/transform.h>
-
 #include <boost/thread.hpp>
 
 namespace cad_percept {
@@ -39,7 +33,6 @@ namespace selective_icp {
 
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
-
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 class Mapper {
@@ -52,30 +45,50 @@ class Mapper {
   MapperParameters parameters_;
 
   ros::Time stamp;
+
+  /**
+   * Point cloud callback
+   */
   void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
+
+  /**
+   * Mesh model callback
+   */
   void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
+
   /**
    * Get some sort of residual error, but only for points associated to our references.
    * Apply threshold first to avoid taking into account points from other walls.
-   * Attention: These also take into account non-wall points and objects
+   * Attention: These also take into account non-wall points and objects.
    */
   double getICPErrorToRef(const DP &aligned_dp);
+
   /**
    * Get some sort of residual error
-   * Apply threshold first to avoid taking into account points from other walls/ assuming we have a
-   * certain initial transformation... check what distance is appropriate max after initial
-   * transformation
+   * Apply threshold first to avoid taking into account points from other walls.
    */
   double getICPError(const DP &aligned_dp);
+
+  /**
+   * Computation of different ICP error metrics:
+   * - Residual Error
+   * - Robust Mean Distance
+   * - Hausdorff distance
+   */
   void getError(DP dpref, DP dppointcloud_out, bool selective);
 
-  // filtering of pc
+  /**
+   * Filtering of point cloud, general pre-processing of dp cloud for both
+   * map and reading cloud.
+   */
   void processCloud(DP *point_cloud, const ros::Time &stamp);
 
-  // performs ICP with a given scan
+  /**
+   * Perform ICP
+   */
   bool selectiveICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map,
                     const ros::Time &stamp);
-  bool normalICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map);
+  bool fullICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map);
 
   /*
    * Service Calls for dynamic settings
@@ -84,26 +97,37 @@ class Mapper {
                           cpt_selective_icp::References::Response &res);
   bool setReferenceTask(cpt_selective_icp::BuildingTask::Request &req,
                         cpt_selective_icp::BuildingTask::Response &res);
-  bool setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+  bool setFullICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
   bool setSelectiveICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
 
   template <class T>
   void publishCloud(T *cloud, ros::Publisher *publisher) const;
-  // publishes the reference_mesh_ with all reference triangles marked red
+
+  /**
+   * Publish reference mesh with all reference triangles in red.
+   */
   void publishReferenceMesh(const std::unordered_set<std::string> &references);
 
-  // Sample a pc from selected triangles in the reference_mesh_
+  /**
+   * Sample a point cloud from selected triangles of the mesh model.
+   */
   void sampleFromReferenceFacets(const int density, std::unordered_set<std::string> &references,
                                  PointCloud *pointcloud);
 
+  /**
+   * Set a trigger to load a newly published mesh as map.
+   */
   bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
   /**
-   * Load parameters for libpointmatcher from yaml
+   * Load parameters for libpointmatcher from .yaml.
    */
   void loadConfig();
   bool reloadConfig(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
+  /**
+   * Add a new aligned scan to the map.
+   */
   void addScanToMap(DP &corrected_cloud, ros::Time &stamp);
 
   // Subscribers
@@ -125,7 +149,7 @@ class Mapper {
   ros::ServiceServer load_published_map_srv_;
   ros::ServiceServer get_closest_facet_srv_;
   ros::ServiceServer set_ref_srv_;
-  ros::ServiceServer set_normal_icp_srv_;
+  ros::ServiceServer set_full_icp_srv_;
   ros::ServiceServer set_selective_icp_srv_;
   ros::ServiceServer reload_icp_config_srv_;
 
@@ -134,7 +158,9 @@ class Mapper {
   // Reference Mesh for localization
   cgal::MeshModel::Ptr reference_mesh_;
 
-  // TODO (Hermann) What is this?
+  /**
+   * Set containing all reference IDs and their coplanar neighbors.
+   */
   std::unordered_set<std::string> all_coplanar_references;
 
   // libpointmatcher
@@ -152,7 +178,7 @@ class Mapper {
 
   bool cad_trigger;
   bool selective_icp_trigger;
-  bool normal_icp_trigger;
+  bool full_icp_trigger;
   bool ref_mesh_ready;
   int projection_count;
   DP mapPointCloud;

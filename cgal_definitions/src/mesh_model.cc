@@ -162,8 +162,6 @@ bool MeshModel::isIntersection(const Ray &query) const {
   }
 }
 
-// this will throw an exception if there is no intersection, so check first by
-// using function isIntersection()
 Intersection MeshModel::getIntersection(const Ray &query) const {
   if (verbose_) {
     std::cout << " %i intersections " << tree_->number_of_intersected_primitives(query)
@@ -184,7 +182,6 @@ Intersection MeshModel::getIntersection(const Ray &query) const {
   return intersection_result;
 }
 
-// check first if there is intersection with isIntersection()
 double MeshModel::getDistance(const Ray &query) const {
   // get the first intersection Point
   Point p = getIntersection(query).intersected_point;
@@ -240,7 +237,6 @@ Polyhedron::Facet_handle MeshModel::getFacetHandleFromId(const std::string facet
 }
 
 std::map<std::string, Vector> MeshModel::computeNormals() const {
-  // computes all Polyhedron normals and return only normal map with ID
   std::map<std::string, Vector> normals;
   std::map<face_descriptor, Vector> fnormals;
   std::map<vertex_descriptor, Vector> vnormals;
@@ -344,7 +340,7 @@ void MeshModel::findAllCoplanarFacets(
   if (facetToPlane_.size() == 0) {
     int plane_counter = 0;  // we generate ids from counting up an integer
     for (uint current_facet_idx = 0; current_facet_idx < P_.size_of_facets(); ++current_facet_idx) {
-      // only find Coplanar Facets if Facet is not already associated to a plane
+      // only find coplanar facets if facet is not already associated to a plane
       if (facetToPlane_.count(facetIdxToId_[current_facet_idx]) == 0) {
         // we found a facet that is part of a new plane
         std::string plane_id = std::to_string(plane_counter);

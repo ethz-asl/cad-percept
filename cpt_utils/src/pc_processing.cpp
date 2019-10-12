@@ -62,9 +62,6 @@ void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *po
     mapPointCloud = maxDensitySubsample->filter(mapPointCloud);
   }
   *pointcloud_out = dpToPointCloud(mapPointCloud);
-  mapPointCloud.save(
-      "/home/julian/megabot_ws/src/cad-percept/srd_relative_deviations/resources/"
-      "pc_align_sequence.pcd");
 }
 
 PointCloud dpToPointCloud(const DP &dppointcloud) {
@@ -81,8 +78,7 @@ PointCloud dpToPointCloud(const DP &dppointcloud) {
 }
 
 DP pointCloudToDP(const PointCloud &pointcloud) {
-  // alternatively use matrix3dEigenToPointMatcher (octomap_compare)
-  // or rosMsgToPointMatcherCloud (libpointmatcher_ros)
+  // alternatively rosMsgToPointMatcherCloud (libpointmatcher_ros)
   const int dimFeatures = 4;
 
   PM::Matrix feat(dimFeatures, pointcloud.points.size());
@@ -149,11 +145,6 @@ void sample_pc_from_mesh(const cgal::Polyhedron &P, const int no_of_points, cons
     cloudpoint.z = (float)point.z();
     pointcloud->push_back(cloudpoint);
   }
-
-  // std::stringstream ss;
-  // ss << "/home/julian/megabot_ws/src/cad-percept/relative_deviations/resources/" << file_name <<
-  // ".pcd"; pcl::io::savePCDFileASCII(ss.str(), *pointcloud); std::cerr << "Saved " <<
-  // pointcloud->points.size() << " data points to pcd" << std::endl;
 }
 
 void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3 &plane,

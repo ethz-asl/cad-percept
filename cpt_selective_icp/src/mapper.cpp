@@ -22,7 +22,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   load_published_map_srv_ =
       nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
   set_ref_srv_ = nh_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
-  set_normal_icp_srv_ = nh_.advertiseService("normal_icp", &Mapper::setNormalICP, this);
+  set_full_icp_srv_ = nh_.advertiseService("full_icp", &Mapper::setFullICP, this);
   set_selective_icp_srv_ = nh_.advertiseService("selective_icp", &Mapper::setSelectiveICP, this);
   reload_icp_config_srv_ = nh_.advertiseService("reload_icp_config", &Mapper::reloadConfig, this);
 
@@ -72,7 +72,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     if (P.is_closed()) {
       std::cout << "P is closed" << std::endl;
     } else {
-      std::cerr << "P is not closed => no consistent normal directions" << std::endl;
+      std::cerr << "P is not closed => no consistent full directions" << std::endl;
     }
 
     tf::StampedTransform transform;
@@ -89,9 +89,6 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
     reference_mesh_->transform(ctransformation);
     ref_mesh_ready = true;
-
-    // TODO: extract reference facets of all facets ==> get complete point cloud, then do p.c.
-    // pre-processing, then set as map in ICPSeq
 
     // first extract whole pointcloud
     std::unordered_set<std::string> references;  // empty
@@ -116,14 +113,13 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
    */
   if (odom_received_ < 3) {
     try {
-      // what do we do with transform? Just a check if it already gets one?
       tf::StampedTransform transform;
       tf_listener_.lookupTransform(parameters_.tf_map_frame, parameters_.lidar_frame,
                                    cloud_msg_in.header.stamp, transform);
       odom_received_++;
     } catch (tf::TransformException ex) {
       ROS_WARN_STREAM("Transformations still initializing.");
-      // why do we even publish this identity matrix?
+      // publish for state estimator
       pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
           T_scanner_to_map_.inverse(), parameters_.lidar_frame, parameters_.tf_map_frame,
           cloud_msg_in.header.stamp));
@@ -139,7 +135,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     if (!icp_.hasMap()) {
       std::cout << "ICP not initialized yet" << std::endl;
 
-      // Publish identity matrix as long as no map to avoid drift from IMU during alignment
+      // Publish identity matrix as long as no map to avoid drift from IMU during alignment.
       // Publish odometry.
       if (odom_pub_.getNumSubscribers()) {
         odom_pub_.publish(PointMatcher_ros::eigenMatrixToOdomMsg<float>(
@@ -152,7 +148,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       }
       return;  // cancel if icp_ was not initialized yet
     }
-    PointMatcherSupport::timer t_gotCloud;
 
     DP cloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(cloud_msg_in));
 
@@ -213,10 +208,10 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         T_scanner_to_map_;  // not sure if copy is necessary
 
     /**
-     * Normal ICP Primer
+     * Full ICP Primer
      */
-    if (parameters_.normal_icp_primer_trigger == true) {
-      if (!normalICP(cloud, &T_updated_scanner_to_map)) {
+    if (parameters_.full_icp_primer_trigger == true) {
+      if (!fullICP(cloud, &T_updated_scanner_to_map)) {
         return;  // if not successfull cancel the process
       }
     }
@@ -226,18 +221,18 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
      */
     if (selective_icp_trigger == true) {
       if (!selectiveICP(cloud, &T_updated_scanner_to_map, stamp)) {
-        if (parameters_.normal_icp_primer_trigger == false) {  // if not executed before, do now
-          if (!normalICP(cloud, &T_updated_scanner_to_map)) {  // if no result cancel
+        if (parameters_.full_icp_primer_trigger == false) {  // if not executed before, do now
+          if (!fullICP(cloud, &T_updated_scanner_to_map)) {  // if no result cancel
             return;  // if not successfull cancel the process
           }
         }
       }
     }
 
-    if (parameters_.normal_icp_primer_trigger == false && selective_icp_trigger == false) {
-      std::cerr << "Both ICP methods turned off. Executing normal ICP temporary to avoid drift."
+    if (parameters_.full_icp_primer_trigger == false && selective_icp_trigger == false) {
+      std::cerr << "Both ICP methods turned off. Executing full ICP temporary to avoid drift."
                 << std::endl;
-      if (!normalICP(cloud, &T_updated_scanner_to_map)) {
+      if (!fullICP(cloud, &T_updated_scanner_to_map)) {
         return;  // if not successfull cancel the process
       }
     }
@@ -267,7 +262,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     }
 
     /**
-     *  ICP error metrics
+     *  ICP error metrics, slow!
      */
     if (parameters_.output) {
       getICPError(pc);
@@ -277,7 +272,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       }
     }
 
-    map_thread.join();
+    map_thread.join(); // join thread before finishing callback
 
     /**
      * Statistics about time and real-time capability.
@@ -299,7 +294,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map,
                           const ros::Time &stamp) {
   std::cout << "Perform selective ICP" << std::endl;
-  PointMatcherSupport::timer t_selectiveICP;
   try {
     ROS_DEBUG_STREAM("[Selective ICP] Computing - reading: "
                      << cloud.getNbPoints()
@@ -326,7 +320,7 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
       map_thread = boost::thread(&Mapper::addScanToMap, this, pc, stamp);
     }
 
-    // TODO (Hermann) It would amke more sense to just publish the transform for the corresponding
+    // TODO (Hermann) It would make more sense to just publish the transform for the corresponding
     // scan sequence number
     if (selective_icp_scan_pub_.getNumSubscribers()) {
       std::cout << "Selective ICP scan publishing " << pc.getNbPoints() << " points" << std::endl;
@@ -354,10 +348,8 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
   }
 }
 
-// TODO (Hermann) rename to fullICP?
-bool Mapper::normalICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map) {
-  std::cout << "Perform normal ICP" << std::endl;
-  PointMatcherSupport::timer t_normalICP;
+bool Mapper::fullICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map) {
+  std::cout << "Perform full ICP" << std::endl;
   try {
     ROS_DEBUG_STREAM("[ICP] Computing - reading: " << cloud.getNbPoints() << ", reference: "
                                                    << icp_.getInternalMap().getNbPoints());
@@ -365,7 +357,7 @@ bool Mapper::normalICP(const DP &cloud, PM::TransformationParameters *T_updated_
     // Do ICP
     *T_updated_scanner_to_map = icp_(cloud, *T_updated_scanner_to_map);
 
-    ROS_DEBUG_STREAM("[ICP] T_updated_scanner_to_map_normal:\n" << *T_updated_scanner_to_map);
+    ROS_DEBUG_STREAM("[ICP] T_updated_scanner_to_map_full:\n" << *T_updated_scanner_to_map);
 
     // Ensure minimum overlap between scans.
     const double estimated_overlap = icp_.errorMinimizer->getOverlap();
@@ -460,13 +452,10 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
   matcher->init(ref);
   PM::Matches matches = matcher->findClosests(aligned_dp);
 
-  // Residual error without outliers: This is kind of bad since there is nearly never a 1:1 match of
-  // ref and reading in both directions General problem with these metrics: reading and ref do not
-  // really overlap (only for normal ICP) weight paired points with icp parameters, this is
-  // important to remove non-overlapping outliers!!!
+  /**
+   * Residual error with outlier removal and weighting
+   */
   PM::OutlierWeights outlierWeights = icp.outlierFilters.compute(aligned_dp, ref, matches);
-  // get error, why is error smaller if outlier filter ratio is smaller and result completely
-  // misaligned?!
   float error = icp.errorMinimizer->getResidualError(aligned_dp, ref, outlierWeights, matches);
 
   // Paired point mean distance without outliers
@@ -477,6 +466,12 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
   const int nbMatchedPoints = matchedPoints.reading.getNbPoints();
   std::cout << "Final residual error: " << error / nbMatchedPoints << std::endl;
 
+  /**
+   * Robust mean distance without outlier weights. This is kind of bad since there is never a
+   * 1:1 match of ref. and reading in both directions. They do not totally overlap. Without
+   * weighting, a good result can not be expected.
+   * 
+   */
   const PM::Matrix matchedRead = matchedPoints.reading.features.topRows(dim);
   const PM::Matrix matchedRef = matchedPoints.reference.features.topRows(dim);
   // compute mean distance
@@ -486,7 +481,9 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
   const float meanDist = dist.sum() / nbMatchedPoints;
   std::cout << "Robust mean distance: " << meanDist << " m" << std::endl;
 
-  // Haussdorff distance (with outliers)
+  /**
+   * Hausdorff Distance without outlier removal
+   */
   float maxDist1 = matches.getDistsQuantile(1.0);
   float maxDistRobust1 = matches.getDistsQuantile(0.85);
 
@@ -494,7 +491,9 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
    *  from ref to reading
    */
 
-  // Haussdorff distance (with outliers)
+  /**
+   * Hausdorff Distance without outlier removal
+   */
   matcher->init(aligned_dp);
   matches = matcher->findClosests(ref);
   float maxDist2 = matches.getDistsQuantile(1.0);
@@ -507,16 +506,14 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
             << std::endl;
 }
 
-// this is general pre-processing of dp cloud for map and reading cloud
 void Mapper::processCloud(DP *point_cloud, const ros::Time &stamp) {
-  PointMatcherSupport::timer t_processCloud;
   const size_t good_count(point_cloud->features.cols());
   if (good_count == 0) {
     ROS_ERROR("[ICP] I found no good points in the cloud");
     return;
   }
 
-  // This need to be depreciated, there is addTime for those field in pm.
+  // This need to be depreciated, there is addTime for those field in PM.
   if (!(point_cloud->descriptorExists("stamps_Msec") &&
         point_cloud->descriptorExists("stamps_sec") &&
         point_cloud->descriptorExists("stamps_nsec"))) {
@@ -540,7 +537,7 @@ void Mapper::processCloud(DP *point_cloud, const ros::Time &stamp) {
   // TODO: remove if not needed (do it in icp config anyway)
   input_filters_.apply(*point_cloud);
 
-  // Ensure a minimum amount of point after filtering
+  // Ensure a minimum amount of points after filtering
   pts_count = point_cloud->getNbPoints();
   if (pts_count < parameters_.min_reading_point_count) {
     ROS_ERROR_STREAM("[ICP] Not enough points in newPointCloud: only " << pts_count << " pts.");
@@ -548,7 +545,6 @@ void Mapper::processCloud(DP *point_cloud, const ros::Time &stamp) {
 }
 
 void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
-  PointMatcherSupport::timer t_mapping;
   // Preparation of cloud for inclusion in map
   map_pre_filters_.apply(corrected_cloud);
   // Merge cloud to map
@@ -580,7 +576,7 @@ void Mapper::addScanToMap(DP &corrected_cloud, ros::Time &stamp) {
 bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
                                 cpt_selective_icp::References::Response &res) {
   if (reference_mesh_ == nullptr) {
-    std::cerr << "[cpt_selective_icp] Tried to set references before mesh-model was not loaded."
+    std::cerr << "[cpt_selective_icp] Tried to set references before mesh-model was loaded."
               << std::endl;
     return false;
   }
@@ -660,7 +656,7 @@ bool Mapper::setSelectiveICP(std_srvs::SetBool::Request &req, std_srvs::SetBool:
     }
     selective_icp_trigger = true;
   } else {
-    if (parameters_.normal_icp_primer_trigger == true)
+    if (parameters_.full_icp_primer_trigger == true)
       selective_icp_trigger = false;
     else
       std::cerr << "Can not turn both ICP methods off. Ignoring command." << std::endl;
@@ -669,10 +665,10 @@ bool Mapper::setSelectiveICP(std_srvs::SetBool::Request &req, std_srvs::SetBool:
   return true;
 }
 
-bool Mapper::setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res) {
+bool Mapper::setFullICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res) {
   if (req.data == true) {
-    parameters_.normal_icp_primer_trigger = true;
-    std::cout << "Mode set to normal ICP" << std::endl;
+    parameters_.full_icp_primer_trigger = true;
+    std::cout << "Mode set to full ICP" << std::endl;
 
     // TODO (Hermann) This seems unnecessary, why sample from pc again and then not do anything?
 
@@ -682,7 +678,7 @@ bool Mapper::setNormalICP(std_srvs::SetBool::Request &req, std_srvs::SetBool::Re
     sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
   } else {
     if (selective_icp_trigger == true)
-      parameters_.normal_icp_primer_trigger = false;
+      parameters_.full_icp_primer_trigger = false;
     else
       std::cerr << "Can not turn both ICP methods off. Ignoring command." << std::endl;
   }
@@ -702,7 +698,7 @@ void Mapper::publishReferenceMesh(const std::unordered_set<std::string> &referen
 
   std_msgs::ColorRGBA c;
 
-  // set al facet colors to blue
+  // set all facet colors to blue
   for (size_t i = 0; i < c_msg.mesh.triangles.size(); ++i) {
     c.r = 0.0;
     c.g = 0.0;
@@ -744,7 +740,7 @@ void Mapper::sampleFromReferenceFacets(const int density,
   pointcloud->clear();
   // if reference set is empty, extract whole point cloud
   if (references.empty()) {
-    std::cout << "Extract whole point cloud (normal ICP)" << std::endl;
+    std::cout << "Extract whole point cloud (full ICP)" << std::endl;
     int n_points = reference_mesh_->getArea() * density;
     std::cout << "Mesh for ICP is sampled with " << n_points << " points" << std::endl;
     cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0, pointcloud);
@@ -811,7 +807,7 @@ void Mapper::sampleFromReferenceFacets(const int density,
 void Mapper::loadConfig() {
   // Load configs.
 
-  // normal ICP
+  // full ICP
   std::string config_file_name;
   if (ros::param::get("~icpConfig", config_file_name)) {
     std::ifstream ifs(config_file_name.c_str());

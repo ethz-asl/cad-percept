@@ -10,7 +10,7 @@ Launch file for Selective ICP
     	<param name="scanTopic" value="/rslidar_points" />
 		<param name="cadTopic" value="/mesh_publisher/mesh_out" />
 		<param name="icpConfig"
-			   value="$(find cpt_selective_icp)/config/icp_dynamic.yaml" />
+			   value="$(find cpt_selective_icp)/config/full_icp.yaml" />
 		<param name="selectiveIcpConfig"
 			   value="$(find cpt_selective_icp)/config/selective_icp.yaml" />
 		<param name="inputFiltersConfig"
