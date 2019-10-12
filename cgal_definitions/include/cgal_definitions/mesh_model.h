@@ -52,16 +52,19 @@ class MeshModel {
   static bool create(nlohmann::json &j, MeshModel::Ptr *meshmodel_ptr, bool verbose = false);
 
   /**
-   * Check if there is an intersection
+   * Check if there is an intersection.
    */
   bool isIntersection(const Ray &query) const;
 
   /**
-   * Get the intersection between the ray and the mesh model.
+   * Get the intersection between the ray and the mesh model. Function will throw an exception 
+   * if there is no intersection, so check first by using function isIntersection().
    */
   Intersection getIntersection(const Ray &query) const;
+
   /**
-   * Get the distance of the intersection with the mesh from the ray origin.
+   * Get the distance of the intersection with the mesh from the ray origin. Check first if 
+   * there is intersection with isIntersection().
    */
   double getDistance(const Ray &query) const;
 
@@ -76,9 +79,13 @@ class MeshModel {
    */
   Vector getNormal(const Polyhedron::Face_handle &face_handle) const;
   Vector getNormal(const PointAndPrimitiveId &ppid) const;
-  std::map<std::string, Vector> computeNormals() const;
   Vector computeFaceNormal(face_descriptor &fd) const;
   Vector computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle) const;
+
+  /**
+   * Computes all Polyhedron normals and returns normal map with ID.
+   */ 
+  std::map<std::string, Vector> computeNormals() const;
 
   /**
    * Transform the mesh model.
@@ -107,32 +114,54 @@ class MeshModel {
   void setTriangleIds(const std::vector<std::string> &triangle_ids);
 
   bool isCorrectId(const std::string &facet_id) const;
+
+  /**
+   * Facet Handle <-> Facet ID
+   */
   Polyhedron::Facet_handle getFacetHandleFromId(const std::string facet_id) const;
   std::string getIdFromFacetHandle(const Polyhedron::Facet_handle &handle) const;
 
+  /**
+   * Get a triangle type from a facet handle or ID
+   */
   Triangle getTriangle(const Polyhedron::Facet_handle &f) const;
   Triangle getTriangle(const std::string facet_id) const;
 
+  /**
+   * Get a plane type from a facet handle or ID
+   */
   Plane getPlane(const Polyhedron::Facet_handle &f) const;
   Plane getPlane(const std::string facet_id) const;
 
+  /**
+   * Find all coplanar facet IDs to a given facet ID. A tolerance eps is used to measure
+   * coplanarity because of numerical errors.
+   */
   void findCoplanarFacets(std::string facet_id, std::unordered_set<std::string> *result,
                           const double eps);
 
   /**
-   * This function is super slow. Only execute it once in beginning.
+   * Find all coplanar facets in the model and save associations to two maps.
+   * This function is super slow if mesh consists of many primitives. Only execute it once in 
+   * beginning.
    */
   void findAllCoplanarFacets(std::unordered_map<std::string, std::string> *facetToPlane,
                              std::unordered_multimap<std::string, std::string> *planeToFacets,
                              const double eps);
 
+  /**
+   * Get the surface area of the complete Polyhedron.
+   */
   double getArea() const;
 
+  /**
+   * Get the surface area of a specific facet.
+   */
   double getArea(const Polyhedron::Facet_handle &f) const;
   double getArea(const std::string facet_id) const;
 
   /**
-   * Compute squared distance from point to closest mesh facet
+   * Compute squared distance from point to closest mesh facet.
    */
   double squaredDistance(const Point &point) const;
 
@@ -142,6 +171,9 @@ class MeshModel {
   std::shared_ptr<PolyhedronAABBTree> tree_;
   bool verbose_;
 
+  /**
+   * Iterate through all facets and associate an ID.
+   */
   void initializeFacetIndices();
 
   // ID associations between elements

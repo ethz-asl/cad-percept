@@ -38,17 +38,29 @@ void intersection(const cgal::Plane &plane, const cgal::Line &line, cgal::Point 
 
 cgal::Vector getNormalFromPlane(const cgal::Plane &plane);
 
-// Associate point-cloud with architect model.
+/**
+ * Associate point cloud with architect model.
+ */
 Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel::Ptr mesh_model);
 
+/**
+ * Returns the center point of a bounding box.
+ */
 cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox);
+
+/**
+ * Returns the center point of the bounding box of the point cloud.
+ */
 cgal::Point centerOfBbox(const PointCloud &pointcloud);
 
 /**
- *  Estimate of bbox diameter
+ *  Estimate of bbox width and height
  */
 void bboxDiameters(const CGAL::Bbox_3 bbox, double *width, double *height);
 
+/**
+ * Get the facet handle from the ID
+ */
 cgal::Polyhedron::Facet_handle getFacetHandle(cgal::Polyhedron &P, const uint facet_id);
 }  // namespace cpt_utils
 }  // namespace cad_percept
