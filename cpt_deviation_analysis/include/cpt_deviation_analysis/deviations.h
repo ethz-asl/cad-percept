@@ -119,22 +119,6 @@ class Deviations {
   cgal::MeshModel::Ptr reference_mesh;
 
   /**
-   * Read-in reading pc and execute detection on current scan.
-   */
-  void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish,
-                     const PointCloud &reading_cloud,
-                     std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
-  /**
-   * Read-in map pc and execute detection on complete map. Slow!
-   */
-  void detectMapChanges(
-      std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
-      std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
-      std::unordered_map<std::string, transformation> *current_transformation_map);
-
-  void init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransform &transform);
-
-  /**
    * Map with the latest updated transformations.
    */
   std::unordered_map<std::string, transformation>
@@ -152,12 +136,31 @@ class Deviations {
    */
   std::unordered_map<std::string, polyhedron_plane> plane_map;
 
+  void init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransform &transform);
+
+  /**
+   * Read-in reading pc and execute detection on current scan.
+   */
+  void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish,
+                     const PointCloud &reading_cloud,
+                     std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
+  
+  /**
+   * Read-in map pc and execute detection on complete map. Slow!
+   */
+  void detectMapChanges(
+      std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
+      std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
+      std::unordered_map<std::string, transformation> *current_transformation_map);
+
   /**
    * Reset stuff after evaluation of current scan.
    */
   void reset();
 
  private:
+  std::string path_;
+
   /**
    * Planar segmentation using PCL.
    */
@@ -218,8 +221,6 @@ class Deviations {
    * Compute bounding box of every model plane.
    */
   void computeCGALBboxes();
-
-  std::string path_;
 };
 
 }  // namespace deviations
