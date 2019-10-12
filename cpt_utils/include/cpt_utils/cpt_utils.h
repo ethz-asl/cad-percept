@@ -43,7 +43,10 @@ Associations associatePointCloud(const PointCloud &pc_msg, cgal::MeshModel *mesh
 cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox);
 cgal::Point centerOfBbox(const PointCloud &pointcloud);
 
-void bboxDiameters(const CGAL::Bbox_3 bbox, double *horDim, double *vertDim);
+/**
+ *  Estimate of bbox diameter
+ */
+void bboxDiameters(const CGAL::Bbox_3 bbox, double *width, double *height);
 
 }
 }

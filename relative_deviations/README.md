@@ -40,10 +40,6 @@ Run GTests:
 catkin run_tests <package_name>
 ```
 
-## Issues
-
-Un-tick and tick backface culling for correct visualization.
-
 ## Installation 
 
 Pay attention not to overlay or chain other workspaces by sourcing ROS installation first:
@@ -157,7 +153,7 @@ cd megabot_ws/src/cad-percept/cpt_selective_icp/script/
 sh publish_references.sh
 ```
 
-Analysis of complete map (callback still needs to run and mapping needs to be turned on in cpt_selective_icp):
+Analysis of complete map:
 
 Requirements:
 

@@ -205,11 +205,11 @@ double getArea(const PointCloud &pointcloud) {
   return chull.getTotalArea();
 }
 
-void bboxDiameters(const PointCloud &pointcloud, double *horDim, double *vertDim) {
+void bboxDiameters(const PointCloud &pointcloud, double *width, double *height) {
   pcl::PointXYZ minPoint, maxPoint;
   pcl::getMinMax3D(pointcloud, minPoint, maxPoint);
-  *horDim = sqrt(pow(maxPoint.x - minPoint.x,2) + pow(maxPoint.y - minPoint.y,2));
-  *vertDim = sqrt(maxPoint.z - minPoint.z);
+  *width = sqrt(pow(maxPoint.x - minPoint.x,2) + pow(maxPoint.y - minPoint.y,2));
+  *height = sqrt(maxPoint.z - minPoint.z);
 }
 
 void computePCBbox(const PointCloud &pointcloud, CGAL::Bbox_3 *bbox) {

@@ -4,11 +4,11 @@ inputQueueSize: 1
 
 # Deviation Analysis:
 buffer_size: 1 # how many scans to merge before analysis
-visualize: map # choose which to visualize: "map" or "current"
+visualize: current # choose which to visualize: "map" or "current"
 
 # Segmentation
 planarSegmentation: CGAL # CGAL or PCL
-planarSegmentationMethod: RANSAC # RANSAC or REGION_GROWING, only for CGAL
+planarSegmentationMethod: REGION_GROWING # RANSAC or REGION_GROWING, only for CGAL
 segmentationDistanceThreshold: 0.03 # at least around the precision of the LiDAR, distance to model
 segmentationNormalThreshold: 0.1
 segmentationClusterDistance: 0.5 # max distance between points in same cluster for CGAL, depends on Lidar beam angle
