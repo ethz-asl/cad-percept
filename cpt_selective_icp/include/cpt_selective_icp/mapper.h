@@ -43,8 +43,68 @@ class Mapper {
   ros::NodeHandle &nh_, &nh_private_;
   tf::TransformListener tf_listener_;
   MapperParameters parameters_;
-
   ros::Time stamp;
+  int odom_received_;
+
+  /**
+   * Reference mesh for localization
+   */
+  cgal::MeshModel::Ptr reference_mesh_;
+
+  /**
+   * Set containing all reference IDs and their coplanar neighbors.
+   */
+  std::unordered_set<std::string> all_coplanar_references;
+
+  // libpointmatcher
+  PM::ICPSequence icp_;
+  PM::ICPSequence selective_icp_;
+  PM::DataPointsFilters input_filters_;
+  PM::DataPointsFilters map_pre_filters_;
+  PM::DataPointsFilters map_post_filters_;
+  PM::TransformationParameters T_scanner_to_map_;
+  std::shared_ptr<PM::Transformation> transformation_;
+
+  // Time
+  ros::Time last_point_cloud_time_;
+  uint32_t last_point_cloud_seq_;
+
+  bool cad_trigger;
+  bool selective_icp_trigger;
+  bool full_icp_trigger;
+  bool ref_mesh_ready;
+  int projection_count;
+  DP mapPointCloud;
+  bool mapping_trigger;
+  bool update_icp_ref_trigger;
+
+  DP ref_dp;
+  DP selective_ref_dp;
+
+  boost::thread map_thread;
+
+  // Subscribers
+  ros::Subscriber cloud_sub_;
+  ros::Subscriber cad_sub_;
+
+  // Publishers
+  ros::Publisher ref_mesh_pub_;
+  ros::Publisher cad_mesh_pub_;
+  ros::Publisher ref_pc_pub_;
+  ros::Publisher pose_pub_;
+  ros::Publisher odom_pub_;
+  ros::Publisher scan_pub_;
+  ros::Publisher selective_icp_scan_pub_;
+  ros::Publisher point_pub_;
+  ros::Publisher map_pub_;
+
+  // Services
+  ros::ServiceServer load_published_map_srv_;
+  ros::ServiceServer get_closest_facet_srv_;
+  ros::ServiceServer set_ref_srv_;
+  ros::ServiceServer set_full_icp_srv_;
+  ros::ServiceServer set_selective_icp_srv_;
+  ros::ServiceServer reload_icp_config_srv_;
 
   /**
    * Point cloud callback
@@ -129,66 +189,6 @@ class Mapper {
    * Add a new aligned scan to the map.
    */
   void addScanToMap(DP &corrected_cloud, ros::Time &stamp);
-
-  // Subscribers
-  ros::Subscriber cloud_sub_;
-  ros::Subscriber cad_sub_;
-
-  // Publishers
-  ros::Publisher ref_mesh_pub_;
-  ros::Publisher cad_mesh_pub_;
-  ros::Publisher ref_pc_pub_;
-  ros::Publisher pose_pub_;
-  ros::Publisher odom_pub_;
-  ros::Publisher scan_pub_;
-  ros::Publisher selective_icp_scan_pub_;
-  ros::Publisher point_pub_;
-  ros::Publisher map_pub_;
-
-  // Services
-  ros::ServiceServer load_published_map_srv_;
-  ros::ServiceServer get_closest_facet_srv_;
-  ros::ServiceServer set_ref_srv_;
-  ros::ServiceServer set_full_icp_srv_;
-  ros::ServiceServer set_selective_icp_srv_;
-  ros::ServiceServer reload_icp_config_srv_;
-
-  int odom_received_;
-
-  // Reference Mesh for localization
-  cgal::MeshModel::Ptr reference_mesh_;
-
-  /**
-   * Set containing all reference IDs and their coplanar neighbors.
-   */
-  std::unordered_set<std::string> all_coplanar_references;
-
-  // libpointmatcher
-  PM::ICPSequence icp_;
-  PM::ICPSequence selective_icp_;
-  PM::DataPointsFilters input_filters_;
-  PM::DataPointsFilters map_pre_filters_;
-  PM::DataPointsFilters map_post_filters_;
-  PM::TransformationParameters T_scanner_to_map_;
-  std::shared_ptr<PM::Transformation> transformation_;
-
-  // Time
-  ros::Time last_point_cloud_time_;
-  uint32_t last_point_cloud_seq_;
-
-  bool cad_trigger;
-  bool selective_icp_trigger;
-  bool full_icp_trigger;
-  bool ref_mesh_ready;
-  int projection_count;
-  DP mapPointCloud;
-  bool mapping_trigger;
-  bool update_icp_ref_trigger;
-
-  DP ref_dp;
-  DP selective_ref_dp;
-
-  boost::thread map_thread;
 };
 
 }  // namespace selective_icp
