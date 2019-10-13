@@ -31,9 +31,9 @@ void MeshModel::init(const std::string &off_path, bool verbose) {
   }
 
   /**
- * Now we have loaded the geometric structure and need to conduct intersection
- * and distance queries. For this, we build an AABB tree.
- **/
+   * Now we have loaded the geometric structure and need to conduct intersection
+   * and distance queries. For this, we build an AABB tree.
+   **/
   tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
                                                CGAL::faces(P_).second, P_);
   tree_->accelerate_distance_queries();

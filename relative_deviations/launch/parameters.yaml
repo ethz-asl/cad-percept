@@ -18,7 +18,7 @@ segmentationProbability: 0.05 # only for CGAL Efficient_Ransac
 # Association
 minPolyhedronArea: 0.05
 matchScoreUpperLimit: 1.0 # above this limit, don't do any association since we don't expect wrong walls to be so wrong
-matchDistScoreThresh: 1.0 # max distance_score limit between pc and facet
+matchDistScoreThresh: 1.0 # max. distance to plane limit between pc and facet
 matchMinDistThresh: 0.15 # max. min_distance limit between pc and facet
 matchDistThresh: 1.0
 matchAngleThresh: 0.8 # max angle between pc and facet [rad]
@@ -28,4 +28,4 @@ assocAreaLowerLimitThreshold: 0.1 # lower ratio only taken into account if a thr
 minDistWeight: 0.0 # weight for the association score
 distanceScoreWeight: 1.0 # weight for the association score
 angleWeight: 0.0 # weight for the association score
-distWeight: 0.0
+distWeight: 0.0 # weight for the association score

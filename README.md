@@ -1,3 +1,5 @@
+** This is code from the deprecated branch "relative_deviations". Please continue on cleaned up "master" branch. Only for testing purposes.**
+
 # cad-percept
 Bringing meshes to robotics.
 

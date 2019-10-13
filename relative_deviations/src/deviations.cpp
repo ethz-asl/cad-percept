@@ -441,7 +441,6 @@ void Deviations::runShapeDetection(const PointCloud &cloud, std::vector<reconstr
 }
 
 void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed_plane &rec_plane, int *id, double *match_score, bool *success) {
-  // TODO check every metrics function used here
   *success = false;
   PointCloud cloud = rec_plane.pointcloud;
   // Area ratio check
@@ -508,8 +507,7 @@ void Deviations::associatePlane(cgal::MeshModel &mesh_model, const reconstructed
       continue;
     }
 
-    //TODO: this needs fix because of different orientation of normals
-    // angle (not sure if necessary since already somehow contained in distance_score)
+    // angle 
     // we just care about angle of axis angle representation
     double angle = acos(rec_plane.pc_normal.dot(plane_map[i->first].normal));
     //std::cout << "Angle is: " << angle << std::endl;
@@ -670,11 +668,6 @@ void Deviations::findPlaneDeviation(std::unordered_map<int, transformation> *cur
 }
 
 void Deviations::updateAveragePlaneDeviation(const std::unordered_map<int, transformation> &current_transformation_map) {
-  // TODO: Do the real update filtering thing here
-  // - try to investigate the distribution using the single current_transformation_map and plot them
-  // - prediction based on this distribution, but what does it help to know error distribution?
-  // - how is update filtering indended to work normally?
-  // - now just compute average
 
   for (auto it = current_transformation_map.begin(); it != current_transformation_map.end(); ++it) {
     // if entry in transformation map does not yet exist for this ID, then just copy current_transformation_map

@@ -162,8 +162,6 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     reference_mesh_.transform(ctransformation);
     ref_mesh_ready = true;
 
-    //TODO: extract reference facets of all facets ==> get complete point cloud, then do p.c. pre-processing, then set as map in ICPSeq
-
     // first extract whole pointcloud
     std::unordered_set<int> references; // empty
     PointCloud pointcloud;
@@ -381,7 +379,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
     transformationFile << stamp << "," << T_scanner_to_marker2(0,3) << "," << T_scanner_to_marker2(1,3) << "," << T_scanner_to_marker2(2,3) << "," << rot.x() << "," << rot.y() << "," << rot.z() << "," << rot.w() << std::endl;
 
-  // Save complete matrix to file
+    // Save complete matrix to file
     rotationMatrix(0,0) = T_prisma_to_marker2(0,0);
     rotationMatrix(0,1) = T_prisma_to_marker2(0,1);
     rotationMatrix(0,2) = T_prisma_to_marker2(0,2);
@@ -634,14 +632,11 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
   matcher->init(ref);
   PM::Matches matches = matcher->findClosests(aligned_dp);
 
-  // Residual error without outliers: This is kind of bad since there is nearly never a 1:1 match of ref and reading in both directions
-  // General problem with these metrics: reading and ref do not really overlap (only for normal ICP)
-  // weight paired points with icp parameters, this is important to remove non-overlapping outliers!!!
+  // Residual error with outlier removal
   PM::OutlierWeights outlierWeights = icp.outlierFilters.compute(aligned_dp, ref, matches);
-  // get error, why is error smaller if outlier filter ratio is smaller and result completely misaligned?!
   float error = icp.errorMinimizer->getResidualError(aligned_dp, ref, outlierWeights, matches);
 
-  // Paired point mean distance without outliers
+  // Paired point mean distance without outlier weighting
   // generate tuples of matched points and remove pairs with zero weight
 	const PM::ErrorMinimizer::ErrorElements matchedPoints(aligned_dp, ref, outlierWeights, matches);
 	// extract relevant information for convenience
@@ -656,7 +651,7 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
 	const float meanDist = dist.sum()/nbMatchedPoints;
 	std::cout << "Robust mean distance: " << meanDist << " m" << std::endl;
 
-  // Haussdorff distance (with outliers)
+  // Haussdorff distance without outlier removal
   float maxDist1 = matches.getDistsQuantile(1.0);
 	float maxDistRobust1 = matches.getDistsQuantile(0.85);
 
@@ -664,7 +659,7 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
    *  from ref to reading
    */
 
-  // Haussdorff distance (with outliers)
+  // Haussdorff distance without outlier removal
   matcher->init(aligned_dp);
   matches = matcher->findClosests(ref);
   float maxDist2 = matches.getDistsQuantile(1.0);

@@ -13,9 +13,9 @@ There are situations where only selective ICP corrected scans are of interest (d
 
 If selective ICP fails with a convergence error, the package automatically uses the result from normal ICP (if any). However, a known limitation is the case where selective ICP gives a completely wrong transformation, without a convergence error. Selective ICP is more prone to this error than normal ICP due to limited points for alignment. If the deviation is too large, this can break the position estimate completely.
 
-Real-time capability is important, because if ICP takes too long, the estimator can break. In this case the estimator already moved to far away from the model using the other informations (IMU, odometry) that ICP can not correct it anymore.
+Real-time capability is important, because if ICP takes too long, the estimator can break. In this case the estimator already moved to far away from the model using the other informations (IMU, odometry) so that ICP can not correct it anymore.
 
-The node also offers a mapping thread based only on selective ICP references. However, during testing the CPU often got overloaded, eventhough the pose estimation worked fine. The built reference map can further be used for selective ICP avoiding the low number of references when moving around.
+The node also offers a mapping thread based only on selective ICP references. The built reference map can further be used for selective ICP avoiding the low number of references when moving around.
 
 ## Instructions
 
@@ -66,11 +66,3 @@ Hint:
 - For better alignment of Marker, deactivate Mesh Model. Marker can not be accessed through mesh.
 - There is a second interactive marker (red), which can be used to find closest facet ID to this marker. It is important to load the CAD first. Somehow the first projection on the facet is not shown in rviz.
 
-## Issues
-
-[] Check real-time capability and which processes take too much time.
-[] Although threading is used, if mapping_trigger is set to true, everything becomes very slow and the system crashes.
-
-## To Do Notes
-
-- Check that ICP filter and Input Filter do not the same twice

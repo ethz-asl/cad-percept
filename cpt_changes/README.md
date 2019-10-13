@@ -9,12 +9,7 @@
 ### To Do:
 
 - Add ray-casting from robot and not just to nearest facet
-- Decide whether using cpt_utils or MeshLocalizer -> it's just one function now: associatePointCloud()
 - Add gtests
-- If necessary make visualization subclass
-- start rviz from launch file and add default.rviz
-- check if current visualization result makes sense
-- Decide if additional rviz Display type is necessary
 
 ### Running cpt_changes:
 

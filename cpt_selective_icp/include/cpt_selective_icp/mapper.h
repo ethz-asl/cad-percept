@@ -73,7 +73,7 @@ class Mapper {
     /**
      * Get some sort of residual error
      * Apply threshold first to avoid taking into account points from other walls/ assuming we have a certain
-     * initial transformation... check what distance is appropriate max after initial transformation
+     * initial transformation.
      */
     double getICPError(const DP &aligned_dp);
     void getError(DP dpref, DP dppointcloud_out, bool selective);
@@ -131,7 +131,6 @@ class Mapper {
     ros::ServiceServer reload_icp_config_srv_;
 
     int odom_received_;
-
 
     // libpointmatcher
     PM::ICPSequence icp_;

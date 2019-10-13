@@ -1,7 +1,7 @@
 /**
  * Static Room Deviations (SRD)
  * This is a first version which uses a static test mesh and directly does ICP.
- * Many of these functions are duplicated in deviations.cpp, which also replaces
+ * Many of these functions are duplicated in relative_deviations, which also replaces
  * some functions by using cpt_selective_icp. 
  * 
  * This class is just for testing purposes.
@@ -328,7 +328,7 @@ void Deviations::planarSegmentationCGAL(const PointCloud &cloud, std::vector<rec
   // Region growing better, deterministic
   
   std::cout << "Efficient RANSAC" << std::endl;
-  runShapeDetection<cgal::Efficient_ransac>(cloud, rec_planes);
+  runShapeDetection<cgal::Efficient_RANSAC>(cloud, rec_planes);
   
   std::cout << "Region Growing" << std::endl;
   runShapeDetection<cgal::Region_growing>(cloud, rec_planes);

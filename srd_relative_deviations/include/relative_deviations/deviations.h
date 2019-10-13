@@ -158,7 +158,7 @@ class Deviations {
     /**
      * Get some sort of residual error
      * Apply threshold first to avoid taking into account points from other walls/ assuming we have a certain
-     * initial transformation... check what distance is appropriate max after initial transformation
+     * initial transformation.
      */
     double getICPError(const PointCloud &aligned_pc);
     std::string path_;

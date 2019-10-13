@@ -96,7 +96,7 @@ struct transformation {
 
 struct reconstructed_plane {
   Eigen::Vector3d pc_normal;
-  std::vector<float> coefficients; // do we still need this?
+  std::vector<float> coefficients;
   PointCloud pointcloud;
 };
 
@@ -112,8 +112,6 @@ struct polyhedron_plane {
   CGAL::Bbox_3 bbox; // bounding box of ref polyhedron_plane
   double match_score = std::numeric_limits<double>::max(); // match score for pc to mesh plane
   reconstructed_plane rec_plane; // associated point cloud
-  // add normal (for rotation) and translation vector, which we update filter
-  // add updated cov. matrix for reconstructed plane, which we can use to get bbox and transl. (this is already an update filter for translations I guess)
 };
 
 typedef std::map<int,int>::iterator Miterator;

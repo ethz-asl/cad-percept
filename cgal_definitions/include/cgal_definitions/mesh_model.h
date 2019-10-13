@@ -43,17 +43,17 @@ class MeshModel {
   bool isIntersection(const Ray &query) const;
 
   /**
- * Get the intersection between the ray and the mesh model.
- */
+   * Get the intersection between the ray and the mesh model.
+   */
   Intersection getIntersection(const Ray &query) const;
   /**
- * Get the distance of the intersection with the mesh from the ray origin.
- */
+   * Get the distance of the intersection with the mesh from the ray origin.
+   */
   double getDistance(const Ray &query) const;
 
   /**
- * Get closest point on surface and surface id to a given point. (renamed since it works on every Polyhedron, not only triangle)
- */
+   * Get closest point on surface and surface id to a given point. (renamed since it works on every Polyhedron, not only triangle)
+   */
   PointAndPrimitiveId getClosestPrimitive(const Point &p) const;
   PointAndPrimitiveId getClosestPrimitive(const double x, const double y,
                                          const double z) const;
@@ -68,13 +68,13 @@ class MeshModel {
   Vector computeFaceNormal2(const Polyhedron::Facet_handle &facet_handle) const;
 
   /**
- * Transform the mesh model.
- */
+   * Transform the mesh model.
+   */
   void transform(const Transformation &transform);
 
   /**
- * Return size of mesh (number of facet primitives).
- */
+   * Return size of mesh (number of facet primitives).
+   */
   int size() const;
 
   /**
