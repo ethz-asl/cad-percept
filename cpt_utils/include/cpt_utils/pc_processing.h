@@ -1,6 +1,7 @@
 #ifndef PC_PROCESSING_H_
 #define PC_PROCESSING_H_
 
+#include <cgal_definitions/cgal_typedefs.h>
 #include <glog/logging.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/common/transforms.h>
@@ -9,7 +10,6 @@
 #include <pcl/surface/convex_hull.h>
 #include <pcl_ros/point_cloud.h>
 #include <boost/circular_buffer.hpp>
-#include <cgal_definitions/cgal_typedefs.h>
 #include "pointmatcher/PointMatcher.h"
 
 namespace cad_percept {

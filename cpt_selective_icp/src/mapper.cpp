@@ -272,7 +272,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       }
     }
 
-    map_thread.join(); // join thread before finishing callback
+    map_thread.join();  // join thread before finishing callback
 
     /**
      * Statistics about time and real-time capability.
@@ -470,7 +470,7 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
    * Robust mean distance without outlier weights. This is kind of bad since there is never a
    * 1:1 match of ref. and reading in both directions. They do not totally overlap. Without
    * weighting, a good result can not be expected.
-   * 
+   *
    */
   const PM::Matrix matchedRead = matchedPoints.reading.features.topRows(dim);
   const PM::Matrix matchedRef = matchedPoints.reference.features.topRows(dim);

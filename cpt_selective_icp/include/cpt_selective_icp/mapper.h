@@ -5,28 +5,28 @@
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
-#include <cpt_utils/pc_processing.h>
-#include <pcl/point_types.h>
-#include <pointmatcher/PointMatcher.h>
-#include <ros/ros.h>
-#include <tf/transform_listener.h>
-#include <tf_conversions/tf_eigen.h>
-#include <unordered_set>
-#include "cpt_selective_icp/mapper_parameters.h"
 #include <cgal_msgs/ColoredMesh.h>
 #include <cgal_msgs/ReferenceTask.h>
 #include <cgal_msgs/TriangleMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
+#include <cpt_utils/pc_processing.h>
 #include <geometry_msgs/PointStamped.h>
-#include <std_msgs/ColorRGBA.h>
-#include <std_srvs/Empty.h>
-#include <std_srvs/SetBool.h>
-#include "cpt_selective_icp/BuildingTask.h"
-#include "cpt_selective_icp/References.h"
+#include <pcl/point_types.h>
+#include <pointmatcher/PointMatcher.h>
 #include <pointmatcher/Timer.h>
 #include <pointmatcher_ros/point_cloud.h>
 #include <pointmatcher_ros/transform.h>
+#include <ros/ros.h>
+#include <std_msgs/ColorRGBA.h>
+#include <std_srvs/Empty.h>
+#include <std_srvs/SetBool.h>
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
 #include <boost/thread.hpp>
+#include <unordered_set>
+#include "cpt_selective_icp/BuildingTask.h"
+#include "cpt_selective_icp/References.h"
+#include "cpt_selective_icp/mapper_parameters.h"
 
 namespace cad_percept {
 namespace selective_icp {

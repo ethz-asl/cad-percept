@@ -21,7 +21,7 @@ void Deviations::init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransfor
   cgal::Transformation ctransformation;
   cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
   reference_mesh->transform(ctransformation);
-  
+
   // Process model here, what stays the same between scans
 
   // Find coplanar facets and create unordered_map Facet ID <-> Plane ID (arbitrary iterated)
@@ -148,7 +148,7 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in,
               << " data points." << std::endl;
 
     reconstructed_plane rec_plane;
-    rec_plane.coefficients = coefficients->values; 
+    rec_plane.coefficients = coefficients->values;
 
     // Compute normalized normal of plane
     Eigen::Vector3d pc_normal(coefficients->values[0], coefficients->values[1],
