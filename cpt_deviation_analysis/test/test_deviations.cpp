@@ -11,5 +11,6 @@ TEST(DeviationsTest, aa_quat_trafo) {
   Eigen::AngleAxisd aa(0.5, axis);
   Eigen::Quaterniond quat(aa);
   Eigen::AngleAxisd compaa(quat);
-  EXPECT_TRUE(aa.angle().isApprox(compaa.angle()) && aa.axis().isApprox(compaa.axis()));
+  EXPECT_TRUE(abs(aa.angle() - compaa.angle()) < 1e-10);
+  EXPECT_TRUE(aa.axis().isApprox(compaa.axis()));
 }
