@@ -33,12 +33,12 @@ RelativeDeviations::RelativeDeviations(ros::NodeHandle &nh, ros::NodeHandle &nh_
       nh_private.param<double>("segmentationProbability", 0.05);
   deviations.params.minPolyhedronArea = nh_private.param<double>("minPolyhedronArea", 0.05);
   deviations.params.matchScoreUpperLimit = nh_private.param<double>("matchScoreUpperLimit", 2.0);
-  deviations.params.matchDistScoreThresh = nh_private.param<double>("matchDistScoreThresh", 1.0);
+  deviations.params.matchDistPlaneThresh = nh_private.param<double>("matchDistPlaneThresh", 1.0);
   deviations.params.matchMinDistThresh = nh_private.param<double>("matchMinDistThresh", 2.0);
   deviations.params.matchDistThresh = nh_private.param<double>("matchDistThresh", 2.0);
   deviations.params.matchAngleThresh = nh_private.param<double>("matchAngleThresh", 1.5);
   deviations.params.minDistWeight = nh_private.param<double>("minDistWeight", 0.0);
-  deviations.params.distanceScoreWeight = nh_private.param<double>("distanceScoreWeight", 1.0);
+  deviations.params.distPlaneWeight = nh_private.param<double>("distPlaneWeight", 1.0);
   deviations.params.angleWeight = nh_private.param<double>("angleWeight", 0.0);
   deviations.params.distWeight = nh_private.param<double>("distWeight", 0.0);
   deviations.params.assocAreaRatioUpperLimit =
@@ -115,8 +115,6 @@ bool RelativeDeviations::analyzeMap(std_srvs::Empty::Request &req, std_srvs::Emp
 void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
   // insert reading_pc in buffer
   // the reading_pc should be pre-aligned with model here before continueing (from selective ICP)
-  PointMatcherSupport::timer t_processBuffer;
-
   cb.push_back(reading_pc);
   if (cb.full()) {
     PointCloud::Ptr aligned_pc(new PointCloud());
@@ -144,9 +142,7 @@ void RelativeDeviations::processBuffer(PointCloud &reading_pc) {
 void RelativeDeviations::processCloud(PointCloud &reading_pc) {
   std::vector<reconstructed_plane> rec_planes;
   std::vector<reconstructed_plane>
-      remaining_plane_cloud_vector;  // put everything in here what can't be associated
-
-  PointMatcherSupport::timer t_processCloud;
+      remaining_plane_cloud_vector;  // put every plane in here which can't be associated
 
   deviations.detectChanges(&rec_planes, reading_pc, &remaining_plane_cloud_vector);
 
@@ -178,17 +174,16 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
       deviations_pub_.publish(deviation_msg);
     }
   }
-  // reset here in case we still want to access something, otherwise can put in detectChanges
+  // reset here in case we still want to access something, otherwise can put reset() in
+  // detectChanges()
   deviations.reset();
 }
 
 void RelativeDeviations::processMap(PointCloud &map_pc) {
   std::vector<reconstructed_plane> rec_planes;
   std::vector<reconstructed_plane>
-      remaining_plane_cloud_vector;  // put everything in here what we can't segment as planes
+      remaining_plane_cloud_vector;  // put every plane in here which can't be associated
   std::unordered_map<std::string, transformation> current_transformation_map;
-
-  PointMatcherSupport::timer t_processMap;
 
   deviations.detectMapChanges(&rec_planes, map_pc, &remaining_plane_cloud_vector,
                               &current_transformation_map);
@@ -296,9 +291,8 @@ void RelativeDeviations::publishAssociations(
   c_msg.header.seq = 0;
 
   /**
-   *  Non-associated planes PointCloud
+   *  Non-associated planes PointCloud in blue
    */
-  // add non associated rec. planes in blue
   for (auto plane : remaining_plane_cloud_vector) {
     pcl::copyPointCloud(plane.pointcloud, pointcloud_plane_rgb);
     uint8_t r = 0, g = 0, b = 255;
@@ -388,12 +382,10 @@ void RelativeDeviations::publishAssociations(
   }
 
   publishCloud<ColoredPointCloud>(&pointcloud_rgb, &assoc_pc_pub_);
-  // TODO: Backface culling should be turned on, but is somehow not activated after new msg
   assoc_mesh_pub_.publish(c_msg);
   assoc_marker_pub_.publish(marker_array);
 }
 
-// of pc
 void RelativeDeviations::publishBboxesAndNormals(
     std::unordered_map<std::string, polyhedron_plane> &plane_map) {
   visualization_msgs::MarkerArray marker_array;
@@ -556,7 +548,7 @@ void RelativeDeviations::publishDeviations(
   }
 
   // - overwrite color of associated planes/triangles with deviation gradient based on e.g.
-  // distance score, because distance score includes both angle deviation and distance deviation
+  // match score
   // - set threshold for ok walls
   for (auto &[plane_id, transformation] : transformation_map) {
     double score = transformation.score;

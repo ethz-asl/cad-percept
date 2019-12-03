@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-Launch file for Selective ICP
--->
+<!-- Launch file for online Relative Deviation analysis with rviz -->
 
 <launch>
 

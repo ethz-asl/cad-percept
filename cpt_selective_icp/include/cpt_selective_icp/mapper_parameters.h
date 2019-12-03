@@ -10,7 +10,6 @@ struct MapperParameters {
   ~MapperParameters();
 
   // Parameters
-
   std::string scan_topic;
   std::string cad_topic;
   int min_reading_point_count;
@@ -21,7 +20,7 @@ struct MapperParameters {
   double min_overlap;
   bool mapping_trigger;
   bool update_icp_ref_trigger;
-  bool normal_icp_primer_trigger;
+  bool full_icp_primer_trigger;
   std::string path;
   bool output;
 };
