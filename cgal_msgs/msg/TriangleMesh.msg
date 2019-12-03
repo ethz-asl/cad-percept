@@ -1,6 +1,6 @@
-# Triangle's vertices index:
+# Triangle vertices index:
 shape_msgs/MeshTriangle[] triangles
-# triangles index into the array of vertices
+# vertices:
 geometry_msgs/Point[] vertices
 # optional string ids for vertices and triangles
 # if not set, ids are strings of the indizes
