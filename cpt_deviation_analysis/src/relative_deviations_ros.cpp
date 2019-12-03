@@ -174,7 +174,8 @@ void RelativeDeviations::processCloud(PointCloud &reading_pc) {
       deviations_pub_.publish(deviation_msg);
     }
   }
-  // reset here in case we still want to access something, otherwise can put reset() in detectChanges()
+  // reset here in case we still want to access something, otherwise can put reset() in
+  // detectChanges()
   deviations.reset();
 }
 

@@ -1,6 +1,6 @@
 /**
  * Deviation Analysis
- * This is the real-time deviation analysis. ICP is executed in separate 
+ * This is the real-time deviation analysis. ICP is executed in separate
  * package cpt_selective_icp.
  */
 
@@ -48,7 +48,7 @@ class RelativeDeviations {
   ros::Publisher buffer_pc_pub_, reconstructed_planes_pub_, polygon_pub_, assoc_mesh_pub_,
       assoc_pc_pub_, assoc_marker_pub_, bboxes_marker_pub_, deviations_mesh_pub_,
       mesh_normals_marker_pub_, all_mesh_normals_marker_pub_, deviations_pub_;
-  
+
   // Services:
   ros::ServiceServer analyze_map_srv_;
 
@@ -92,7 +92,7 @@ class RelativeDeviations {
    * Publish a mesh model.
    */
   void publishMesh(const cgal::MeshModel::Ptr &model, ros::Publisher *publisher) const;
-  
+
   /**
    * Publish a point cloud.
    */
@@ -105,8 +105,8 @@ class RelativeDeviations {
   void publishReconstructedPlanes(const std::vector<reconstructed_plane> &rec_planes,
                                   ros::Publisher *publisher) const;
   /**
-   *  Visualize boundaries of each facet. Currently there is no use for this anymore, 
-   *  since we do not merge anymore and just use triangle meshes, which can be 
+   *  Visualize boundaries of each facet. Currently there is no use for this anymore,
+   *  since we do not merge anymore and just use triangle meshes, which can be
    *  visualized.
    */
   void publishPolyhedron(cgal::Polyhedron &P);
@@ -168,11 +168,11 @@ class RelativeDeviations {
    */
   void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
 
-  /** 
+  /**
    * Processing of a new point cloud.
    */
   void gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in);
-  
+
   /**
    * Processing of a new map.
    */

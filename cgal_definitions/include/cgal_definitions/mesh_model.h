@@ -57,13 +57,13 @@ class MeshModel {
   bool isIntersection(const Ray &query) const;
 
   /**
-   * Get the intersection between the ray and the mesh model. Function will throw an exception 
+   * Get the intersection between the ray and the mesh model. Function will throw an exception
    * if there is no intersection, so check first by using function isIntersection().
    */
   Intersection getIntersection(const Ray &query) const;
 
   /**
-   * Get the distance of the intersection with the mesh from the ray origin. Check first if 
+   * Get the distance of the intersection with the mesh from the ray origin. Check first if
    * there is intersection with isIntersection().
    */
   double getDistance(const Ray &query) const;
@@ -84,7 +84,7 @@ class MeshModel {
 
   /**
    * Computes all Polyhedron normals and returns normal map with ID.
-   */ 
+   */
   std::map<std::string, Vector> computeNormals() const;
 
   /**
@@ -142,7 +142,7 @@ class MeshModel {
 
   /**
    * Find all coplanar facets in the model and save associations to two maps.
-   * This function is super slow if mesh consists of many primitives. Only execute it once in 
+   * This function is super slow if mesh consists of many primitives. Only execute it once in
    * beginning.
    */
   void findAllCoplanarFacets(std::unordered_map<std::string, std::string> *facetToPlane,
