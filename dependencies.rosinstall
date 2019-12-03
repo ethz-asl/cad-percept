@@ -4,7 +4,7 @@
 - git:
     local-name: cgal_catkin
     uri: git@github.com:ethz-asl/cgal_catkin.git
-    version: feature/4.13
+    version: 88b1804b1c678f3ac24ebd3dd1dcfbbc1534c3a0
 - git:
     local-name: glog_catkin
     uri: git@github.com:ethz-asl/glog_catkin.git
