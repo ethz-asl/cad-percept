@@ -39,7 +39,7 @@ catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
 cd src
 git clone git@github.com:ethz-asl/cad-percept.git
 wstool init
-wstool merge cad-perpect/dependencies.rosinstall
+wstool merge cad-percept/dependencies.rosinstall
 wstool update
 ```
 
