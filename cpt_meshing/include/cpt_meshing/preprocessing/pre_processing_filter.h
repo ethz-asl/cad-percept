@@ -12,6 +12,8 @@ class PreProcessingFilter {
   void run(const InputPointCloud::ConstPtr input, InputPointCloud::Ptr output,
            InputNormals::Ptr normals);
 
+  void addNeighborhoodFilter(int meank, double stddevmult);
+
   // Adds a simple box filter to constrain axes
   void addBoxFilter(const std::string& axis, double min, double max);
 

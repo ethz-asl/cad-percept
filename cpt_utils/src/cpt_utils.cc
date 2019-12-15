@@ -80,11 +80,11 @@ cgal::Point centerOfBbox(const CGAL::Bbox_3 &bbox) {
   return cgal::Point(x, y, z);
 }
 
-cgal::Point centerOfBbox(const PointCloud &pointcloud) {
+/*cgal::Point centerOfBbox(const PointCloud &pointcloud) {
   CGAL::Bbox_3 bbox;
   computePCBbox(pointcloud, &bbox);
   return centerOfBbox(bbox);
-}
+}*/
 
 void bboxDiameters(const CGAL::Bbox_3 bbox, double *width, double *height) {
   *width = sqrt(pow(bbox.xmax() - bbox.xmin(), 2) + pow(bbox.ymax() - bbox.ymin(), 2));

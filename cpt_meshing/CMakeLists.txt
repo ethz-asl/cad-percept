@@ -22,6 +22,11 @@ cs_add_library(${PROJECT_NAME}
 cs_add_executable(cpt_meshing_node src/cpt_meshing_node.cpp)
 target_link_libraries(cpt_meshing_node ${PROJECT_NAME})
 
+cs_add_executable(leica_scan_publisher_node
+        src/leica_scan_publisher_node.cc
+        src/leica_scan_publisher.cc)
+target_link_libraries(leica_scan_publisher_node ${PROJECT_NAME})
+
 ##########
 # EXPORT #
 ##########

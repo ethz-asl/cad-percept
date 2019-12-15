@@ -1,5 +1,6 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 #include <cpt_meshing/preprocessing/pre_processing_filter.h>
 
@@ -23,6 +24,15 @@ void PreProcessingFilter::run(cad_percept::meshing::InputPointCloud::ConstPtr in
 
   // estimate normals
   estimateNormals(output, normals);
+}
+
+void PreProcessingFilter::addNeighborhoodFilter(int meanK, double stddevmult){
+  std::shared_ptr<pcl::StatisticalOutlierRemoval<InputPoint>> filter =
+      std::make_shared<pcl::StatisticalOutlierRemoval<InputPoint>>();
+  filter->setMeanK(meanK);
+  filter->setStddevMulThresh(stddevmult);
+  filter_list_.push_back(filter);
+
 }
 
 void PreProcessingFilter::addBoxFilter(const std::string& axis, const double min,

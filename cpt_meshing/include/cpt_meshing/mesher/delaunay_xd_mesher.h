@@ -20,22 +20,30 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
     clock::time_point start = clock::now();
 
     // set up triangulation datastructure.
-    typename DelaunayTriangulation::Vertex_handle vh;
     DelaunayTriangulation dt;
 
+    int added = 0;
     // perform triangulation
     for (size_t i = 0; i < points_->size(); ++i) {
       // Create Point3 from pcl
       // Todo: Add PCL<->CGAL conversions to cgal_conversions
       typename DelaunayTriangulation::Point vertex(points_->at(i).x, points_->at(i).y,
                                                    points_->at(i).z);
-
+      typename DelaunayTriangulation::Vertex_handle vh;
       vh = dt.insert(vertex);
-      vh->info() = i;  // Assign index as info.
-    }
 
+   /*   if (vh->info() >= added) {
+        std::cout << *vh << " " << points_->at(i) << " " << vh->info() << std::endl;
+
+        vh->info() = added++;  // Assign index as info.
+      }*/
+    }
+    std::cout << added << std::endl;
+
+    dt.is_valid();
     // convert to SurfaceMesh
     output->erase_all();
+
     DelaunayXDToPolyhedron<cad_percept::cgal::Polyhedron::HalfedgeDS> converter(dt);
     output->delegate(converter);
     CGAL::set_halfedgeds_items_id(*output);  // fix ids
@@ -61,12 +69,15 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
 
     void operator()(HDS& hds) {
       size_t num_vertices = triangulation_.number_of_vertices();
+
       size_t num_facets = triangulation_.number_of_faces();
+      std::cout << "Total num = " << num_vertices << std::endl;
 
       //  Build a builder and begin construction
       CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
       B.begin_surface(num_vertices, num_facets);
 
+      int added =0;
       // add all vertices and check index
       for (typename DelaunayTriangulation::Finite_vertices_iterator vit =
                triangulation_.finite_vertices_begin();
@@ -78,15 +89,13 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
         double z = r_point.z();
 
         typename HDS::Vertex_handle vh_new = B.add_vertex(cgal::Point(x, y, z));
-        vh_new->id() = vit->info();
+        vh_new->id() = vit->info() = added++;
       }
-
-      uint cells, facets;
-
       // Iterate through all triangles and add them
       for (typename DelaunayTriangulation::Face_iterator fit = triangulation_.faces_begin();
            fit != triangulation_.faces_end(); ++fit) {
-        // Create new facet and add vertices
+
+          // Create new facet and add vertices
         B.begin_facet();
         B.add_vertex_to_facet(fit->vertex(0)->info());
         B.add_vertex_to_facet(fit->vertex(1)->info());
@@ -100,7 +109,7 @@ class DelaunayXDMesher : public AbstractSimpleMesher {
    private:
     const DelaunayTriangulation& triangulation_;
   };
-};
+};  // namespace meshing
 }  // namespace meshing
 }  // namespace cad_percept
 #endif  // CPT_MESHING_DELAUNAY_XD_MESHER_H
