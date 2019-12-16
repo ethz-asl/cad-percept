@@ -18,6 +18,11 @@ cs_add_library(${PROJECT_NAME}
         src/coordinates/uv_mapping.cc
         )
 
+cs_add_library(${PROJECT_NAME}_omav_planner
+        src/omav/surface_planner.cc
+        )
+target_link_libraries(${PROJECT_NAME}_omav_planner ${PROJECT_NAME})
+
 ##########
 # EXPORT #
 ##########
