@@ -23,6 +23,11 @@
     <depend>cgal_msgs</depend>
     <depend>cpt_utils</depend>
     <depend>cpt_collision_manifolds</depend>
+    <depend>cpt_planning</depend>
     <depend>eigen_catkin</depend>
     <depend>roscpp</depend>
+    <depend>tf_conversions</depend>
+    <depend>mav_msgs</depend>
+    <depend>visualization_msgs</depend>
+    <depend>mav_trajectory_generation_ros</depend>
 </package>

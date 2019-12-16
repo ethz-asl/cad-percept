@@ -181,11 +181,9 @@ void SurfacePlanner::setStaticFrames(const Eigen::Affine3d& T_B_E, const Eigen::
   T_W_M_ = T_W_M;
 }
 
-void SurfacePlanner::setDynamicFrames(const Eigen::Affine3d& T_W_B, const Eigen::Vector3d& v_W,
-                                      const Eigen::Vector3d& f_W) {
+void SurfacePlanner::setDynamicFrames(const Eigen::Affine3d& T_W_B, const Eigen::Vector3d& v_W) {
   T_W_B_ = T_W_B;
   v_W_ = v_W;
-  f_W_ = f_W;
 }
 
 }  // namespace planning

@@ -21,10 +21,10 @@ namespace planning {
 
 class SurfacePlanner {
  public:
-  void InterpolateOrientation(const Eigen::Quaterniond& start, const Eigen::Quaterniond& end,
+  void InterpolateOrientation(const Eigen::Quaterniond& start_W, const Eigen::Quaterniond& end_W,
                               const uint64_t n_steps, std::vector<Eigen::Quaterniond>* steps);
 
-  void planTrajectory(const Eigen::Affine3d& start, const Eigen::Affine3d& end,
+  void planTrajectory(const Eigen::Affine3d& start_W, const Eigen::Affine3d& end_W,
                       mav_msgs::EigenTrajectoryPoint::Vector* trajectory_sampled);
 
   void planForce(const Eigen::Vector3d& f_w, const double& duration, const double& ramp_ratio,
@@ -35,17 +35,21 @@ class SurfacePlanner {
 
   bool getContactOrientation(const Eigen::Vector3d& normal_W, Eigen::Matrix3d* r_W_E);
   void setStaticFrames(const Eigen::Affine3d& T_B_E, const Eigen::Affine3d& T_W_M);
-  void setDynamicFrames(const Eigen::Affine3d& T_W_B, const Eigen::Vector3d& v_W,
-                        const Eigen::Vector3d& f_W);
+  void setDynamicFrames(const Eigen::Affine3d& T_W_B,
+                        const Eigen::Vector3d& v_W = Eigen::Vector3d::Zero());
+  void setLimits(const double v_max, const double a_max) {
+    v_max_ = v_max;
+    a_max_ = a_max;
+  }
 
  protected:
-  double sampling_interval_;
-  double v_max_, a_max_;
-  Eigen::Affine3d T_B_E_;       // endeffector to body transform. assumed static.
-  Eigen::Affine3d T_W_M_;       // map to world. assumed static.
-  Eigen::Affine3d T_W_B_;       // world to body, assumed dynamic.
-  Eigen::Vector3d v_W_, f_W_;   // current velocity and force in body frame.
-  cgal::MeshModel::Ptr model_;  // mesh model.
+  double sampling_interval_{0.01};
+  double v_max_{0.1}, a_max_{0.1};
+  Eigen::Affine3d T_B_E_{Eigen::Affine3d::Identity()};  // endeffector to body transform
+  Eigen::Affine3d T_W_M_{Eigen::Affine3d::Identity()};  // map to world. assumed static.
+  Eigen::Affine3d T_W_B_{Eigen::Affine3d::Identity()};  // world to body, assumed dynamic.
+  Eigen::Vector3d v_W_{Eigen::Vector3d::Zero()};        // current velocity
+  cgal::MeshModel::Ptr model_;                          // mesh model.
 };
 
 }  // namespace planning

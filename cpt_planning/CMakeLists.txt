@@ -6,22 +6,18 @@ catkin_simple(ALL_DEPS_REQUIRED)
 find_package(CGAL QUIET COMPONENTS Core)
 include(${CGAL_USE_FILE})
 
-add_definitions(-std=c++11 -Wall -Wextra)
+add_definitions(-std=c++17 -Wall -Wextra)
 
 #############
 # LIBRARIES #
 #############
 cs_add_library(${PROJECT_NAME}
-        src/test.cc
-        src/coordinates/triangle_coords.cc
-        src/coordinates/face_coords.cc
-        src/coordinates/uv_mapping.cc
-        )
-
-cs_add_library(${PROJECT_NAME}_omav_planner
+        #src/test.cc
+        #src/coordinates/triangle_coords.cc
+        #src/coordinates/face_coords.cc
+        #src/coordinates/uv_mapping.cc
         src/omav/surface_planner.cc
         )
-target_link_libraries(${PROJECT_NAME}_omav_planner ${PROJECT_NAME})
 
 ##########
 # EXPORT #
