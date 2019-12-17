@@ -21,6 +21,9 @@ namespace planning {
 
 class SurfacePlanner {
  public:
+  void goToClosestPointOnMesh(const Eigen::Vector3d& position, Eigen::Vector3d* p_W,
+                              Eigen::Vector3d* p_W_normal);
+
   void InterpolateOrientation(const Eigen::Quaterniond& start_W, const Eigen::Quaterniond& end_W,
                               const uint64_t n_steps, std::vector<Eigen::Quaterniond>* steps);
 
@@ -29,6 +32,9 @@ class SurfacePlanner {
 
   void planForce(const Eigen::Vector3d& f_w, const double& duration, const double& ramp_ratio,
                  mav_msgs::EigenTrajectoryPoint::Vector* trajectory_sampled);
+
+  void getT_W_Bintermediate(const Eigen::Vector3d& p_W, const Eigen::Vector3d& p_W_normal,
+                            Eigen::Affine3d* T_W_B_contact);
 
   void getT_W_Bcontact(const Eigen::Vector3d& p_W, const Eigen::Vector3d& p_W_normal,
                        Eigen::Affine3d* T_W_B_contact);
@@ -41,6 +47,8 @@ class SurfacePlanner {
     v_max_ = v_max;
     a_max_ = a_max;
   }
+
+  void setMesh(cgal::MeshModel::Ptr model) { model_ = model; }
 
  protected:
   double sampling_interval_{0.01};

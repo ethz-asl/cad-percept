@@ -2,6 +2,21 @@
 namespace cad_percept {
 namespace planning {
 
+void SurfacePlanner::goToClosestPointOnMesh(const Eigen::Vector3d& position_M, Eigen::Vector3d* p_W,
+                                            Eigen::Vector3d* p_W_normal) {
+  cgal::PointAndPrimitiveId point =
+      model_->getClosestTriangle(position_M.x(), position_M.y(), position_M.z());
+  ROS_WARN("Got closest triangle");
+  cgal::Vector normal_cgal = model_->getNormal(point);
+  ROS_WARN("Got normal");
+  Eigen::Vector3d p_M, p_M_normal;
+  p_M << point.first.x(), point.first.y(), point.first.z();
+  p_M_normal << normal_cgal.x(), normal_cgal.y(), normal_cgal.z();
+
+  *p_W = T_W_M_ * p_M;
+  *p_W_normal = (T_W_M_.rotation() * p_M_normal).normalized();
+}
+
 void SurfacePlanner::InterpolateOrientation(const Eigen::Quaterniond& start,
                                             const Eigen::Quaterniond& end, const uint64_t n_steps,
                                             std::vector<Eigen::Quaterniond>* steps) {
@@ -98,6 +113,9 @@ void SurfacePlanner::planForce(const Eigen::Vector3d& f_w, const double& duratio
 
   // get copy of last waypoint
   auto last_waypoint(trajectory_sampled->back());
+  Eigen::Affine3d last_T_W_B(last_waypoint.orientation_W_B);
+  last_T_W_B.translation() = last_waypoint.position_W;
+
   int64_t curr_end_time = last_waypoint.time_from_start_ns;
   int64_t timestep = static_cast<int64_t>(1E9 * sampling_interval_);
 
@@ -108,6 +126,11 @@ void SurfacePlanner::planForce(const Eigen::Vector3d& f_w, const double& duratio
     force_waypoint.time_from_start_ns = (curr_end_time + timestep);
     curr_end_time += timestep;
     trajectory_sampled->push_back(force_waypoint);
+
+    if (i % 10) {
+      ROS_WARN_STREAM(i << " w: " << force_waypoint.force_W << ", B"
+                        << last_T_W_B.rotation().transpose() * force_waypoint.force_W);
+    }
   }
 
   // sinusoidal interpolation during ramp_ratio % of time
@@ -117,6 +140,10 @@ void SurfacePlanner::planForce(const Eigen::Vector3d& f_w, const double& duratio
     force_waypoint.time_from_start_ns = (curr_end_time + timestep);
     curr_end_time += timestep;
     trajectory_sampled->push_back(force_waypoint);
+    if (i % 10) {
+      ROS_WARN_STREAM(i << " w: " << force_waypoint.force_W << ", B"
+                        << last_T_W_B.rotation().transpose() * force_waypoint.force_W);
+    }
   }
 
   // reverse interpolation
@@ -126,8 +153,25 @@ void SurfacePlanner::planForce(const Eigen::Vector3d& f_w, const double& duratio
     force_waypoint.time_from_start_ns = (curr_end_time + timestep);
     curr_end_time += timestep;
     trajectory_sampled->push_back(force_waypoint);
+    if (i % 10) {
+      ROS_WARN_STREAM(i << " w: " << force_waypoint.force_W << ", B"
+                        << last_T_W_B.rotation().transpose() * force_waypoint.force_W);
+    }
   }
   // get last position in trajectory
+}
+
+void SurfacePlanner::getT_W_Bintermediate(const Eigen::Vector3d& p_W,
+                                          const Eigen::Vector3d& p_W_normal,
+                                          Eigen::Affine3d* T_W_B_contact) {
+  Eigen::Matrix3d r_W_E;
+  getContactOrientation(p_W_normal, &r_W_E);
+
+  Eigen::Affine3d T_W_E_contact;
+  T_W_E_contact.linear() = r_W_E;
+  T_W_E_contact.translation() = p_W + p_W_normal * 0.75;
+
+  *T_W_B_contact = T_W_E_contact * T_B_E_.inverse();
 }
 
 void SurfacePlanner::getT_W_Bcontact(const Eigen::Vector3d& p_W, const Eigen::Vector3d& p_W_normal,

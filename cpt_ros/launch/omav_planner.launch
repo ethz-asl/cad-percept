@@ -3,7 +3,7 @@
 <group ns="ouzel">
     <param name="map_frame_name" value="world" />
     <param name="body_frame_name" value="ouzel/base_link" />
-    <param name="endeffector_frame_name" value="ouzel/tool" />
+    <param name="endeffector_frame_name" value="ouzel/tool_rotated" />
     <node name="omav_touch_planner" pkg="cpt_ros"
           type="omav_touch_planner_node" output="screen">
 

@@ -2,7 +2,10 @@
 #ifndef CPT_ROS_INCLUDE_CPT_ROS_NODES_OMAV_TOUCH_PLANNER_H_
 #define CPT_ROS_INCLUDE_CPT_ROS_NODES_OMAV_TOUCH_PLANNER_H_
 
+#include <cpt_planning/coordinates/face_coords.h>
 #include <cpt_planning/omav/surface_planner.h>
+#include <mav_msgs/conversions.h>
+#include <mav_trajectory_generation_ros/ros_visualization.h>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
@@ -10,9 +13,6 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
-#include <mav_trajectory_generation_ros/ros_visualization.h>
-#include <cpt_planning/coordinates/face_coords.h>
-#include <mav_msgs/conversions.h>
 
 namespace cad_percept {
 
@@ -24,10 +24,9 @@ class OmavTouchPlanner {
     body_frame_name_ = nh_.param<std::string>("body_frame_name", "body");
     endeffector_frame_name_ = nh_.param<std::string>("endeffector_frame_name", "tool");
     map_frame_name_ = nh_.param<std::string>("map_frame_name", "map");
-    pub_markers_ =
-        nh.advertise<visualization_msgs::MarkerArray>("trajectory_markers", 1);
-    pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>(
-        "command/trajectory", 1);
+    pub_markers_ = nh.advertise<visualization_msgs::MarkerArray>("trajectory_markers", 1);
+    pub_trajectory_ =
+        nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 1);
 
     double v_max = nh_.param<double>("v_max", 1.0);
     double a_max = nh_.param<double>("a_max", 1.0);
@@ -39,45 +38,55 @@ class OmavTouchPlanner {
     getStaticTransform(body_frame_name_, endeffector_frame_name_, &T_B_E);
     planner_.setStaticFrames(T_B_E, T_W_M);
 
-
     ROS_INFO_STREAM("Wait");
     ros::Duration(3.0).sleep();
     ROS_INFO_STREAM("publish");
     test();
   }
 
-  void test(){
+  void test() {
     Eigen::Affine3d T_W_B;
     getStaticTransform(world_frame_name_, body_frame_name_, &T_W_B);
     planner_.setDynamicFrames(T_W_B);
 
-    Eigen::Affine3d T_W_B_contact;
+    ROS_INFO_STREAM("load mesh");
+    cgal::MeshModel::Ptr model;
+    std::string path =
+        "/home/mpantic/workspace/main_ws/src/mav_tools/mav_description/meshes/wall_sane.off";
+    cgal::MeshModel::create(path, &model);
+    planner_.setMesh(model);
+    ROS_INFO_STREAM("loaded mesh");
+    Eigen::Vector3d pos_map;
+    pos_map << 1.48606, 0.77216, 0.668549;
+    Eigen::Affine3d T_W_B_contact, T_W_B_intermediate;
     Eigen::Vector3d normal_W, position_W;
-    normal_W << 1.0, 0.0, 0.0;
-    position_W << 1.0, 1.0, 1.0;
-    Eigen::Vector3d force_W = normal_W*5;
+
+    planner_.goToClosestPointOnMesh(pos_map, &position_W, &normal_W);
+    Eigen::Vector3d force_W = -normal_W*2.0;
+    ROS_INFO_STREAM("got point on mesh " << position_W << " " << normal_W);
+    planner_.getT_W_Bintermediate(position_W, normal_W, &T_W_B_intermediate);
     planner_.getT_W_Bcontact(position_W, normal_W, &T_W_B_contact);
 
     mav_msgs::EigenTrajectoryPoint::Vector trajectory;
-    planner_.planTrajectory(T_W_B, T_W_B_contact, &trajectory);
+    planner_.planTrajectory(T_W_B, T_W_B_intermediate, &trajectory);
+    planner_.planTrajectory(T_W_B_intermediate, T_W_B_contact, &trajectory);
     planner_.planForce(force_W, 5.0, 0.15, &trajectory);
-    planner_.planTrajectory(T_W_B_contact, T_W_B, &trajectory);
+    planner_.planTrajectory(T_W_B_contact, T_W_B_intermediate, &trajectory);
+    planner_.planTrajectory(T_W_B_intermediate, T_W_B, &trajectory);
     visualization_msgs::MarkerArray markers;
-    double distance = 0.0; // Distance by which to seperate additional markers.
+    double distance = 0.0;  // Distance by which to seperate additional markers.
     // Set 0.0 to disable.
 
     std::string frame_id = world_frame_name_;
-    mav_trajectory_generation::drawMavSampledTrajectory(
-        trajectory, distance, frame_id, &markers);
+    mav_trajectory_generation::drawMavSampledTrajectory(trajectory, distance, frame_id, &markers);
 
     pub_markers_.publish(markers);
 
-      trajectory_msgs::MultiDOFJointTrajectory msg;
+    trajectory_msgs::MultiDOFJointTrajectory msg;
     mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory, &msg);
     msg.header.frame_id = world_frame_name_;
     msg.header.stamp = ros::Time::now();
     pub_trajectory_.publish(msg);
-
   }
 
   void getStaticTransform(const std::string& frame_A, const std::string& frame_B,
