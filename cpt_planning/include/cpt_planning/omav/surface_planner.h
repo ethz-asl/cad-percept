@@ -21,8 +21,11 @@ namespace planning {
 
 class SurfacePlanner {
  public:
-  void goToClosestPointOnMesh(const Eigen::Vector3d& position, Eigen::Vector3d* p_W,
-                              Eigen::Vector3d* p_W_normal);
+  void planFullContact(const Eigen::Vector3d& p_M, double force,
+                       mav_msgs::EigenTrajectoryPoint::Vector* trajectory_sampled);
+
+  void getClosestPointOnMesh(const Eigen::Vector3d& position, Eigen::Vector3d* p_W,
+                             Eigen::Vector3d* p_W_normal);
 
   void InterpolateOrientation(const Eigen::Quaterniond& start_W, const Eigen::Quaterniond& end_W,
                               const uint64_t n_steps, std::vector<Eigen::Quaterniond>* steps);

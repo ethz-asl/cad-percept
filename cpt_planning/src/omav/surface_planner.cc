@@ -2,7 +2,7 @@
 namespace cad_percept {
 namespace planning {
 
-void SurfacePlanner::goToClosestPointOnMesh(const Eigen::Vector3d& position_M, Eigen::Vector3d* p_W,
+void SurfacePlanner::getClosestPointOnMesh(const Eigen::Vector3d& position_M, Eigen::Vector3d* p_W,
                                             Eigen::Vector3d* p_W_normal) {
   cgal::PointAndPrimitiveId point =
       model_->getClosestTriangle(position_M.x(), position_M.y(), position_M.z());
@@ -15,6 +15,25 @@ void SurfacePlanner::goToClosestPointOnMesh(const Eigen::Vector3d& position_M, E
 
   *p_W = T_W_M_ * p_M;
   *p_W_normal = (T_W_M_.rotation() * p_M_normal).normalized();
+}
+
+void SurfacePlanner::planFullContact(const Eigen::Vector3d& p_W, double force,
+                     mav_msgs::EigenTrajectoryPoint::Vector* trajectory_sampled) {
+  // get normal,force and position on mesh
+  Eigen::Affine3d T_W_B_contact, T_W_B_intermediate;
+  Eigen::Vector3d normal_W, position_W;
+  getClosestPointOnMesh(p_W, &position_W, &normal_W);
+  Eigen::Vector3d force_W = -normal_W * force;
+
+  // get intermediate points
+  getT_W_Bintermediate(position_W, normal_W, &T_W_B_intermediate);
+  getT_W_Bcontact(position_W, normal_W, &T_W_B_contact);
+
+  // plan engage, contact and retract
+  planTrajectory(T_W_B_, T_W_B_intermediate, trajectory_sampled);
+  planTrajectory(T_W_B_intermediate, T_W_B_contact, trajectory_sampled);
+  planForce(force_W, 5.0, 0.15, trajectory_sampled);
+  planTrajectory(T_W_B_contact, T_W_B_intermediate, trajectory_sampled);
 }
 
 void SurfacePlanner::InterpolateOrientation(const Eigen::Quaterniond& start,
@@ -183,7 +202,7 @@ void SurfacePlanner::getT_W_Bcontact(const Eigen::Vector3d& p_W, const Eigen::Ve
   // get resulting Body pose in world frame
   Eigen::Affine3d T_W_E_contact;
   T_W_E_contact.linear() = r_W_E;
-  T_W_E_contact.translation() = p_W;
+  T_W_E_contact.translation() = p_W + p_W_normal * 0.01;  // leave 2 cm distance
 
   *T_W_B_contact = T_W_E_contact * T_B_E_.inverse();
 }
