@@ -13,6 +13,8 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
+#include <cgal_msgs/TriangleMeshStamped.h>
+#include <cgal_conversions/mesh_conversions.h>
 
 #include <random>
 
@@ -43,9 +45,11 @@ class OmavTouchPlanner {
     // Set up mesh
     ROS_INFO_STREAM("load mesh");
     cgal::MeshModel::Ptr model;
-    std::string path =
-        "/home/mpantic/workspace/main_ws/src/mav_tools/mav_description/meshes/wall_sane.off";
-    cgal::MeshModel::create(path, &model);
+    std::string path = nh_private_.param<std::string>("mesh_path", "");
+    if (!cgal::MeshModel::create(path, &model)) {
+      ROS_ERROR_STREAM("INVALID MESH. EXITING");
+      exit(1);
+    }
     planner_.setMesh(model);
 
     std::vector<double> touch_position =
@@ -56,15 +60,20 @@ class OmavTouchPlanner {
 
     std::vector<double> touch_random =
         nh_private_.param<std::vector<double>>("touch_random_bounds", {0.0, 0.0, 0.0});
-    touch_random_ << touch_random[0], touch_random[1],
-        touch_random[2];
+    touch_random_ << touch_random[0], touch_random[1], touch_random[2];
+
+    pub_mesh_ = nh_.advertise<cgal_msgs::TriangleMeshStamped>("mesh", 1, true);
+    cgal_msgs::TriangleMeshStamped msg;
+    msg.header.frame_id = map_frame_name_;
+    cgal::Polyhedron mesh_poly(model->getMesh());
+    cgal::triangleMeshToMsg(mesh_poly, &msg.mesh);
+    pub_mesh_.publish(msg);
+
+
 
     ROS_INFO_STREAM("Touch position: " << nominal_touch_position_);
     ROS_INFO_STREAM("Touch random bounds: " << touch_random_);
     touch_service_ = nh_.advertiseService("touch", &OmavTouchPlanner::touch, this);
-    ROS_INFO_STREAM("Wait");
-    ros::Duration(3.0).sleep();
-    ROS_INFO_STREAM("publish");
   }
 
   bool touch(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res) {
@@ -92,13 +101,21 @@ class OmavTouchPlanner {
       pos_map.z() += dis_z(gen);
     }
     mav_msgs::EigenTrajectoryPoint::Vector trajectory;
-    planner_.planFullContact(pos_map, 2.0, &trajectory);
+    Eigen::Affine3d contact_pos_w;
+    planner_.planFullContact(pos_map, 2.0, &trajectory, &contact_pos_w);
 
     // send markers
     visualization_msgs::MarkerArray markers;
     std::string frame_id = world_frame_name_;
-    mav_trajectory_generation::drawMavSampledTrajectory(trajectory, 0.0, frame_id, &markers);
+    mav_trajectory_generation::drawMavSampledTrajectorybyTime(trajectory, 0.1, frame_id, &markers);
     pub_markers_.publish(markers);
+
+    // send tf for touch position
+    tf::StampedTransform tf_W_touch;
+    tf::transformEigenToTF(contact_pos_w, tf_W_touch);
+    tf_W_touch.frame_id_ = world_frame_name_;
+    tf_W_touch.child_frame_id_ = endeffector_frame_name_ + "_touch";
+    tf_broadcast_.sendTransform(tf_W_touch);
 
     // send trajectory
     trajectory_msgs::MultiDOFJointTrajectory msg;
@@ -141,12 +158,14 @@ class OmavTouchPlanner {
   // Ros stuff
   planning::SurfacePlanner planner_;
   tf::TransformListener tf_listener_;
+  tf::TransformBroadcaster tf_broadcast_;
 
   ros::ServiceServer touch_service_;
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
   ros::Publisher pub_markers_;
   ros::Publisher pub_trajectory_;
+  ros::Publisher pub_mesh_;
 };
 }  // namespace cad_percept
 

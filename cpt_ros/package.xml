@@ -20,6 +20,7 @@
     <depend>glog_catkin</depend>
     <depend>cgal_catkin</depend>
     <depend>cgal_definitions</depend>
+    <depend>cgal_conversions</depend>
     <depend>cgal_msgs</depend>
     <depend>cpt_utils</depend>
     <depend>cpt_collision_manifolds</depend>

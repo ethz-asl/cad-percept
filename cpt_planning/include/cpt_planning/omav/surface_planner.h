@@ -22,7 +22,8 @@ namespace planning {
 class SurfacePlanner {
  public:
   void planFullContact(const Eigen::Vector3d& p_M, double force,
-                       mav_msgs::EigenTrajectoryPoint::Vector* trajectory_sampled);
+                       mav_msgs::EigenTrajectoryPoint::Vector* trajectory_sampled,
+                       Eigen::Affine3d* contact_pos_w = nullptr);
 
   void getClosestPointOnMesh(const Eigen::Vector3d& position, Eigen::Vector3d* p_W,
                              Eigen::Vector3d* p_W_normal);
