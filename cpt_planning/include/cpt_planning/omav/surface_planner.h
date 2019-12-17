@@ -25,7 +25,7 @@ class SurfacePlanner {
                        mav_msgs::EigenTrajectoryPoint::Vector* trajectory_sampled,
                        Eigen::Affine3d* contact_pos_w = nullptr);
 
-  void getClosestPointOnMesh(const Eigen::Vector3d& position, Eigen::Vector3d* p_W,
+  void getClosestPointOnMesh(const Eigen::Vector3d& p_S, Eigen::Vector3d* p_W,
                              Eigen::Vector3d* p_W_normal);
 
   void InterpolateOrientation(const Eigen::Quaterniond& start_W, const Eigen::Quaterniond& end_W,
@@ -44,7 +44,7 @@ class SurfacePlanner {
                        Eigen::Affine3d* T_W_B_contact);
 
   bool getContactOrientation(const Eigen::Vector3d& normal_W, Eigen::Matrix3d* r_W_E);
-  void setStaticFrames(const Eigen::Affine3d& T_B_E, const Eigen::Affine3d& T_W_M);
+  void setStaticFrames(const Eigen::Affine3d& T_B_E, const Eigen::Affine3d& T_W_M,  const Eigen::Affine3d& T_M_S);
   void setDynamicFrames(const Eigen::Affine3d& T_W_B,
                         const Eigen::Vector3d& v_W = Eigen::Vector3d::Zero());
   void setLimits(const double v_max, const double a_max) {
@@ -57,6 +57,7 @@ class SurfacePlanner {
  protected:
   double sampling_interval_{0.01};
   double v_max_{0.1}, a_max_{0.1};
+  Eigen::Affine3d T_M_S_{Eigen::Affine3d::Identity()};  // selection frame for pointssetStaticFrames
   Eigen::Affine3d T_B_E_{Eigen::Affine3d::Identity()};  // endeffector to body transform
   Eigen::Affine3d T_W_M_{Eigen::Affine3d::Identity()};  // map to world. assumed static.
   Eigen::Affine3d T_W_B_{Eigen::Affine3d::Identity()};  // world to body, assumed dynamic.

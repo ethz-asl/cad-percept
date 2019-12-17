@@ -2,10 +2,14 @@
 namespace cad_percept {
 namespace planning {
 
-void SurfacePlanner::getClosestPointOnMesh(const Eigen::Vector3d& position_M, Eigen::Vector3d* p_W,
+void SurfacePlanner::getClosestPointOnMesh(const Eigen::Vector3d& p_S, Eigen::Vector3d* p_W,
                                            Eigen::Vector3d* p_W_normal) {
+
+  // Convert from selection frame to map frame
+  Eigen::Vector3d p_M_desired = T_M_S_ * p_S;
+
   cgal::PointAndPrimitiveId point =
-      model_->getClosestTriangle(position_M.x(), position_M.y(), position_M.z());
+      model_->getClosestTriangle(p_M_desired.x(), p_M_desired.y(), p_M_desired.z());
   ROS_WARN("Got closest triangle");
   cgal::Vector normal_cgal = model_->getNormal(point);
   ROS_WARN("Got normal");
@@ -233,9 +237,10 @@ bool SurfacePlanner::getContactOrientation(const Eigen::Vector3d& normal_W,
   return true;
 }
 
-void SurfacePlanner::setStaticFrames(const Eigen::Affine3d& T_B_E, const Eigen::Affine3d& T_W_M) {
+void SurfacePlanner::setStaticFrames(const Eigen::Affine3d& T_B_E, const Eigen::Affine3d& T_W_M, const Eigen::Affine3d& T_M_S) {
   T_B_E_ = T_B_E;
   T_W_M_ = T_W_M;
+  T_M_S_ = T_M_S;
 }
 
 void SurfacePlanner::setDynamicFrames(const Eigen::Affine3d& T_W_B, const Eigen::Vector3d& v_W) {

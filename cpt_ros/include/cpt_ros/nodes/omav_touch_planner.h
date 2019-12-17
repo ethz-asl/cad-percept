@@ -25,6 +25,7 @@ class OmavTouchPlanner {
   OmavTouchPlanner(ros::NodeHandle nh, ros::NodeHandle nh_private)
       : nh_(nh), nh_private_(nh_private) {
     world_frame_name_ = nh_private_.param<std::string>("world_frame_name", "world");
+    selection_frame_name_ = nh_private_.param<std::string>("selection_frame_name", "map_select");
     body_frame_name_ = nh_private_.param<std::string>("body_frame_name", "body");
     endeffector_frame_name_ = nh_private_.param<std::string>("endeffector_frame_name", "tool");
     map_frame_name_ = nh_private_.param<std::string>("map_frame_name", "map");
@@ -37,10 +38,12 @@ class OmavTouchPlanner {
     planner_.setLimits(v_max, a_max);
 
     // get static transforms
-    Eigen::Affine3d T_W_M, T_B_E;
+    Eigen::Affine3d T_W_M, T_B_E, T_M_S;
     getStaticTransform(world_frame_name_, map_frame_name_, &T_W_M);
     getStaticTransform(body_frame_name_, endeffector_frame_name_, &T_B_E);
-    planner_.setStaticFrames(T_B_E, T_W_M);
+    getStaticTransform(map_frame_name_, selection_frame_name_, &T_M_S);
+
+    planner_.setStaticFrames(T_B_E, T_W_M, T_M_S);
 
     // Set up mesh
     ROS_INFO_STREAM("load mesh");
@@ -68,7 +71,6 @@ class OmavTouchPlanner {
     cgal::Polyhedron mesh_poly(model->getMesh());
     cgal::triangleMeshToMsg(mesh_poly, &msg.mesh);
     pub_mesh_.publish(msg);
-
 
 
     ROS_INFO_STREAM("Touch position: " << nominal_touch_position_);
@@ -150,6 +152,7 @@ class OmavTouchPlanner {
   Eigen::Vector3d nominal_touch_position_;
   Eigen::Vector3d touch_random_;
 
+  std::string selection_frame_name_;    // S frame
   std::string world_frame_name_;        // W frame
   std::string body_frame_name_;         // B frame
   std::string endeffector_frame_name_;  // E frame
@@ -166,6 +169,7 @@ class OmavTouchPlanner {
   ros::Publisher pub_markers_;
   ros::Publisher pub_trajectory_;
   ros::Publisher pub_mesh_;
+  ros::Publisher pub_evaluate_;
 };
 }  // namespace cad_percept
 
