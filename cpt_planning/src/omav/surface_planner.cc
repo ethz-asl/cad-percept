@@ -42,7 +42,7 @@ void SurfacePlanner::planFullContact(const Eigen::Vector3d& p_W, double force,
   // plan engage, contact and retract
   planTrajectory(T_W_B_, T_W_B_intermediate, trajectory_sampled);
   planTrajectory(T_W_B_intermediate, T_W_B_contact, trajectory_sampled);
-  planForce(force_W, 5.0, 0.15, trajectory_sampled);
+  planForce(force_W, 5.0, 0.075, trajectory_sampled);
   planTrajectory(T_W_B_contact, T_W_B_intermediate, trajectory_sampled);
 }
 

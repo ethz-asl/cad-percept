@@ -2,6 +2,8 @@
 #ifndef CPT_ROS_INCLUDE_CPT_ROS_NODES_OMAV_TOUCH_PLANNER_H_
 #define CPT_ROS_INCLUDE_CPT_ROS_NODES_OMAV_TOUCH_PLANNER_H_
 
+#include <cgal_conversions/mesh_conversions.h>
+#include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_planning/coordinates/face_coords.h>
 #include <cpt_planning/omav/surface_planner.h>
 #include <mav_msgs/conversions.h>
@@ -13,8 +15,6 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
-#include <cgal_msgs/TriangleMeshStamped.h>
-#include <cgal_conversions/mesh_conversions.h>
 
 #include <random>
 
@@ -35,6 +35,7 @@ class OmavTouchPlanner {
 
     double v_max = nh_private_.param<double>("v_max", 1.0);
     double a_max = nh_private_.param<double>("a_max", 1.0);
+    force_ = nh_private_.param<double>("contact_force", 10.0);
     planner_.setLimits(v_max, a_max);
 
     // get static transforms
@@ -72,7 +73,6 @@ class OmavTouchPlanner {
     cgal::triangleMeshToMsg(mesh_poly, &msg.mesh);
     pub_mesh_.publish(msg);
 
-
     ROS_INFO_STREAM("Touch position: " << nominal_touch_position_);
     ROS_INFO_STREAM("Touch random bounds: " << touch_random_);
     touch_service_ = nh_.advertiseService("touch", &OmavTouchPlanner::touch, this);
@@ -104,7 +104,8 @@ class OmavTouchPlanner {
     }
     mav_msgs::EigenTrajectoryPoint::Vector trajectory;
     Eigen::Affine3d contact_pos_w;
-    planner_.planFullContact(pos_map, 2.0, &trajectory, &contact_pos_w);
+    ROS_INFO_STREAM("Force = " << force_);
+    planner_.planFullContact(pos_map, force_, &trajectory, &contact_pos_w);
 
     // send markers
     visualization_msgs::MarkerArray markers;
@@ -149,6 +150,7 @@ class OmavTouchPlanner {
   }
 
  private:
+  double force_;
   Eigen::Vector3d nominal_touch_position_;
   Eigen::Vector3d touch_random_;
 
