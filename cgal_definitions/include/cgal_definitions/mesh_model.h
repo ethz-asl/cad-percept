@@ -64,7 +64,7 @@ class MeshModel {
    * Return mesh
    */
   Polyhedron getMesh() const;
-
+  Polyhedron& getMeshRef();
   PolyhedronPtr getMeshPtr();
 
   /**

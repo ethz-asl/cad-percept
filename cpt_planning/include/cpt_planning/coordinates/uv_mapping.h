@@ -1,5 +1,6 @@
 #ifndef CPT_PLANNING_UV_MAPPING_H_
 #define CPT_PLANNING_UV_MAPPING_H_
+#include <CGAL/Surface_mesh_parameterization/parameterize.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cpt_planning/coordinates/face_coords.h>
@@ -15,42 +16,31 @@ class UVMapping {
   // UV mapping
   typedef CGAL::Unique_hash_map<cgal::face_descriptor, cgal::face_descriptor> FaceHashMap;
   typedef CGAL::Unique_hash_map<cgal::vertex_descriptor, cgal::Point_2> UVVertexMap;
-  typedef boost::associative_property_map<FaceHashMap> UVPropertyMap;
+  typedef boost::associative_property_map<UVVertexMap> UVPropertyMap;
 
   /*
    * Internal class that handles build up of the flattened coordinate representation.
    */
   class CoordinateMeshBuilder : public CGAL::Modifier_base<cgal::HalfedgeDS> {
    public:
-    CoordinateMeshBuilder(cgal::PolyhedronPtr mesh, UVVertexMap &vertexmap)
+    CoordinateMeshBuilder(cgal::Polyhedron &mesh, UVVertexMap &vertexmap)
         : vertexmap_(vertexmap), mesh_(mesh) {}
 
     void operator()(cgal::HalfedgeDS &hds);
 
    protected:
-    cgal::PolyhedronPtr mesh_;
+    cgal::Polyhedron &mesh_;
     UVVertexMap &vertexmap_;
   };
 
  public:
-  void build(cgal::PolyhedronPtr mesh) {
-    CoordinateMeshBuilder builder(mesh_3d_->getMeshPtr(), vertex_map_);
-    cgal::PolyhedronPtr flat_mesh = std::make_shared<cgal::Polyhedron>();
-    flat_mesh->delegate(builder);
-
-    mesh_2d_ = std::make_shared<cgal::MeshModel>(*flat_mesh);
-
-    // create double-mapping.
-    // first from 2d to 3d
-    map_2d_to_3d_.insert(mesh_2d_->getMeshPtr()->facets_begin(),
-                         mesh_2d_->getMeshPtr()->facets_end(),
-                         mesh_3d_->getMeshPtr()->facets_begin());
-
-    // then from 3d to 2d
-    map_3d_to_2d_.insert(mesh_3d_->getMeshPtr()->facets_begin(),
-                         mesh_3d_->getMeshPtr()->facets_end(),
-                         mesh_2d_->getMeshPtr()->facets_begin());
+  UVMapping(cgal::MeshModel::Ptr mesh3d) : vertex_map_(), uv_pmap_(vertex_map_), mesh_3d_(mesh3d) {
+    createUVParametrization();
+    createMappings();
   }
+
+  void createUVParametrization();
+  void createMappings();
 
   std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector3In);
   std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector2In);
@@ -65,10 +55,11 @@ class UVMapping {
 
   FaceCoords3d to3D(const FaceCoords2d &coords2d);
 
- private:
+ public:
   FaceHashMap map_2d_to_3d_;
   FaceHashMap map_3d_to_2d_;
   UVVertexMap vertex_map_;
+  UVPropertyMap uv_pmap_;
   cgal::MeshModel::Ptr mesh_2d_;
   cgal::MeshModel::Ptr mesh_3d_;
 };
