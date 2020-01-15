@@ -45,8 +45,18 @@ class FaceCoords : public TriangleCoords<N> {
   inline FaceCoords(cgal::face_descriptor face, const cgal::Polyhedron& mesh)
       : TriangleCoords<N>(FaceCoords<N>::staticInitializer(face, mesh)), face_(face) {}
 
- public:
   inline cgal::face_descriptor getFaceDescriptor() const { return face_; }
+
+  TriangleCoords<2> mapVertices(
+      const CGAL::Unique_hash_map<cgal::vertex_descriptor, cgal::Point_2>& map) {
+    // get 2d coordinates for each vertex.
+    cgal::Polyhedron::Halfedge_around_facet_circulator it = face_->facet_begin();
+    cgal::VectorIn<2> a = map[it++->vertex()];
+    cgal::VectorIn<2> b = map[it++->vertex()];
+    cgal::VectorIn<2> c = map[it++->vertex()];
+
+    return TriangleCoords<2>(a, b, c);
+  }
 
  private:
   const cgal::face_descriptor face_;

@@ -34,12 +34,15 @@ class UVMapping {
   };
 
  public:
-  UVMapping(cgal::MeshModel::Ptr mesh3d) : vertex_map_(), uv_pmap_(vertex_map_), mesh_3d_(mesh3d) {
+  UVMapping(cgal::MeshModel::Ptr mesh3d, Eigen::Vector3d zero_point)
+      : vertex_map_(), uv_pmap_(vertex_map_), mesh_3d_(mesh3d), zero_point_(zero_point) {
     createUVParametrization();
+    determineTransformation();
     createMappings();
   }
 
   void createUVParametrization();
+  void determineTransformation();
   void createMappings();
 
   std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector3In);
@@ -62,6 +65,9 @@ class UVMapping {
   UVPropertyMap uv_pmap_;
   cgal::MeshModel::Ptr mesh_2d_;
   cgal::MeshModel::Ptr mesh_3d_;
+
+  Eigen::Vector3d zero_point_;
+  Eigen::Affine3d uv_transform_{Eigen::Affine3d::Identity()};
 };
 
 }  // namespace planning

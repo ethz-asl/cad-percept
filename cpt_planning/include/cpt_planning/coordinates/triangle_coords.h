@@ -21,7 +21,7 @@ class TriangleCoords {
   static_assert(N == 2 || N == 3, "TRIANGLECOORDS ARE ONLY IMPLEMENTED FOR 2D/3D TYPES.");
 
  public:
-  explicit TriangleCoords(cgal::Vector3In& a1, cgal::Vector3In& a2, cgal::Vector3In& a3)
+  explicit TriangleCoords(cgal::VectorIn<N>& a1, cgal::VectorIn<N>& a2, cgal::VectorIn<N>& a3)
       : a1_(a1), a2_(a2), a3_(a3) {}
 
   cgal::VectorReturn<N> toCartesian(cgal::Vector3In barycentric) const;
@@ -32,6 +32,11 @@ class TriangleCoords {
   template <int M>
   cgal::VectorReturn<M> translateTo(const TriangleCoords<M>& other,
                                     cgal::VectorIn<N> point_on_triangle) const;
+
+  Eigen::Matrix<double, N, 1> getVertex(uint id) const;
+
+  template<int M>
+  Eigen::Matrix<double, N, N> getJacobianWrt(const TriangleCoords<M>& other) const;
 
  protected:
   explicit TriangleCoords(const Eigen::Matrix<double, N, 3>& a)

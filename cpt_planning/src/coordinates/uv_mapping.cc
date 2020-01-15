@@ -42,7 +42,6 @@ void UVMapping::CoordinateMeshBuilder::operator()(cgal::HalfedgeDS& hds) {
     } while (++hit != fit->facet_begin());
     B.end_facet();
   }
-
   B.end_surface();
 }
 
@@ -54,11 +53,30 @@ void UVMapping::createUVParametrization() {
   SMP::parameterize(mesh_3d_->getMeshRef(), bhd, uv_pmap_);
 }
 
+void UVMapping::determineTransformation() {
+  // precondition: UVParametrization has been called.
+
+  // get nominal zero in 3d
+  cgal::PointAndPrimitiveId ppid =
+      mesh_3d_->getClosestTriangle(cad_percept::cgal::Vector3In(zero_point_));
+
+  // map to 2d
+  FaceCoords3d face_3d_(ppid.second, mesh_3d_->getMeshRef());
+  TriangleCoords<2> face_2d_ = face_3d_.mapVertices(vertex_map_);
+
+  // adjust 2d for construction
+  Eigen::Vector2d nominal_zero_uv = face_3d_.translateTo(face_2d_, ppid.first);
+  uv_transform_.translation().topRows<2>() = -nominal_zero_uv;
+
+  std::cout << "Translation " << nominal_zero_uv << std::endl;
+}
+
 void UVMapping::createMappings() {
   CoordinateMeshBuilder builder(mesh_3d_->getMeshRef(), vertex_map_);
   cgal::Polyhedron mesh_2d;
   mesh_2d.delegate(builder);
   mesh_2d_ = std::make_shared<cgal::MeshModel>(mesh_2d);
+  mesh_2d_->transform(cgal::eigenTransformationToCgalTransformation(uv_transform_.matrix()));
 
   map_2d_to_3d_.insert(mesh_2d_->getMeshRef().facets_begin(), mesh_2d_->getMeshRef().facets_end(),
                        mesh_3d_->getMeshRef().facets_begin());
