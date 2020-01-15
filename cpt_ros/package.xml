@@ -22,6 +22,7 @@
     <depend>cgal_definitions</depend>
     <depend>cgal_msgs</depend>
     <depend>cpt_utils</depend>
+    <depend>cpt_planning</depend>
     <depend>cpt_collision_manifolds</depend>
     <depend>eigen_catkin</depend>
     <depend>roscpp</depend>

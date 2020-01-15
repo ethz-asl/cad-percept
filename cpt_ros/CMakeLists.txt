@@ -23,6 +23,11 @@ cs_add_executable(collision_manifold_test_node
 
 target_link_libraries(collision_manifold_test_node ${PROJECT_NAME})
 
+cs_add_executable(planning_test_node
+        src/nodes/planning_test_node.cc
+        )
+target_link_libraries(planning_test_node ${PROJECT_NAME})
+
 ############
 #  TESTS   #
 ############
