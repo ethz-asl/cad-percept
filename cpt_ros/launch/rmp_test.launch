@@ -1,0 +1,4 @@
+<launch>
+   <node name="rmp_test_node" pkg="cpt_ros" type="rmp_test_node" output="screen">
+</node>
+</launch>

@@ -5,7 +5,7 @@ find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 
 
-add_definitions(-std=c++11 -Wall -Wextra)
+add_definitions(-std=c++17 -Wall -Wextra -fopenmp)
 
 #############
 # LIBRARIES #
@@ -27,6 +27,12 @@ cs_add_executable(planning_test_node
         src/nodes/planning_test_node.cc
         )
 target_link_libraries(planning_test_node ${PROJECT_NAME})
+
+
+cs_add_executable(rmp_test_node
+        src/nodes/rmp_test_node.cc
+        )
+target_link_libraries(rmp_test_node ${PROJECT_NAME} -fopenmp)
 
 ############
 #  TESTS   #

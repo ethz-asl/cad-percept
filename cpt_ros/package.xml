@@ -26,4 +26,6 @@
     <depend>cpt_collision_manifolds</depend>
     <depend>eigen_catkin</depend>
     <depend>roscpp</depend>
+    <depend>rmpflow</depend>
+
 </package>
