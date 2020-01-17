@@ -586,6 +586,7 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
     // check that every request is in mesh
     if (reference_mesh_->isCorrectId(id)) {
       references.insert(id);
+      ROS_INFO("[cpt_selective_icp] Adding reference facet %s", id);
     }
   }
 
