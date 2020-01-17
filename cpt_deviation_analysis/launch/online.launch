@@ -3,7 +3,7 @@
 
 <launch>
 
-  <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla_deviated.json" />
+  <arg name="cad_file" default="$(find cpt_selective_icp)/resources/lee.json" />
   <arg name="map_frame" default="/map" />
   <arg name="discrete_color" default="false" /> <!-- visualize deviations in discrete color -->
   <arg name="score_threshold" default="0.0015" /> <!-- deviations below this are green -->
