@@ -3,7 +3,7 @@
 namespace cad_percept {
 namespace planning {
 
-void UVMapping::CoordinateMeshBuilder::operator()(cgal::HalfedgeDS& hds) {
+void UVMapping::CoordinateMeshBuilder::operator()(cgal::HalfedgeDS &hds) {
   CGAL::Polyhedron_incremental_builder_3<cgal::HalfedgeDS> B(hds, true);
   B.begin_surface(mesh_.size_of_vertices(), mesh_.size_of_facets());
   // add all vertices
@@ -85,32 +85,71 @@ void UVMapping::createMappings() {
                        mesh_2d_->getMeshRef().facets_begin());
 };
 
-std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(cad_percept::cgal::Vector3In vec_in) {
+std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(cad_percept::cgal::Vector3In vec_in) const {
   FaceCoords3d nearest_3d = nearestFace3D(vec_in);
   return {toUV(nearest_3d), nearest_3d};
 }
 
-std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(cad_percept::cgal::Vector2In vec_in) {
+std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(cad_percept::cgal::Vector2In vec_in) const {
   FaceCoords2d nearest_2d = nearestFaceUV(vec_in);
   return {nearest_2d, to3D(nearest_2d)};
 }
 
-FaceCoords2d UVMapping::nearestFaceUV(cad_percept::cgal::Vector2In pt) {
+Eigen::Vector3d UVMapping::pointUVHto3D(const Eigen::Vector3d &pointuvh) const {
+  Eigen::Vector2d point_on_manifold = pointuvh.topRows<2>();
+
+  // get facecoords for this point
+  FaceCoords2d face_uv = nearestFaceUV(point_on_manifold);
+
+  // get corresponding 3d triangle
+  FaceCoords3d face_3d = to3D(face_uv);
+
+  // translate to 3d point
+  Eigen::Vector3d p_xyz = face_uv.translateTo(face_3d, point_on_manifold);
+
+  // add h-dimension contribution (alogn normal)
+  p_xyz += pointuvh.z() * face_3d.getNormal();
+
+  return p_xyz;
+}
+
+Eigen::Vector3d UVMapping::point3DtoUVH(const Eigen::Vector3d &point3d) const {
+  // get point that is on the manifold
+  cgal::PointAndPrimitiveId ppid = mesh_3d_->getClosestTriangle(point3d.x(), point3d.y(), point3d.z());
+  Eigen::Vector3d closest_on_manifold{ppid.first.x(), ppid.first.y(), ppid.first.z()};
+
+  // get Facecoords for this point
+  FaceCoords3d face_3d = {ppid.second, mesh_3d_->getMeshRef()};
+
+  // get corresponding 2D triangle
+  FaceCoords2d face_uv = toUV(face_3d);
+
+  // translate point on manifold
+  Eigen::Vector3d p_uvh;
+  p_uvh.topRows<2>() = (Eigen::Vector2d) face_3d.translateTo(face_uv, ppid.first);
+
+  // restore H coordinate as distance to actual point (should be perpendicular?)
+  p_uvh.z() = face_3d.getNormal().dot(point3d - closest_on_manifold);
+
+  return p_uvh;
+}
+
+FaceCoords2d UVMapping::nearestFaceUV(cad_percept::cgal::Vector2In pt) const {
   cgal::Point_2 pt2d = pt;
   cgal::PointAndPrimitiveId ppid = mesh_2d_->getClosestTriangle({pt2d.x(), pt2d.y(), 0});
   return {ppid.second, mesh_2d_->getMeshRef()};
 }
 
-FaceCoords3d UVMapping::nearestFace3D(cad_percept::cgal::Vector3In pt) {
+FaceCoords3d UVMapping::nearestFace3D(cad_percept::cgal::Vector3In pt) const {
   cgal::PointAndPrimitiveId ppid = mesh_3d_->getClosestTriangle(pt);
   return {ppid.second, mesh_3d_->getMeshRef()};
 }
 
-FaceCoords2d UVMapping::toUV(const cad_percept::planning::FaceCoords3d& coords3d) {
+FaceCoords2d UVMapping::toUV(const cad_percept::planning::FaceCoords3d &coords3d) const {
   return {map_3d_to_2d_[coords3d.getFaceDescriptor()], mesh_2d_->getMeshRef()};
 }
 
-FaceCoords3d UVMapping::to3D(const cad_percept::planning::FaceCoords2d& coords2d) {
+FaceCoords3d UVMapping::to3D(const cad_percept::planning::FaceCoords2d &coords2d) const {
   return {map_2d_to_3d_[coords2d.getFaceDescriptor()], mesh_3d_->getMeshRef()};
 };
 

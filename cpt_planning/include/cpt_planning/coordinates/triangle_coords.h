@@ -38,6 +38,8 @@ class TriangleCoords {
   template<int M>
   Eigen::Matrix<double, N, N> getJacobianWrt(const TriangleCoords<M>& other) const;
 
+  Eigen::Matrix<double, N, 1> getNormal() const;
+
  protected:
   explicit TriangleCoords(const Eigen::Matrix<double, N, 3>& a)
       : a1_(a.col(0)), a2_(a.col(1)), a3_(a.col(2)) {}

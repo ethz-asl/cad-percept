@@ -9,7 +9,7 @@ namespace planning {
 class ManifoldInterface {
  public:
   // p_manifold is defined as {u,v,z}
-  virtual Eigen::Matrix3d J(const Eigen::Vector3d p_manifold) = 0;
+  virtual Eigen::Matrix3d J(const Eigen::Vector3d p_manifold) const = 0;
 };
 }  // namespace planning
 }  // namespace cad_percept

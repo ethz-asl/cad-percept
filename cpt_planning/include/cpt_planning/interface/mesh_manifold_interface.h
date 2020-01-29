@@ -9,15 +9,20 @@
 namespace cad_percept {
 namespace planning {
 
- class MeshManifoldInterface : public ManifoldInterface, public rmp_core::GeometryBase<3,3> {
+class MeshManifoldInterface : public ManifoldInterface, public rmp_core::GeometryBase<3, 3> {
  public:
   MeshManifoldInterface(cgal::MeshModel::Ptr model, Eigen::Vector3d zero_point)
       : model_(model), mapping_(model, zero_point) {
   }
-  virtual Eigen::Matrix3d J(const Eigen::Vector3d p_manifold);
+  virtual Eigen::Matrix3d J(const Eigen::Vector3d p_manifold) const;
 
-  protected:
-  virtual Eigen::Matrix3d J(const Eigen::Vector3d& p_manifold, const Eigen::Vector3d& p_dot);
+  virtual void convertPosition(const Eigen::Vector3d& p,
+                               const Eigen::Vector3d& p_dot,
+                               Eigen::Vector3d *q,
+                               Eigen::Vector3d *q_dot) const;
+
+ protected:
+  virtual Eigen::Matrix3d J(const Eigen::Vector3d &p_manifold, const Eigen::Vector3d &p_dot) const;
 
  private:
   cgal::MeshModel::Ptr model_;

@@ -25,29 +25,34 @@ class UVMappingTestNode {
     zero << 0.0, 0.0, 0.707;
     mapping_ = new cad_percept::planning::UVMapping(model_, zero);
     manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero);
+
+    pub_mesh_3d_.publish(model_);
+    pub_mesh_2d_.publish(mapping_->mesh_2d_);
   }
 
   void callback(const geometry_msgs::TwistConstPtr& twist) {
-    Eigen::Vector2d new_uv_coord;
-    new_uv_coord << twist->linear.x, twist->linear.y;
-    Eigen::Vector3d new_uv_coord_3d;
-    new_uv_coord_3d << twist->linear.x, twist->linear.y, 0.0;
-    cad_percept::planning::FaceCoords2d face_uv = mapping_->nearestFaceUV(new_uv_coord);
-    cad_percept::planning::FaceCoords3d face_3d = mapping_->to3D(face_uv);
-    Eigen::Vector3d new_xyz_coord = face_uv.translateTo(face_3d, new_uv_coord);
+    Eigen::Vector3d point_uv, point_xyz, point_uv_reverse;
+    point_uv << twist->linear.x, twist->linear.y, twist->linear.z;
 
+    point_xyz = mapping_->pointUVHto3D(point_uv);
+    point_uv_reverse = mapping_->point3DtoUVH(point_xyz);
+
+    std::cout << "uv1:\t" << point_uv.x() << "\t" << point_uv.y() << "\t" << point_uv.z() << std::endl;
+    std::cout << "xy2:\t" << point_xyz.x() << "\t" << point_xyz.y() << "\t" << point_xyz.z() << std::endl;
+    std::cout << "uv2:\t" << point_uv_reverse.x() << "\t" << point_uv_reverse.y() << "\t" << point_uv_reverse.z() << std::endl;
+    std::cout << "dif:\t" <<  (point_uv - point_uv_reverse).norm() << std::endl;
+    std::cout << std::endl;
     // get velocity in uv f.e.xample
     Eigen::Vector3d vel_uv;
     vel_uv << 0.0, 0.0, 1.0;
 
-    Eigen::Vector3d vel_xyz = manifold_->J(new_xyz_coord).inverse() * vel_uv;
-    publishMarkers(new_uv_coord, new_xyz_coord, vel_uv, vel_xyz);
+    Eigen::Vector3d vel_xyz = manifold_->J(point_uv).inverse() * vel_uv;
+    publishMarkers(point_uv, point_uv_reverse, point_xyz, vel_uv, vel_xyz);
+
   }
 
-  void publishMarkers(Eigen::Vector2d pt_uv, Eigen::Vector3d pt_xyz, Eigen::Vector3d vel_uv,
+  void publishMarkers(Eigen::Vector3d pt_uv,  Eigen::Vector3d pt_uv2, Eigen::Vector3d pt_xyz, Eigen::Vector3d vel_uv,
                       Eigen::Vector3d vel_xyz) {
-    pub_mesh_3d_.publish(model_);
-    pub_mesh_2d_.publish(mapping_->mesh_2d_);
 
     visualization_msgs::MarkerArray msg_array;
 
@@ -63,16 +68,33 @@ class UVMappingTestNode {
     mrk_uv.scale.z = 0.1;
     mrk_uv.color.a = 1.0;
     mrk_uv.color.r = 1.0;
+
     geometry_msgs::Point point_uv;
     point_uv.x = pt_uv.x();
     point_uv.y = pt_uv.y();
-    point_uv.z = 0;
+    point_uv.z = pt_uv.z();
+    geometry_msgs::Point point_uv2;
+    point_uv2.x = pt_uv2.x();
+    point_uv2.y = pt_uv2.y();
+    point_uv2.z = pt_uv2.z();
+
+    std_msgs::ColorRGBA red, green;
+    red.a = 1.0;
+    red.r = 1.0;
+    green.a= 1.0;
+    green.g = 1.0;
 
     geometry_msgs::Point point_xyz;
     point_xyz.x = pt_xyz.x();
     point_xyz.y = pt_xyz.y();
     point_xyz.z = pt_xyz.z();
+
+    mrk_uv.colors.push_back(red);
+    mrk_uv.colors.push_back(green);
+    mrk_uv.colors.push_back(red);
+
     mrk_uv.points.push_back(point_uv);
+    mrk_uv.points.push_back(point_uv2);
     mrk_uv.points.push_back(point_xyz);
     msg_array.markers.push_back(mrk_uv);
 
@@ -91,7 +113,7 @@ class UVMappingTestNode {
     mrk_vel_uv.color.r = 1.0;
 
     geometry_msgs::Point point_vel_uv;
-    vel_uv.topRows<2>() += pt_uv;
+    vel_uv += pt_uv;
     point_vel_uv.x = vel_uv.x();
     point_vel_uv.y = vel_uv.y();
     point_vel_uv.z = vel_uv.z();

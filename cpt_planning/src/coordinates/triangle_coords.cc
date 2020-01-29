@@ -42,6 +42,13 @@ cgal::VectorReturn<M> TriangleCoords<N>::translateTo(const TriangleCoords<M> &ot
   return other.toCartesian(barycentric);
 }
 
+template <int N>
+Eigen::Matrix<double, N, 1> TriangleCoords<N>::getNormal() const{
+  // Will cause a compilation errror for 2D triangle coords, as eigen's cross is not defined.
+  static_assert(N != 2, "Cross product not implemented in 2D!");
+  return (a2_ - a1_).cross(a3_ - a1_).normalized();
+}
+
 template<int N>
 Eigen::Matrix<double, N, 1> TriangleCoords<N>::getVertex(uint id) const {
   switch (id % 3) {
@@ -70,7 +77,7 @@ Eigen::Matrix<double, N, N> TriangleCoords<N>::getJacobianWrt(const
   Eigen::Vector3d AB_xyz, AC_xyz, N_xyz;
   AB_xyz = B_xyz - A_xyz;  // "-A+B"
   AC_xyz = C_xyz - A_xyz;  // "-A+C"
-  N_xyz = AB_xyz.cross(AC_xyz).normalized();
+  N_xyz = getNormal();
 
   Eigen::Vector3d I, K;  // vectors do build up the derivatve.
   Eigen::Vector3d part_u, part_v, part_h;
@@ -120,6 +127,9 @@ template cgal::VectorReturn<3> TriangleCoords<2>::translateTo(
 
 template cgal::VectorReturn<2> TriangleCoords<3>::translateTo(
     const TriangleCoords<2> &other, cgal::VectorIn<3> point_on_triangle) const;
+
+
+template Eigen::Matrix<double, 3, 1> TriangleCoords<3>::getNormal() const;
 
 template Eigen::Matrix<double,
                        2,

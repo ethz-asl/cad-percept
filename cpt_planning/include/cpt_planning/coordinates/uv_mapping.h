@@ -45,18 +45,21 @@ class UVMapping {
   void determineTransformation();
   void createMappings();
 
-  std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector3In);
-  std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector2In);
+  std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector3In) const;
+  std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector2In) const;
 
-  FaceCoords2d nearestFaceUV(cgal::Vector2In);
+  Eigen::Vector3d point3DtoUVH(const Eigen::Vector3d& point3d) const;
+  Eigen::Vector3d pointUVHto3D(const Eigen::Vector3d& pointUVH) const;
+
+  FaceCoords2d nearestFaceUV(cgal::Vector2In) const;
 
   // Todo: Test if its part of the manifold!
-  FaceCoords3d nearestFace3D(cgal::Vector3In);
+  FaceCoords3d nearestFace3D(cgal::Vector3In) const;
 
   /* Mapping functions*/
-  FaceCoords2d toUV(const FaceCoords3d &coords3d);
+  FaceCoords2d toUV(const FaceCoords3d &coords3d) const;
 
-  FaceCoords3d to3D(const FaceCoords2d &coords2d);
+  FaceCoords3d to3D(const FaceCoords2d &coords2d) const;
 
  public:
   FaceHashMap map_2d_to_3d_;
