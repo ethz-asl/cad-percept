@@ -49,6 +49,11 @@ cs_add_executable(rmp_zdistance_node
         )
 target_link_libraries(rmp_zdistance_node ${PROJECT_NAME} -fopenmp)
 
+
+cs_add_executable(rmp_freespace_node
+        src/nodes/freespace_test_node.cc
+        )
+target_link_libraries(rmp_freespace_node ${PROJECT_NAME} -fopenmp)
 ############
 #  TESTS   #
 ############
