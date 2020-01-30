@@ -20,9 +20,9 @@
 #include <dynamic_reconfigure/server.h>
 #include <cpt_ros/RMPConfigConfig.h>
 
-class RMPDistanceNode {
+class RMPZDistanceNode {
  public:
-  RMPDistanceNode(ros::NodeHandle nh) : nh_(nh) {
+  RMPZDistanceNode(ros::NodeHandle nh) : nh_(nh) {
     ros::NodeHandle nh_private("~");
     pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
     pub_mesh_3d_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
@@ -41,7 +41,7 @@ class RMPDistanceNode {
     mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle);
     manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero, zero_angle);
     pub_mesh_3d_.publish(model_);
-    server_.setCallback(boost::bind(&RMPDistanceNode::config_callback, this, _1, _2));
+    server_.setCallback(boost::bind(&RMPZDistanceNode::config_callback, this, _1, _2));
 
     start_ << 0.0, 0.0, 0.0;
     target_ << 0.0, 0.0, 0.0;
@@ -72,94 +72,88 @@ class RMPDistanceNode {
     msg_sphere.scale.y = 0.01;
     msg_sphere.scale.z = 0.01;
     msg_sphere.pose.orientation.w = 1.0;
-    using RMPG = rmp_core::PolicyContainer<3, 3, cad_percept::planning::MeshManifoldInterface>;
-    RMPG policies(*manifold_);
-    Eigen::Vector3d target_;
-    target_ << 0.0, 0.0, 0.0;
-
-    RMPG::Vector_q target_xyz = mapping_->pointUVHto3D(target_);
-
-    rmp_core::Integrator<3, 3, cad_percept::planning::MeshManifoldInterface> integrator(policies);
-
-    Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
-    Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
-    A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
-    B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
-    rmp_core::SimpleTargetPolicy<3> pol2(target_, A, alpha, beta, c); // goes to manifold as quick as possible
-    rmp_core::SimpleTargetPolicy<3> pol3({0.0, 0.0, 0.0}, B, alpha_z, beta_z, c_z); // stays along it
-    policies.addPolicy(&pol3);
-    policies.addPolicy(&pol2);
 
     ROS_INFO_STREAM("START");
-    for (int x = -50; x <= 50; x += 1) {
+
+    for (int x = -25; x <= 25; x += 1) {
+      /* find lowest and largest y that's still on manifold */
+
+      int ymin = 5000;
+      int ymax = -5000;
+
       for (int y = -50; y <= 50; y += 1) {
-
-        std::cerr << x << "\ " << y << std::endl;
-        if (x == 0 && y == 0) {
-          continue;
-        }
         Eigen::Vector3d end_uv, end_xyz;
-        end_uv << x / 50.0, y / 50.0, 0;
-
-        if (!mapping_->onManifold((Eigen::Vector2d) end_uv.topRows<2>())) {
-          continue;
-        }
-
-        end_xyz = mapping_->pointUVHto3D(end_uv);
-
-        integrator.resetTo(end_xyz);
-
-        Eigen::Vector3d current_pos;
-        double dt = 0.01;
-        double distance = -1.0;
-        for (double t = 0; t < 30.0; t += dt) {
-
-          current_pos = integrator.forwardIntegrate(dt);
-
-          if (integrator.isDone()) {
-            distance = integrator.totalDistance();
-            break;
+        end_uv << x / 25.0, y / 50.0, 0;
+        if (mapping_->onManifold((Eigen::Vector2d) end_uv.topRows<2>())) {
+          if (y < ymin) {
+            ymin = y;
+          }
+          if (y > ymax) {
+            ymax = y;
           }
         }
-
-        cad_percept::cgal::Point start_xyz_pt(target_xyz.x(), target_xyz.y(), target_xyz.z());
-        cad_percept::cgal::Point end_xyz_pt(end_xyz.x(), end_xyz.y(), end_xyz.z());
-
-        double distance_geo = model_->getGeodesicDistance(start_xyz_pt,
-                                                          start_xyz_pt,
-                                                          end_xyz_pt,
-                                                          end_xyz_pt);
-
-        std_msgs::ColorRGBA color;
-        if (x != 0) {
-          color.r = 0.0;
-          color.g = 0.0;
-          color.b = 0.0;
-          color.a = 1.0;
-        } else {
-          color.r = 1.0;
-          color.g = 0.0;
-          color.b = 0.0;
-          color.a = 1.0;
-        }
-        std::cout <<
-                  x << "\t" << y << "\t" << 0.0 << "\t" << end_xyz.x() << "\t" << end_xyz.y() << "\t" << end_xyz.z()
-                  << "\t" << distance << "\t" << distance_geo << "\t" << distance / distance_geo << std::endl;
-
-        geometry_msgs::Point pos;
-        pos.x = end_xyz.x();
-        pos.y = end_xyz.y();
-        pos.z = end_xyz.z();
-        msg_sphere.points.push_back(pos);
-        msg_sphere.colors.push_back(color);
       }
+      if (ymin == 5000 || ymax == -5000) {
+        continue;
+      }
+
+      std::cerr << x << std::endl;
+
+      Eigen::Vector3d end_uv, end_xyz, start_uv, start_xyz;
+      start_uv << x / 25.0, ymin / 50.0, 0;
+      end_uv << x / 25.0, ymax / 50.0, 0;
+
+      if (!mapping_->onManifold((Eigen::Vector2d) start_uv.topRows<2>())) {
+        continue;
+      }
+      if (!mapping_->onManifold((Eigen::Vector2d) end_uv.topRows<2>())) {
+        continue;
+      }
+
+      start_xyz = mapping_->pointUVHto3D(start_uv);
+      end_xyz = mapping_->pointUVHto3D(end_uv);
+      using RMPG = rmp_core::PolicyContainer<3, 3, cad_percept::planning::MeshManifoldInterface>;
+      RMPG policies(*manifold_);
+
+
+      rmp_core::Integrator<3, 3, cad_percept::planning::MeshManifoldInterface> integrator(policies);
+
+      Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
+      Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
+      A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
+      B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
+      rmp_core::SimpleTargetPolicy<3> pol2(end_uv, A, alpha, beta, c); // goes to manifold as quick as possible
+      rmp_core::SimpleTargetPolicy<3> pol3({0.0, 0.0, 0.0}, B, alpha_z, beta_z, c_z); // stays along it
+      policies.addPolicy(&pol3);
+      policies.addPolicy(&pol2);
+
+      integrator.resetTo(start_xyz);
+
+      Eigen::Vector3d current_pos = start_xyz;
+      double dt = 0.01;
+      double distance = -1.0;
+      for (double t = 0; t < 20.0; t += dt) {
+
+        Eigen::Vector3d current_pos_uv= mapping_->point3DtoUVH(current_pos);
+        std::cout <<
+                  current_pos.x() << "\t" << current_pos.y() << "\t" << current_pos.z()
+                  << "\t" << current_pos_uv.z()<< "\t" << x <<std::endl;
+
+        current_pos = integrator.forwardIntegrate(dt);
+
+        if (integrator.isDone()) {
+          distance = integrator.totalDistance();
+          break;
+        }
+      }
+
+
+
+
+
     }
 
     ROS_INFO_STREAM("END");
-    visualization_msgs::MarkerArray arr;
-    arr.markers.push_back(msg_sphere);
-
-    pub_marker_.publish(arr);
 
   }
 
@@ -184,14 +178,15 @@ int main(int argc, char *argv[]) {
   ros::init(argc, argv, "rmp_coordinate_node");
   ros::NodeHandle nh;
 
-  RMPDistanceNode node(nh);
+  RMPZDistanceNode node(nh);
+  for(int i=0; i< 10; i++){
   ros::spinOnce();
   std::cin.get();
+  }
   ros::spinOnce();
-  std::cerr << "start"<< std::endl;
+  std::cerr << "start" << std::endl;
   node.callback();
-  std::cerr << "done"<< std::endl;
-
+  std::cerr << "done" << std::endl;
 
   return 0;
 }
