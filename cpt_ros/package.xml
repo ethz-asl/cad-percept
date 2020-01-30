@@ -28,5 +28,6 @@
     <depend>eigen_catkin</depend>
     <depend>roscpp</depend>
     <depend>rmpflow</depend>
-
+    <depend>sensor_msgs</depend>
+    <depend>pcl_ros</depend>
 </package>

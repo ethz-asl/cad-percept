@@ -34,6 +34,16 @@ cs_add_executable(rmp_test_node
         )
 target_link_libraries(rmp_test_node ${PROJECT_NAME} -fopenmp)
 
+cs_add_executable(rmp_coordinate_node
+        src/nodes/coordinate_node.cc
+        )
+target_link_libraries(rmp_coordinate_node ${PROJECT_NAME} -fopenmp)
+
+cs_add_executable(rmp_distance_node
+        src/nodes/distance_test_node.cc
+        )
+target_link_libraries(rmp_distance_node ${PROJECT_NAME} -fopenmp)
+
 ############
 #  TESTS   #
 ############

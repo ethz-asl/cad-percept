@@ -11,8 +11,8 @@ namespace planning {
 
 class MeshManifoldInterface : public ManifoldInterface, public rmp_core::GeometryBase<3, 3> {
  public:
-  MeshManifoldInterface(cgal::MeshModel::Ptr model, Eigen::Vector3d zero_point)
-      : model_(model), mapping_(model, zero_point) {
+  MeshManifoldInterface(cgal::MeshModel::Ptr model, Eigen::Vector3d zero_point, double zero_angle  = 0)
+      : model_(model), mapping_(model, zero_point, zero_angle) {
   }
   virtual Eigen::Matrix3d J(const Eigen::Vector3d p_manifold) const;
 

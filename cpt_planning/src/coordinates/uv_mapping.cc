@@ -67,7 +67,7 @@ void UVMapping::determineTransformation() {
   // adjust 2d for construction
   Eigen::Vector2d nominal_zero_uv = face_3d_.translateTo(face_2d_, ppid.first);
 
-  uv_transform_.linear() = Eigen::AngleAxisd(0.25*M_PI, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+  uv_transform_.linear() = Eigen::AngleAxisd(zero_angle_, Eigen::Vector3d::UnitZ()).toRotationMatrix();
   uv_transform_.translation().topRows<2>() = -nominal_zero_uv;
   uv_transform_.translation() = uv_transform_.linear() * uv_transform_.translation();
 

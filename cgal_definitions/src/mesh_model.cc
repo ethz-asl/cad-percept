@@ -142,8 +142,7 @@ double MeshModel::getGeodesicDistance( Point& xyz_start,  Point &bary_start,
 
   PolyhedronShortestPathTraits::Barycentric_coordinates start = {{bary_start.x(), bary_start.y(), bary_start.z()}};
   PolyhedronShortestPathTraits::Barycentric_coordinates end = {{bary_end.x(), bary_end.y(), bary_end.z()}};
-  std::cout << xyz_start << std::endl;
-  std::cout << xyz_end << std::endl;
+
   /*auto face_handle_start = getClosestTriangle(xyz_start).second;
   auto face_handle_end = getClosestTriangle(xyz_end).second;
 

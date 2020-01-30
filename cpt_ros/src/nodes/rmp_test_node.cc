@@ -22,29 +22,37 @@
 class RMPTestNode {
  public:
   RMPTestNode(ros::NodeHandle nh) : nh_(nh) {
+    ros::NodeHandle nh_private("~");
     pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
     pub_mesh_3d_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
     pub_mesh_2d_ = cad_percept::MeshModelPublisher(nh, "mesh_2d");
     sub_spacenav_ = nh.subscribe("/spacenav/joy", 1, &RMPTestNode::callback, this);
 
-    std::string path =
-        "/home/mpantic/workspace/nccr_ws/src/cad-percept/cpt_utils/resources/simple_meshes/"
-        "half_sphere.off";
+    std::string path = nh_private.param<std::string>("off_path", "");
+    double zero_angle = nh_private.param("zero_angle", 0.0);
+    double zero_x = nh_private.param("zero_x", 0.0);
+    double zero_y = nh_private.param("zero_y", 0.0);
+    double zero_z = nh_private.param("zero_z", 0.0);
+
+    "/home/mpantic/Desktop/rss/surfaces/crazy.off";
     bool success = cad_percept::cgal::MeshModel::create(path, &model_, true);
 
     Eigen::Vector3d zero;
-    zero <<  0.0, 0.0, 0.707;
-    mapping_ = new cad_percept::planning::UVMapping(model_, zero);
-    manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero);
+    zero <<  zero_x, zero_y, zero_z;
+    mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle);
+    manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero, zero_angle);
     pub_mesh_3d_.publish(model_);
 
     server_.setCallback(boost::bind(&RMPTestNode::config_callback, this, _1, _2));
 
-    start_ << 0.0, 0.0, 0.707;
+    start_ << 0.0, 0.0, 0.0;
     target_ << 0.0, 0.0, 0.0;
   }
 
   void config_callback(cpt_ros::RMPConfigConfig &config, uint32_t level) {
+    do_distance_ = config.do_distance;
+    do_integrator_ = config.do_integrator;
+    do_field_ = config.do_field;
     alpha = config.alpha;
     beta = config.beta;
     c = config.c;
@@ -61,11 +69,21 @@ class RMPTestNode {
     RMPG::Vector_x x_target3, x_target2, x_vec, x_dot;
 
     if (joy->buttons[0]) {
-      start_ << joy->axes[0], joy->axes[1], 0;
-      start_ = mapping_->pointUVHto3D(start_);
+      Eigen::Vector3d start_tmp;
+      start_tmp << joy->axes[0], joy->axes[1], fmax(0, joy->axes[2]);
+      if (!mapping_->onManifold((Eigen::Vector2d) start_tmp.topRows<2>())) {
+        return;
+      }
+      start_ = mapping_->pointUVHto3D(start_tmp);
     }
     if (joy->buttons[1]) {
-      target_ << joy->axes[0], joy->axes[1], 0;
+      Eigen::Vector3d end_tmp;
+
+      end_tmp << joy->axes[0], joy->axes[1], fmax(0, joy->axes[2]);
+      if (!mapping_->onManifold((Eigen::Vector2d) end_tmp.topRows<2>())) {
+        return;
+      }
+      target_ = end_tmp;
     }
     RMPG::Vector_q target_xyz = mapping_->pointUVHto3D(target_);
 
@@ -111,55 +129,57 @@ class RMPTestNode {
 
     double stride = 0.025;
 
-    for (double x = -0.8; x < 0.8; x += stride) {
-      for (double y = -0.8; y < 0.8; y += stride) {
-        for (double z = 0.0; z < 0.2; z += stride) {
+    if(do_field_) {
+      for (double x = -0.8; x < 0.8; x += stride) {
+        for (double y = -0.8; y < 0.8; y += stride) {
+          for (double z = 0.0; z < 0.2; z += stride) {
 
-          x_dot << 0, 0, 0;
-          x_vec << x, y, z;
-          Eigen::Vector3d uv, xyz;
-          uv << x, y, z;
+            x_dot << 0, 0, 0;
+            x_vec << x, y, z;
+            Eigen::Vector3d uv, xyz;
+            uv << x, y, z;
 
-          if (!mapping_->onManifold((Eigen::Vector2d) uv.topRows<2>())) {
-            continue;
+            if (!mapping_->onManifold((Eigen::Vector2d) uv.topRows<2>())) {
+              continue;
+            }
+            auto acc = policies.evaluate(x_vec, x_dot);
+            double acc_norm = acc.norm();
+
+            // get position in 3d!
+
+            xyz = mapping_->pointUVHto3D(uv);
+
+            acc *= 0.07;
+
+            if (isnan(acc[0]) || isnan(acc[1]) || isnan(acc[2])) {
+              // std::cout << "infinite value at" << uv << " " << xyz << std::endl;
+              continue;
+            }
+
+            geometry_msgs::Point start;
+            start.x = xyz.x();
+            start.y = xyz.y();
+            start.z = xyz.z();
+            geometry_msgs::Point end;
+            end.x = xyz.x() + acc.x();
+            end.y = xyz.y() + acc.y();
+            end.z = xyz.z() + acc.z();
+            std_msgs::ColorRGBA color;
+            color.a = 0.35;
+            color.g = 1.0;
+            color.b = 1.0;
+            color.r = 1.0;
+
+            msg.colors.push_back(color);
+            msg.colors.push_back(color);
+
+            msg.points.push_back(start);
+            msg.points.push_back(end);
+
+            msg_sphere.points.push_back(start);
+            color.a = 0.75;
+            msg_sphere.colors.push_back(color);
           }
-          auto acc = policies.evaluate(x_vec, x_dot);
-          double acc_norm = acc.norm();
-
-          // get position in 3d!
-
-          xyz = mapping_->pointUVHto3D(uv);
-
-          acc *= 0.07;
-
-          if (isnan(acc[0]) || isnan(acc[1]) || isnan(acc[2])) {
-            // std::cout << "infinite value at" << uv << " " << xyz << std::endl;
-            continue;
-          }
-
-          geometry_msgs::Point start;
-          start.x = xyz.x();
-          start.y = xyz.y();
-          start.z = xyz.z();
-          geometry_msgs::Point end;
-          end.x = xyz.x() + acc.x();
-          end.y = xyz.y() + acc.y();
-          end.z = xyz.z() + acc.z();
-          std_msgs::ColorRGBA color;
-          color.a = 0.35;
-          color.g = 1.0;
-          color.b = 1.0;
-          color.r = 1.0;
-
-          msg.colors.push_back(color);
-          msg.colors.push_back(color);
-
-          msg.points.push_back(start);
-          msg.points.push_back(end);
-
-          msg_sphere.points.push_back(start);
-          color.a = 0.75;
-          msg_sphere.colors.push_back(color);
         }
       }
     }
@@ -178,8 +198,9 @@ class RMPTestNode {
     msg_path.scale.z = 0.01;
     msg_path.pose.orientation.w = 1.0;
 
-    double dt = 0.01;
+    double dt = 0.05;
 
+    if(do_integrator_){
     for (double t = 0; t < 20.0; t += dt) {
       geometry_msgs::Point pos;
       pos.x = newpos.x();
@@ -192,7 +213,7 @@ class RMPTestNode {
         ROS_INFO_STREAM("Integrator finished after " << t << " s with a distance of " << integrator.totalDistance());
 
         // get geodesic distance
-
+        if(do_distance_) {
         auto start_face = mapping_->nearestFace(start_);
         auto end_face = mapping_->nearestFace(target_xyz);
 
@@ -203,14 +224,16 @@ class RMPTestNode {
         cad_percept::cgal::Point end_bary = (cad_percept::cgal::Point)end_face.second.toBarycentric(target_xyz);
 
 
-        double distance = model_->getGeodesicDistance(start_xyz_pt,
-                                                      start_bary,
-                                                      end_xyz_pt,
-                                                      end_bary);
-        ROS_INFO_STREAM("Geodesic distance = " << distance);
 
+          double distance = model_->getGeodesicDistance(start_xyz_pt,
+                                                        start_bary,
+                                                        end_xyz_pt,
+                                                        end_bary);
+          ROS_INFO_STREAM("Geodesic distance = " << distance);
+        }
         break;
       }
+    }
     }
 
     visualization_msgs::MarkerArray msg_arr;
@@ -222,6 +245,9 @@ class RMPTestNode {
   }
 
  private:
+  bool do_distance_  {false};
+  bool do_field_  {false};
+  bool do_integrator_  {false};
   Eigen::Vector3d start_, target_;
   double alpha, beta, c;
   double alpha_z, beta_z, c_z;
