@@ -66,7 +66,10 @@ void UVMapping::determineTransformation() {
 
   // adjust 2d for construction
   Eigen::Vector2d nominal_zero_uv = face_3d_.translateTo(face_2d_, ppid.first);
+
+  uv_transform_.linear() = Eigen::AngleAxisd(0.25*M_PI, Eigen::Vector3d::UnitZ()).toRotationMatrix();
   uv_transform_.translation().topRows<2>() = -nominal_zero_uv;
+  uv_transform_.translation() = uv_transform_.linear() * uv_transform_.translation();
 
   std::cout << "Translation " << nominal_zero_uv << std::endl;
 }
@@ -93,6 +96,16 @@ std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(cad_percept::cgal::
 std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(cad_percept::cgal::Vector2In vec_in) const {
   FaceCoords2d nearest_2d = nearestFaceUV(vec_in);
   return {nearest_2d, to3D(nearest_2d)};
+}
+
+bool UVMapping::onManifold(cad_percept::cgal::Vector2In point_2d) const {
+  FaceCoords2d face_2d = nearestFaceUV(point_2d);
+  return face_2d.isInside(point_2d);
+}
+
+bool UVMapping::onManifold(cad_percept::cgal::Vector3In point_3d) const {
+  FaceCoords3d face_3d = nearestFace3D(point_3d);
+  return face_3d.isInside(point_3d);
 }
 
 Eigen::Vector3d UVMapping::pointUVHto3D(const Eigen::Vector3d &pointuvh) const {

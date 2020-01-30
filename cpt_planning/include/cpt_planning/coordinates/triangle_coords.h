@@ -35,6 +35,9 @@ class TriangleCoords {
 
   Eigen::Matrix<double, N, 1> getVertex(uint id) const;
 
+
+  bool isInside(cgal::VectorIn<N> point) const;
+
   template<int M>
   Eigen::Matrix<double, N, N> getJacobianWrt(const TriangleCoords<M>& other) const;
 

@@ -48,8 +48,11 @@ class UVMapping {
   std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector3In) const;
   std::pair<FaceCoords2d, FaceCoords3d> nearestFace(cgal::Vector2In) const;
 
-  Eigen::Vector3d point3DtoUVH(const Eigen::Vector3d& point3d) const;
-  Eigen::Vector3d pointUVHto3D(const Eigen::Vector3d& pointUVH) const;
+  bool onManifold(cad_percept::cgal::Vector2In point_2d) const;
+  bool onManifold(cad_percept::cgal::Vector3In point_3d) const;
+
+  Eigen::Vector3d point3DtoUVH(const Eigen::Vector3d &point3d) const;
+  Eigen::Vector3d pointUVHto3D(const Eigen::Vector3d &pointUVH) const;
 
   FaceCoords2d nearestFaceUV(cgal::Vector2In) const;
 

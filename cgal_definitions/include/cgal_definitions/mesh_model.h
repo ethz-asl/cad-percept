@@ -60,6 +60,8 @@ class MeshModel {
    */
   int size() const;
 
+  double getGeodesicDistance(Point& xyz_start, Point& bary_start,
+                             Point& xyz_end,  Point& bary_end);
   /**
    * Return mesh
    */
@@ -77,6 +79,7 @@ class MeshModel {
   int getFacetIndex(Polyhedron::Facet_handle &handle);
 
  private:
+  std::shared_ptr<PolyhedronShortestPath> shortest_path_query_;
   MeshModel() {}  // private default constructor
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;

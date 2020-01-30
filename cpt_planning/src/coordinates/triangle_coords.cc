@@ -4,6 +4,12 @@ namespace cad_percept {
 namespace planning {
 
 template<int N>
+bool TriangleCoords<N>::isInside(cgal::VectorIn<N> point) const {
+  Eigen::Vector3d barycentric = toBarycentric(point);
+  return (barycentric.array() > 0.0 && barycentric.array() < 1.0).all();
+}
+
+template<int N>
 cgal::VectorReturn<N> TriangleCoords<N>::toCartesian(cgal::Vector3In barycentric) const {
   Eigen::Vector3d coordinates = barycentric;
   return static_cast<cgal::VectorReturn<N>>(coordinates.x() * a1_
@@ -42,8 +48,8 @@ cgal::VectorReturn<M> TriangleCoords<N>::translateTo(const TriangleCoords<M> &ot
   return other.toCartesian(barycentric);
 }
 
-template <int N>
-Eigen::Matrix<double, N, 1> TriangleCoords<N>::getNormal() const{
+template<int N>
+Eigen::Matrix<double, N, 1> TriangleCoords<N>::getNormal() const {
   // Will cause a compilation errror for 2D triangle coords, as eigen's cross is not defined.
   static_assert(N != 2, "Cross product not implemented in 2D!");
   return (a2_ - a1_).cross(a3_ - a1_).normalized();
@@ -115,6 +121,9 @@ Eigen::Matrix<double, N, N> TriangleCoords<N>::getJacobianWrt(const
 }
 
 // Explicit template instantiation so that all the methods are built.
+template bool TriangleCoords<2>::isInside(cgal::VectorIn<2> point) const;
+template bool TriangleCoords<3>::isInside(cgal::VectorIn<3> point) const;
+
 template cgal::VectorReturn<2> TriangleCoords<2>::toCartesian(cgal::Vector3In barycentric) const;
 template cgal::VectorReturn<3> TriangleCoords<3>::toCartesian(cgal::Vector3In barycentric) const;
 template cgal::Vector3Return TriangleCoords<2>::toBarycentric(
@@ -127,7 +136,6 @@ template cgal::VectorReturn<3> TriangleCoords<2>::translateTo(
 
 template cgal::VectorReturn<2> TriangleCoords<3>::translateTo(
     const TriangleCoords<2> &other, cgal::VectorIn<3> point_on_triangle) const;
-
 
 template Eigen::Matrix<double, 3, 1> TriangleCoords<3>::getNormal() const;
 

@@ -23,6 +23,7 @@ cs_add_executable(mesh_publisher_node
         src/mesh_publisher.cc
         src/mesh_publisher_node.cc
         )
+target_link_libraries(mesh_publisher_node ${PROJECT_NAME})
 
 ############
 # Test #

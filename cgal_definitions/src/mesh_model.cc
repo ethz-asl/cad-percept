@@ -1,5 +1,6 @@
 #include "cgal_definitions/mesh_model.h"
 #include <cgal_definitions/cgal_meshing_typedefs.h>
+
 namespace cad_percept {
 namespace cgal {
 
@@ -116,16 +117,55 @@ void MeshModel::transform(const Transformation &transform) {
 int MeshModel::size() const { return P_.size_of_facets(); }
 
 Polyhedron MeshModel::getMesh() const { return P_; }
-Polyhedron& MeshModel::getMeshRef() { return P_; }
+Polyhedron &MeshModel::getMeshRef() { return P_; }
 PolyhedronPtr MeshModel::getMeshPtr() { return PolyhedronPtr(&P_); }
 
 void MeshModel::initializeFacetIndices() {
   // for vertices there exist CGAL::set_halfedgeds_items_id(m), but not for
   // facets
+  CGAL::set_halfedgeds_items_id(P_);
   std::size_t i = 0;
   for (Polyhedron::Facet_iterator facet = P_.facets_begin(); facet != P_.facets_end(); ++facet) {
     facet->id() = i++;
   }
+}
+
+double MeshModel::getGeodesicDistance( Point& xyz_start,  Point &bary_start,
+                                     Point& xyz_end,  Point &bary_end) {
+  if(!shortest_path_query_){
+    shortest_path_query_ = std::make_shared<PolyhedronShortestPath>(P_);
+  }
+  shortest_path_query_->clear();
+
+
+
+
+  PolyhedronShortestPathTraits::Barycentric_coordinates start = {{bary_start.x(), bary_start.y(), bary_start.z()}};
+  PolyhedronShortestPathTraits::Barycentric_coordinates end = {{bary_end.x(), bary_end.y(), bary_end.z()}};
+  std::cout << xyz_start << std::endl;
+  std::cout << xyz_end << std::endl;
+  /*auto face_handle_start = getClosestTriangle(xyz_start).second;
+  auto face_handle_end = getClosestTriangle(xyz_end).second;
+
+  face_iterator face_it_start = faces(P_).first;
+  std::cout << face_handle_start->id() << std::endl;
+  std::advance(face_it_start, face_handle_start->id());
+
+  face_iterator face_it_end = faces(P_).first;
+  std::cout << face_handle_end->id() << std::endl;
+
+  std::advance(face_it_end, face_handle_end->id());*/
+  auto start_face_loc = shortest_path_query_->locate(xyz_start, *tree_);
+  auto end_face_loc = shortest_path_query_->locate(xyz_end, *tree_);
+
+  shortest_path_query_->add_source_point(start_face_loc);
+
+
+  auto result =
+      shortest_path_query_->shortest_distance_to_source_points(end_face_loc.first, end_face_loc.second);
+  shortest_path_query_->clear();
+
+  return result.first;
 }
 
 int MeshModel::getFacetIndex(Polyhedron::Facet_handle &handle) {

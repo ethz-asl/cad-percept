@@ -1,7 +1,7 @@
 #ifndef CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 #define CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 
-#include <CGAL/Simple_cartesian.h>
+/*#include <CGAL/Simple_cartesian.h>*/
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Polygon_mesh_processing/measure.h>
@@ -17,10 +17,14 @@
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_tree.h>
 
+// shortest path
+#include <CGAL/Surface_mesh_shortest_path.h>
+
 namespace cad_percept {
 namespace cgal {
 
-typedef CGAL::Simple_cartesian<double> Kernel;
+//typedef CGAL::Simple_cartesian<double> Kernel;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef Kernel::FT FT;
 typedef Kernel::Point_3 Point;
 typedef Kernel::Point_2 Point_2;
@@ -64,6 +68,10 @@ typedef boost::optional<PolyhedronAABBTree::Intersection_and_primitive_id<Ray>::
     PolyhedronRayIntersection;  // cadify: Ray_intersection
 typedef PolyhedronAABBTree::Primitive_id PolyhedronPrimitiveId;
 typedef std::pair<Point, PolyhedronPrimitive::Id> PointAndPrimitiveId;
+
+// shortest path stuff
+typedef CGAL::Surface_mesh_shortest_path_traits<Kernel, Polyhedron> PolyhedronShortestPathTraits;
+typedef CGAL::Surface_mesh_shortest_path<PolyhedronShortestPathTraits> PolyhedronShortestPath;
 }  // namespace cgal
 }  // namespace cad_percept
 #endif  // CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
