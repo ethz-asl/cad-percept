@@ -33,14 +33,14 @@ class RMPTestNode {
     bool success = cad_percept::cgal::MeshModel::create(path, &model_, true);
 
     Eigen::Vector3d zero;
-    zero << 0, 0, 0.70;
+    zero <<  0.0, 0.0, 0.707;
     mapping_ = new cad_percept::planning::UVMapping(model_, zero);
     manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero);
     pub_mesh_3d_.publish(model_);
 
     server_.setCallback(boost::bind(&RMPTestNode::config_callback, this, _1, _2));
 
-    start_ << 0.0, 0.0, 0.9;
+    start_ << 0.0, 0.0, 0.707;
     target_ << 0.0, 0.0, 0.0;
   }
 
@@ -61,12 +61,13 @@ class RMPTestNode {
     RMPG::Vector_x x_target3, x_target2, x_vec, x_dot;
 
     if (joy->buttons[0]) {
-      start_ << joy->axes[0], joy->axes[1], joy->axes[2];
+      start_ << joy->axes[0], joy->axes[1], 0;
       start_ = mapping_->pointUVHto3D(start_);
     }
     if (joy->buttons[1]) {
-      target_ << joy->axes[0], joy->axes[1], joy->axes[2];
+      target_ << joy->axes[0], joy->axes[1], 0;
     }
+    RMPG::Vector_q target_xyz = mapping_->pointUVHto3D(target_);
 
     rmp_core::Integrator<3, 3, cad_percept::planning::MeshManifoldInterface> integrator(policies);
 
@@ -76,12 +77,11 @@ class RMPTestNode {
     Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
     Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
     A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
-    B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1000000.0});
+    B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
     rmp_core::SimpleTargetPolicy<3> pol2(target_, A, alpha, beta, c); // goes to manifold as quick as possible
     rmp_core::SimpleTargetPolicy<3> pol3({0.0, 0.0, 0.0}, B, alpha_z, beta_z, c_z); // stays along it
     policies.addPolicy(&pol3);
     policies.addPolicy(&pol2);
-
 
     visualization_msgs::Marker msg;
     msg.header.frame_id = "world";
@@ -109,21 +109,25 @@ class RMPTestNode {
     msg_sphere.scale.z = 0.01;
     msg_sphere.pose.orientation.w = 1.0;
 
-    double stride = 0.05;
+    double stride = 0.025;
 
-    for (double x = -0.5; x < 0.5; x += stride) {
-      for (double y = -0.5; y < 0.5; y += stride) {
+    for (double x = -0.8; x < 0.8; x += stride) {
+      for (double y = -0.8; y < 0.8; y += stride) {
         for (double z = 0.0; z < 0.2; z += stride) {
 
           x_dot << 0, 0, 0;
           x_vec << x, y, z;
+          Eigen::Vector3d uv, xyz;
+          uv << x, y, z;
 
+          if (!mapping_->onManifold((Eigen::Vector2d) uv.topRows<2>())) {
+            continue;
+          }
           auto acc = policies.evaluate(x_vec, x_dot);
           double acc_norm = acc.norm();
 
           // get position in 3d!
-          Eigen::Vector3d uv, xyz;
-          uv << x, y, z;
+
           xyz = mapping_->pointUVHto3D(uv);
 
           acc *= 0.07;
@@ -142,7 +146,7 @@ class RMPTestNode {
           end.y = xyz.y() + acc.y();
           end.z = xyz.z() + acc.z();
           std_msgs::ColorRGBA color;
-          color.a = 0.75;
+          color.a = 0.35;
           color.g = 1.0;
           color.b = 1.0;
           color.r = 1.0;
@@ -169,20 +173,44 @@ class RMPTestNode {
     msg_path.action = visualization_msgs::Marker::ADD;
     msg_path.color.a = 0.95;
     msg_path.color.g = 1.0;
-    msg_path.scale.x = 0.05;
+    msg_path.scale.x = 0.01;
     msg_path.scale.y = 0.01;
     msg_path.scale.z = 0.01;
     msg_path.pose.orientation.w = 1.0;
 
     double dt = 0.01;
 
-    for (double t = 0; t < 5.0; t += dt) {
+    for (double t = 0; t < 20.0; t += dt) {
       geometry_msgs::Point pos;
       pos.x = newpos.x();
       pos.y = newpos.y();
       pos.z = newpos.z();
       msg_path.points.push_back(pos);
       newpos = integrator.forwardIntegrate(dt);
+
+      if (integrator.isDone()) {
+        ROS_INFO_STREAM("Integrator finished after " << t << " s with a distance of " << integrator.totalDistance());
+
+        // get geodesic distance
+
+        auto start_face = mapping_->nearestFace(start_);
+        auto end_face = mapping_->nearestFace(target_xyz);
+
+
+        cad_percept::cgal::Point start_xyz_pt(start_.x(),start_.y(),start_.z());
+        cad_percept::cgal::Point end_xyz_pt(target_xyz.x(),target_xyz.y(),target_xyz.z());
+        cad_percept::cgal::Point start_bary = (cad_percept::cgal::Point)start_face.second.toBarycentric(start_);
+        cad_percept::cgal::Point end_bary = (cad_percept::cgal::Point)end_face.second.toBarycentric(target_xyz);
+
+
+        double distance = model_->getGeodesicDistance(start_xyz_pt,
+                                                      start_bary,
+                                                      end_xyz_pt,
+                                                      end_bary);
+        ROS_INFO_STREAM("Geodesic distance = " << distance);
+
+        break;
+      }
     }
 
     visualization_msgs::MarkerArray msg_arr;
