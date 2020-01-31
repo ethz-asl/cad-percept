@@ -54,6 +54,12 @@ cs_add_executable(rmp_freespace_node
         src/nodes/freespace_test_node.cc
         )
 target_link_libraries(rmp_freespace_node ${PROJECT_NAME} -fopenmp)
+
+cs_add_executable(voliro_planner_node
+        src/nodes/voliro_planner.cc
+        )
+target_link_libraries(voliro_planner_node ${PROJECT_NAME} -fopenmp)
+
 ############
 #  TESTS   #
 ############
