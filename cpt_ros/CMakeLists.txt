@@ -60,6 +60,11 @@ cs_add_executable(voliro_planner_node
         )
 target_link_libraries(voliro_planner_node ${PROJECT_NAME} -fopenmp)
 
+cs_add_executable(param_test_node
+        src/nodes/param_test_node.cc
+        )
+target_link_libraries(param_test_node ${PROJECT_NAME} -fopenmp)
+
 ############
 #  TESTS   #
 ############

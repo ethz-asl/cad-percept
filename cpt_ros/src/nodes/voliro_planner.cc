@@ -30,7 +30,7 @@ class VoliroPlanner {
     pub_mesh_2d_ = cad_percept::MeshModelPublisher(nh, "mesh_2d");
     sub_spacenav_ = nh.subscribe("/joy", 1, &VoliroPlanner::callback, this);
     pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("/ouzel/command/trajectory", 1);
-    sub_odom_ = nh.subscribe("/ouzel/odometry_sensor1/odometry", 1, &VoliroPlanner::odom, this);
+    sub_odom_ = nh.subscribe("/ouzel/msf_core/odometry", 1, &VoliroPlanner::odom, this);
     std::string path = nh_private.param<std::string>("off_path", "");
     double zero_angle = nh_private.param("zero_angle", 0.0);
     double zero_x = nh_private.param("zero_x", 0.0);
@@ -65,11 +65,13 @@ class VoliroPlanner {
     c_z = config.c_z;
   }
 
-  void odom(const nav_msgs::OdometryConstPtr &odom){
+  void odom(const nav_msgs::OdometryConstPtr &odom) {
     start_.x() = odom->pose.pose.position.x;
     start_.y() = odom->pose.pose.position.y;
     start_.z() = odom->pose.pose.position.z;
-    ROS_WARN_ONCE("GOT ODOM");
+
+    start_uv_ = mapping_->point3DtoUVH(start_);
+    ROS_WARN("GOT ODOM");
   }
 
   void callback(const sensor_msgs::JoyConstPtr &joy) {
@@ -89,16 +91,16 @@ class VoliroPlanner {
     }*/
 
 
-    if (joy->buttons[1]) {
-      Eigen::Vector3d end_tmp;
 
-      end_tmp << joy->axes[0], joy->axes[1], fmax(0, joy->axes[2]);
-      if (!mapping_->onManifold((Eigen::Vector2d) end_tmp.topRows<2>())) {
-        return;
-      }
-      target_ << 0.0 , 0.0, 0.0;
-      target_ = end_tmp;
+    Eigen::Vector3d end_tmp;
+
+    end_tmp << joy->axes[0]*0.5, joy->axes[1]*0.5, fmax(0, joy->axes[2]*0.5);
+//    end_tmp += start_uv_;
+    if (!mapping_->onManifold((Eigen::Vector2d) end_tmp.topRows<2>())) {
+      return;
     }
+    target_ = end_tmp;
+
 
     RMPG::Vector_q target_xyz = mapping_->pointUVHto3D(target_);
 
@@ -131,15 +133,24 @@ class VoliroPlanner {
 
       //get jacobian of 3d space
       Eigen::Vector3d posuv = mapping_->point3DtoUVH(pt.position_W);
-      Eigen::Matrix3d j = manifold_->J(posuv);
-      j.row(0).normalize();
-      j.row(1).normalize();
-      j.row(2).normalize();
-      pt.orientation_W_B = Eigen::Quaterniond(j.transpose());
+      Eigen::Matrix3d j = manifold_->J(posuv).inverse();
+      j.col(0).normalize();
+      j.col(1).normalize();
+      j.col(2).normalize();
+
+      Eigen::Matrix3d R;
+      R.col(0) = -j.col(1);
+      R.col(2) = j.col(2);
+      R.col(1) = -R.col(0).cross(R.col(2));
+      //Rotate around x
+      Eigen::Affine3d rotx(Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::UnitZ()));
+      //Eigen::Affine3d roty(Eigen::AngleAxisd(-M_PI / 2.0, Eigen::Vector3d::UnitZ()));
+
+      pt.orientation_W_B = Eigen::Quaterniond(R);
       trajectory.push_back(pt);
 
       if (integrator.isDone()) {
-        ROS_INFO_STREAM("Integrator finished after " << t << " s with a distance of " << integrator.totalDistance());
+     //   ROS_INFO_STREAM("Integrator finished after " << t << " s with a distance of " << integrator.totalDistance());
         break;
       }
     }
@@ -150,13 +161,14 @@ class VoliroPlanner {
     mav_trajectory_generation::drawMavSampledTrajectory(trajectory, distance, frame_id, &markers);
 
     pub_marker_.publish(markers);
-    if(joy->buttons[0]){
+    if(joy->buttons[0]){  //Test
       trajectory_msgs::MultiDOFJointTrajectory msg;
       mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory, &msg);
       msg.header.frame_id = "world";
       msg.header.stamp = ros::Time::now();
       pub_trajectory_.publish(msg);
       published_ = true;
+	ROS_WARN_STREAM("TRAJECTORY SENT");
     }
 
   }
@@ -167,7 +179,7 @@ class VoliroPlanner {
   bool do_distance_{false};
   bool do_field_{false};
   bool do_integrator_{false};
-  Eigen::Vector3d start_, target_;
+  Eigen::Vector3d start_, start_uv_, target_;
   double alpha, beta, c;
   double alpha_z, beta_z, c_z;
   ros::NodeHandle nh_;

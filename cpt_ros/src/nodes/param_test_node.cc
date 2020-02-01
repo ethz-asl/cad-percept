@@ -19,13 +19,10 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <dynamic_reconfigure/server.h>
 #include <cpt_ros/RMPConfigConfig.h>
-#include <iostream>
-#include <chrono>
-#include <unistd.h>
 
-class RMPZDistanceNode {
+class RMPParamNode {
  public:
-  RMPZDistanceNode(ros::NodeHandle nh) : nh_(nh) {
+  RMPParamNode(ros::NodeHandle nh) : nh_(nh) {
     ros::NodeHandle nh_private("~");
     pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
     pub_mesh_3d_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
@@ -44,7 +41,7 @@ class RMPZDistanceNode {
     mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle);
     manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero, zero_angle);
     pub_mesh_3d_.publish(model_);
-    server_.setCallback(boost::bind(&RMPZDistanceNode::config_callback, this, _1, _2));
+    server_.setCallback(boost::bind(&RMPParamNode::config_callback, this, _1, _2));
 
     start_ << 0.0, 0.0, 0.0;
     target_ << 0.0, 0.0, 0.0;
@@ -77,95 +74,70 @@ class RMPZDistanceNode {
     msg_sphere.pose.orientation.w = 1.0;
 
     ROS_INFO_STREAM("START");
+    alpha = 0.6;
+    beta = 5.8;
+    alpha_z = 6.0;
+    beta_z = 8.0;
 
-    /*for (int x = -25; x <= 25; x += 1) {
-      /* find lowest and largest y that's still on manifold */
-    for(int a= 0; a<100; a++){
-      int x =0;
-      int ymin = 5000;
-      int ymax = -5000;
+    int num =0;
 
-      for (int y = -50; y <= 50; y += 1) {
-        Eigen::Vector3d end_uv, end_xyz;
-        end_uv << x / 25.0, y / 50.0, 0;
-        if (mapping_->onManifold((Eigen::Vector2d) end_uv.topRows<2>())) {
-          if (y < ymin) {
-            ymin = y;
-          }
-          if (y > ymax) {
-            ymax = y;
-          }
-        }
-      }
-      if (ymin == 5000 || ymax == -5000) {
-        return;
-      }
-
-      std::cerr << x << std::endl;
-
-      Eigen::Vector3d end_uv, end_xyz, start_uv, start_xyz;
-      start_uv << x / 25.0, ymin / 50.0, 0;
-      end_uv << x / 25.0, ymax / 50.0, 0;
-
-
-      if (!mapping_->onManifold((Eigen::Vector2d) start_uv.topRows<2>())) {
-        return;
-      }
-      if (!mapping_->onManifold((Eigen::Vector2d) end_uv.topRows<2>())) {
-        return;
-      }
-
-      start_xyz = mapping_->pointUVHto3D(start_uv);
-      end_xyz = mapping_->pointUVHto3D(end_uv);
-      using RMPG = rmp_core::PolicyContainer<3, 3, cad_percept::planning::MeshManifoldInterface>;
-      RMPG policies(*manifold_);
-
-
-      rmp_core::Integrator<3, 3, cad_percept::planning::MeshManifoldInterface> integrator(policies);
-
-      Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
-      Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
-      A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
-      B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
-      rmp_core::SimpleTargetPolicy<3> pol2(end_uv, A, alpha, beta, c); // goes to manifold as quick as possible
-      rmp_core::SimpleTargetPolicy<3> pol3({0.0, 0.0, 0.0}, B, alpha_z, beta_z, c_z); // stays along it
-      policies.addPolicy(&pol3);
-      policies.addPolicy(&pol2);
-
-      integrator.resetTo(start_xyz);
-
-      Eigen::Vector3d current_pos = start_xyz;
-      double dt = 0.01;
-      double distance = -1.0;
-      auto start = std::chrono::steady_clock::now();
-
-      for (double t = 0; t < 10.0; t += dt) {
-
-        Eigen::Vector3d current_pos_uv= mapping_->point3DtoUVH(current_pos);
-        /*std::cout <<
-                  current_pos.x() << "\t" << current_pos.y() << "\t" << current_pos.z()
-                  << "\t" << current_pos_uv.z()<< "\t" << x <<std::endl;
-*/
-        current_pos = integrator.forwardIntegrate(dt);
-
-        /*if (integrator.isDone()) {
-          distance = integrator.totalDistance();
-          break;
-        }*/
-      }
-
-      auto end = std::chrono::steady_clock::now();
-
-      std::cout << "Elapsed time in milliseconds : "
-           << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-           << " ms" << std::endl;
-
-
-
-
+    for(double value = 0.1; value < 10.0;value +=1.0)
+    {
+      beta_z = value;
+      value_ = value;
+      dotest(num++);
     }
 
+
+
     ROS_INFO_STREAM("END");
+
+  }
+
+  void dotest(int num){
+    Eigen::Vector3d end_uv(0.25, 0.25, 0.0);
+    Eigen::Vector3d start_xyz, end_xyz, start_uv;
+    double z = 1.5;
+    double x = 0;
+    double y = -1.5;
+
+    /* find lowest and largest y that's still on manifold */
+    start_xyz << x, y, z;
+    start_uv = mapping_->point3DtoUVH(start_xyz);
+    end_xyz = mapping_->pointUVHto3D(end_uv);
+    using RMPG = rmp_core::PolicyContainer<3, 3, cad_percept::planning::MeshManifoldInterface>;
+    RMPG policies(*manifold_);
+
+    rmp_core::Integrator<3, 3, cad_percept::planning::MeshManifoldInterface> integrator(policies);
+
+    Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
+    Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
+    A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
+    B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
+    rmp_core::SimpleTargetPolicy<3> pol2(end_uv, A, alpha, beta, c); // goes to manifold as quick as possible
+    rmp_core::SimpleTargetPolicy<3> pol3({0.0, 0.0, 0.0}, B, alpha_z, beta_z, c_z); // stays along it
+    policies.addPolicy(&pol3);
+    policies.addPolicy(&pol2);
+
+    integrator.resetTo(start_xyz);
+
+    Eigen::Vector3d current_pos = start_xyz;
+    double dt = 0.01;
+    double distance = -1.0;
+    for (double t = 0; t < 20.0; t += dt) {
+
+      Eigen::Vector3d current_pos_uv = mapping_->point3DtoUVH(current_pos);
+      std::cout <<
+                current_pos.x() << "\t" << current_pos.y() << "\t" << current_pos.z()
+                << "\t" << current_pos_uv.z() << "\t" << num << "\t" << value_ << std::endl;
+
+      current_pos = integrator.forwardIntegrate(dt);
+
+      if (integrator.isDone()) {
+        distance = integrator.totalDistance();
+        break;
+      }
+    }
 
   }
 
@@ -174,6 +146,7 @@ class RMPZDistanceNode {
   Eigen::Vector3d start_, target_;
   double alpha, beta, c;
   double alpha_z, beta_z, c_z;
+  double value_;
   ros::NodeHandle nh_;
   ros::Publisher pub_marker_;
   ros::Subscriber sub_spacenav_;
@@ -190,10 +163,10 @@ int main(int argc, char *argv[]) {
   ros::init(argc, argv, "rmp_coordinate_node");
   ros::NodeHandle nh;
 
-  RMPZDistanceNode node(nh);
-  for(int i=0; i< 10; i++){
-  ros::spinOnce();
-  std::cin.get();
+  RMPParamNode node(nh);
+  for (int i = 0; i < 10; i++) {
+    ros::spinOnce();
+    std::cin.get();
   }
   ros::spinOnce();
   std::cerr << "start" << std::endl;

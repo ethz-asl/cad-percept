@@ -127,7 +127,7 @@ class RMPTestNode {
     msg_sphere.scale.z = 0.01;
     msg_sphere.pose.orientation.w = 1.0;
 
-    double stride = 0.025;
+    double stride = 0.1;
 
     if(do_field_) {
       for (double x = -0.8; x < 0.8; x += stride) {

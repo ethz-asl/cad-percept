@@ -15,22 +15,24 @@
    <param name="off_path" value="/home/mpantic/Desktop/rss/surfaces/flat.off" />
    </node>-->
 
-
+<!--
   <node name="voliro_planner_node" pkg="cpt_ros" type="voliro_planner_node" output="screen">
     <param name="zero_angle" value="0.59"/>
-   <param name="zero_x" value="0.526"/>
-   <param name="zero_y" value="0.7237"/>
-   <param name="zero_z" value="0.2319"/>
-   <param name="off_path" value="/home/mpantic/Desktop/rss/surfaces/crazy.off" />
+   <param name="zero_x" value="-0.34"/>
+   <param name="zero_y" value="-1.06"/>
+   <param name="zero_z" value="0.3"/>
+   <param name="off_path" value="/home/mpantic/Desktop/rss/surfaces/crazy_vicon.off" />
 </node>-->
-<!--
 <node name="voliro_planner_node" pkg="cpt_ros" type="voliro_planner_node" output="screen">
     <param name="zero_angle" value="0.4"/>
       <param name="zero_x" value="0.0"/>
       <param name="zero_y" value="0.0"/>
-      <param name="zero_z" value="0.707"/>
-   <param name="off_path" value="/home/mpantic/Desktop/rss/surfaces/half_sphere2.off" />-
-</node>-->
+      <param name="zero_z" value="1.75"/>
+   <param name="off_path" value="/home/mpantic/Desktop/rss/surfaces/half_sphere2_vicon.off" />-
+</node>
+   <!--<node name="spacenav_node" pkg="spacenav_node" type="spacenav_node">
+        <remap from="/spacenav/joy" to="/joy" />
+    </node>-->
    <node name="joy_node" pkg="joy" type="joy_node" output="screen">
     </node>
 
