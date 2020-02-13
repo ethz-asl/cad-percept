@@ -28,6 +28,8 @@ class OmavTouchPlanner {
     selection_frame_name_ = nh_private_.param<std::string>("selection_frame_name", "map_select");
     body_frame_name_ = nh_private_.param<std::string>("body_frame_name", "body");
     endeffector_frame_name_ = nh_private_.param<std::string>("endeffector_frame_name", "tool");
+    current_ref_frame_name_ = nh_private_.param<std::string>("current_ref_frame_name", "ouzel/current_reference");
+
     map_frame_name_ = nh_private_.param<std::string>("map_frame_name", "map");
     pub_markers_ = nh.advertise<visualization_msgs::MarkerArray>("trajectory_markers", 1);
     pub_trajectory_ =
@@ -82,7 +84,11 @@ class OmavTouchPlanner {
 
   bool touch(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
     Eigen::Affine3d T_W_B;
+    if(plan_from_ref_){
+      getStaticTransform(world_frame_name_, current_ref_frame_name_, &T_W_B);
+    }else{
     getStaticTransform(world_frame_name_, body_frame_name_, &T_W_B);
+    }
     planner_.setDynamicFrames(T_W_B);
 
     mav_msgs::EigenTrajectoryPoint::Vector trajectory;
@@ -114,7 +120,11 @@ class OmavTouchPlanner {
 
   bool untouch(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
     Eigen::Affine3d T_W_B;
-    getStaticTransform(world_frame_name_, body_frame_name_, &T_W_B);
+    if(plan_from_ref_){
+      getStaticTransform(world_frame_name_, current_ref_frame_name_, &T_W_B);
+    }else{
+      getStaticTransform(world_frame_name_, body_frame_name_, &T_W_B);
+    }
     planner_.setDynamicFrames(T_W_B);
 
     mav_msgs::EigenTrajectoryPoint::Vector trajectory;
@@ -173,6 +183,7 @@ class OmavTouchPlanner {
   }
 
  private:
+  bool plan_from_ref_{true};
   double dist_{0.2};
   bool direction_{false}; // false = -z, true = +z
   Eigen::Vector3d current_pos_ {Eigen::Vector3d::Zero()};
@@ -181,6 +192,7 @@ class OmavTouchPlanner {
   Eigen::Vector3d nominal_touch_position_;
   Eigen::Vector3d touch_random_;
 
+  std::string current_ref_frame_name_;  // R_frame
   std::string selection_frame_name_;    // S frame
   std::string world_frame_name_;        // W frame
   std::string body_frame_name_;         // B frame
