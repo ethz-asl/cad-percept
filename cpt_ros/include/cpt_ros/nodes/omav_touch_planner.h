@@ -42,13 +42,7 @@ class OmavTouchPlanner {
     planner_.setLimits(v_max, a_max);
 
     // get static transforms
-    Eigen::Affine3d T_W_M, T_B_E, T_M_S;
-    getStaticTransform(world_frame_name_, map_frame_name_, &T_W_M);
-    getStaticTransform(body_frame_name_, endeffector_frame_name_, &T_B_E);
-    getStaticTransform(map_frame_name_, selection_frame_name_, &T_M_S);
-
-    planner_.setStaticFrames(T_B_E, T_W_M, T_M_S);
-
+    updateStaticFrames();
     // Set up mesh
     ROS_INFO_STREAM("load mesh");
     cgal::MeshModel::Ptr model;
@@ -83,6 +77,9 @@ class OmavTouchPlanner {
   }
 
   bool touch(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
+    if(update_static_){
+      updateStaticFrames();
+    }
     Eigen::Affine3d T_W_B;
     if(plan_from_ref_){
       getStaticTransform(world_frame_name_, current_ref_frame_name_, &T_W_B);
@@ -120,6 +117,10 @@ class OmavTouchPlanner {
 
   bool untouch(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
     Eigen::Affine3d T_W_B;
+    if(update_static_){
+      updateStaticFrames();
+    }
+
     if(plan_from_ref_){
       getStaticTransform(world_frame_name_, current_ref_frame_name_, &T_W_B);
     }else{
@@ -162,6 +163,16 @@ class OmavTouchPlanner {
     return true;
   }
 
+  void updateStaticFrames(){
+    // get static transforms
+    Eigen::Affine3d T_W_M, T_B_E, T_M_S;
+    getStaticTransform(world_frame_name_, map_frame_name_, &T_W_M);
+    getStaticTransform(body_frame_name_, endeffector_frame_name_, &T_B_E);
+    getStaticTransform(map_frame_name_, selection_frame_name_, &T_M_S);
+
+    planner_.setStaticFrames(T_B_E, T_W_M, T_M_S);
+  }
+
   void getStaticTransform(const std::string &frame_A, const std::string &frame_B,
                           Eigen::Affine3d *T_A_B) {
     if (frame_A == frame_B) {
@@ -183,6 +194,7 @@ class OmavTouchPlanner {
   }
 
  private:
+  bool update_static_{true};
   bool plan_from_ref_{true};
   double dist_{0.2};
   bool direction_{false}; // false = -z, true = +z
