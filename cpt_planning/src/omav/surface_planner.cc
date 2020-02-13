@@ -42,8 +42,32 @@ void SurfacePlanner::planFullContact(const Eigen::Vector3d& p_W, double force,
   // plan engage, contact and retract
   planTrajectory(T_W_B_, T_W_B_intermediate, trajectory_sampled);
   planTrajectory(T_W_B_intermediate, T_W_B_contact, trajectory_sampled);
-  planForce(force_W, 5.0, 0.075, trajectory_sampled);
-  planTrajectory(T_W_B_contact, T_W_B_intermediate, trajectory_sampled);
+  //planForce(force_W, 10.0, 0.075, trajectory_sampled);
+  //planTrajectory(T_W_B_contact, T_W_B_intermediate, trajectory_sampled);
+}
+
+void SurfacePlanner::planFullContactRetract(const Eigen::Vector3d& p_W, double force,
+                                     mav_msgs::EigenTrajectoryPoint::Vector* trajectory_sampled,
+                                     Eigen::Affine3d* contact_pos_w) {
+  // get normal,force and position on mesh
+  Eigen::Affine3d T_W_B_contact, T_W_B_intermediate;
+  Eigen::Vector3d normal_W, position_W;
+  getClosestPointOnMesh(p_W, &position_W, &normal_W);
+  Eigen::Vector3d force_W = -normal_W * force;
+
+  // get intermediate points
+  getT_W_Bintermediate(position_W, normal_W, &T_W_B_intermediate);
+  getT_W_Bcontact(position_W, normal_W, &T_W_B_contact);
+
+  if (contact_pos_w != nullptr) {
+    *contact_pos_w = T_W_B_contact * T_B_E_;
+  }
+
+  // plan engage, contact and retract
+  planTrajectory(T_W_B_, T_W_B_intermediate, trajectory_sampled);
+  //planTrajectory(T_W_B_intermediate, T_W_B_contact, trajectory_sampled);
+  //planForce(force_W, 10.0, 0.075, trajectory_sampled);
+  //planTrajectory(T_W_B_contact, T_W_B_intermediate, trajectory_sampled);
 }
 
 void SurfacePlanner::InterpolateOrientation(const Eigen::Quaterniond& start,
@@ -185,7 +209,7 @@ void SurfacePlanner::getT_W_Bintermediate(const Eigen::Vector3d& p_W,
 
   Eigen::Affine3d T_W_E_contact;
   T_W_E_contact.linear() = r_W_E;
-  T_W_E_contact.translation() = p_W + p_W_normal * 0.75;
+  T_W_E_contact.translation() = p_W + p_W_normal * 0.5;
 
 
   *T_W_B_contact = T_W_E_contact * T_B_E_.inverse();

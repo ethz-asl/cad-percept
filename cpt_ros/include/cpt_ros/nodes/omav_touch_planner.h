@@ -35,6 +35,7 @@ class OmavTouchPlanner {
 
     double v_max = nh_private_.param<double>("v_max", 1.0);
     double a_max = nh_private_.param<double>("a_max", 1.0);
+    double dist_ = nh_private_.param<double>("dist", 0.3);
     force_ = nh_private_.param<double>("contact_force", 10.0);
     planner_.setLimits(v_max, a_max);
 
@@ -76,36 +77,18 @@ class OmavTouchPlanner {
     ROS_INFO_STREAM("Touch position: " << nominal_touch_position_);
     ROS_INFO_STREAM("Touch random bounds: " << touch_random_);
     touch_service_ = nh_.advertiseService("touch", &OmavTouchPlanner::touch, this);
+    untouch_service_ = nh_.advertiseService("untouch", &OmavTouchPlanner::untouch, this);
   }
 
-  bool touch(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res) {
+  bool touch(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
     Eigen::Affine3d T_W_B;
     getStaticTransform(world_frame_name_, body_frame_name_, &T_W_B);
     planner_.setDynamicFrames(T_W_B);
 
-    // plan position
-    Eigen::Vector3d pos_map(nominal_touch_position_);
-
-    // add a bit randomness in x and y!
-    std::random_device rd;   // Will be used to obtain a seed for the random number engine
-    std::mt19937 gen(rd());  // Standard mersenne_twister_engine seeded with rd()
-    std::uniform_real_distribution<> dis_x(-touch_random_.x(), touch_random_.x());
-    std::uniform_real_distribution<> dis_y(-touch_random_.y(), touch_random_.y());
-    std::uniform_real_distribution<> dis_z(-touch_random_.z(), touch_random_.z());
-
-    if (touch_random_.x() > 0.0) {
-      pos_map.x() += dis_x(gen);
-    }
-    if (touch_random_.y() > 0.0) {
-      pos_map.y() += dis_y(gen);
-    }
-    if (touch_random_.z() > 0.0) {
-      pos_map.z() += dis_z(gen);
-    }
     mav_msgs::EigenTrajectoryPoint::Vector trajectory;
     Eigen::Affine3d contact_pos_w;
     ROS_INFO_STREAM("Force = " << force_);
-    planner_.planFullContact(pos_map, force_, &trajectory, &contact_pos_w);
+    planner_.planFullContact(current_pos_, force_, &trajectory, &contact_pos_w);
 
     // send markers
     visualization_msgs::MarkerArray markers;
@@ -129,8 +112,48 @@ class OmavTouchPlanner {
     return true;
   }
 
-  void getStaticTransform(const std::string& frame_A, const std::string& frame_B,
-                          Eigen::Affine3d* T_A_B) {
+  bool untouch(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
+    Eigen::Affine3d T_W_B;
+    getStaticTransform(world_frame_name_, body_frame_name_, &T_W_B);
+    planner_.setDynamicFrames(T_W_B);
+
+    mav_msgs::EigenTrajectoryPoint::Vector trajectory;
+    Eigen::Affine3d contact_pos_w;
+    ROS_INFO_STREAM("Force = " << force_);
+    planner_.planFullContactRetract(current_pos_, force_, &trajectory, &contact_pos_w);
+
+    // send markers
+    visualization_msgs::MarkerArray markers;
+    std::string frame_id = world_frame_name_;
+    mav_trajectory_generation::drawMavSampledTrajectorybyTime(trajectory, 0.1, frame_id, &markers);
+    pub_markers_.publish(markers);
+
+    // send trajectory
+    trajectory_msgs::MultiDOFJointTrajectory msg;
+    mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory, &msg);
+    msg.header.frame_id = world_frame_name_;
+    msg.header.stamp = ros::Time::now();
+    pub_trajectory_.publish(msg);
+
+    if(point_ % 3 == 2 ){
+      direction_ = !direction_;
+      current_pos_.x() += dist_;
+    }else{
+      if(direction_) // true = +z
+      {
+        current_pos_.z() += dist_;
+      }else{
+        current_pos_.z() -= dist_;
+      }
+    }
+    ROS_INFO_STREAM("Current pt = " << current_pos_);
+    point_++;
+
+    return true;
+  }
+
+  void getStaticTransform(const std::string &frame_A, const std::string &frame_B,
+                          Eigen::Affine3d *T_A_B) {
     if (frame_A == frame_B) {
       *T_A_B = Eigen::Affine3d::Identity();
       return;
@@ -150,6 +173,10 @@ class OmavTouchPlanner {
   }
 
  private:
+  double dist_{0.2};
+  bool direction_{false}; // false = -z, true = +z
+  Eigen::Vector3d current_pos_ {Eigen::Vector3d::Zero()};
+  int point_{0};
   double force_;
   Eigen::Vector3d nominal_touch_position_;
   Eigen::Vector3d touch_random_;
@@ -166,6 +193,7 @@ class OmavTouchPlanner {
   tf::TransformBroadcaster tf_broadcast_;
 
   ros::ServiceServer touch_service_;
+  ros::ServiceServer untouch_service_;
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
   ros::Publisher pub_markers_;
