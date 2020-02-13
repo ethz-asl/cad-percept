@@ -70,7 +70,7 @@ class RMPTestNode {
 
     if (joy->buttons[0]) {
       Eigen::Vector3d start_tmp;
-      start_tmp << joy->axes[0], joy->axes[1], fmax(0, joy->axes[2]);
+      start_tmp << joy->axes[0]*0.3, joy->axes[1]*0.3, fmax(0, joy->axes[2]*0.3);
       if (!mapping_->onManifold((Eigen::Vector2d) start_tmp.topRows<2>())) {
         return;
       }
@@ -79,7 +79,7 @@ class RMPTestNode {
     if (joy->buttons[1]) {
       Eigen::Vector3d end_tmp;
 
-      end_tmp << joy->axes[0], joy->axes[1], fmax(0, joy->axes[2]);
+      end_tmp << joy->axes[0]*0.3, joy->axes[1]*0.3, fmax(0, joy->axes[2]*0.3);
       if (!mapping_->onManifold((Eigen::Vector2d) end_tmp.topRows<2>())) {
         return;
       }
@@ -120,14 +120,14 @@ class RMPTestNode {
     msg_sphere.id = 1;
     msg_sphere.ns = "field";
     msg_sphere.action = visualization_msgs::Marker::ADD;
-    msg_sphere.color.a = 0.95;
+    msg_sphere.color.a = 0.75;
     msg_sphere.color.r = 1.0;
     msg_sphere.scale.x = 0.01;
     msg_sphere.scale.y = 0.01;
     msg_sphere.scale.z = 0.01;
     msg_sphere.pose.orientation.w = 1.0;
 
-    double stride = 0.1;
+    double stride = 0.08;
 
     if(do_field_) {
       for (double x = -0.8; x < 0.8; x += stride) {
@@ -149,7 +149,7 @@ class RMPTestNode {
 
             xyz = mapping_->pointUVHto3D(uv);
 
-            acc *= 0.07;
+            acc *= 0.035;
 
             if (isnan(acc[0]) || isnan(acc[1]) || isnan(acc[2])) {
               // std::cout << "infinite value at" << uv << " " << xyz << std::endl;
@@ -165,7 +165,7 @@ class RMPTestNode {
             end.y = xyz.y() + acc.y();
             end.z = xyz.z() + acc.z();
             std_msgs::ColorRGBA color;
-            color.a = 0.35;
+            color.a = 0.2;
             color.g = 1.0;
             color.b = 1.0;
             color.r = 1.0;
@@ -177,7 +177,7 @@ class RMPTestNode {
             msg.points.push_back(end);
 
             msg_sphere.points.push_back(start);
-            color.a = 0.75;
+
             msg_sphere.colors.push_back(color);
           }
         }
