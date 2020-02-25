@@ -1,0 +1,26 @@
+<launch>
+    
+    <node name="mesh_positioning"
+          pkg="cpt_selective_icp"
+          type="position_cad_with_marker.py"
+          output="screen">
+        <param name="marker_parent_frame" value="map" />
+        <param name="marker_frame_name" value="marker" />
+    </node>
+
+    <node name="Matcher_1"  pkg="cpt_matching_algorithms" type="test_Matcher_node" output="screen" >
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/test_match_config.yaml" />
+        <param name="cadTopic" value="/mesh_publisher/mesh_out" />
+    </node>
+
+    <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
+
+    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node" output="screen">
+        <param name="publish_on_start" value="false"/>  <!-- if set to true, mesh is published two times -->
+        <param name="default_filename" value="$(arg cad_file)"/>
+        <param name="frame_name" value="marker"/>
+    </node>
+
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/meshpointcoud.yaml" />
+
+</launch>
