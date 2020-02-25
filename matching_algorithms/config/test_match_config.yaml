@@ -1,0 +1,3 @@
+inputQueueSize: 1
+tfMapFrame: /map
+mapSamplingDensity: 10
