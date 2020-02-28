@@ -12,10 +12,9 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
-#include "test_Matcher/test_Matcher_parameters.h"
 
 namespace cad_percept {
-namespace cpt_matching_algorithms {
+namespace matching_algorithms {
 
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
@@ -33,7 +32,12 @@ class test_Matcher {
   Eigen::Matrix4d transformation;
   cgal::Transformation ctransformation;
   tf::TransformListener tf_listener_;
-  TestMatcherParameters parameters_;
+
+  // Param from server
+  std::string cad_topic;
+  int input_queue_size;
+  int map_sampling_density;
+  std::string tf_map_frame;
 
   /**
    * Reference mesh for localization
@@ -61,7 +65,7 @@ class test_Matcher {
   void sampleFromReferenceFacets(const int density, PointCloud *pointcloud);
 };
 
-}  // namespace cpt_matching_algorithms
+}  // namespace matching_algorithms
 }  // namespace cad_percept
 
 #endif
