@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+
+	<node type="rviz" name="rviz" pkg="rviz" args="-d rviz.rviz" />
+
+	<node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  map rslidar  100"/>
+
+</launch>
