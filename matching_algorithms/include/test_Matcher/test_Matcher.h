@@ -26,12 +26,14 @@ class test_Matcher {
 
  private:
   ros::NodeHandle &nh_, &nh_private_;
-  tf::StampedTransform transform;
-  Eigen::Matrix3d rotation;
-  Eigen::Vector3d translation;
-  Eigen::Matrix4d transformation;
-  cgal::Transformation ctransformation;
   tf::TransformListener tf_listener_;
+
+  // Point Clouds
+  bool gotlidar = false;
+  bool gotCAD = false;
+  bool CAD_ready = false;
+  bool lidar_frame_ready = false;
+  PointCloud lidar_frame;
 
   // Param from server
   std::string cad_topic;
@@ -40,24 +42,36 @@ class test_Matcher {
   std::string tf_map_frame;
 
   /**
-   * Reference mesh for localization
+   * Reference mesh
    */
   cgal::MeshModel::Ptr reference_mesh_;
+  PointCloud sample_map;
 
   // Point cloud variables
   DP ref_dp;
 
   // Subscribers
   ros::Subscriber cad_sub_;
+  ros::Subscriber lidar_sub_;
 
   // Publisher
   ros::Publisher scan_pub_;
   ros::Publisher map_pub_;
 
   /**
+   * Matcher
+   */
+  void matcher(float (&transformTR)[6]);
+
+  /**
    * Mesh model callback
    */
-  void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
+  void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
+
+  /**
+   * Lidar frame callback
+   */
+  void getLiDAR(const sensor_msgs::PointCloud2 &cad_mesh_in);
 
   /**
    * Sample a point cloud from selected triangles of the mesh model
