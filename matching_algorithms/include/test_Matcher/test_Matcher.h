@@ -59,11 +59,6 @@ class test_Matcher {
   ros::Publisher map_pub_;
 
   /**
-   * Matcher
-   */
-  void matcher(float (&transformTR)[6]);
-
-  /**
    * Mesh model callback
    */
   void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
@@ -77,6 +72,11 @@ class test_Matcher {
    * Sample a point cloud from selected triangles of the mesh model
    */
   void sampleFromReferenceFacets(const int density, PointCloud *pointcloud);
+
+  /**
+   * Declare matcher
+   */
+  void match(float (&transformTR)[6]);
 };
 
 }  // namespace matching_algorithms
