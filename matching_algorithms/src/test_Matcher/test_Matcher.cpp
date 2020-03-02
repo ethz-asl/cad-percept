@@ -23,8 +23,10 @@ test_Matcher::test_Matcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
     ros::spinOnce();
   };
   std::cout << "Received LiDAR and CAD: Start to process data" << std::endl;
+
+  // Find position of robot (change executable in cmake to change matcher)
   float transformTR[6] = {0, 0, 0, 0, 0, 0};  // x y z roll pitch yaw
-  matcher(transformTR);
+  match(transformTR);
 
   for (int i = 0; i < 6; i++) {
     std::cout << transformTR[i];
@@ -46,8 +48,6 @@ test_Matcher::test_Matcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   std::cout << "error: " << std::endl;
 
 }  // namespace matching_algorithms
-
-void test_Matcher::matcher(float (&transformTR)[6]) { transformTR[2] = 11.0; }
 
 // Preprocessing
 void test_Matcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
