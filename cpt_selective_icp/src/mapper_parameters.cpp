@@ -17,6 +17,7 @@ MapperParameters::MapperParameters()
       mapping_trigger(getParam<bool>("mappingTrigger", false)),
       update_icp_ref_trigger(getParam<bool>("updateICPRefTrigger", false)),
       full_icp_primer_trigger(getParam<bool>("fullICPPrimerTrigger", false)),
+      standalone_icp(getParam<bool>("standaloneICP", false)),
       path(getParam<std::string>("path", "fail")),
       output(getParam<bool>("output", false)) {}
 MapperParameters::~MapperParameters() {}
