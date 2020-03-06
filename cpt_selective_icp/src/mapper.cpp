@@ -30,6 +30,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   cad_mesh_pub_ = nh_.advertise<cgal_msgs::TriangleMeshStamped>("cad_mesh_pub", 1, true);
   ref_pc_pub_ = nh_.advertise<PointCloud>("ref_pc", 1, true);
   pose_pub_ = nh_.advertise<geometry_msgs::TransformStamped>("icp_pose", 50, true);
+  mesh_pose_pub_ = nh_.advertise<geometry_msgs::TransformStamped>("mesh_icp_pose", 50, true);
   odom_pub_ = nh_.advertise<nav_msgs::Odometry>("icp_odom", 50, true);
   scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("corrected_scan", 2, true);
   selective_icp_scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("ref_corrected_scan", 2, true);
@@ -54,7 +55,7 @@ bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Re
 void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   if (cad_trigger) {
     std::cout << "Processing CAD mesh" << std::endl;
-    std::string frame_id = cad_mesh_in.header.frame_id;  // should be "marker2"
+    mesh_frame_id_ = cad_mesh_in.header.frame_id;  // should be "marker2"
     cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh_);
 
     // Make some checks:
@@ -76,8 +77,8 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     }
 
     tf::StampedTransform transform;
-    tf_listener_.lookupTransform(parameters_.tf_map_frame, frame_id, ros::Time(0),
-                                 transform);  // from tf_map_frame to origin of cad model
+    tf_listener_.lookupTransform(parameters_.tf_map_frame, mesh_frame_id_, ros::Time(0),
+                                 transform);  // from origin of cad model to map
     Eigen::Matrix3d rotation;
     tf::matrixTFToEigen(transform.getBasis(), rotation);
     Eigen::Vector3d translation;
@@ -88,6 +89,12 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     cgal::Transformation ctransformation;
     cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
     reference_mesh_->transform(ctransformation);
+
+    // save the transform map -> mesh origin (inverse) for later reference
+    Eigen::Affine3d eigenTr;
+    tf::transformTFToEigen(transform.inverse(), eigenTr);
+    T_map_to_meshorigin_ = eigenTr.matrix().cast<float>();
+
     ref_mesh_ready = true;
 
     // first extract whole pointcloud
@@ -142,9 +149,11 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
             T_scanner_to_map_, parameters_.tf_map_frame, stamp));
       }
       // Publish pose. Same as odometry, but different msg type.
+      auto tf_scanner_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+          T_scanner_to_map_, parameters_.lidar_frame, parameters_.tf_map_frame, stamp);
+      tf_broadcaster_.sendTransform(tf_scanner_to_map);
       if (pose_pub_.getNumSubscribers()) {
-        pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
-            T_scanner_to_map_, parameters_.lidar_frame, parameters_.tf_map_frame, stamp));
+        pose_pub_.publish(tf_scanner_to_map);
       }
       return;  // cancel if icp_ was not initialized yet
     }
@@ -169,23 +178,26 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     /**
      * Get transform
      */
-    try {
-      T_scanner_to_map_ = PointMatcher_ros::eigenMatrixToDim<float>(
-          PointMatcher_ros::transformListenerToEigenMatrix<float>(tf_listener_,
-                                                                  parameters_.tf_map_frame,  // to
-                                                                  parameters_.lidar_frame,   // from
-                                                                  stamp),
-          dimp1);
-    } catch (tf::ExtrapolationException e) {
-      ROS_ERROR_STREAM("Extrapolation Exception. stamp = " << stamp << " now = " << ros::Time::now()
-                                                           << " delta = "
-                                                           << ros::Time::now() - stamp << std::endl
-                                                           << e.what());
-      return;
-    } catch (...) {
-      // Everything else.
-      ROS_ERROR_STREAM("Unexpected exception... ignoring scan.");
-      return;
+    if (!parameters_.standalone_icp) {
+      try {
+        T_scanner_to_map_ = PointMatcher_ros::eigenMatrixToDim<float>(
+            PointMatcher_ros::transformListenerToEigenMatrix<float>(
+                tf_listener_,
+                parameters_.tf_map_frame,  // to
+                parameters_.lidar_frame,   // from
+                stamp),
+            dimp1);
+      } catch (tf::ExtrapolationException e) {
+        ROS_ERROR_STREAM("Extrapolation Exception. stamp = "
+                         << stamp << " now = " << ros::Time::now()
+                         << " delta = " << ros::Time::now() - stamp << std::endl
+                         << e.what());
+        return;
+      } catch (...) {
+        // Everything else.
+        ROS_ERROR_STREAM("Unexpected exception... ignoring scan.");
+        return;
+      }
     }
     ROS_DEBUG_STREAM("[ICP] T_scanner_to_map (" << parameters_.lidar_frame << " to "
                                                 << parameters_.tf_map_frame << "):\n"
@@ -221,6 +233,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
      */
     if (selective_icp_trigger == true) {
       if (!selectiveICP(cloud, &T_updated_scanner_to_map, stamp)) {
+        return;
         if (parameters_.full_icp_primer_trigger == false) {  // if not executed before, do now
           if (!fullICP(cloud, &T_updated_scanner_to_map)) {  // if no result cancel
             return;  // if not successfull cancel the process
@@ -246,12 +259,22 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       odom_pub_.publish(PointMatcher_ros::eigenMatrixToOdomMsg<float>(
           T_updated_scanner_to_map, parameters_.tf_map_frame, stamp));
     }
-    // Publish pose. Same as odometry, but different msg type.
+    // Publish pose
+    auto tf_scanner_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+        T_updated_scanner_to_map, parameters_.lidar_frame, parameters_.tf_map_frame, stamp);
+    tf_broadcaster_.sendTransform(tf_scanner_to_map);
     if (pose_pub_.getNumSubscribers()) {
-      pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
-          T_updated_scanner_to_map, parameters_.lidar_frame, parameters_.tf_map_frame, stamp));
+      pose_pub_.publish(tf_scanner_to_map);
     }
 
+    // Publish pose in mesh
+    if (mesh_pose_pub_.getNumSubscribers()) {
+      mesh_pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+          T_map_to_meshorigin_ * T_updated_scanner_to_map, parameters_.lidar_frame, mesh_frame_id_,
+          stamp));
+    }
+
+    T_scanner_to_map_ = T_updated_scanner_to_map;
     // Publish the corrected scan point cloud
     DP pc = transformation_->compute(cloud, T_updated_scanner_to_map);
 

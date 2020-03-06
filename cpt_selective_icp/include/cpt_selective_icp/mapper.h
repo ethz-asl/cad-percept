@@ -21,6 +21,7 @@
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
 #include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
 #include <tf_conversions/tf_eigen.h>
 #include <boost/thread.hpp>
 #include <unordered_set>
@@ -39,9 +40,10 @@ class Mapper {
  public:
   Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
 
- private:
+ protected:
   ros::NodeHandle &nh_, &nh_private_;
   tf::TransformListener tf_listener_;
+  tf::TransformBroadcaster tf_broadcaster_;
   MapperParameters parameters_;
   ros::Time stamp;
   int odom_received_;
@@ -50,6 +52,8 @@ class Mapper {
    * Reference mesh for localization
    */
   cgal::MeshModel::Ptr reference_mesh_;
+  PM::TransformationParameters T_map_to_meshorigin_;
+  std::string mesh_frame_id_;
 
   /**
    * Set containing all reference IDs and their coplanar neighbors.
@@ -92,6 +96,7 @@ class Mapper {
   ros::Publisher cad_mesh_pub_;
   ros::Publisher ref_pc_pub_;
   ros::Publisher pose_pub_;
+  ros::Publisher mesh_pose_pub_;
   ros::Publisher odom_pub_;
   ros::Publisher scan_pub_;
   ros::Publisher selective_icp_scan_pub_;
