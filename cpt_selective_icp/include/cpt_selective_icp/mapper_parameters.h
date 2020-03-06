@@ -21,6 +21,7 @@ struct MapperParameters {
   bool mapping_trigger;
   bool update_icp_ref_trigger;
   bool full_icp_primer_trigger;
+  bool standalone_icp;
   std::string path;
   bool output;
 };
