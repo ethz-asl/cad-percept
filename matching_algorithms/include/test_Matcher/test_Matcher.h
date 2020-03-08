@@ -12,6 +12,7 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <random>
 
 namespace cad_percept {
 namespace matching_algorithms {
@@ -29,6 +30,7 @@ class test_Matcher {
   tf::TransformListener tf_listener_;
 
   // Point Clouds
+  bool usetoyproblem = false;
   bool gotlidar = false;
   bool gotCAD = false;
   bool CAD_ready = false;
