@@ -1,5 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Launch file for test_Matcher
+-->
+
 <launch>
-    
+
+    <node name="mapper"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" launch-prefix="tmux split-window">
+        <rosparam command="load" file="$(find matching_algorithms)/config/test_match_config.yaml" />
+        <param name="cadTopic" value="/mesh_publisher/mesh_out" />
+    </node>
+
+    <node pkg="rosbag" type="play" name="LiDAR_driver" args="-l $(find matching_algorithms)/../../data_set/scan0.bag" />
+
+    <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
+
     <node name="mesh_positioning"
           pkg="cpt_selective_icp"
           type="position_cad_with_marker.py"
@@ -8,12 +22,12 @@
         <param name="marker_frame_name" value="marker" />
     </node>
 
-    <node name="Matcher_1"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" >
-        <rosparam command="load" file="$(find matching_algorithms)/config/test_match_config.yaml" />
-        <param name="cadTopic" value="/mesh_publisher/mesh_out" />
+    <node name="find_id_in_mesh"
+          pkg="cpt_utils"
+          type="find_closest_id_in_mesh.py"
+          output="screen">
+        <param name="marker_parent_frame" value="marker" />
     </node>
-
-    <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
 
     <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node" output="screen">
         <param name="publish_on_start" value="false"/>  <!-- if set to true, mesh is published two times -->
@@ -21,9 +35,7 @@
         <param name="frame_name" value="marker"/>
     </node>
 
-    <node pkg="rosbag" type="play" name="LiDAR_driver" args="-l $(find matching_algorithms)/../../data_set/scan0.bag" />
-
-    <node pkg="tf" type="static_transform_publisher" name="map_lidar_broadcast" args="0 0 0 0 0 0 1 marker rslidar 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="laser" args="100 0 0 0 0 0 1  /lidar /rslidar  100"/>
 
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find matching_algorithms)/config/meshpointcoud.yaml" />
 

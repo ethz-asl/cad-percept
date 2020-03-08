@@ -33,6 +33,7 @@ class test_Matcher {
   bool gotCAD = false;
   bool CAD_ready = false;
   bool lidar_frame_ready = false;
+  bool ground_truth_ready = false;
   PointCloud lidar_frame;
 
   // Param from server
@@ -40,6 +41,9 @@ class test_Matcher {
   int input_queue_size;
   int map_sampling_density;
   std::string tf_map_frame;
+
+  // Evaluation
+  geometry_msgs::PointStamped ground_truth;
 
   /**
    * Reference mesh
@@ -53,6 +57,7 @@ class test_Matcher {
   // Subscribers
   ros::Subscriber cad_sub_;
   ros::Subscriber lidar_sub_;
+  ros::Subscriber gt_sub_;
 
   // Publisher
   ros::Publisher scan_pub_;
@@ -67,6 +72,11 @@ class test_Matcher {
    * Lidar frame callback
    */
   void getLiDAR(const sensor_msgs::PointCloud2 &cad_mesh_in);
+
+  /**
+   * Ground truth callback
+   */
+  void getGroundTruth(const geometry_msgs::PointStamped &gt_in);
 
   /**
    * Sample a point cloud from selected triangles of the mesh model

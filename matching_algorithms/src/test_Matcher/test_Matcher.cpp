@@ -14,6 +14,8 @@ test_Matcher::test_Matcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   // Get Subscriber
   cad_sub_ = nh_.subscribe(cad_topic, input_queue_size, &test_Matcher::getCAD, this);
   lidar_sub_ = nh.subscribe("rslidar_points", input_queue_size, &test_Matcher::getLiDAR, this);
+  gt_sub_ = nh.subscribe("/ground_truth", input_queue_size, &test_Matcher::getGroundTruth, this);
+
   // Get Publisher
   scan_pub_ = nh.advertise<sensor_msgs::PointCloud2>("corrected_scan", 2, true);
   map_pub_ = nh_.advertise<PointCloud>("map", 1, true);
@@ -28,26 +30,31 @@ test_Matcher::test_Matcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   float transformTR[6] = {0, 0, 0, 0, 0, 0};  // x y z roll pitch yaw
   match(transformTR);
 
-  for (int i = 0; i < 6; i++) {
-    std::cout << transformTR[i];
-  }
-  std::cout << std::endl;
-
   // Transform LiDAR frame
   Eigen::Affine3f affinetransform =
       pcl::getTransformation(transformTR[0], transformTR[1], transformTR[2], transformTR[3],
                              transformTR[4], transformTR[5]);
-
   pcl::transformPointCloud(lidar_frame, lidar_frame, affinetransform);
-
   ref_dp = cpt_utils::pointCloudToDP(lidar_frame);
+
   scan_pub_.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame, ros::Time::now()));
 
   // Check with ground truth position and give out error
-  std::cout << "error: " << std::endl;
+  std::cout << "Waiting for ground truth data" << std::endl;
+  while (!ground_truth_ready) {
+    ros::spinOnce();
+  }
 
-}  // namespace matching_algorithms
+  std::cout << "calculated position: x: " << transformTR[0] << " y: " << transformTR[1]
+            << " z: " << transformTR[2] << std::endl;
+  std::cout << "ground truth position: x: " << ground_truth.point.x
+            << " y: " << ground_truth.point.y << " z: " << ground_truth.point.z << std::endl;
+  float error = sqrt(pow(transformTR[0] - ground_truth.point.x, 2) +
+                     pow(transformTR[1] - ground_truth.point.y, 2) +
+                     pow(transformTR[2] - ground_truth.point.z, 2));
+  std::cout << "error (euclidean distance): " << error << std::endl;
+}
 
 // Preprocessing
 void test_Matcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
@@ -106,6 +113,14 @@ void test_Matcher::getLiDAR(const sensor_msgs::PointCloud2& lidarframe) {
 
     std::cout << "Lidar frame ready" << std::endl;
     lidar_frame_ready = true;
+  }
+}
+
+void test_Matcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
+  if (!ground_truth_ready) {
+    ground_truth = gt_in;
+    std::cout << "Got ground truth data" << std::endl;
+    ground_truth_ready = true;
   }
 }
 
