@@ -12,8 +12,9 @@ add_definitions(-std=c++11 -Wall -Wextra)
 ###########
 cs_add_library(test_Matcher
 	src/test_Matcher/test_Matcher.cpp
-        src/test_Matcher/template_matcher.cpp
-#	src/test_Matcher/feature_matcher.cpp
+#    src/test_Matcher/template_matcher.cpp
+#  	 src/test_Matcher/feature_matcher.cpp
+     src/test_Matcher/go_icp_matcher.cpp
 	)
 
 
