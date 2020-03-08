@@ -121,11 +121,21 @@ void test_Matcher::getLiDAR(const sensor_msgs::PointCloud2& lidarframe) {
     ground_truth.point.x = 0;
     ground_truth.point.y = 0;
     ground_truth.point.z = 12;
+    float roll = 0.7;
+    float yaw = 0.5;
+    float pitch = 0.8;
 
     Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
-    // Eigen::Matrix3d rotation;
+    Eigen::Matrix3d rotation;
     Eigen::Vector3d translation(ground_truth.point.x, ground_truth.point.y, ground_truth.point.z);
-    // transformation.block(0, 0, 3, 3) = rotation;
+
+    Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitZ());
+    Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitY());
+    Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
+
+    Eigen::Quaternion<double> q = rollAngle * yawAngle * pitchAngle;
+
+    transform.block(0, 0, 3, 3) = q.matrix();
     transform.block(0, 3, 3, 1) = translation;
     pcl::transformPointCloud(sample_map, lidar_frame, transform);
     std::cout << "Lidar frame transfomed according to ground truth data" << std::endl;
