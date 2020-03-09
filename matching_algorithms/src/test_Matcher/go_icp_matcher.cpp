@@ -1,5 +1,7 @@
 #include "test_Matcher/test_Matcher.h"
 
+#include <pcl/filters/voxel_grid.h>
+
 namespace cad_percept {
 namespace matching_algorithms {
 
@@ -8,9 +10,24 @@ void test_Matcher::match(float (&transformTR)[6]) {
   // Instructions: load git, then in terminal "cmake", then "make" should create executable GoICP
   std::cout << "Go-ICP matcher started" << std::endl;
 
+  float leafsize = nh_private_.param<float>("leafsize", 0.1);
+  std::string downsample_points = nh_private_.param<std::string>("downsample", "1000");
+
   // Centralize point clouds and scale them to [-1,1]³
   PointCloud go_icp_lidar = lidar_frame;
   PointCloud go_icp_map = sample_map;
+
+  if (!usetoyproblem) {
+    // Downsample lidar
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    *cloud = go_icp_lidar;
+
+    pcl::VoxelGrid<pcl::PointXYZ> sor;
+    sor.setInputCloud(cloud);
+    sor.setLeafSize(leafsize, leafsize, leafsize);
+    sor.filter(*cloud);
+    go_icp_lidar = *cloud;
+  }
 
   // Find translation for centralization
   pcl::CentroidPoint<pcl::PointXYZ> centroid_lidar;
@@ -86,7 +103,9 @@ void test_Matcher::match(float (&transformTR)[6]) {
   lidar_file.close();
 
   std::cout << "Start Go-ICP" << std::endl;
-  system("./GoICP map.txt lidar_frame.txt 500 demo/config.txt output.txt");
+  std::string command =
+      "./GoICP map.txt lidar_frame.txt " + downsample_points + " demo/config.txt output.txt";
+  system(command.c_str());
   std::cout << "Go-ICP finished" << std::endl;
 
   // Read results
