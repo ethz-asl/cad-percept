@@ -7,8 +7,8 @@ Launch file for Selective ICP with rviz
 
 		<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
 
-	<node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen" >
-    <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
+	<node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen" launch-prefix="tmux split-window" >
+    <rosparam command="load" file="$(find matching_algorithms)/config/mapper_parameters.yaml" />
     <param name="scanTopic" value="/rslidar_points" />
 		<param name="cadTopic" value="mesh_publisher/mesh_out" />
 		<param name="icpConfig"
@@ -23,7 +23,6 @@ Launch file for Selective ICP with rviz
 			   value="$(find cpt_selective_icp)/config/map_pre_filter.yaml" />
 		<param name="path"
 				 value="$(find cpt_selective_icp)" />
-	    <param name="standaloneICP" value="true" />
 	</node>
 
 	<node name="mesh_positioning"

@@ -9,6 +9,7 @@ Launch file for test_Matcher
     <node name="mapper"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" cwd ="node"> <!-- use this node for Go-ICP -->
         <rosparam command="load" file="$(find matching_algorithms)/config/test_match_config.yaml"/>
         <rosparam command="load" file="$(find matching_algorithms)/config/go_icp_config.yaml" />
+        <rosparam command="load" file="$(find matching_algorithms)/config/toyproblem_config.yaml" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
         <param name="usetoyproblem" value="true" />
     </node>

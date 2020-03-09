@@ -1,0 +1,11 @@
+minReadingPointCount: 200
+inputQueueSize: 1
+mapSamplingDensity: 100 # sampling density for mesh map
+tfMapFrame: /map
+lidarFrame: lidar
+minOverlap: 0.1 # for ICP
+mappingTrigger: false # create map
+updateICPRefTrigger: false # update ICP map with new point clouds
+fullICPPrimerTrigger: true # use a fullICP Primer for selectiveICP
+standaloneICP: true  # use icp without external state estimation
+output: false # error metrics are incredible slow
