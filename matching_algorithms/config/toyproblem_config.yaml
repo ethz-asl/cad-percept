@@ -1,0 +1,9 @@
+groundtruthx: 0
+groundtruthy: 5
+groundtruthz: 0
+groundtruthroll: 0
+groundtruthpitch: 0
+groundtruthyaw: 1.3
+#LiDAR settings
+accuracy_of_lidar: 0.2
+range_of_lidar: 20

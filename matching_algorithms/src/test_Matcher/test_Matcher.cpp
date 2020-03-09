@@ -55,6 +55,8 @@ test_Matcher::test_Matcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
                      pow(transformTR[1] - ground_truth.point.y, 2) +
                      pow(transformTR[2] - ground_truth.point.z, 2));
   std::cout << "error (euclidean distance): " << error << std::endl;
+
+  ros::shutdown();
 }
 
 // Preprocessing
@@ -110,20 +112,20 @@ void test_Matcher::getLiDAR(const sensor_msgs::PointCloud2& lidarframe) {
   // Get a sampled lidar frame from sampled mesh
   if (!lidar_frame_ready && usetoyproblem && CAD_ready && !ground_truth_ready) {
     // Set ground_truth and transform point cloud correspondingly
-    ground_truth.point.x = 0;
-    ground_truth.point.y = 0;
-    ground_truth.point.z = 12;
-    float roll = 0.7;
-    float yaw = 0.5;
-    float pitch = 0.8;
+    ground_truth.point.x = nh_private_.param<float>("groundtruthx", 0);
+    ground_truth.point.y = nh_private_.param<float>("groundtruthy", 0);
+    ground_truth.point.z = nh_private_.param<float>("groundtruthz", 0);
+    float roll = nh_private_.param<float>("groundtruthroll", 0);
+    float yaw = nh_private_.param<float>("groundtruthyaw", 0);
+    float pitch = nh_private_.param<float>("groundtruthpitch", 0);
 
     Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
     Eigen::Matrix3d rotation;
     Eigen::Vector3d translation(ground_truth.point.x, ground_truth.point.y, ground_truth.point.z);
 
-    Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitZ());
-    Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitX());
+    Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
+    Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
+    Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
 
     Eigen::Quaternion<double> q = rollAngle * yawAngle * pitchAngle;
 
@@ -134,8 +136,10 @@ void test_Matcher::getLiDAR(const sensor_msgs::PointCloud2& lidarframe) {
 
     // Add some lidar properties f.e. small distrubances and maximal range (assuming no bins)
     // Sensor noise (assume same noise independed on distance)
-    float noise_variance = 0.02;  // Accuracy is 2cm for Robosense 16-bin LiDAR
-    float range_of_lidar = 20;    // Assume range of lidar to be 20m
+    float noise_variance = nh_private_.param<float>(
+        "accuracy_of_lidar", 0.02);  // Accuracy is 2cm for Robosense 16-bin LiDAR
+    float range_of_lidar =
+        nh_private_.param<float>("range_of_lidar", 20);  // Assume range of lidar to be 20m
     std::default_random_engine generator;
     std::normal_distribution<float> noise(0, noise_variance);
 
