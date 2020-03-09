@@ -1,3 +1,4 @@
-#Change MSE Threshold in Go-ICP/demo/config.txt
+#Change MSE Threshold & Trimmer Settings in Go-ICP/demo/config.txt
 leafsize: 0.2
 downsample: "1500"
+

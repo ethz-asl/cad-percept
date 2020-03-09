@@ -104,14 +104,6 @@ void test_Matcher::getLiDAR(const sensor_msgs::PointCloud2& lidarframe) {
     pcl_conversions::toPCL(lidarframe, lidar_pc2);
     pcl::fromPCLPointCloud2(lidar_pc2, lidar_frame);
 
-    // Correct for scale difference in lidar frame and map
-    float scale_lidar_map = 1.5;  // Will ask for correct scale in the next meeting
-    Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
-    transform(0, 0) = transform(0, 0) * scale_lidar_map;
-    transform(1, 1) = transform(1, 1) * scale_lidar_map;
-    transform(2, 2) = transform(2, 2) * scale_lidar_map;
-    pcl::transformPointCloud(lidar_frame, lidar_frame, transform);
-
     std::cout << "Lidar frame ready" << std::endl;
     lidar_frame_ready = true;
   }
