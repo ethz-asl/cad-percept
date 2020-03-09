@@ -10,7 +10,7 @@ Launch file for test_Matcher
         <rosparam command="load" file="$(find matching_algorithms)/config/test_match_config.yaml"/>
         <rosparam command="load" file="$(find matching_algorithms)/config/go_icp_config.yaml" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
-        <param name="usetoyproblem" value="false" />
+        <param name="usetoyproblem" value="true" />
     </node>
 
     <node pkg="rosbag" type="play" name="LiDAR_driver" args="-l $(find matching_algorithms)/../../data_set/scan0.bag" />
