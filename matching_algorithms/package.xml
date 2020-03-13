@@ -17,7 +17,7 @@
   <depend>cgal_conversions</depend>
   <depend>cgal_definitions</depend>
   <depend>libpointmatcher</depend>
-  <depend>libpointmatcher_ros</depend>  <!--includes getparam -->
+  <depend>libpointmatcher_ros</depend> 
   <depend>cpt_utils</depend>
   
 </package>

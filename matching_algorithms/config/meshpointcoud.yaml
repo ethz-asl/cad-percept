@@ -9,8 +9,7 @@ Panels:
         - /Grid1
         - /TriangleMeshDisplay1
         - /PointCloud21
-        - /InteractiveMarkers1
-        - /InteractiveMarkers2
+        - /PointCloud22
       Splitter Ratio: 0.5
     Tree Height: 848
   - Class: rviz/Selection
@@ -92,28 +91,40 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.10000000149011612
       Style: Spheres
-      Topic: /corrected_scan
+      Topic: /matched_point_cloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    - Class: rviz/InteractiveMarkers
-      Enable Transparency: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 52; 101; 164
+      Color Transformer: FlatColor
+      Decay Time: 0
       Enabled: true
-      Name: InteractiveMarkers
-      Show Axes: false
-      Show Descriptions: true
-      Show Visual Aids: false
-      Update Topic: /mesh_id_marker/update
-      Value: true
-    - Class: rviz/InteractiveMarkers
-      Enable Transparency: true
-      Enabled: true
-      Name: InteractiveMarkers
-      Show Axes: false
-      Show Descriptions: true
-      Show Visual Aids: false
-      Update Topic: /mesh_position_marker/update
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.10000000149011612
+      Style: Flat Squares
+      Topic: /sample_map
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
       Value: true
   Enabled: true
   Global Options:
@@ -158,10 +169,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8597971200942993
+      Pitch: 0.7197979092597961
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.4935898780822754
+      Yaw: 2.203578233718872
     Saved: ~
 Window Geometry:
   Displays:

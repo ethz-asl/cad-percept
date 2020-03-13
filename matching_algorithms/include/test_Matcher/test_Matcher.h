@@ -12,7 +12,6 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
-#include <random>
 
 namespace cad_percept {
 namespace matching_algorithms {
@@ -27,16 +26,14 @@ class test_Matcher {
 
  private:
   ros::NodeHandle &nh_, &nh_private_;
-  tf::TransformListener tf_listener_;
 
-  // Point Clouds
-  bool usetoyproblem = false;
-  bool gotlidar = false;
-  bool gotCAD = false;
-  bool CAD_ready = false;
+  // given Point Cloud data
+  bool usesimlidar = false;
   bool lidar_frame_ready = false;
   bool ground_truth_ready = false;
+  bool map_ready = false;
   PointCloud lidar_frame;
+  PointCloud sample_map;
 
   // Param from server
   std::string cad_topic;
@@ -44,36 +41,33 @@ class test_Matcher {
   int map_sampling_density;
   std::string tf_map_frame;
 
-  // Evaluation
+  // Evaluation / Ground Truth data
   geometry_msgs::PointStamped ground_truth;
+  float gtroll;
+  float gtpitch;
+  float gtyaw;
 
-  /**
-   * Reference mesh
-   */
-  cgal::MeshModel::Ptr reference_mesh_;
-  PointCloud sample_map;
-
-  // Point cloud variables
+  // ROS
   DP ref_dp;
 
   // Subscribers
-  ros::Subscriber cad_sub_;
+  ros::Subscriber sample_map_sub_;
   ros::Subscriber lidar_sub_;
+  ros::Subscriber lidar_sim_sub_;
   ros::Subscriber gt_sub_;
 
   // Publisher
   ros::Publisher scan_pub_;
-  ros::Publisher map_pub_;
 
   /**
-   * Mesh model callback
+   * Sampled map callback
    */
-  void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
+  void getsampleCAD(const sensor_msgs::PointCloud2 &cad_map);
 
   /**
    * Lidar frame callback
    */
-  void getLiDAR(const sensor_msgs::PointCloud2 &cad_mesh_in);
+  void getLiDAR(const sensor_msgs::PointCloud2 &lidarframe);
 
   /**
    * Ground truth callback
@@ -81,14 +75,15 @@ class test_Matcher {
   void getGroundTruth(const geometry_msgs::PointStamped &gt_in);
 
   /**
-   * Sample a point cloud from selected triangles of the mesh model
+   * Simulated Lidar frame callback
    */
-  void sampleFromReferenceFacets(const int density, PointCloud *pointcloud);
+  void getsimLiDAR(const sensor_msgs::PointCloud2 &lidarframe);
 
   /**
-   * Declare matcher
+   * Declare matchers
    */
-  void match(float (&transformTR)[6]);
+  void template_match(float (&transformTR)[6]);
+  void go_icp_match(float (&transformTR)[6]);
 };
 
 }  // namespace matching_algorithms

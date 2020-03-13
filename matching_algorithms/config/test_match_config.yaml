@@ -1,3 +1,7 @@
 inputQueueSize: 1
 tfMapFrame: /map
-mapSamplingDensity: 20
+
+#Select Matcher (only one)
+use_template: true
+use_go_icp: false
+

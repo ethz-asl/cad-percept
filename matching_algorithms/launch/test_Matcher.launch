@@ -4,36 +4,39 @@ Launch file for test_Matcher
 -->
 
 <launch>
-
-    <!-- <node name="mapper"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" launch-prefix="tmux split-window"> -->
-    <node name="mapper"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" cwd ="node"> <!-- use this node for Go-ICP -->
+   <!-- <node name="test_matcher"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" cwd ="node"> uncommand for Go-ICP--> 
+   <node name="test_matcher"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" launch-prefix="tmux split-window">
         <rosparam command="load" file="$(find matching_algorithms)/config/test_match_config.yaml"/>
+        <rosparam command="load" file="$(find matching_algorithms)/config/simlidar_config.yaml" />
         <rosparam command="load" file="$(find matching_algorithms)/config/go_icp_config.yaml" />
-        <rosparam command="load" file="$(find matching_algorithms)/config/toyproblem_config.yaml" />
-        <param name="cadTopic" value="/mesh_publisher/mesh_out" />
+        <param name="tfMapFrame" value="/map" />
         <param name="usetoyproblem" value="true" />
+
     </node>
 
-    <node pkg="rosbag" type="play" name="LiDAR_driver" args="-l $(find matching_algorithms)/../../data_set/scan0.bag" />
+    <node name="lidar_simulator"  pkg="matching_algorithms" type="simlidar_node" output="screen" launch-prefix="tmux split-window">
+        <rosparam command="load" file="$(find matching_algorithms)/config/simlidar_config.yaml" />
+        <param name="cadTopic" value="/mesh_publisher/mesh_out" />
+    </node>
+
+    <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(find matching_algorithms)/../../data_set/scan0.bag" />
 
     <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
 
     <node name="mesh_positioning"
           pkg="cpt_selective_icp"
-          type="position_cad_with_marker.py"
-          output="screen">
+          type="position_cad_with_marker.py">
         <param name="marker_parent_frame" value="map" />
         <param name="marker_frame_name" value="marker" />
     </node>
 
     <node name="find_id_in_mesh"
           pkg="cpt_utils"
-          type="find_closest_id_in_mesh.py"
-          output="screen">
+          type="find_closest_id_in_mesh.py">
         <param name="marker_parent_frame" value="marker" />
     </node>
 
-    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node" output="screen">
+    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
         <param name="publish_on_start" value="false"/>  <!-- if set to true, mesh is published two times -->
         <param name="default_filename" value="$(arg cad_file)"/>
         <param name="frame_name" value="marker"/>
