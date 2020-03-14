@@ -80,6 +80,11 @@ class test_Matcher {
   void getsimLiDAR(const sensor_msgs::PointCloud2 &lidarframe);
 
   /**
+   * Calcualte RMSE (root mean square error) of two point clouds
+   */
+  void getError(PointCloud p1, PointCloud p2);
+
+  /**
    * Declare matchers
    */
   void template_match(float (&transformTR)[6]);
