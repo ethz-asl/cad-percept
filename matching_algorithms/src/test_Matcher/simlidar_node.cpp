@@ -3,6 +3,7 @@
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/pc_processing.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_types.h>
 #include <pointmatcher/PointMatcher.h>
 #include <pointmatcher_ros/point_cloud.h>
@@ -68,12 +69,52 @@ int main(int argc, char** argv) {
   std::cout << "Lidar frame transfomed according to ground truth data" << std::endl;
 
   // Add lidar properties
-  // Bin characteristic
-  // ToDo
+  float range_of_lidar = nh_private_.param<float>("range_of_lidar", 20);
+  // Bin characteristic & visible
+  bool usebins = nh_private_.param<bool>("usebins", false);
+  if (usebins) {
+    std::cout << "Simulate bins of LiDAR" << std::endl;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in(new pcl::PointCloud<pcl::PointXYZ>);
+    *cloud_in = lidar_frame;
+    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+    kdtree.setInputCloud(cloud_in);
+    int k = 1;
+    std::vector<int> pointindex(k);
+    std::vector<float> distance_to_point(k);
+
+    int number_of_bin = nh_private_.param<float>("number_of_bin", 16);
+    std::vector<float> bin_elevation = nh_private_.param<std::vector<float>>("bin_elevation", {0});
+    float dtheta = nh_private_.param<float>("lidar_angualar_resolution", 1);
+    float dr = 0.1;
+    float x_unit;
+    float y_unit;
+    float z_unit;
+    float PI_angle = (float)(M_PI / 180);
+    pcl::PointXYZ intersection_point;
+    lidar_frame.clear();
+    for (int bin_num = 0; bin_num < number_of_bin; bin_num++) {
+      for (float theta = 0; theta < 360; theta += dtheta) {
+        x_unit = cos(bin_elevation[bin_num] * PI_angle) * cos(theta * PI_angle);
+        y_unit = cos(bin_elevation[bin_num] * PI_angle) * sin(theta * PI_angle);
+        z_unit = sin(bin_elevation[bin_num] * PI_angle);
+
+        for (float r = 0.1; r < range_of_lidar; r += dr) {
+          intersection_point.x = r * x_unit;
+          intersection_point.y = r * y_unit;
+          intersection_point.z = r * z_unit + 1.5;  // Add offset of LiDAR
+          kdtree.nearestKSearch(intersection_point, k, pointindex, distance_to_point);
+
+          if (distance_to_point[0] < 0.01) {
+            lidar_frame.push_back(intersection_point);
+            break;
+          }
+        }
+      }
+    }
+  }
 
   // Sensor noise
   float noise_variance = nh_private_.param<float>("accuracy_of_lidar", 0.02);
-  float range_of_lidar = nh_private_.param<float>("range_of_lidar", 20);
   std::default_random_engine generator;
   std::normal_distribution<float> noise(0, noise_variance);
 

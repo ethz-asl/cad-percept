@@ -1,16 +1,20 @@
-groundtruthx: 0
-groundtruthy: 5
+groundtruthx: -2
+groundtruthy: -20
 groundtruthz: 0
 groundtruthroll: 0
 groundtruthpitch: 0
-groundtruthyaw: 1.3
+groundtruthyaw: 0
 
 #Sampling 
-mapSamplingDensity: 20
+mapSamplingDensity: 50
+usebins: true
 
 #LiDAR settings
-accuracy_of_lidar: 0.2
+accuracy_of_lidar: 0.0
 range_of_lidar: 20
+number_of_bin: 16
+bin_elevation: [-15, -13, -11, -9, -7, -5, -3, -1, 15, 13, 11, 9, 7, 5, 3, 1]
+lidar_angular_resolution: 2
 
 #ROS settings
 tfMapFrame: /map
