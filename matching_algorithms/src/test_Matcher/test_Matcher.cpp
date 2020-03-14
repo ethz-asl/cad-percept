@@ -40,11 +40,9 @@ test_Matcher::test_Matcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
 
   // Selection of mapper
   if (nh_private_.param<bool>("use_template", false)) {
-    std::cout << "Template matcher started" << std::endl;
     template_match(transformTR);
   }
   if (nh_private_.param<bool>("use_go_icp", false)) {
-    std::cout << "Go-ICP started" << std::endl;
     go_icp_match(transformTR);
   }
 
@@ -74,14 +72,24 @@ test_Matcher::test_Matcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   /*//////////////////////////////////////
                 Evaluation
   ///////////////////////////////////////*/
+
   std::cout << "calculated position: x: " << transformTR[0] << " y: " << transformTR[1]
             << " z: " << transformTR[2] << std::endl;
+  if (usesimlidar)
+    std::cout << "calculated pose: roll: " << transformTR[3] << " pitch: " << transformTR[4]
+              << " yaw: " << transformTR[5] << std::endl;
+
   std::cout << "ground truth position: x: " << ground_truth.point.x
             << " y: " << ground_truth.point.y << " z: " << ground_truth.point.z << std::endl;
+  if (usesimlidar)
+    std::cout << "ground truth pose: roll: " << gtroll << " pitch: " << gtpitch << " yaw: " << gtyaw
+              << std::endl;
+
   float error = sqrt(pow(transformTR[0] - ground_truth.point.x, 2) +
                      pow(transformTR[1] - ground_truth.point.y, 2) +
                      pow(transformTR[2] - ground_truth.point.z, 2));
-  std::cout << "error (euclidean distance): " << error << std::endl;
+  getError(sample_map, lidar_frame);
+  std::cout << "error (euclidean distance of translation): " << error << std::endl;
 }
 
 // Get sampled mesh
@@ -147,6 +155,36 @@ void test_Matcher::getsimLiDAR(const sensor_msgs::PointCloud2& lidarframe) {
     lidar_frame_ready = true;
     ground_truth_ready = true;
   }
+}
+
+// Get RMSE of two point clouds
+void test_Matcher::getError(PointCloud p1, PointCloud p2) {
+  DP p1_dp = cpt_utils::pointCloudToDP(p1);
+  DP p2_dp = cpt_utils::pointCloudToDP(p2);
+
+  // Calculation of Hausdorff Distance withot oulier removal, source: cpt_selective_icp::mapper
+  const int knn = 1;  // first closest point
+  PM::Parameters params;
+  params["knn"] = PointMatcherSupport::toParam(knn);
+  params["epsilon"] = PointMatcherSupport::toParam(0);
+  // other parameters possible
+  std::shared_ptr<PM::Matcher> matcher = PM::get().MatcherRegistrar.create("KDTreeMatcher", params);
+
+  matcher->init(p1_dp);
+  PM::Matches matches = matcher->findClosests(p2_dp);
+  float maxDist1 = matches.getDistsQuantile(1.0);
+  float maxDistRobust1 = matches.getDistsQuantile(0.85);
+
+  matcher->init(p2_dp);
+  matches = matcher->findClosests(p1_dp);
+  float maxDist2 = matches.getDistsQuantile(1.0);
+  float maxDistRobust2 = matches.getDistsQuantile(0.85);
+
+  float haussdorffDist = std::max(maxDist1, maxDist2);
+  float haussdorffQuantileDist = std::max(maxDistRobust1, maxDistRobust2);
+  std::cout << "Haussdorff distance: " << std::sqrt(haussdorffDist) << " m" << std::endl;
+  std::cout << "Haussdorff quantile distance: " << std::sqrt(haussdorffQuantileDist) << " m"
+            << std::endl;
 }
 
 }  // namespace matching_algorithms

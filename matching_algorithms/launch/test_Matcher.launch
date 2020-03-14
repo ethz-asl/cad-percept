@@ -4,14 +4,11 @@ Launch file for test_Matcher
 -->
 
 <launch>
-   <!-- <node name="test_matcher"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" cwd ="node"> uncommand for Go-ICP--> 
-   <node name="test_matcher"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" launch-prefix="tmux split-window">
+   <node name="test_matcher"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" launch-prefix="tmux split-window -h">
         <rosparam command="load" file="$(find matching_algorithms)/config/test_match_config.yaml"/>
         <rosparam command="load" file="$(find matching_algorithms)/config/simlidar_config.yaml" />
         <rosparam command="load" file="$(find matching_algorithms)/config/go_icp_config.yaml" />
         <param name="tfMapFrame" value="/map" />
-        <param name="usetoyproblem" value="true" />
-
     </node>
 
     <node name="lidar_simulator"  pkg="matching_algorithms" type="simlidar_node" output="screen" launch-prefix="tmux split-window">
@@ -19,7 +16,7 @@ Launch file for test_Matcher
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
     </node>
 
-    <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(find matching_algorithms)/../../data_set/scan0.bag" />
+    <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(find matching_algorithms)/../../data_set/scan200.bag" />
 
     <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
 

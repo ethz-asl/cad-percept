@@ -1,17 +1,17 @@
 #include "test_Matcher/test_Matcher.h"
 
 #include <pcl/filters/voxel_grid.h>
+#include <ros/package.h>
 
 namespace cad_percept {
 namespace matching_algorithms {
 
 void test_Matcher::go_icp_match(float (&transformTR)[6]) {
-  // make sure to have the go-icp repo in ../../../../Go-ICP
   // Instructions: load git, then in terminal "cmake", then "make" should create executable GoICP
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "             Go-ICP matcher started            " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
-  std::cout << "Make sure ../../../../Go-ICP/GoICP.exe exists" << std::endl;
+  std::cout << "Make sure $(find matching_algorithms)/../../Go-ICP/GoICP.exe exists" << std::endl;
 
   // Centralize point clouds and scale them to [-1,1]³
   PointCloud go_icp_lidar = lidar_frame;
@@ -83,7 +83,8 @@ void test_Matcher::go_icp_match(float (&transformTR)[6]) {
   pcl::transformPointCloud(go_icp_map, go_icp_map, trans_scale_map);
 
   // Create txt files of point clouds, required for Go-ICP
-  chdir("../../../src/Go-ICP/");
+  chdir(ros::package::getPath("matching_algorithms").c_str());
+  chdir("../../Go-ICP/");
   std::ofstream map_file("map.txt");  // change cwd to node in launch file
   map_file << go_icp_map.width << std::endl;
   for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
