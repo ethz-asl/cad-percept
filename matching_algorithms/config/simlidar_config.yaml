@@ -7,7 +7,7 @@ groundtruthyaw: 0
 
 #Sampling 
 mapSamplingDensity: 50
-usebins: true
+usebins: false
 
 #LiDAR settings
 accuracy_of_lidar: 0.0

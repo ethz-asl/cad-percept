@@ -13,6 +13,7 @@ cs_add_library(test_Matcher
 	 src/test_Matcher/test_Matcher.cpp
      src/test_Matcher/matcher/template_matcher.cpp
      src/test_Matcher/matcher/go_icp_matcher.cpp
+     #src/test_Matcher/matcher/super4pcs_matcher.cpp
 	)
 
 
@@ -31,8 +32,6 @@ cs_add_executable(simlidar_node
 
 
 target_link_libraries(test_Matcher_node test_Matcher)
-target_link_libraries(dataReader ${catkin_LIBRARIES})
-target_link_libraries(simlidar_node ${catkin_LIBRARIES})
 
 
 #############

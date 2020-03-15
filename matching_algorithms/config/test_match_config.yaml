@@ -1,9 +1,10 @@
 inputQueueSize: 1
 tfMapFrame: /map
 
-usetoyproblem: true
+usetoyproblem: false
 
 #Select Matcher (only one)
-use_template: true
-use_go_icp: false
+use_template: false
+use_go_icp: true
+use_super4pcs: false
 
