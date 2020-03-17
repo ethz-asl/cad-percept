@@ -1,13 +1,13 @@
-groundtruthx: -2
-groundtruthy: -20
+groundtruthx: 0
+groundtruthy: 0
 groundtruthz: 0
 groundtruthroll: 0
 groundtruthpitch: 0
-groundtruthyaw: 0
+groundtruthyaw: 1.5
 
 #Sampling 
 mapSamplingDensity: 50
-usebins: false
+usebins: true
 
 #LiDAR settings
 accuracy_of_lidar: 0.0
