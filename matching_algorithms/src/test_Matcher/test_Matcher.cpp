@@ -42,6 +42,9 @@ test_Matcher::test_Matcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   if (nh_private_.param<bool>("use_template", false)) {
     template_match(transformTR);
   }
+  if (nh_private_.param<bool>("use_go_icp", false)) {
+    go_icp_match(transformTR);
+  }
 
   /*//////////////////////////////////////
                 Transformation

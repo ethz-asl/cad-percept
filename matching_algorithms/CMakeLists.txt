@@ -12,6 +12,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 cs_add_library(test_Matcher
 	 src/test_Matcher/test_Matcher.cpp
      src/test_Matcher/matcher/template_matcher.cpp
+     src/test_Matcher/matcher/go_icp_matcher.cpp
 	)
 
 
