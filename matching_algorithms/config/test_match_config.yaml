@@ -5,6 +5,4 @@ usetoyproblem: true
 
 #Select Matcher (only one)
 use_template: true
-use_go_icp: false
-use_super4pcs: false
 

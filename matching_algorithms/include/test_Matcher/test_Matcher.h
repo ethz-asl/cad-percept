@@ -88,8 +88,6 @@ class test_Matcher {
    * Declare matchers
    */
   void template_match(float (&transformTR)[6]);
-  void go_icp_match(float (&transformTR)[6]);
-  void super4pcs_match(float (&transformTR)[6]);
 };
 
 }  // namespace matching_algorithms
