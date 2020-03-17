@@ -9,7 +9,7 @@ void test_Matcher::template_match(float (&transformTR)[6]) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "This is only a template matcher. It returns a translation in z direction."
             << std::endl;
-  transformTR[2] = 0.0;
+  transformTR[2] = -5.0;
 }
 
 }  // namespace matching_algorithms

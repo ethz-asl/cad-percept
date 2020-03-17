@@ -7,7 +7,6 @@ Launch file for test_Matcher
    <node name="test_matcher"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" launch-prefix="tmux split-window -h">
         <rosparam command="load" file="$(find matching_algorithms)/config/test_match_config.yaml"/>
         <rosparam command="load" file="$(find matching_algorithms)/config/simlidar_config.yaml" />
-        <rosparam command="load" file="$(find matching_algorithms)/config/go_icp_config.yaml" />
         <param name="tfMapFrame" value="/map" />
     </node>
 
@@ -41,6 +40,6 @@ Launch file for test_Matcher
 
     <node pkg="tf" type="static_transform_publisher" name="laser" args="100 0 0 0 0 0 1  /lidar /rslidar  100"/>
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find matching_algorithms)/config/meshpointcoud.yaml" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find matching_algorithms)/config/rviz.yaml" />
 
 </launch>
