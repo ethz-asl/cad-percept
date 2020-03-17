@@ -17,16 +17,6 @@ void test_Matcher::go_icp_match(float (&transformTR)[6]) {
   PointCloud go_icp_lidar = lidar_frame;
   PointCloud go_icp_map = sample_map;
 
-  // Downsample lidar
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  *cloud = go_icp_lidar;
-  float leafsize = nh_private_.param<float>("leafsize", 0.1);
-  pcl::VoxelGrid<pcl::PointXYZ> sor;
-  sor.setInputCloud(cloud);
-  sor.setLeafSize(leafsize, leafsize, leafsize);
-  sor.filter(*cloud);
-  go_icp_lidar = *cloud;
-
   // Find translation for centralization
   pcl::CentroidPoint<pcl::PointXYZ> centroid_lidar;
   for (PointCloud::iterator i = go_icp_lidar.points.begin(); i < go_icp_lidar.points.end(); i++) {
