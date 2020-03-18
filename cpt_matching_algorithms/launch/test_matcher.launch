@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-Launch file for test_Matcher
+Launch file for test_matcher
 -->
 
 <launch>
-   <node name="test_matcher"  pkg="matching_algorithms" type="test_Matcher_node" output="screen" launch-prefix="tmux split-window -h">
-        <rosparam command="load" file="$(find matching_algorithms)/config/test_match_config.yaml"/>
-        <rosparam command="load" file="$(find matching_algorithms)/config/simlidar_config.yaml" />
+   <node name="test_matcher"  pkg="cpt_matching_algorithms" type="test_matcher_node" output="screen" launch-prefix="tmux split-window -h">
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/test_match_config.yaml"/>
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
         <param name="tfMapFrame" value="/map" />
     </node>
 
-    <node name="lidar_simulator"  pkg="matching_algorithms" type="simlidar_node" output="screen" launch-prefix="tmux split-window">
-        <rosparam command="load" file="$(find matching_algorithms)/config/simlidar_config.yaml" />
+    <node name="lidar_simulator"  pkg="cpt_matching_algorithms" type="sim_lidar_node" output="screen" launch-prefix="tmux split-window">
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
     </node>
 
-    <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(find matching_algorithms)/../../data_set/scan200.bag" />
+    <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(find cpt_matching_algorithms)/../../data_set/scan200.bag" />
 
     <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
 
@@ -40,6 +40,6 @@ Launch file for test_Matcher
 
     <node pkg="tf" type="static_transform_publisher" name="laser" args="100 0 0 0 0 0 1  /lidar /rslidar  100"/>
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find matching_algorithms)/config/rviz.yaml" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz.yaml" />
 
 </launch>

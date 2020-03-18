@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+
+    <node name="data_reader" pkg="cpt_matching_algorithms" type="data_reader" output="screen">
+    	<param name="ref_package" value="cpt_matching_algorithms" />
+        <param name="raw_data" value="../../smb_2020-01-29-14-58-07.bag" />
+        <param name="save_folder" value="../../data_set" />
+    </node>
+
+</launch>
