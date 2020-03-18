@@ -3,7 +3,7 @@
 #include <pcl/registration/super4pcs.h>
 #include <super4pcs/shared4pcs.h>
 #include "../../../Super4PCS/demos/demo-utils.h"
-#include "test_Matcher/test_Matcher.h"
+#include "test_matcher/test_matcher.h"
 namespace cad_percept {
 namespace matching_algorithms {
 using namespace GlobalRegistration;

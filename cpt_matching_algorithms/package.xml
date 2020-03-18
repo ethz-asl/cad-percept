@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>matching_algorithms</name>
+  <name>cpt_matching_algorithms</name>
   <version>0.1.0</version>
   <description>The cpt_matching_algorithms package</description>
 

@@ -17,11 +17,9 @@ typedef PM::DataPoints DP;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 cad_percept::cgal::MeshModel::Ptr reference_mesh_;
-PointCloud sample_map;
 PointCloud lidar_frame;
 
-float density;
-bool gotCAD = false;
+bool got_CAD = false;
 
 std::string tf_map_frame;
 
@@ -38,11 +36,10 @@ int main(int argc, char** argv) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
   // Get mesh
-  density = nh_private_.param<int>("mapSamplingDensity", 100);
   std::string cad_topic = nh_private_.param<std::string>("cadTopic", "fail");
   ros::Subscriber cad_sub_ = nh_.subscribe(cad_topic, 1, &getCAD);
   std::cout << "Wait for CAD" << std::endl;
-  while (!gotCAD) {
+  while (!got_CAD) {
     ros::spinOnce();
   }
 
@@ -57,57 +54,55 @@ int main(int argc, char** argv) {
   // Transform point cloud according to ground truth
   Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
   Eigen::Vector3d translation(x, y, z);
-  Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
-  Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
-  Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd roll_angle(roll, Eigen::Vector3d::UnitX());
+  Eigen::AngleAxisd yaw_angle(yaw, Eigen::Vector3d::UnitZ());
+  Eigen::AngleAxisd pitch_angle(pitch, Eigen::Vector3d::UnitY());
 
-  Eigen::Quaternion<double> q = rollAngle * yawAngle * pitchAngle;
+  Eigen::Quaternion<double> q = roll_angle * yaw_angle * pitch_angle;
 
   transform.block(0, 0, 3, 3) = q.matrix();
   transform.block(0, 3, 3, 1) = translation;
-  pcl::transformPointCloud(sample_map, lidar_frame, transform);
+  cad_percept::cgal::Transformation ctransformation;
+  cad_percept::cgal::eigenTransformationToCgalTransformation(transform, &ctransformation);
+  reference_mesh_->transform(ctransformation);
+
   std::cout << "Lidar frame transfomed according to ground truth data" << std::endl;
 
   // Add lidar properties
   float range_of_lidar = nh_private_.param<float>("range_of_lidar", 20);
   // Bin characteristic & visible
-  bool usebins = nh_private_.param<bool>("usebins", false);
-  if (usebins) {
+  bool use_bins = nh_private_.param<bool>("usebins", false);
+  if (use_bins) {
     std::cout << "Simulate bins of LiDAR" << std::endl;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in(new pcl::PointCloud<pcl::PointXYZ>);
-    *cloud_in = lidar_frame;
-    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-    kdtree.setInputCloud(cloud_in);
-    int k = 1;
-    std::vector<int> pointindex(k);
-    std::vector<float> distance_to_point(k);
 
     int number_of_bin = nh_private_.param<float>("number_of_bin", 16);
     std::vector<float> bin_elevation = nh_private_.param<std::vector<float>>("bin_elevation", {0});
     float dtheta = nh_private_.param<float>("lidar_angualar_resolution", 1);
-    float dr = 0.1;
+    float lidar_offset = nh_private_.param<float>("lidar_offset", 1.5);
     float x_unit;
     float y_unit;
     float z_unit;
     float PI_angle = (float)(M_PI / 180);
-    pcl::PointXYZ intersection_point;
+    cad_percept::cgal::Ray bin_ray;
+    cad_percept::cgal::Point origin(0, 0, lidar_offset);
+    cad_percept::cgal::Point unit_dir;
+    cad_percept::cgal::Intersection inter_point;
+    pcl::PointXYZ pcl_inter_point;
     lidar_frame.clear();
     for (int bin_num = 0; bin_num < number_of_bin; bin_num++) {
       for (float theta = 0; theta < 360; theta += dtheta) {
         x_unit = cos(bin_elevation[bin_num] * PI_angle) * cos(theta * PI_angle);
         y_unit = cos(bin_elevation[bin_num] * PI_angle) * sin(theta * PI_angle);
-        z_unit = sin(bin_elevation[bin_num] * PI_angle);
+        z_unit = sin(bin_elevation[bin_num] * PI_angle) + lidar_offset;
+        unit_dir = cad_percept::cgal::Point(x_unit, y_unit, z_unit);
+        bin_ray = cad_percept::cgal::Ray(origin, unit_dir);
 
-        for (float r = 0.1; r < range_of_lidar; r += dr) {
-          intersection_point.x = r * x_unit;
-          intersection_point.y = r * y_unit;
-          intersection_point.z = r * z_unit + 1.5;  // Add offset of LiDAR
-          kdtree.nearestKSearch(intersection_point, k, pointindex, distance_to_point);
-
-          if (distance_to_point[0] < 0.01) {
-            lidar_frame.push_back(intersection_point);
-            break;
-          }
+        if (reference_mesh_->isIntersection(bin_ray)) {
+          inter_point = reference_mesh_->getIntersection(bin_ray);
+          pcl_inter_point.x = (float)inter_point.intersected_point.x();
+          pcl_inter_point.y = (float)inter_point.intersected_point.y();
+          pcl_inter_point.z = (float)inter_point.intersected_point.z();
+          lidar_frame.push_back(pcl_inter_point);
         }
       }
     }
@@ -132,17 +127,11 @@ int main(int argc, char** argv) {
     }
   }
 
-  // Publish simulated lidar frame & sampled map
+  // Publish simulated lidar frame
   ros::Publisher scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sim_rslidar_points", 1, true);
-  ros::Publisher sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sample_map", 1, true);
-
   DP ref_scan = cad_percept::cpt_utils::pointCloudToDP(lidar_frame);
-  DP ref_sample_map = cad_percept::cpt_utils::pointCloudToDP(sample_map);
-
   scan_pub_.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan, tf_map_frame, ros::Time::now()));
-  sample_map_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(
-      ref_sample_map, tf_map_frame, ros::Time::now()));
 
   std::cout << "LiDAR Simulator starts to publish" << std::endl;
 
@@ -153,7 +142,7 @@ int main(int argc, char** argv) {
 
 // Get CAD and sample points
 void getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
-  if (!gotCAD) {
+  if (!got_CAD) {
     std::cout << "Processing CAD mesh" << std::endl;
     std::string frame_id = cad_mesh_in.header.frame_id;
     cad_percept::cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh_);
@@ -183,13 +172,7 @@ void getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
         &ctransformation);  // convert matrix4d to cgal transformation
     reference_mesh_->transform(ctransformation);
 
-    // Sample from mesh
-    sample_map.clear();
-    int n_points = reference_mesh_->getArea() * density;
-    cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0,
-                                                &sample_map);
-
     std::cout << "CAD ready" << std::endl;
-    gotCAD = true;
+    got_CAD = true;
   }
 }

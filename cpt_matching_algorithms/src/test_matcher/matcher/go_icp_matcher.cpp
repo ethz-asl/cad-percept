@@ -1,4 +1,4 @@
-#include "test_Matcher/test_Matcher.h"
+#include "test_matcher/test_matcher.h"
 
 #include <pcl/filters/voxel_grid.h>
 #include <ros/package.h>
@@ -6,12 +6,10 @@
 namespace cad_percept {
 namespace matching_algorithms {
 
-void test_Matcher::go_icp_match(float (&transformTR)[6]) {
-  // Instructions: load git, then in terminal "cmake", then "make" should create executable GoICP
+void TestMatcher::go_icp_match() {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "             Go-ICP matcher started            " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
-  std::cout << "Make sure $(find matching_algorithms)/../../Go-ICP/GoICP.exe exists" << std::endl;
 
   // Centralize point clouds and scale them to [-1,1]³
   PointCloud go_icp_lidar = lidar_frame;
@@ -73,7 +71,7 @@ void test_Matcher::go_icp_match(float (&transformTR)[6]) {
   pcl::transformPointCloud(go_icp_map, go_icp_map, trans_scale_map);
 
   // Create txt files of point clouds, required for Go-ICP
-  chdir(ros::package::getPath("matching_algorithms").c_str());
+  chdir(ros::package::getPath("cpt_matching_algorithms").c_str());
   chdir("../../Go-ICP/");
   std::ofstream map_file("map.txt");  // change cwd to node in launch file
   map_file << go_icp_map.width << std::endl;
@@ -134,13 +132,13 @@ void test_Matcher::go_icp_match(float (&transformTR)[6]) {
   Eigen::Vector3f final_euler = final_rot.cast<float>().eulerAngles(0, 1, 2);
 
   // Revert scaling and translation
-  transformTR[0] = final_transf(0, 3) * max_dist - transl_lidar.x + transl_map.x;
-  transformTR[1] = final_transf(1, 3) * max_dist - transl_lidar.y + transl_map.y;
-  transformTR[2] = final_transf(2, 3) * max_dist - transl_lidar.z + transl_map.z;
+  transform_TR[0] = final_transf(0, 3) * max_dist - transl_lidar.x + transl_map.x;
+  transform_TR[1] = final_transf(1, 3) * max_dist - transl_lidar.y + transl_map.y;
+  transform_TR[2] = final_transf(2, 3) * max_dist - transl_lidar.z + transl_map.z;
 
-  transformTR[3] = final_euler(0);
-  transformTR[4] = final_euler(1);
-  transformTR[5] = final_euler(2);
+  transform_TR[3] = final_euler(0);
+  transform_TR[4] = final_euler(1);
+  transform_TR[5] = final_euler(2);
 }
 
 }  // namespace matching_algorithms
