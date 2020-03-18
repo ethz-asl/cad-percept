@@ -20,15 +20,15 @@ typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-class test_Matcher {
+class TestMatcher {
  public:
-  test_Matcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
+  TestMatcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
 
  private:
   ros::NodeHandle &nh_, &nh_private_;
 
   // given Point Cloud data
-  bool usesimlidar = false;
+  bool use_sim_lidar = false;
   bool lidar_frame_ready = false;
   bool ground_truth_ready = false;
   bool map_ready = false;
@@ -43,9 +43,9 @@ class test_Matcher {
 
   // Evaluation / Ground Truth data
   geometry_msgs::PointStamped ground_truth;
-  float gtroll;
-  float gtpitch;
-  float gtyaw;
+  float gt_roll;
+  float gt_pitch;
+  float gt_yaw;
 
   // ROS
   DP ref_dp;
@@ -67,7 +67,7 @@ class test_Matcher {
   /**
    * Lidar frame callback
    */
-  void getLiDAR(const sensor_msgs::PointCloud2 &lidarframe);
+  void getLiDAR(const sensor_msgs::PointCloud2 &lidar_frame_p2);
 
   /**
    * Ground truth callback
@@ -77,7 +77,7 @@ class test_Matcher {
   /**
    * Simulated Lidar frame callback
    */
-  void getsimLiDAR(const sensor_msgs::PointCloud2 &lidarframe);
+  void getsimLiDAR(const sensor_msgs::PointCloud2 &lidar_frame_p2);
 
   /**
    * Calcualte RMSE (root mean square error) of two point clouds
@@ -87,7 +87,7 @@ class test_Matcher {
   /**
    * Declare matchers
    */
-  void template_match(float (&transformTR)[6]);
+  void template_match(float (&transform_TR)[6]);
 };
 
 }  // namespace matching_algorithms
