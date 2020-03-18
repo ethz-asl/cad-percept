@@ -15,7 +15,7 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   use_sim_lidar = nh_private_.param<bool>("usetoyproblem", false);
 
   // Get Subscriber
-  sample_map_sub_ = nh_.subscribe("sample_map", input_queue_size, &TestMatcher::getsampleCAD, this);
+  map_sub_ = nh_.subscribe(cad_topic, input_queue_size, &TestMatcher::getCAD, this);
   lidar_sub_ = nh_.subscribe("rslidar_points", input_queue_size, &TestMatcher::getLiDAR, this);
   lidar_sim_sub_ =
       nh_.subscribe("sim_rslidar_points", input_queue_size, &TestMatcher::getsimLiDAR, this);
@@ -24,23 +24,139 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   // Get Publisher
   scan_pub_ =
       nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", input_queue_size, true);
+  sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sample_map", 1, true);
 
   // Get Map and Lidar frame
   std::cout << "Wait for Map and Lidar frame" << std::endl;
-  while (!map_ready || !lidar_frame_ready) {
-    ros::spinOnce();
-  };
+}
+
+// Get CAD and sample points
+void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
+  if (!map_ready) {
+    std::cout << "Processing CAD mesh" << std::endl;
+    std::string frame_id = cad_mesh_in.header.frame_id;
+    cad_percept::cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh_);
+
+    // Get transformation from /map to mesh
+    tf::StampedTransform transform;
+    tf::TransformListener tf_listener_(ros::Duration(30));
+    try {
+      tf_listener_.waitForTransform(tf_map_frame, frame_id, ros::Time(0), ros::Duration(5.0));
+      tf_listener_.lookupTransform(tf_map_frame, frame_id, ros::Time(0),
+                                   transform);  // get transformation at latest time T_map_to_frame
+    } catch (tf::TransformException ex) {
+      ROS_ERROR_STREAM("Couldn't find transformation to mesh system");
+    }
+
+    // Transform CAD to map
+    Eigen::Matrix3d rotation;
+    tf::matrixTFToEigen(transform.getBasis(), rotation);
+    Eigen::Vector3d translation;
+    tf::vectorTFToEigen(transform.getOrigin(), translation);
+    Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
+    transformation.block(0, 0, 3, 3) = rotation;
+    transformation.block(0, 3, 3, 1) = translation;
+    cad_percept::cgal::Transformation ctransformation;
+    cad_percept::cgal::eigenTransformationToCgalTransformation(
+        transformation,
+        &ctransformation);  // convert matrix4d to cgal transformation
+    reference_mesh_->transform(ctransformation);
+
+    // Sample from mesh
+    sample_map.clear();
+    sample_density = nh_private_.param<int>("mapSamplingDensity", 100);
+    int n_points = reference_mesh_->getArea() * sample_density;
+    cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0,
+                                                &sample_map);
+
+    std::cout << "CAD ready" << std::endl;
+    map_ready = true;
+
+    if (lidar_frame_ready) {
+      match();
+      if (ground_truth_ready) {
+        evaluate();
+      }
+    }
+  }
+}
+
+// Get real LiDAR data
+void TestMatcher::getLiDAR(const sensor_msgs::PointCloud2& lidar_frame_p2) {
+  if (!lidar_frame_ready && !use_sim_lidar) {
+    std::cout << "Processing lidar frame" << std::endl;
+
+    // Convert PointCloud2 to PointCloud
+    pcl::PCLPointCloud2 lidar_pc2;
+    pcl_conversions::toPCL(lidar_frame_p2, lidar_pc2);
+    pcl::fromPCLPointCloud2(lidar_pc2, lidar_frame);
+
+    std::cout << "Lidar frame ready" << std::endl;
+    lidar_frame_ready = true;
+
+    if (map_ready) {
+      match();
+      if (ground_truth_ready) {
+        evaluate();
+      }
+    }
+  }
+}
+
+// Get real ground truth position
+void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
+  if (!ground_truth_ready && !use_sim_lidar) {
+    ground_truth = gt_in;
+    std::cout << "Got ground truth data" << std::endl;
+    ground_truth_ready = true;
+
+    if (ready_for_eval) {
+      evaluate();
+    }
+  }
+}
+
+// Get LiDAR data and ground truth from simulator
+void TestMatcher::getsimLiDAR(const sensor_msgs::PointCloud2& lidar_frame_p2) {
+  if (!lidar_frame_ready && use_sim_lidar) {
+    std::cout << "Processing lidar frame" << std::endl;
+
+    // Convert PointCloud2 to PointCloud
+    pcl::PCLPointCloud2 lidar_pc2;
+    pcl_conversions::toPCL(lidar_frame_p2, lidar_pc2);
+    pcl::fromPCLPointCloud2(lidar_pc2, lidar_frame);
+
+    std::cout << "Simulated Lidar frame ready" << std::endl;
+
+    ground_truth.point.x = nh_private_.param<float>("groundtruthx", 0);
+    ground_truth.point.y = nh_private_.param<float>("groundtruthy", 0);
+    ground_truth.point.z = nh_private_.param<float>("groundtruthz", 0);
+    gt_roll = nh_private_.param<float>("groundtruthroll", 0);
+    gt_yaw = nh_private_.param<float>("groundtruthyaw", 0);
+    gt_pitch = nh_private_.param<float>("groundtruthpitch", 0);
+
+    std::cout << "Got simulated ground truth data" << std::endl;
+
+    lidar_frame_ready = true;
+    ground_truth_ready = true;
+
+    if (map_ready) {
+      match();
+      evaluate();
+    }
+  }
+}
+
+// Match clouds and evaluate
+void TestMatcher::match() {
   std::cout << "Received LiDAR and CAD as point cloud" << std::endl;
 
   /*//////////////////////////////////////
                  Matching
   ///////////////////////////////////////*/
 
-  // Find position of robot (change executable in cmake to change matcher)
-  float transform_TR[6] = {0, 0, 0, 0, 0, 0};  // x y z roll pitch yaw
-
   // Selection of mapper
-  if (nh_private_.param<bool>("use_template", false)) {
+  if (nh_private_.param<bool>("usetemplate", false)) {
     template_match(transform_TR);
   }
 
@@ -57,16 +173,18 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   /*//////////////////////////////////////
                 Visualization
   ///////////////////////////////////////*/
-  ref_dp = cpt_utils::pointCloudToDP(lidar_frame);
+  DP ref_sample_map = cad_percept::cpt_utils::pointCloudToDP(sample_map);
+  sample_map_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(
+      ref_sample_map, tf_map_frame, ros::Time::now()));
+
+  DP ref_dp = cpt_utils::pointCloudToDP(lidar_frame);
   scan_pub_.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame, ros::Time::now()));
 
-  // Check with ground truth position and give out error
-  std::cout << "Waiting for ground truth data" << std::endl;
-  while (!ground_truth_ready) {
-    ros::spinOnce();
-  }
+  ready_for_eval = true;
+}
 
+void TestMatcher::evaluate() {
   /*//////////////////////////////////////
                 Evaluation
   ///////////////////////////////////////*/
@@ -88,71 +206,6 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
                      pow(transform_TR[2] - ground_truth.point.z, 2));
   getError(sample_map, lidar_frame);
   std::cout << "error (euclidean distance of translation): " << error << std::endl;
-}
-
-// Get sampled mesh
-void TestMatcher::getsampleCAD(const sensor_msgs::PointCloud2& cad_map) {
-  if (!map_ready) {
-    std::cout << "Processing map point cloud" << std::endl;
-
-    // Convert PointCloud2 to PointCloud
-    pcl::PCLPointCloud2 map_pc2;
-    pcl_conversions::toPCL(cad_map, map_pc2);
-    pcl::fromPCLPointCloud2(map_pc2, sample_map);
-
-    std::cout << "Lidar frame ready" << std::endl;
-    map_ready = true;
-  }
-}
-
-// Get real LiDAR data
-void TestMatcher::getLiDAR(const sensor_msgs::PointCloud2& lidar_frame_p2) {
-  if (!lidar_frame_ready && !use_sim_lidar) {
-    std::cout << "Processing lidar frame" << std::endl;
-
-    // Convert PointCloud2 to PointCloud
-    pcl::PCLPointCloud2 lidar_pc2;
-    pcl_conversions::toPCL(lidar_frame_p2, lidar_pc2);
-    pcl::fromPCLPointCloud2(lidar_pc2, lidar_frame);
-
-    std::cout << "Lidar frame ready" << std::endl;
-    lidar_frame_ready = true;
-  }
-}
-
-// Get real ground truth position
-void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
-  if (!ground_truth_ready && !use_sim_lidar) {
-    ground_truth = gt_in;
-    std::cout << "Got ground truth data" << std::endl;
-    ground_truth_ready = true;
-  }
-}
-
-// Get LiDAR data and ground truth from simulator
-void TestMatcher::getsimLiDAR(const sensor_msgs::PointCloud2& lidar_frame_p2) {
-  if (!lidar_frame_ready && use_sim_lidar) {
-    std::cout << "Processing lidar frame" << std::endl;
-
-    // Convert PointCloud2 to PointCloud
-    pcl::PCLPointCloud2 lidar_pc2;
-    pcl_conversions::toPCL(lidar_frame_p2, lidar_pc2);
-    pcl::fromPCLPointCloud2(lidar_pc2, lidar_frame);
-
-    std::cout << "Lidar frame ready" << std::endl;
-
-    ground_truth.point.x = nh_private_.param<float>("groundtruthx", 0);
-    ground_truth.point.y = nh_private_.param<float>("groundtruthy", 0);
-    ground_truth.point.z = nh_private_.param<float>("groundtruthz", 0);
-    gt_roll = nh_private_.param<float>("groundtruthroll", 0);
-    gt_yaw = nh_private_.param<float>("groundtruthyaw", 0);
-    gt_pitch = nh_private_.param<float>("groundtruthpitch", 0);
-
-    std::cout << "Got ground truth data" << std::endl;
-
-    lidar_frame_ready = true;
-    ground_truth_ready = true;
-  }
 }
 
 // Get RMSE of two point clouds
