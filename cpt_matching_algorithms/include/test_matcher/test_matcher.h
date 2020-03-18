@@ -27,42 +27,46 @@ class TestMatcher {
  private:
   ros::NodeHandle &nh_, &nh_private_;
 
+  // Cad
+  std::string cad_topic;
+  cad_percept::cgal::MeshModel::Ptr reference_mesh_;
+  float sample_density;
+
   // given Point Cloud data
   bool use_sim_lidar = false;
   bool lidar_frame_ready = false;
   bool ground_truth_ready = false;
   bool map_ready = false;
+  bool ready_for_eval = false;
   PointCloud lidar_frame;
   PointCloud sample_map;
 
   // Param from server
-  std::string cad_topic;
   int input_queue_size;
   int map_sampling_density;
   std::string tf_map_frame;
 
   // Evaluation / Ground Truth data
+  float transform_TR[6] = {0, 0, 0, 0, 0, 0};  // x y z roll pitch yaw
   geometry_msgs::PointStamped ground_truth;
   float gt_roll;
   float gt_pitch;
   float gt_yaw;
 
-  // ROS
-  DP ref_dp;
-
   // Subscribers
-  ros::Subscriber sample_map_sub_;
+  ros::Subscriber map_sub_;
   ros::Subscriber lidar_sub_;
   ros::Subscriber lidar_sim_sub_;
   ros::Subscriber gt_sub_;
 
   // Publisher
   ros::Publisher scan_pub_;
+  ros::Publisher sample_map_pub_;
 
   /**
    * Sampled map callback
    */
-  void getsampleCAD(const sensor_msgs::PointCloud2 &cad_map);
+  void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
 
   /**
    * Lidar frame callback
@@ -78,6 +82,16 @@ class TestMatcher {
    * Simulated Lidar frame callback
    */
   void getsimLiDAR(const sensor_msgs::PointCloud2 &lidar_frame_p2);
+
+  /**
+   * Match function
+   */
+  void match();
+
+  /**
+   * Evaluation function
+   */
+  void evaluate();
 
   /**
    * Calcualte RMSE (root mean square error) of two point clouds
