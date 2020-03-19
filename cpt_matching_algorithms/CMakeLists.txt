@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(cpt_matching_algorithms)
 
+#set(CMAKE_PREFIX_PATH /home/dreherm/Documents/ws/build/super4pcs_catkin/opengr-prefix/src/opengr-build/install/lib/cmake)
+
 find_package(catkin_simple REQUIRED)
+find_package(Super4PCS REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 
 add_definitions(-std=c++11 -Wall -Wextra)
@@ -13,6 +16,7 @@ cs_add_library(test_matcher
      src/test_matcher/test_matcher.cpp
      src/test_matcher/matcher/template_matcher.cpp
      src/test_matcher/matcher/go_icp_matcher.cpp
+     src/test_matcher/matcher/super4pcs_matcher.cpp
 	)
 
 
@@ -30,7 +34,7 @@ cs_add_executable(sim_lidar_node
     )
 
 
-target_link_libraries(test_matcher_node test_matcher)
+target_link_libraries(test_matcher_node test_matcher ${Super4PCS_LIBRARIES})
 
 
 #############
