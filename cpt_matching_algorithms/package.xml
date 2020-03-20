@@ -20,6 +20,5 @@
   <depend>libpointmatcher_ros</depend> 
   <depend>cpt_utils</depend>
   <depend>Super4PCS</depend>
-  <!--<depend>goicp_catkin</depend>-->
   
 </package>

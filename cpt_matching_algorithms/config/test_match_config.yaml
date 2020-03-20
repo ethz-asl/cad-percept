@@ -7,6 +7,6 @@ usetoyproblem: true
 
 #Select Matcher (only one)
 usetemplate: false
-useGoICP: false
-useSuper4PCS: true
+useGoICP: true
+useSuper4PCS: false
 

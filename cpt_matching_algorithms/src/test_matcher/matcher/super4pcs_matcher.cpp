@@ -39,12 +39,11 @@ void TestMatcher::super4pcs_match() {
   // Load Super4PCS parameters
   std::vector<std::string> arguments;
   arguments.push_back("program name");
-  arguments.push_back("scene.obj");
-  arguments.push_back("model.obj");
-  arguments.push_back("-o 0.5 -n 1000");
+  arguments.push_back("scene.obj");  // just a dummy
+  arguments.push_back("model.obj");  // just a dummy
+  arguments.push_back("-n 1000 -d 0.1");
   std::vector<char*> argv_new;
   argv_new.reserve(arguments.size());
-
   for (int i = 0; i < arguments.size(); i++) {
     argv_new.push_back(const_cast<char*>(arguments[i].c_str()));
   }
@@ -52,14 +51,16 @@ void TestMatcher::super4pcs_match() {
   GlobalRegistration::Demo::getArgs(4, argv_new.data());
   pcl::Super4PCS<pcl::PointNormal, pcl::PointNormal> align;
   GlobalRegistration::Demo::setOptionsFromArgs(align.options_);
+
+  // Perform alignment
+  align.setInputSource(normal_lidar);
+  align.setInputTarget(normal_map);
+
   {
     pcl::ScopeTime t("Alignment");
     align.align(*super4pcs_lidar_aligned);
   }
 
-  // Perform alignment
-  align.setInputSource(normal_lidar);
-  align.setInputTarget(normal_map);
   Eigen::Matrix4f final_transf = align.getFinalTransformation().cast<float>();
   Eigen::Matrix3f final_rot = final_transf.block(0, 0, 3, 3);
   Eigen::Vector3f final_euler = final_rot.eulerAngles(0, 1, 2);

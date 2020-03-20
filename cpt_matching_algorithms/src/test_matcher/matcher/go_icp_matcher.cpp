@@ -72,7 +72,7 @@ void TestMatcher::go_icp_match() {
 
   // Create txt files of point clouds, required for Go-ICP
   chdir(ros::package::getPath("cpt_matching_algorithms").c_str());
-  chdir("../../Go-ICP/");
+  chdir("../goicp_catkin/");          // change this after added to dependencies.rosinstall
   std::ofstream map_file("map.txt");  // change cwd to node in launch file
   map_file << go_icp_map.width << std::endl;
   for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
@@ -92,7 +92,7 @@ void TestMatcher::go_icp_match() {
   std::string downsample_points = nh_private_.param<std::string>("downsample", "1000");
   std::cout << "Start Go-ICP" << std::endl;
   std::string command =
-      "./GoICP map.txt lidar_frame.txt " + downsample_points + " demo/config.txt output.txt";
+      "./GoICP map.txt lidar_frame.txt " + downsample_points + " config.txt output.txt";
   system(command.c_str());
   std::cout << "Go-ICP finished" << std::endl;
 
