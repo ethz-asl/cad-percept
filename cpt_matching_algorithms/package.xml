@@ -19,7 +19,7 @@
   <depend>libpointmatcher</depend>
   <depend>libpointmatcher_ros</depend> 
   <depend>cpt_utils</depend>
-  <!--<depend>super4pcs_catkin</depend>-->
+  <depend>Super4PCS</depend>
   <!--<depend>goicp_catkin</depend>-->
   
 </package>

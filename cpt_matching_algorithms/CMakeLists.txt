@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(cpt_matching_algorithms)
 
-#set(CMAKE_PREFIX_PATH /home/dreherm/Documents/ws/build/super4pcs_catkin/opengr-prefix/src/opengr-build/install/lib/cmake)
+set(CMAKE_PREFIX_PATH ${CATKIN_BUILD_PREFIX}/super4pcs_catkin/opengr-prefix/src/opengr-build/install/lib/cmake)
+find_package(Super4PCS REQUIRED)
+set(CMAKE_PREFIX_PATH /opt/ros/melodic)
 
 find_package(catkin_simple REQUIRED)
-find_package(Super4PCS REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 
 add_definitions(-std=c++11 -Wall -Wextra)

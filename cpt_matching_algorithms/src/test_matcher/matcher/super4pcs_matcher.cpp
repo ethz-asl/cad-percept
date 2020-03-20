@@ -2,13 +2,12 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/registration/super4pcs.h>
 #include <super4pcs/algorithms/super4pcs.h>
-#include <super4pcs/shared4pcs.h>
+#include "super4pcs_demo_utils.h"
 #include "test_matcher/test_matcher.h"
 namespace cad_percept {
 namespace matching_algorithms {
-using namespace GlobalRegistration;
-// Not working yet
-void test_Matcher::super4pcs_match(float (&transformTR)[6]) {
+
+void TestMatcher::super4pcs_match() {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "            Super4PCS matcher started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -50,9 +49,9 @@ void test_Matcher::super4pcs_match(float (&transformTR)[6]) {
     argv_new.push_back(const_cast<char*>(arguments[i].c_str()));
   }
 
-  Demo::getArgs(4, argv_new.data());
+  GlobalRegistration::Demo::getArgs(4, argv_new.data());
   pcl::Super4PCS<pcl::PointNormal, pcl::PointNormal> align;
-  Demo::setOptionsFromArgs(align.options_);
+  GlobalRegistration::Demo::setOptionsFromArgs(align.options_);
   {
     pcl::ScopeTime t("Alignment");
     align.align(*super4pcs_lidar_aligned);
@@ -61,18 +60,18 @@ void test_Matcher::super4pcs_match(float (&transformTR)[6]) {
   // Perform alignment
   align.setInputSource(normal_lidar);
   align.setInputTarget(normal_map);
-  Eigen::Matrix4f final_transf = align.getFinalTransformation();
-  Eigen::Matrix3d final_rot = final_transf.block(0, 0, 3, 3);
-  Eigen::Vector3f final_euler = final_rot.cast<float>().eulerAngles(0, 1, 2);
+  Eigen::Matrix4f final_transf = align.getFinalTransformation().cast<float>();
+  Eigen::Matrix3f final_rot = final_transf.block(0, 0, 3, 3);
+  Eigen::Vector3f final_euler = final_rot.eulerAngles(0, 1, 2);
 
   // Revert scaling and translation
-  transformTR[0] = final_transf(0, 3);
-  transformTR[1] = final_transf(1, 3);
-  transformTR[2] = final_transf(2, 3);
+  transform_TR[0] = final_transf(0, 3);
+  transform_TR[1] = final_transf(1, 3);
+  transform_TR[2] = final_transf(2, 3);
 
-  transformTR[3] = final_euler(0);
-  transformTR[4] = final_euler(1);
-  transformTR[5] = final_euler(2);
+  transform_TR[3] = final_euler(0);
+  transform_TR[4] = final_euler(1);
+  transform_TR[5] = final_euler(2);
 }
 
 }  // namespace matching_algorithms
