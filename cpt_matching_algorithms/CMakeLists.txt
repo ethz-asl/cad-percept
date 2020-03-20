@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(cpt_matching_algorithms)
 
-set(CMAKE_PREFIX_PATH ${CATKIN_BUILD_PREFIX}/super4pcs_catkin/opengr-prefix/src/opengr-build/install/lib/cmake)
+set(TEMP_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
+set(CMAKE_PREFIX_PATH ${CATKIN_DEVEL_PREFIX}/../build/super4pcs_catkin/opengr-prefix/src/opengr-build/install/lib/cmake)
 find_package(Super4PCS REQUIRED)
-set(CMAKE_PREFIX_PATH /opt/ros/melodic)
+set(CMAKE_PREFIX_PATH TEMP_CMAKE_PREFIX_PATH)
 
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
