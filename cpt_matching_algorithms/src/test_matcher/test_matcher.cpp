@@ -25,6 +25,7 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   scan_pub_ =
       nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", input_queue_size, true);
   sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sample_map", 1, true);
+  plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
   // Get Map and Lidar frame
   std::cout << "Wait for Map and Lidar frame" << std::endl;
@@ -165,6 +166,9 @@ void TestMatcher::match() {
   //  if (nh_private_.param<bool>("useSuper4PCS", false)) {
   //    super4pcs_match();
   //  }
+  if (nh_private_.param<bool>("usePlaneExtraction", false)) {
+    PlaneExtractionLib::pcl_plane_extraction(lidar_frame, 12, 50, plane_pub_, tf_map_frame);
+  }
   /*//////////////////////////////////////
                 Transformation
   ///////////////////////////////////////*/

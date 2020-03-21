@@ -12,6 +12,7 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include "plane_extraction/plane_extraction_lib.h"
 
 namespace cad_percept {
 namespace matching_algorithms {
@@ -62,6 +63,7 @@ class TestMatcher {
   // Publisher
   ros::Publisher scan_pub_;
   ros::Publisher sample_map_pub_;
+  ros::Publisher plane_pub_;
 
   /**
    * Sampled map callback
