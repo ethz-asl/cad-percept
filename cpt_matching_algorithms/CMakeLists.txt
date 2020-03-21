@@ -20,7 +20,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 ###########
 ## LIBRARIES ##
 ###########
-include_directories(${Super4PCS_INCLUDE_DIR})
+#include_directories(${Super4PCS_INCLUDE_DIR})
 cs_add_library(test_matcher
      src/test_matcher/test_matcher.cpp
      src/test_matcher/matcher/template_matcher.cpp
