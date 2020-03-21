@@ -7,10 +7,10 @@
 #include <pcl/point_types.h>
 #include <pointmatcher/PointMatcher.h>
 #include <pointmatcher_ros/point_cloud.h>
-#include <random>
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <random>
 
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
@@ -68,8 +68,7 @@ int main(int argc, char **argv) {
   lidar_offset = nh_private_.param<float>("lidar_offset", 1.5);
   noise_variance = nh_private_.param<float>("accuracy_of_lidar", 0.02);
 
-  scan_pub_ =
-      nh_.advertise<sensor_msgs::PointCloud2>("sim_rslidar_points", 1, true);
+  scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sim_rslidar_points", 1, true);
 
   // Get mesh
   std::string cad_topic = nh_private_.param<std::string>("cadTopic", "fail");
@@ -92,11 +91,9 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     tf::StampedTransform transform;
     tf::TransformListener tf_listener_(ros::Duration(30));
     try {
-      tf_listener_.waitForTransform(tf_map_frame, frame_id, ros::Time(0),
-                                    ros::Duration(5.0));
-      tf_listener_.lookupTransform(
-          tf_map_frame, frame_id, ros::Time(0),
-          transform); // get transformation at latest time T_map_to_frame
+      tf_listener_.waitForTransform(tf_map_frame, frame_id, ros::Time(0), ros::Duration(5.0));
+      tf_listener_.lookupTransform(tf_map_frame, frame_id, ros::Time(0),
+                                   transform);  // get transformation at latest time T_map_to_frame
     } catch (tf::TransformException ex) {
       ROS_ERROR_STREAM("Couldn't find transformation to mesh system");
     }
@@ -112,7 +109,7 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     cad_percept::cgal::Transformation ctransformation;
     cad_percept::cgal::eigenTransformationToCgalTransformation(
         transformation,
-        &ctransformation); // convert matrix4d to cgal transformation
+        &ctransformation);  // convert matrix4d to cgal transformation
     reference_mesh_->transform(ctransformation);
 
     std::cout << "CAD ready" << std::endl;
@@ -122,7 +119,7 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   }
 }
 
-void simualte_lidar() {
+void simulate_lidar() {
   // Transform point cloud according to ground truth
   Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
   Eigen::Vector3d translation(x, y, z);
@@ -135,12 +132,10 @@ void simualte_lidar() {
   transform.block(0, 0, 3, 3) = q.matrix();
   transform.block(0, 3, 3, 1) = translation;
   cad_percept::cgal::Transformation ctransformation;
-  cad_percept::cgal::eigenTransformationToCgalTransformation(transform,
-                                                             &ctransformation);
+  cad_percept::cgal::eigenTransformationToCgalTransformation(transform, &ctransformation);
   reference_mesh_->transform(ctransformation);
 
-  std::cout << "Lidar frame transfomed according to ground truth data"
-            << std::endl;
+  std::cout << "Lidar frame transfomed according to ground truth data" << std::endl;
 
   // Add lidar properties
   // Bin characteristic & visible
@@ -183,8 +178,8 @@ void simualte_lidar() {
   std::cout << "Start to add lidar properties" << std::endl;
   PointCloud full_lidar_frame = lidar_frame;
   lidar_frame.clear();
-  for (PointCloud::iterator i = full_lidar_frame.points.begin();
-       i < full_lidar_frame.points.end(); i++) {
+  for (PointCloud::iterator i = full_lidar_frame.points.begin(); i < full_lidar_frame.points.end();
+       i++) {
     if (sqrt(pow(i->x, 2) + pow(i->y, 2) + pow(i->z, 2)) < range_of_lidar) {
       i->x = i->x + noise(generator);
       i->y = i->y + noise(generator);
@@ -196,8 +191,8 @@ void simualte_lidar() {
 
   // Publish simulated lidar frame
   DP ref_scan = cad_percept::cpt_utils::pointCloudToDP(lidar_frame);
-  scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(
-      ref_scan, tf_map_frame, ros::Time::now()));
+  scan_pub_.publish(
+      PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan, tf_map_frame, ros::Time::now()));
 
   std::cout << "LiDAR Simulator starts to publish" << std::endl;
 }
