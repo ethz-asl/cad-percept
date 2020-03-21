@@ -162,9 +162,9 @@ void TestMatcher::match() {
   if (nh_private_.param<bool>("useGoICP", false)) {
     go_icp_match();
   }
-  if (nh_private_.param<bool>("useSuper4PCS", false)) {
-    super4pcs_match();
-  }
+  //  if (nh_private_.param<bool>("useSuper4PCS", false)) {
+  //    super4pcs_match();
+  //  }
   /*//////////////////////////////////////
                 Transformation
   ///////////////////////////////////////*/

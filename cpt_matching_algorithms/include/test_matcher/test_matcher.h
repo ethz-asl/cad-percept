@@ -103,7 +103,7 @@ class TestMatcher {
    */
   void template_match();
   void go_icp_match();
-  void super4pcs_match();
+  //  void super4pcs_match();
 };
 
 }  // namespace matching_algorithms
