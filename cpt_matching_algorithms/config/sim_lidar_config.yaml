@@ -3,7 +3,7 @@ groundtruthy: 0
 groundtruthz: 0
 groundtruthroll: 0
 groundtruthpitch: 0
-groundtruthyaw: 1.5
+groundtruthyaw: 1.2
 
 #LiDAR settings
 usebins: true
