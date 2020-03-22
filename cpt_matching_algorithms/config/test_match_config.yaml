@@ -9,5 +9,6 @@ usetoyproblem: true
 usetemplate: false
 useGoICP: false
 useSuper4PCS: false
-usePlaneExtraction: true
+usepclPlaneExtraction: false
+useRHTPlaneExtraction: true
 

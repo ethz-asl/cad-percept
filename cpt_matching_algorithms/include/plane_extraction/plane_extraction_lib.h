@@ -18,9 +18,19 @@
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
 
+#include <pcl/common/geometry.h>
+#include <pcl/kdtree/kdtree_flann.h>
+
 class PlaneExtractionLib {
  public:
+  class HoughAccumulator;
   static std::vector<pcl::PointCloud<pcl::PointXYZRGB>> pcl_plane_extraction(
       const pcl::PointCloud<pcl::PointXYZ> lidar_frame, int max_number_of_plane,
       int min_number_of_inlier, ros::Publisher &plane_pub_, std::string tf_map_frame);
+  static std::vector<double> rht_plane_extraction(const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
+                                                  ros::Publisher &plane_pub_,
+                                                  std::string tf_map_frame,
+                                                  ros::NodeHandle &nh_private_);
+  static void visualize_plane(std::vector<pcl::PointCloud<pcl::PointXYZRGB>> &extracted_planes,
+                              ros::Publisher &plane_pub_, std::string tf_map_frame);
 };

@@ -166,8 +166,11 @@ void TestMatcher::match() {
   //  if (nh_private_.param<bool>("useSuper4PCS", false)) {
   //    super4pcs_match();
   //  }
-  if (nh_private_.param<bool>("usePlaneExtraction", false)) {
+  if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
     PlaneExtractionLib::pcl_plane_extraction(lidar_frame, 12, 50, plane_pub_, tf_map_frame);
+  }
+  if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
+    PlaneExtractionLib::rht_plane_extraction(lidar_frame, plane_pub_, tf_map_frame, nh_private_);
   }
   /*//////////////////////////////////////
                 Transformation
