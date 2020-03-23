@@ -8,9 +8,11 @@ project(cpt_matching_algorithms)
 #  PATHS ${path_to_file}
 #  NO_DEFAULT_PATH)
 
-#if (NOT Super4PCS_FOUND)
-# message("Package not found")
-#endif()
+
+#set(Super4PCS_LIBRARIES ${path_to_file}/${Super4PCS_LIBRARIES})
+#message(${Super4PCS_INCLUDE_DIR})
+#message(${Super4PCS_LIB_DIR})
+#message(${Super4PCS_LIBRARIES})
 
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
@@ -43,13 +45,8 @@ cs_add_executable(sim_lidar_node
     src/test_matcher/sim_lidar_node.cpp
     )
 
-#message("Super4PCS Lib is at ${Super4PCS_LIBRARIES}")
-#target_link_libraries(test_matcher_node test_matcher ${Super4PCS_LIBRARIES})
-#link_directories(${Super4PCS_LIB_DIR})
-#find_package( Eigen3 REQUIRED )
-#include_directories( ${EIGEN3_INCLUDE_DIR} )
-
 target_link_libraries(test_matcher_node test_matcher)
+#target_link_libraries(test_matcher_node test_matcher ${Super4PCS_LIBRARIES)
 
 
 #############
