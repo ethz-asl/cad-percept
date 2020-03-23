@@ -10,6 +10,10 @@ class PlaneExtractionLib::HoughAccumulator {
     bins.resize(bin_number_rho * bin_number_theta * bin_number_psi);
     voter_ids.resize(bin_number_rho * bin_number_theta * bin_number_psi, std::vector<int>(0));
 
+    std::cout << "Accumualtor uses a total of "
+              << bin_number_rho * bin_number_theta * bin_number_psi << std::endl;
+    std::cout << "rho bins: " << bin_number_rho << "theta bins: " << bin_number_theta
+              << "psi bins: " << bin_number_psi << std::endl;
     // Implementation for array accumualtor, should be able to easily adapt to other designs
     pcl::PointXYZ bin_point;
     for (int d_rho = 0; d_rho < bin_number_rho; ++d_rho) {
@@ -32,10 +36,13 @@ class PlaneExtractionLib::HoughAccumulator {
     pcl::PointXYZ vote_point(vote(0), vote(1), vote(2));
     kdtree.nearestKSearch(vote_point, 1, bin_index, bin_index_dist);
     ++bins[bin_index[0]];
+    // std::cout << "Voted" << std::endl;
     voter_ids[bin_index[0]].push_back(voter);
   };
   void findmaxima(double min_vote_threshold, std::vector<double> &plane_coefficients,
                   std::vector<std::vector<int>> &get_voter_ids) {
+    plane_coefficients.clear();
+    get_voter_ids.clear();
     for (int i = 0; i < bin_number_rho * bin_number_theta * bin_number_psi; ++i) {
       if (bins[i] >= min_vote_threshold) {
         plane_coefficients.push_back(bin_values->points[i].x);  // rho
@@ -138,6 +145,7 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
   double min_area_spanned = nh_private_.param<int>("RHTMinArea", 1);
   int min_vote_threshold = nh_private_.param<int>("AccumulatorThreshold", 10);
   int max_iteration = nh_private_.param<int>("RHTMaxIter", 10000);
+  int num_main_planes = nh_private_.param<int>("RHTPlaneNumber", 0);
 
   pcl::PointXYZ origin(0, 0, 0);
   double max_distance_to_point = 0;
@@ -145,6 +153,8 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
     if ((double)pcl::geometry::distance(origin, lidar_frame.points[i]) > max_distance_to_point)
       max_distance_to_point = (double)pcl::geometry::distance(origin, lidar_frame.points[i]);
   }
+  std::cout << "Point furthest apart has a distance of " << max_distance_to_point
+            << " to the origin" << std::endl;
 
   // Setup accumualtor
   std::cout << "Initialize array accumualtor" << std::endl;
@@ -174,15 +184,15 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
     sampled_points.push_back(reference_point[2]);
 
     // Check if points are close
-    if (pcl::geometry::distance(reference_point[0], reference_point[1]) >
+    if (pcl::geometry::distance(reference_point[0], reference_point[1]) <
         tol_distance_between_points)
       continue;
 
-    if (pcl::geometry::distance(reference_point[1], reference_point[2]) >
+    if (pcl::geometry::distance(reference_point[1], reference_point[2]) <
         tol_distance_between_points)
       continue;
 
-    if (pcl::geometry::distance(reference_point[0], reference_point[2]) >
+    if (pcl::geometry::distance(reference_point[0], reference_point[2]) <
         tol_distance_between_points)
       continue;
 
@@ -221,6 +231,13 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
   std::vector<std::vector<int>> maxima_voter_ids;
 
   array_accumulator.findmaxima(min_vote_threshold, plane_coefficients, maxima_voter_ids);
+
+  if (num_main_planes != 0 && maxima_voter_ids.size() > num_main_planes) {
+    do {
+      array_accumulator.findmaxima(++min_vote_threshold, plane_coefficients, maxima_voter_ids);
+    } while (maxima_voter_ids.size() > num_main_planes);
+    std::cout << "Used " << min_vote_threshold << " as threshold" << std::endl;
+  }
 
   // Visualization
   std::vector<pcl::PointCloud<pcl::PointXYZRGB>> extracted_planes;

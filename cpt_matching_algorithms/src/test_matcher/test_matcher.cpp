@@ -91,6 +91,12 @@ void TestMatcher::getLiDAR(const sensor_msgs::PointCloud2& lidar_frame_p2) {
     pcl::PCLPointCloud2 lidar_pc2;
     pcl_conversions::toPCL(lidar_frame_p2, lidar_pc2);
     pcl::fromPCLPointCloud2(lidar_pc2, lidar_frame);
+    std::vector<int> nan_indices;
+    pcl::removeNaNFromPointCloud(lidar_frame, lidar_frame, nan_indices);
+    if (nan_indices.size() != 0) {
+      std::cout << "Attention: Detected NaNs in the given point cloud. Removed this values..."
+                << std::endl;
+    }
 
     std::cout << "Lidar frame ready" << std::endl;
     lidar_frame_ready = true;

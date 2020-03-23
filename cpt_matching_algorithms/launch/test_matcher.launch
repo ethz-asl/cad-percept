@@ -17,7 +17,7 @@ Launch file for test_matcher
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
     </node>
 
-    <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(find cpt_matching_algorithms)/../../data_set/scan200.bag" />
+    <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(find cpt_matching_algorithms)/../../data_set/scan0.bag" />
 
     <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
 
