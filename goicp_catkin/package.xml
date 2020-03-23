@@ -1,0 +1,11 @@
+<package>
+  <name>goicp_catkin</name>
+  <version>4.14.1</version>
+  <description>Catkin wrapper for GoICP.</description>
+  <maintainer email="dreherm@student.ethz.ch">Marc Dreher</maintainer>
+
+  <license>See package</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+</package>
