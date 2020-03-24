@@ -48,6 +48,3 @@
 - git:
     local-name: json_catkin
     uri: git@github.com:ethz-asl/json_catkin.git
-- git:
-    local-name: go_icp_catkin
-    uri: https://github.com/ethz-asl/go_icp_catkin
