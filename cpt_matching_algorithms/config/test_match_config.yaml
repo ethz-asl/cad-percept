@@ -7,8 +7,8 @@ usetoyproblem: false
 
 #Select Matcher (only one)
 usetemplate: false
-useGoICP: false
+useGoICP: true
 useSuper4PCS: false
 usepclPlaneExtraction: false
-useRHTPlaneExtraction: true
+useRHTPlaneExtraction: false
 

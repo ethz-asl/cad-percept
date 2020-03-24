@@ -72,8 +72,8 @@ void TestMatcher::go_icp_match() {
 
   // Create txt files of point clouds, required for Go-ICP
   chdir(ros::package::getPath("cpt_matching_algorithms").c_str());
-  chdir("../goicp_catkin/");          // change this after added to dependencies.rosinstall
-  std::ofstream map_file("map.txt");  // change cwd to node in launch file
+  chdir("../../go_icp_catkin/");
+  std::ofstream map_file("map.txt");
   map_file << go_icp_map.width << std::endl;
   for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
     map_file << i->x << " " << i->y << " " << i->z << std::endl;

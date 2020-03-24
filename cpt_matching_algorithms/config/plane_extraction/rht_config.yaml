@@ -1,15 +1,16 @@
 # Settings of accumulator
 AccumulatorRhoResolution: 0.5
-AccumulatorThetaResolution: 0.2
-AccumulatorPsiResolution: 0.2
+AccumulatorThetaResolution: 0.3
+AccumulatorPsiResolution: 0.3
 AccumulatorThreshold: 10
-AccumulatorKMaxSuppress: 6 # set to zero to deactivate
+AccumulatorKMaxSuppress: 20 # set to zero to deactivate
 #AccumulatorFile: path to file which includes a designed accumulator bin pc
 
 # Settings of RHT
-RHTMaxIter: 100000
-RHTTolDist: 3    # makes sure points are not too far apart
+RHTMaxIter: 1000000
+RHTTolDist: 2    # makes sure points are not too far apart
 RHTMinArea: 0.5
 RHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown
+
 
 
