@@ -27,8 +27,6 @@ class PlaneExtractionLib::HoughAccumulator {
       }
     }
     // Setup kd-tree
-    bin_index.resize(k_kdtree);
-    bin_index_dist.resize(k_kdtree);
     kdtree.setInputCloud(bin_values);
   };
 
@@ -40,7 +38,29 @@ class PlaneExtractionLib::HoughAccumulator {
     voter_ids[bin_index[0]].push_back(voter);
   };
   void findmaxima(double min_vote_threshold, std::vector<double> &plane_coefficients,
-                  std::vector<std::vector<int>> &get_voter_ids) {
+                  std::vector<std::vector<int>> &get_voter_ids, int k_of_maxima_suppression) {
+    // Non-maximum Suppression
+    if (k_of_maxima_suppression != 0) {
+      pcl::PointXYZ max_candidate;
+      for (int i = 0; i < bin_number_rho * bin_number_theta * bin_number_psi; ++i) {
+        max_candidate.x = bin_values->points[i].x;
+        max_candidate.y = bin_values->points[i].y;
+        max_candidate.z = bin_values->points[i].z;
+        kdtree.nearestKSearch(max_candidate, k_of_maxima_suppression + 1, bin_index,
+                              bin_index_dist);
+        // Check neighbourhood, do not care about bin_index[0] as it discribes points itself
+        for (int j = 1; j < bin_index.size(); ++j) {
+          if (bins[i] < bins[bin_index[j]]) break;  // non local maxima
+          if (j == (bin_index.size() - 1)) {        // local maxima
+            for (int n = 1; n < bin_index.size(); ++n) {
+              bins[i] += bins[bin_index[n]];
+              bins[bin_index[n]] = 0;
+            }
+          }
+        }
+      }
+    }
+
     plane_coefficients.clear();
     get_voter_ids.clear();
     for (int i = 0; i < bin_number_rho * bin_number_theta * bin_number_psi; ++i) {
@@ -164,14 +184,15 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
   std::cout << "         RHT Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
-  double tol_distance_between_points = nh_private_.param<double>("RHTTolDist", 2);
-  double min_area_of_spanned_triangle = nh_private_.param<double>("RHTMinArea", 0.05);
   double rho_resolution = nh_private_.param<double>("AccumulatorRhoResolution", 100);
   double theta_resolution = nh_private_.param<double>("AccumulatorThetaResolution", 20);
   double psi_resolution = nh_private_.param<double>("AccumulatorPsiResolution", 10);
-  double min_area_spanned = nh_private_.param<int>("RHTMinArea", 1);
   int min_vote_threshold = nh_private_.param<int>("AccumulatorThreshold", 10);
+  int k_of_maxima_suppression = nh_private_.param<int>("AccumulatorKMaxSuppress", 0);
+
   int max_iteration = nh_private_.param<int>("RHTMaxIter", 10000);
+  double tol_distance_between_points = nh_private_.param<double>("RHTTolDist", 2);
+  double min_area_spanned = nh_private_.param<double>("RHTMinArea", 0.05);
   int num_main_planes = nh_private_.param<int>("RHTPlaneNumber", 0);
 
   pcl::PointXYZ origin(0, 0, 0);
@@ -210,16 +231,16 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
     sampled_points.push_back(reference_point[1]);
     sampled_points.push_back(reference_point[2]);
 
-    // Check if points are close
-    if (pcl::geometry::distance(reference_point[0], reference_point[1]) <
+    // Check if points are too close
+    if (pcl::geometry::distance(reference_point[0], reference_point[1]) >
         tol_distance_between_points)
       continue;
 
-    if (pcl::geometry::distance(reference_point[1], reference_point[2]) <
+    if (pcl::geometry::distance(reference_point[1], reference_point[2]) >
         tol_distance_between_points)
       continue;
 
-    if (pcl::geometry::distance(reference_point[0], reference_point[2]) <
+    if (pcl::geometry::distance(reference_point[0], reference_point[2]) >
         tol_distance_between_points)
       continue;
 
@@ -257,11 +278,13 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
   std::vector<double> plane_coefficients;
   std::vector<std::vector<int>> maxima_voter_ids;
 
-  array_accumulator.findmaxima(min_vote_threshold, plane_coefficients, maxima_voter_ids);
+  array_accumulator.findmaxima(min_vote_threshold, plane_coefficients, maxima_voter_ids,
+                               k_of_maxima_suppression);
 
   if (num_main_planes != 0 && maxima_voter_ids.size() > num_main_planes) {
     do {
-      array_accumulator.findmaxima(++min_vote_threshold, plane_coefficients, maxima_voter_ids);
+      array_accumulator.findmaxima(++min_vote_threshold, plane_coefficients, maxima_voter_ids,
+                                   k_of_maxima_suppression);
     } while (maxima_voter_ids.size() > num_main_planes);
     std::cout << "Used " << min_vote_threshold << " as threshold" << std::endl;
   }
