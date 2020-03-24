@@ -12,8 +12,8 @@ class PlaneExtractionLib::HoughAccumulator {
 
     std::cout << "Accumualtor uses a total of "
               << bin_number_rho * bin_number_theta * bin_number_psi << std::endl;
-    std::cout << "rho bins: " << bin_number_rho << "theta bins: " << bin_number_theta
-              << "psi bins: " << bin_number_psi << std::endl;
+    std::cout << " rho bins: " << bin_number_rho << " theta bins: " << bin_number_theta
+              << " psi bins: " << bin_number_psi << std::endl;
     // Implementation for array accumualtor, should be able to easily adapt to other designs
     pcl::PointXYZ bin_point;
     for (int d_rho = 0; d_rho < bin_number_rho; ++d_rho) {
@@ -70,12 +70,16 @@ class PlaneExtractionLib::HoughAccumulator {
 };
 
 // Plane Extraction using pcl tutorial (see also planarSegmentationPCL)
-std::vector<pcl::PointCloud<pcl::PointXYZRGB>> PlaneExtractionLib::pcl_plane_extraction(
-    const pcl::PointCloud<pcl::PointXYZ> lidar_frame, int max_number_of_plane,
-    int min_number_of_inlier, ros::Publisher &plane_pub_, std::string tf_map_frame) {
+std::vector<double> PlaneExtractionLib::pcl_plane_extraction(
+    const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub_,
+    std::string tf_map_frame, ros::NodeHandle &nh_private_) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         PCL Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
+
+  double distance_threshold = nh_private_.param<double>("PCLDistanceThreshold", 0.01);
+  int max_number_of_plane = nh_private_.param<int>("PCLMaxNumPlane", 12);
+  int min_number_of_inlier = nh_private_.param<int>("PCLMinInlier", 15);
 
   std::vector<pcl::PointCloud<pcl::PointXYZRGB>> extracted_planes;
   pcl::PointCloud<pcl::PointXYZ>::Ptr extracted_inlier_points(new pcl::PointCloud<pcl::PointXYZ>);
@@ -101,6 +105,9 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>> PlaneExtractionLib::pcl_plane_ext
   std::cout << "Start to extract planes" << std::endl;
 
   pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
+  pcl::PointXYZ normal_of_plane;
+  std::vector<double> plane_coefficients;
+  double norm_of_normal;
 
   do {
     seg.setInputCloud(plane_lidar);
@@ -112,9 +119,24 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>> PlaneExtractionLib::pcl_plane_ext
 
       pcl::copyPointCloud(*extracted_inlier_points, *colored_inlier_points);
       extracted_planes.push_back(*colored_inlier_points);
-      extracted_inlier_points->clear();
+
+      // Read plane coefficients
+      normal_of_plane.x = coefficients->values[0];
+      normal_of_plane.y = coefficients->values[1];
+      normal_of_plane.z = coefficients->values[2];
+
+      norm_of_normal = normal_of_plane.x * extracted_inlier_points->points[0].x +
+                       normal_of_plane.y * extracted_inlier_points->points[0].y +
+                       normal_of_plane.z * extracted_inlier_points->points[0].z;
+      if (norm_of_normal < 0) norm_of_normal = -norm_of_normal;
+      plane_coefficients.push_back(norm_of_normal);                               // rho
+      plane_coefficients.push_back(atan2(normal_of_plane.y, normal_of_plane.x));  // theta
+      plane_coefficients.push_back(atan2(
+          normal_of_plane.z, sqrt(pow(normal_of_plane.x, 2) + pow(normal_of_plane.y, 2))));  // psi
+
       std::cout << "Plane found (nr. " << extracted_planes.size() << ")" << std::endl;
 
+      extracted_inlier_points->clear();
       indices_filter.setInputCloud(plane_lidar);
       indices_filter.setIndices(inliers);
       indices_filter.setNegative(true);
@@ -126,7 +148,12 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>> PlaneExtractionLib::pcl_plane_ext
   // Visualize plane
   visualize_plane(extracted_planes, plane_pub_, tf_map_frame);
 
-  return extracted_planes;
+  for (int i = 0; i < extracted_planes.size(); ++i) {
+    std::cout << plane_coefficients[i * 3] << " " << plane_coefficients[i * 3 + 1] << " "
+              << plane_coefficients[i * 3 + 2] << " color: " << i % 8 << std::endl;
+  }
+
+  return plane_coefficients;
 }
 
 // Plane Extraction using RHT

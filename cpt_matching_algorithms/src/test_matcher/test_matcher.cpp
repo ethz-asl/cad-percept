@@ -173,7 +173,7 @@ void TestMatcher::match() {
   //    super4pcs_match();
   //  }
   if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
-    PlaneExtractionLib::pcl_plane_extraction(lidar_frame, 12, 50, plane_pub_, tf_map_frame);
+    PlaneExtractionLib::pcl_plane_extraction(lidar_frame, plane_pub_, tf_map_frame, nh_private_);
   }
   if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
     PlaneExtractionLib::rht_plane_extraction(lidar_frame, plane_pub_, tf_map_frame, nh_private_);
