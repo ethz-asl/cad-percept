@@ -151,7 +151,9 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       // Publish pose. Same as odometry, but different msg type.
       auto tf_scanner_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
           T_scanner_to_map_, parameters_.lidar_frame, parameters_.tf_map_frame, stamp);
-      tf_broadcaster_.sendTransform(tf_scanner_to_map);
+      if (parameters_.standalone_icp) {
+        tf_broadcaster_.sendTransform(tf_scanner_to_map);
+      }
       if (pose_pub_.getNumSubscribers()) {
         pose_pub_.publish(tf_scanner_to_map);
       }
