@@ -70,7 +70,10 @@ if __name__ == "__main__":
         marker.marker, tf_broadcaster, 'map'))
 
     # republish mesh once when everything is set up
-    rospy.sleep(1)
+    rospy.sleep(2)
+    if rospy.get_param('~load_cad_on_start', False):
+        load_cad()
+        print("Loaded CAD")
     publish_mesh()
 
     rospy.spin()
