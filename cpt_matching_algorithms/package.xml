@@ -11,13 +11,13 @@
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
 
-  <depend>roscpp</depend>
-  <depend>pcl_ros</depend>
-  <depend>cgal_msgs</depend>
   <depend>cgal_conversions</depend>
   <depend>cgal_definitions</depend>
+  <depend>cgal_msgs</depend>
+  <depend>cpt_utils</depend>
   <depend>libpointmatcher</depend>
   <depend>libpointmatcher_ros</depend> 
-  <depend>cpt_utils</depend>
+  <depend>pcl_ros</depend>
+  <depend>roscpp</depend>
   
 </package>

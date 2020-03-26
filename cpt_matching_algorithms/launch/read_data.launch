@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
+	<!-- declare arg to be passed in -->
+	<arg name="data_file" default="$(find cpt_matching_algorithms)/../../smb_2020-01-29-14-58-07.bag" />
+	<arg name="save_target" default="$(find cpt_matching_algorithms)/../../data_set" />
 
     <node name="data_reader" pkg="cpt_matching_algorithms" type="data_reader" output="screen">
-    	<param name="ref_package" value="cpt_matching_algorithms" />
-        <param name="raw_data" value="../../smb_2020-01-29-14-58-07.bag" />
-        <param name="save_folder" value="../../data_set" />
+    	<param name="raw_data" value="$(arg data_file)" />
+        <param name="save_folder" value="$(arg save_target)" />
+        <param name="point_topic" value="/rslidar_points" />
+        <param name="gt_topic" value="/leica/position" />
     </node>
 
 </launch>
