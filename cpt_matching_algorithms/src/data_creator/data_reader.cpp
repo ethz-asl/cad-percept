@@ -3,18 +3,12 @@
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
-#include <boost/filesystem.hpp>
+#include <fstream>
 
-// The idea of this program is to create smaller bag files including one corresponding
-// frame and one ground thruth data, such that one has direct access to the single frames.
 int main(int argc, char **argv) {
   ros::init(argc, argv, "mapper");
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
-
-  // Change folder
-  std::string ref_package = nh_private.param<std::string>("ref_package", "cpt_matching_algorithms");
-  chdir(ros::package::getPath(ref_package).c_str());
 
   rosbag::Bag bag;
   std::cout << "Data Reader started" << std::endl;
@@ -23,12 +17,12 @@ int main(int argc, char **argv) {
   bag.open(raw_file, rosbag::bagmode::Read);
 
   std::vector<std::string> lidar_topic;
-  lidar_topic.push_back(std::string("/rslidar_points"));
+  lidar_topic.push_back(nh_private.param<std::string>("point_topic", "fail"));
   rosbag::View view_lidar(bag, rosbag::TopicQuery(lidar_topic));
   std::cout << "Created lidar frame view" << std::endl;
 
   std::vector<std::string> gt_topic;
-  gt_topic.push_back(std::string("/leica/position"));
+  gt_topic.push_back(nh_private.param<std::string>("gt_topic", "fail"));
   rosbag::View view_gt(bag, rosbag::TopicQuery(gt_topic));
   std::cout << "Created ground truth view" << std::endl;
 

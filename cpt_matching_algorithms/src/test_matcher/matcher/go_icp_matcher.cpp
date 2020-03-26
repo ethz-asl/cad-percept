@@ -12,8 +12,8 @@ void TestMatcher::go_icp_match() {
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
   // Centralize point clouds and scale them to [-1,1]³
-  PointCloud go_icp_lidar = lidar_frame;
-  PointCloud go_icp_map = sample_map;
+  PointCloud go_icp_lidar = lidar_frame_;
+  PointCloud go_icp_map = sample_map_;
 
   // Find translation for centralization
   pcl::CentroidPoint<pcl::PointXYZ> centroid_lidar;
@@ -129,16 +129,17 @@ void TestMatcher::go_icp_match() {
   Eigen::Matrix4d final_transf = go_icp_trans.inverse();
 
   Eigen::Matrix3d final_rot = final_transf.block(0, 0, 3, 3);
-  Eigen::Vector3f final_euler = final_rot.cast<float>().eulerAngles(0, 1, 2);
+  Eigen::Quaterniond final_q(final_rot);
 
   // Revert scaling and translation
-  transform_TR[0] = final_transf(0, 3) * max_dist - transl_lidar.x + transl_map.x;
-  transform_TR[1] = final_transf(1, 3) * max_dist - transl_lidar.y + transl_map.y;
-  transform_TR[2] = final_transf(2, 3) * max_dist - transl_lidar.z + transl_map.z;
+  transform_TR_[0] = final_transf(0, 3) * max_dist - transl_lidar.x + transl_map.x;
+  transform_TR_[1] = final_transf(1, 3) * max_dist - transl_lidar.y + transl_map.y;
+  transform_TR_[2] = final_transf(2, 3) * max_dist - transl_lidar.z + transl_map.z;
 
-  transform_TR[3] = final_euler(0);
-  transform_TR[4] = final_euler(1);
-  transform_TR[5] = final_euler(2);
+  transform_TR_[3] = final_q.w();
+  transform_TR_[4] = final_q.x();
+  transform_TR_[5] = final_q.y();
+  transform_TR_[6] = final_q.z();
 }
 
 }  // namespace matching_algorithms

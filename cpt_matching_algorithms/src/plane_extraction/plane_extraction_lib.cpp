@@ -3,58 +3,58 @@
 class PlaneExtractionLib::HoughAccumulator {
  public:
   HoughAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size, Eigen::Vector3d bin_maxima)
-      : bin_values(new pcl::PointCloud<pcl::PointXYZ>), k_kdtree(1) {
-    bin_number_rho = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
-    bin_number_theta = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
-    bin_number_psi = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
-    bins.resize(bin_number_rho * bin_number_theta * bin_number_psi);
-    voter_ids.resize(bin_number_rho * bin_number_theta * bin_number_psi, std::vector<int>(0));
+      : bin_values_(new pcl::PointCloud<pcl::PointXYZ>), k_kdtree_(1) {
+    bin_number_rho_ = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
+    bin_number_theta_ = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
+    bin_number_psi_ = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+    bins_.resize(bin_number_rho_ * bin_number_theta_ * bin_number_psi_);
+    voter_ids_.resize(bin_number_rho_ * bin_number_theta_ * bin_number_psi_, std::vector<int>(0));
 
     std::cout << "Accumualtor uses a total of "
-              << bin_number_rho * bin_number_theta * bin_number_psi << std::endl;
-    std::cout << " rho bins: " << bin_number_rho << " theta bins: " << bin_number_theta
-              << " psi bins: " << bin_number_psi << std::endl;
+              << bin_number_rho_ * bin_number_theta_ * bin_number_psi_ << std::endl;
+    std::cout << " rho bins: " << bin_number_rho_ << " theta bins: " << bin_number_theta_
+              << " psi bins: " << bin_number_psi_ << std::endl;
     // Implementation for array accumualtor, should be able to easily adapt to other designs
     pcl::PointXYZ bin_point;
-    for (int d_rho = 0; d_rho < bin_number_rho; ++d_rho) {
-      for (int d_theta = 0; d_theta < bin_number_theta; ++d_theta) {
-        for (int d_psi = 0; d_psi < bin_number_psi; ++d_psi) {
+    for (int d_rho = 0; d_rho < bin_number_rho_; ++d_rho) {
+      for (int d_theta = 0; d_theta < bin_number_theta_; ++d_theta) {
+        for (int d_psi = 0; d_psi < bin_number_psi_; ++d_psi) {
           bin_point.x = d_rho * bin_size[0] + bin_minima[0];
           bin_point.y = d_theta * bin_size[1] + bin_minima[1];
           bin_point.z = d_psi * bin_size[2] + bin_minima[2];
-          bin_values->push_back(bin_point);
+          bin_values_->push_back(bin_point);
         }
       }
     }
     // Setup kd-tree
-    kdtree.setInputCloud(bin_values);
+    kdtree_.setInputCloud(bin_values_);
   };
 
   void vote(Eigen::Vector3d vote, int voter) {
     pcl::PointXYZ vote_point(vote(0), vote(1), vote(2));
-    kdtree.nearestKSearch(vote_point, 1, bin_index, bin_index_dist);
-    ++bins[bin_index[0]];
+    kdtree_.nearestKSearch(vote_point, 1, bin_index_, bin_index_dist_);
+    ++bins_[bin_index_[0]];
     // std::cout << "Voted" << std::endl;
-    voter_ids[bin_index[0]].push_back(voter);
+    voter_ids_[bin_index_[0]].push_back(voter);
   };
   void findmaxima(double min_vote_threshold, std::vector<double> &plane_coefficients,
                   std::vector<std::vector<int>> &get_voter_ids, int k_of_maxima_suppression) {
     // Non-maximum Suppression
     if (k_of_maxima_suppression != 0) {
       pcl::PointXYZ max_candidate;
-      for (int i = 0; i < bin_number_rho * bin_number_theta * bin_number_psi; ++i) {
-        max_candidate.x = bin_values->points[i].x;
-        max_candidate.y = bin_values->points[i].y;
-        max_candidate.z = bin_values->points[i].z;
-        kdtree.nearestKSearch(max_candidate, k_of_maxima_suppression + 1, bin_index,
-                              bin_index_dist);
-        // Check neighbourhood, do not care about bin_index[0] as it discribes points itself
-        for (int j = 1; j < bin_index.size(); ++j) {
-          if (bins[i] < bins[bin_index[j]]) break;  // non local maxima
-          if (j == (bin_index.size() - 1)) {        // local maxima
-            for (int n = 1; n < bin_index.size(); ++n) {
-              bins[i] += bins[bin_index[n]];
-              bins[bin_index[n]] = 0;
+      for (int i = 0; i < bin_number_rho_ * bin_number_theta_ * bin_number_psi_; ++i) {
+        max_candidate.x = bin_values_->points[i].x;
+        max_candidate.y = bin_values_->points[i].y;
+        max_candidate.z = bin_values_->points[i].z;
+        kdtree_.nearestKSearch(max_candidate, k_of_maxima_suppression + 1, bin_index_,
+                               bin_index_dist_);
+        // Check neighbourhood, do not care about bin_index[0] as it discribes point itself
+        for (int j = 1; j < bin_index_.size(); ++j) {
+          if (bins_[i] < bins_[bin_index_[j]]) break;  // non local maxima
+          if (j == (bin_index_.size() - 1)) {          // local maxima
+            for (int n = 1; n < bin_index_.size(); ++n) {
+              bins_[i] += bins_[bin_index_[n]];
+              bins_[bin_index_[n]] = 0;
             }
           }
         }
@@ -63,43 +63,43 @@ class PlaneExtractionLib::HoughAccumulator {
 
     plane_coefficients.clear();
     get_voter_ids.clear();
-    for (int i = 0; i < bin_number_rho * bin_number_theta * bin_number_psi; ++i) {
-      if (bins[i] >= min_vote_threshold) {
-        plane_coefficients.push_back(bin_values->points[i].x);  // rho
-        plane_coefficients.push_back(bin_values->points[i].y);  // theta
-        plane_coefficients.push_back(bin_values->points[i].z);  // psi
+    for (int i = 0; i < bin_number_rho_ * bin_number_theta_ * bin_number_psi_; ++i) {
+      if (bins_[i] >= min_vote_threshold) {
+        plane_coefficients.push_back(bin_values_->points[i].x);  // rho
+        plane_coefficients.push_back(bin_values_->points[i].y);  // theta
+        plane_coefficients.push_back(bin_values_->points[i].z);  // psi
 
-        get_voter_ids.push_back(voter_ids[i]);
+        get_voter_ids.push_back(voter_ids_[i]);
       }
     }
   };
 
  private:
-  std::vector<int> bins;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr bin_values;
-  int bin_number_rho;
-  int bin_number_theta;
-  int bin_number_psi;
+  std::vector<int> bins_;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr bin_values_;
+  int bin_number_rho_;
+  int bin_number_theta_;
+  int bin_number_psi_;
 
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-  pcl::PointXYZ vote_point;
-  int k_kdtree;
-  std::vector<int> bin_index;
-  std::vector<float> bin_index_dist;
-  std::vector<std::vector<int>> voter_ids;
+  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree_;
+  pcl::PointXYZ vote_point_;
+  int k_kdtree_;
+  std::vector<int> bin_index_;
+  std::vector<float> bin_index_dist_;
+  std::vector<std::vector<int>> voter_ids_;
 };
 
 // Plane Extraction using pcl tutorial (see also planarSegmentationPCL)
 std::vector<double> PlaneExtractionLib::pcl_plane_extraction(
-    const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub_,
-    std::string tf_map_frame, ros::NodeHandle &nh_private_) {
+    const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub,
+    std::string tf_map_frame, ros::NodeHandle &nh_private) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         PCL Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
-  double distance_threshold = nh_private_.param<double>("PCLDistanceThreshold", 0.01);
-  int max_number_of_plane = nh_private_.param<int>("PCLMaxNumPlane", 12);
-  int min_number_of_inlier = nh_private_.param<int>("PCLMinInlier", 15);
+  double distance_threshold = nh_private.param<double>("PCLDistanceThreshold", 0.01);
+  int max_number_of_plane = nh_private.param<int>("PCLMaxNumPlane", 12);
+  int min_number_of_inlier = nh_private.param<int>("PCLMinInlier", 15);
 
   std::vector<pcl::PointCloud<pcl::PointXYZRGB>> extracted_planes;
   pcl::PointCloud<pcl::PointXYZ>::Ptr extracted_inlier_points(new pcl::PointCloud<pcl::PointXYZ>);
@@ -166,7 +166,7 @@ std::vector<double> PlaneExtractionLib::pcl_plane_extraction(
            inliers->indices.size() > min_number_of_inlier);
 
   // Visualize plane
-  visualize_plane(extracted_planes, plane_pub_, tf_map_frame);
+  visualize_plane(extracted_planes, plane_pub, tf_map_frame);
 
   for (int i = 0; i < extracted_planes.size(); ++i) {
     std::cout << plane_coefficients[i * 3] << " " << plane_coefficients[i * 3 + 1] << " "
@@ -178,22 +178,22 @@ std::vector<double> PlaneExtractionLib::pcl_plane_extraction(
 
 // Plane Extraction using RHT
 std::vector<double> PlaneExtractionLib::rht_plane_extraction(
-    const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub_,
-    std::string tf_map_frame, ros::NodeHandle &nh_private_) {
+    const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub,
+    std::string tf_map_frame, ros::NodeHandle &nh_private) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         RHT Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
-  double rho_resolution = nh_private_.param<double>("AccumulatorRhoResolution", 100);
-  double theta_resolution = nh_private_.param<double>("AccumulatorThetaResolution", 20);
-  double psi_resolution = nh_private_.param<double>("AccumulatorPsiResolution", 10);
-  int min_vote_threshold = nh_private_.param<int>("AccumulatorThreshold", 10);
-  int k_of_maxima_suppression = nh_private_.param<int>("AccumulatorKMaxSuppress", 0);
+  double rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 100);
+  double theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 20);
+  double psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 10);
+  int min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 10);
+  int k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 0);
 
-  int max_iteration = nh_private_.param<int>("RHTMaxIter", 10000);
-  double tol_distance_between_points = nh_private_.param<double>("RHTTolDist", 2);
-  double min_area_spanned = nh_private_.param<double>("RHTMinArea", 0.05);
-  int num_main_planes = nh_private_.param<int>("RHTPlaneNumber", 0);
+  int max_iteration = nh_private.param<int>("RHTMaxIter", 10000);
+  double tol_distance_between_points = nh_private.param<double>("RHTTolDist", 2);
+  double min_area_spanned = nh_private.param<double>("RHTMinArea", 0.05);
+  int num_main_planes = nh_private.param<int>("RHTPlaneNumber", 0);
 
   pcl::PointXYZ origin(0, 0, 0);
   double max_distance_to_point = 0;
@@ -303,7 +303,7 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
     pcl::copyPointCloud(used_inliers, extracted_planes.back());
     used_inliers.clear();
   }
-  visualize_plane(extracted_planes, plane_pub_, tf_map_frame);
+  visualize_plane(extracted_planes, plane_pub, tf_map_frame);
 
   for (int i = 0; i < extracted_planes.size(); ++i) {
     std::cout << plane_coefficients[i * 3] << " " << plane_coefficients[i * 3 + 1] << " "
@@ -314,7 +314,7 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
 
 // Visualization of planes in rviz
 void PlaneExtractionLib::visualize_plane(
-    std::vector<pcl::PointCloud<pcl::PointXYZRGB>> &extracted_planes, ros::Publisher &plane_pub_,
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>> &extracted_planes, ros::Publisher &plane_pub,
     std::string tf_map_frame) {
   std::cout << "Start Visualization" << std::endl;
 
@@ -342,6 +342,6 @@ void PlaneExtractionLib::visualize_plane(
   sensor_msgs::PointCloud2 segmentation_mesg;
   segmented_point_cloud->header.frame_id = tf_map_frame;
   pcl::toROSMsg(*segmented_point_cloud, segmentation_mesg);
-  plane_pub_.publish(segmentation_mesg);
+  plane_pub.publish(segmentation_mesg);
   std::cout << "Publish plane segmentation" << std::endl;
 }

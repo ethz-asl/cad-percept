@@ -29,37 +29,37 @@ class TestMatcher {
   ros::NodeHandle &nh_, &nh_private_;
 
   // Cad
-  std::string cad_topic;
+  std::string cad_topic_;
   cad_percept::cgal::MeshModel::Ptr reference_mesh_;
-  float sample_density;
+  float sample_density_;
 
   // given Point Cloud data
-  bool use_sim_lidar = false;
-  bool lidar_frame_ready = false;
-  bool ground_truth_ready = false;
-  bool map_ready = false;
-  bool ready_for_eval = false;
-  PointCloud lidar_frame;
-  PointCloud sample_map;
+  bool use_sim_lidar_ = false;
+  bool lidar_frame_ready_ = false;
+  bool ground_truth_ready_ = false;
+  bool map_ready_ = false;
+  bool ready_for_eval_ = false;
+  PointCloud lidar_frame_;
+  PointCloud sample_map_;
 
   // Param from server
-  int input_queue_size;
-  int map_sampling_density;
-  std::string tf_map_frame;
+  int input_queue_size_;
+  int map_sampling_density_;
+  std::string tf_map_frame_;
 
   // Evaluation / Ground Truth data
-  float transform_TR[6] = {0, 0, 0, 0, 0, 0};  // x y z roll pitch yaw
-  geometry_msgs::PointStamped ground_truth;
-  float gt_roll;
-  float gt_pitch;
-  float gt_yaw;
+  float transform_TR_[7] = {0, 0, 0, 0, 0, 0, 0};  // x y z qw qx qy qz
+  geometry_msgs::PointStamped ground_truth_;
+  std::vector<float> gt_quat_;
 
   // Subscribers
+  std::string lidar_topic_;
+  std::string sim_lidar_topic_;
+  std::string ground_truth_topic_;
   ros::Subscriber map_sub_;
   ros::Subscriber lidar_sub_;
   ros::Subscriber lidar_sim_sub_;
   ros::Subscriber gt_sub_;
-
   // Publisher
   ros::Publisher scan_pub_;
   ros::Publisher sample_map_pub_;
@@ -73,7 +73,7 @@ class TestMatcher {
   /**
    * Lidar frame callback
    */
-  void getLiDAR(const sensor_msgs::PointCloud2 &lidar_frame_p2);
+  void getLidar(const sensor_msgs::PointCloud2 &lidar_frame_p2);
 
   /**
    * Ground truth callback
@@ -83,7 +83,7 @@ class TestMatcher {
   /**
    * Simulated Lidar frame callback
    */
-  void getsimLiDAR(const sensor_msgs::PointCloud2 &lidar_frame_p2);
+  void getSimLidar(const sensor_msgs::PointCloud2 &lidar_frame_p2);
 
   /**
    * Match function
@@ -109,6 +109,16 @@ class TestMatcher {
 };
 
 }  // namespace matching_algorithms
+
+namespace cgal {
+
+/**
+ * Converts tf transfrom into CGAL transform
+ */
+void tfTransformationToCGALTransformation(tf::StampedTransform transform,
+                                          cad_percept::cgal::Transformation &ctransformation);
+
+}  // namespace cgal
 }  // namespace cad_percept
 
 #endif

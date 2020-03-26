@@ -25,13 +25,13 @@ class PlaneExtractionLib {
  public:
   class HoughAccumulator;
   static std::vector<double> pcl_plane_extraction(const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
-                                                  ros::Publisher &plane_pub_,
+                                                  ros::Publisher &plane_pub,
                                                   std::string tf_map_frame,
-                                                  ros::NodeHandle &nh_private_);
+                                                  ros::NodeHandle &nh_private);
   static std::vector<double> rht_plane_extraction(const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
-                                                  ros::Publisher &plane_pub_,
+                                                  ros::Publisher &plane_pub,
                                                   std::string tf_map_frame,
-                                                  ros::NodeHandle &nh_private_);
+                                                  ros::NodeHandle &nh_private);
   static void visualize_plane(std::vector<pcl::PointCloud<pcl::PointXYZRGB>> &extracted_planes,
-                              ros::Publisher &plane_pub_, std::string tf_map_frame);
+                              ros::Publisher &plane_pub, std::string tf_map_frame);
 };
