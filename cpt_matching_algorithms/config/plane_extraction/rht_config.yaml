@@ -1,4 +1,5 @@
 # Settings of accumulator
+AccumulatorChoice: 1 # 1: array, 2: ball
 AccumulatorRhoResolution: 0.5
 AccumulatorThetaResolution: 0.3
 AccumulatorPsiResolution: 0.3
@@ -10,7 +11,7 @@ AccumulatorKMaxSuppress: 20 # set to zero to deactivate
 RHTMaxIter: 1000000
 RHTTolDist: 2    # makes sure points are not too far apart
 RHTMinArea: 0.5
-RHTPlaneNumber: 0 # number of principal planes, set to zero if all planes should be shown
+RHTPlaneNumber: 3 # number of principal planes, set to zero if all planes should be shown
 
 
 

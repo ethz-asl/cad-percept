@@ -78,7 +78,7 @@ class PlaneExtractionLib::ArrayAccumulator : public PlaneExtractionLib::HoughAcc
     bin_number_psi_ = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
     accumulator_size = bin_number_rho_ * bin_number_theta_ * bin_number_psi_;
 
-    std::cout << "Accumualtor uses a total of " << accumulator_size << std::endl;
+    std::cout << "ArrayAccumualtor uses a total of " << accumulator_size << std::endl;
     std::cout << " rho bins: " << bin_number_rho_ << " theta bins: " << bin_number_theta_
               << " psi bins: " << bin_number_psi_ << std::endl;
     // Implementation for array accumualtor, should be able to easily adapt to other designs
@@ -103,6 +103,44 @@ class PlaneExtractionLib::ArrayAccumulator : public PlaneExtractionLib::HoughAcc
   int bin_number_psi_;
 };
 
+class PlaneExtractionLib::BallAccumulator : public PlaneExtractionLib::HoughAccumulator {
+ public:
+  BallAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size, Eigen::Vector3d bin_maxima)
+      : array_accumulator(new pcl::PointCloud<pcl::PointXYZ>) {
+    bin_number_rho_ = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
+    bin_number_theta_ = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
+    bin_number_psi_ = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+    accumulator_size = bin_number_rho_ * bin_number_theta_ * bin_number_psi_;
+    accumulator_size = bin_number_rho_ * bin_number_theta_ * bin_number_psi_;
+
+    std::cout << "BallAccumualtor uses a total of " << accumulator_size << std::endl;
+    std::cout << " rho bins: " << bin_number_rho_ << " theta bins: " << bin_number_theta_
+              << " psi bins: " << bin_number_psi_ << std::endl;
+    // Implementation for array accumualtor, should be able to easily adapt to other designs
+    pcl::PointXYZ bin_point;
+    for (int d_rho = 0; d_rho < bin_number_rho_; ++d_rho) {
+      for (int d_psi = 0; d_psi < bin_number_psi_; ++d_psi) {
+        double delta_theta = 2 * M_PI /
+                             (((d_psi + 0.5) * bin_size[2] + bin_minima[2]) *
+                              bin_number_theta_);  // Simplified formula from paper
+        for (int d_theta = 0; d_theta < bin_number_theta_; ++d_theta) {
+          bin_point.x = d_rho * bin_size[0] + bin_minima[0];
+          bin_point.y = d_theta * delta_theta + bin_minima[1];
+          bin_point.z = d_psi * bin_size[2] + bin_minima[2];
+          array_accumulator->push_back(bin_point);
+        }
+      }
+    }
+    this->initAccumulator(array_accumulator);
+  }
+
+ private:
+  pcl::PointCloud<pcl::PointXYZ>::Ptr array_accumulator;
+  int bin_number_rho_;
+  int bin_number_theta_;
+  int bin_number_psi_;
+};
+
 // Plane Extraction using RHT
 std::vector<double> PlaneExtractionLib::rht_plane_extraction(
     const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub,
@@ -111,6 +149,7 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
   std::cout << "         RHT Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
+  int accumulator_choice = nh_private.param<int>("AccumulatorChoice", 1);
   double rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 100);
   double theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 20);
   double psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 10);
@@ -131,12 +170,23 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
   std::cout << "Point furthest apart has a distance of " << max_distance_to_point
             << " to the origin" << std::endl;
 
-  // Setup accumualtor
-  std::cout << "Initialize array accumualtor" << std::endl;
-  Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
-  Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
-  Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-  PlaneExtractionLib::ArrayAccumulator array_accumulator(min_coord, bin_size, max_coord);
+  PlaneExtractionLib::HoughAccumulator *accumulator;
+
+  if (accumulator_choice == 2) {
+    std::cout << "Initialize ball accumulator" << std::endl;
+    Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
+    Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
+    Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
+    accumulator = new (PlaneExtractionLib::HoughAccumulator)(
+        PlaneExtractionLib::BallAccumulator(min_coord, bin_size, max_coord));
+  } else {
+    std::cout << "Initialize array accumulator" << std::endl;
+    Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
+    Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
+    Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
+    accumulator = new (PlaneExtractionLib::HoughAccumulator)(
+        PlaneExtractionLib::ArrayAccumulator(min_coord, bin_size, max_coord));
+  }
 
   // Perform RHT
   std::vector<pcl::PointXYZ> sampled_points;
@@ -198,20 +248,20 @@ std::vector<double> PlaneExtractionLib::rht_plane_extraction(
     vote(2) = atan2(normal_of_plane.z,
                     sqrt(pow(normal_of_plane.x, 2) + pow(normal_of_plane.y, 2)));  // psi
 
-    array_accumulator.vote(vote, i);
+    accumulator->vote(vote, i);
   }
   std::cout << "Voting finished" << std::endl;
 
   std::vector<double> plane_coefficients;
   std::vector<std::vector<int>> maxima_voter_ids;
 
-  array_accumulator.findmaxima(min_vote_threshold, plane_coefficients, maxima_voter_ids,
-                               k_of_maxima_suppression);
+  accumulator->findmaxima(min_vote_threshold, plane_coefficients, maxima_voter_ids,
+                          k_of_maxima_suppression);
 
   if (num_main_planes != 0 && maxima_voter_ids.size() > num_main_planes) {
     do {
-      array_accumulator.findmaxima(++min_vote_threshold, plane_coefficients, maxima_voter_ids,
-                                   k_of_maxima_suppression);
+      accumulator->findmaxima(++min_vote_threshold, plane_coefficients, maxima_voter_ids,
+                              k_of_maxima_suppression);
     } while (maxima_voter_ids.size() > num_main_planes);
     std::cout << "Used " << min_vote_threshold << " as threshold" << std::endl;
   }
