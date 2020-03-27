@@ -243,15 +243,3 @@ void TestMatcher::getError(PointCloud p1, PointCloud p2) {
 }
 }  // namespace matching_algorithms
 }  // namespace cad_percept
-
-void cad_percept::cgal::tfTransformationToCGALTransformation(
-    tf::StampedTransform transform, cad_percept::cgal::Transformation& ctransformation) {
-  Eigen::Matrix3d rotation;
-  tf::matrixTFToEigen(transform.getBasis(), rotation);
-  Eigen::Vector3d translation;
-  tf::vectorTFToEigen(transform.getOrigin(), translation);
-  Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
-  transformation.block(0, 0, 3, 3) = rotation;
-  transformation.block(0, 3, 3, 1) = translation;
-  cad_percept::cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
-}

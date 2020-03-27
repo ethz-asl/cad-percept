@@ -1,5 +1,6 @@
 #include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
+#include <cgal_conversions/tf_conversions.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/pc_processing.h>
@@ -93,17 +94,8 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     }
 
     // Transform CAD to map
-    Eigen::Matrix3d rotation;
-    tf::matrixTFToEigen(transform.getBasis(), rotation);
-    Eigen::Vector3d translation;
-    tf::vectorTFToEigen(transform.getOrigin(), translation);
-    Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
-    transformation.block(0, 0, 3, 3) = rotation;
-    transformation.block(0, 3, 3, 1) = translation;
     cad_percept::cgal::Transformation ctransformation;
-    cad_percept::cgal::eigenTransformationToCgalTransformation(
-        transformation,
-        &ctransformation);  // convert matrix4d to cgal transformation
+    cad_percept::cgal::tfTransformationToCGALTransformation(transform, ctransformation);
     reference_mesh->transform(ctransformation);
 
     std::cout << "CAD ready" << std::endl;

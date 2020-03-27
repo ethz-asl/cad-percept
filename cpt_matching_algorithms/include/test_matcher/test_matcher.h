@@ -3,6 +3,7 @@
 
 #include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
+#include <cgal_conversions/tf_conversions.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/pc_processing.h>
@@ -109,16 +110,6 @@ class TestMatcher {
 };
 
 }  // namespace matching_algorithms
-
-namespace cgal {
-
-/**
- * Converts tf transfrom into CGAL transform
- */
-void tfTransformationToCGALTransformation(tf::StampedTransform transform,
-                                          cad_percept::cgal::Transformation &ctransformation);
-
-}  // namespace cgal
 }  // namespace cad_percept
 
 #endif
