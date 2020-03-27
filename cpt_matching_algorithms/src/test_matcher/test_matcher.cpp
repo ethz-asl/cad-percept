@@ -146,7 +146,10 @@ void TestMatcher::match() {
 
   // Selection of mapper
   if (nh_private_.param<bool>("usetemplate", false)) {
-    template_match(transform_TR_);
+    template_match();
+  }
+  if (nh_private_.param<bool>("use_go_icp", false)) {
+    go_icp_match();
   }
 
   /*//////////////////////////////////////
