@@ -9,6 +9,9 @@
     local-name: glog_catkin
     uri: git@github.com:ethz-asl/glog_catkin.git
 - git:
+    local-name: go_icp_catkin
+    uri: git@github.com:ethz-asl/go_icp_catkin.git
+- git:
     local-name: minkindr
     uri: git@github.com:ethz-asl/minkindr.git
 - git:
