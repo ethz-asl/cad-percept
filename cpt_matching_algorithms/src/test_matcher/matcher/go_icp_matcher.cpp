@@ -11,6 +11,9 @@ void TestMatcher::go_icp_match() {
   std::cout << "             Go-ICP matcher started            " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
+  std::string downsample_points = nh_private_.param<std::string>("downsample", "1000");
+  std::string goicp_location = nh_private_.param<std::string>("goicp_folder", "fail");
+
   // Centralize point clouds and scale them to [-1,1]³
   PointCloud go_icp_lidar = lidar_frame_;
   PointCloud go_icp_map = sample_map_;
@@ -71,8 +74,7 @@ void TestMatcher::go_icp_match() {
   pcl::transformPointCloud(go_icp_map, go_icp_map, trans_scale_map);
 
   // Create txt files of point clouds, required for Go-ICP
-  chdir(ros::package::getPath("cpt_matching_algorithms").c_str());
-  chdir("../../go_icp_catkin/");
+  chdir(goicp_location.c_str());
   std::ofstream map_file("map.txt");
   map_file << go_icp_map.width << std::endl;
   for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
@@ -89,7 +91,6 @@ void TestMatcher::go_icp_match() {
   std::cout << "lidar_frame.txt created" << std::endl;
   lidar_file.close();
 
-  std::string downsample_points = nh_private_.param<std::string>("downsample", "1000");
   std::cout << "Start Go-ICP" << std::endl;
   std::string command =
       "./GoICP map.txt lidar_frame.txt " + downsample_points + " config.txt output.txt";
