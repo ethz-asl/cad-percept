@@ -13,6 +13,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 cs_add_library(${PROJECT_NAME}
         src/mesh_conversions.cc
         src/eigen_conversions.cc
+        src/tf_conversions.cc
         )
 
 ############

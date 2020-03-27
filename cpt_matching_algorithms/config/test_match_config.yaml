@@ -1,0 +1,10 @@
+inputQueueSize: 1
+tfMapFrame: /map
+
+mapSamplingDensity: 20
+
+usetoyproblem: true
+
+#Select Matcher (only one)
+usetemplate: true
+
