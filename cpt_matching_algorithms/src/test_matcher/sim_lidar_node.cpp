@@ -21,12 +21,26 @@ cad_percept::cgal::MeshModel::Ptr reference_mesh;
 PointCloud lidar_frame;
 
 bool got_CAD = false;
-
 std::string tf_map_frame;
 
-void getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in);
+float x;
+float y;
+float z;
+std::vector<float> quat;
 
-int main(int argc, char** argv) {
+float range_of_lidar;
+bool use_bins;
+std::vector<float> bin_elevation;
+float dtheta;
+float lidar_offset;
+float noise_variance;
+
+ros::Publisher scan_pub;
+
+void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
+void simulate_lidar();
+
+int main(int argc, char **argv) {
   ros::init(argc, argv, "lidar_simulator");
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
@@ -36,20 +50,62 @@ int main(int argc, char** argv) {
   std::cout << "             LiDAR Simulator started         " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
+  // Parameter from server
+  x = nh_private.param<float>("groundtruthx", 0);
+  y = nh_private.param<float>("groundtruthy", 0);
+  z = nh_private.param<float>("groundtruthz", 0);
+  quat = nh_private.param<std::vector<float>>("groundtruth_orientation", {});
+
+  range_of_lidar = nh_private.param<float>("range_of_lidar", 20);
+  use_bins = nh_private.param<bool>("usebins", false);
+  bin_elevation = nh_private.param<std::vector<float>>("bin_elevation", {0});
+  dtheta = nh_private.param<float>("lidar_angular_resolution", 1);
+  lidar_offset = nh_private.param<float>("lidar_offset", 1.5);
+  noise_variance = nh_private.param<float>("accuracy_of_lidar", 0.02);
+
+  scan_pub = nh.advertise<sensor_msgs::PointCloud2>("sim_rslidar_points", 1, true);
+
   // Get mesh
   std::string cad_topic = nh_private.param<std::string>("cadTopic", "fail");
   ros::Subscriber cad_sub = nh.subscribe(cad_topic, 1, &getCAD);
   std::cout << "Wait for CAD" << std::endl;
-  while (!got_CAD) {
-    ros::spinOnce();
+
+  ros::spin();
+
+  return 0;
+}
+
+// Get CAD and sample points
+void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
+  if (!got_CAD) {
+    std::cout << "Processing CAD mesh" << std::endl;
+    std::string frame_id = cad_mesh_in.header.frame_id;
+    cad_percept::cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh);
+
+    // Get transformation from /map to mesh
+    tf::StampedTransform transform;
+    tf::TransformListener tf_listener(ros::Duration(30));
+    try {
+      tf_listener.waitForTransform(tf_map_frame, frame_id, ros::Time(0), ros::Duration(5.0));
+      tf_listener.lookupTransform(tf_map_frame, frame_id, ros::Time(0),
+                                  transform);  // get transformation at latest time T_map_to_frame
+    } catch (tf::TransformException ex) {
+      ROS_ERROR_STREAM("Couldn't find transformation to mesh system");
+    }
+
+    // Transform CAD to map
+    cad_percept::cgal::Transformation ctransformation;
+    cad_percept::cgal::tfTransformationToCGALTransformation(transform, ctransformation);
+    reference_mesh->transform(ctransformation);
+
+    std::cout << "CAD ready" << std::endl;
+    got_CAD = true;
+
+    simulate_lidar();
   }
+}
 
-  // Get ground_truth
-  float x = nh_private.param<float>("groundtruthx", 0);
-  float y = nh_private.param<float>("groundtruthy", 0);
-  float z = nh_private.param<float>("groundtruthz", 0);
-  std::vector<float> quat = nh_private.param<std::vector<float>>("groundtruth_orientation", {});
-
+void simulate_lidar() {
   // Transform point cloud according to ground truth
   cad_percept::cgal::Transformation ctransformation;
   Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
@@ -60,18 +116,13 @@ int main(int argc, char** argv) {
   cad_percept::cgal::eigenTransformationToCgalTransformation(transform, &ctransformation);
   reference_mesh->transform(ctransformation);
 
-  std::cout << "Lidar frame transfomed according to ground truth data" << std::endl;
+  std::cout << "Lidar frame transformed according to ground truth data" << std::endl;
 
   // Add lidar properties
-  float range_of_lidar = nh_private.param<float>("range_of_lidar", 20);
   // Bin characteristic & visible
-  bool use_bins = nh_private.param<bool>("usebins", false);
   if (use_bins) {
     std::cout << "Simulate bins of LiDAR" << std::endl;
 
-    std::vector<float> bin_elevation = nh_private.param<std::vector<float>>("bin_elevation", {0});
-    float dtheta = nh_private.param<float>("lidar_angular_resolution", 1);
-    float lidar_offset = nh_private.param<float>("lidar_offset", 1.5);
     float x_unit;
     float y_unit;
     float z_unit;
@@ -82,7 +133,7 @@ int main(int argc, char** argv) {
     cad_percept::cgal::Intersection inter_point;
     pcl::PointXYZ pcl_inter_point;
     lidar_frame.clear();
-    for (auto& bin : bin_elevation) {
+    for (auto &bin : bin_elevation) {
       for (float theta = 0; theta < 360; theta += dtheta) {
         x_unit = cos(bin * PI_angle) * cos(theta * PI_angle);
         y_unit = cos(bin * PI_angle) * sin(theta * PI_angle);
@@ -102,7 +153,6 @@ int main(int argc, char** argv) {
   }
 
   // Sensor noise
-  float noise_variance = nh_private.param<float>("accuracy_of_lidar", 0.02);
   std::default_random_engine generator;
   std::normal_distribution<float> noise(0, noise_variance);
 
@@ -120,42 +170,9 @@ int main(int argc, char** argv) {
   }
 
   // Publish simulated lidar frame
-  ros::Publisher scan_pub = nh.advertise<sensor_msgs::PointCloud2>("sim_rslidar_points", 1, true);
   DP ref_scan = cad_percept::cpt_utils::pointCloudToDP(lidar_frame);
   scan_pub.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan, tf_map_frame, ros::Time::now()));
 
   std::cout << "LiDAR Simulator starts to publish" << std::endl;
-
-  ros::spin();
-
-  return 0;
-}
-
-// Get CAD and sample points
-void getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
-  if (!got_CAD) {
-    std::cout << "Processing CAD mesh" << std::endl;
-    std::string frame_id = cad_mesh_in.header.frame_id;
-    cad_percept::cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh);
-
-    // Get transformation from /map to mesh
-    tf::StampedTransform transform;
-    tf::TransformListener tf_listener_(ros::Duration(30));
-    try {
-      tf_listener_.waitForTransform(tf_map_frame, frame_id, ros::Time(0), ros::Duration(5.0));
-      tf_listener_.lookupTransform(tf_map_frame, frame_id, ros::Time(0),
-                                   transform);  // get transformation at latest time T_map_to_frame
-    } catch (tf::TransformException ex) {
-      ROS_ERROR_STREAM("Couldn't find transformation to mesh system");
-    }
-
-    // Transform CAD to map
-    cad_percept::cgal::Transformation ctransformation;
-    cad_percept::cgal::tfTransformationToCGALTransformation(transform, ctransformation);
-    reference_mesh->transform(ctransformation);
-
-    std::cout << "CAD ready" << std::endl;
-    got_CAD = true;
-  }
 }

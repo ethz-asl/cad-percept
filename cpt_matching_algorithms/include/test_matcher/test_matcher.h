@@ -103,7 +103,8 @@ class TestMatcher {
   /**
    * Declare matchers
    */
-  void template_match(float (&transform_TR)[7]);
+  void template_match();
+  void go_icp_match();
 };
 
 }  // namespace matching_algorithms
