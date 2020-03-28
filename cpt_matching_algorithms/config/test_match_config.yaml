@@ -10,5 +10,6 @@ usetemplate: false
 useGoICP: false
 useSuper4PCS: false
 usepclPlaneExtraction: false
-useRHTPlaneExtraction: true
+useRHTPlaneExtraction: false
+useiterRHTPlaneExtraction: true
 

@@ -168,6 +168,10 @@ void TestMatcher::match() {
   if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
     PlaneExtractionLib::rht_plane_extraction(lidar_frame_, plane_pub_, tf_map_frame_, nh_private_);
   }
+  if (nh_private_.param<bool>("useiterRHTPlaneExtraction", false)) {
+    PlaneExtractionLib::iterative_rht_plane_extraction(lidar_frame_, plane_pub_, tf_map_frame_,
+                                                       nh_private_);
+  }
   /*//////////////////////////////////////
                 Transformation
   ///////////////////////////////////////*/

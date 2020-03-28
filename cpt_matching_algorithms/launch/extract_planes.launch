@@ -10,6 +10,7 @@
         <rosparam command="load" file="$(arg lidar_settings)" />
 
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/rht_config.yaml" />
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/iter_rht_config.yaml" />
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/pcl_config.yaml" />
 
         <param name="tfMapFrame" value="/map" />
