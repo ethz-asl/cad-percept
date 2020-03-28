@@ -181,8 +181,6 @@ void PlaneExtractionLib::rht_plane_extraction(
     if ((double)pcl::geometry::distance(origin, lidar_frame.points[i]) > max_distance_to_point)
       max_distance_to_point = (double)pcl::geometry::distance(origin, lidar_frame.points[i]);
   }
-  std::cout << "Point furthest apart has a distance of " << max_distance_to_point
-            << " to the origin" << std::endl;
 
   PlaneExtractionLib::HoughAccumulator *accumulator;
 
@@ -217,297 +215,93 @@ void PlaneExtractionLib::rht_plane_extraction(
   }
 }
 
-void PlaneExtractionLib::rht_vote(int max_iteration, double tol_distance_between_points,
-                                  double min_area_spanned,
-                                  const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
-                                  PlaneExtractionLib::HoughAccumulator *accumulator) {
-  // Setup needed variables
-  pcl::PointXYZ origin(0, 0, 0);
-  int reference_point_ids[3];
-  pcl::PointXYZ reference_point[3];
-  pcl::PointXYZ vector_on_plane[2];
-  pcl::PointXYZ normal_of_plane;
-  double norm_of_normal;
-  Eigen::Vector3d vote;
-
-  int pointcloud_size = lidar_frame.size();
-
-  std::cout << "Start voting" << std::endl;
-  for (int i = 0; i < max_iteration; ++i) {
-    // Sample random points
-    reference_point_ids[0] = (rand() % (pointcloud_size + 1));
-    reference_point_ids[1] = (rand() % (pointcloud_size + 1));
-    reference_point_ids[2] = (rand() % (pointcloud_size + 1));
-    reference_point[0] = lidar_frame.points[reference_point_ids[0]];
-    reference_point[1] = lidar_frame.points[reference_point_ids[1]];
-    reference_point[2] = lidar_frame.points[reference_point_ids[2]];
-
-    // Check if points are close
-    if (pcl::geometry::distance(reference_point[0], reference_point[1]) >
-        tol_distance_between_points)
-      continue;
-
-    if (pcl::geometry::distance(reference_point[1], reference_point[2]) >
-        tol_distance_between_points)
-      continue;
-
-    if (pcl::geometry::distance(reference_point[0], reference_point[2]) >
-        tol_distance_between_points)
-      continue;
-
-    vector_on_plane[0] = pcl::PointXYZ(reference_point[1].x - reference_point[0].x,
-                                       reference_point[1].y - reference_point[0].y,
-                                       reference_point[1].z - reference_point[0].z);
-    vector_on_plane[1] = pcl::PointXYZ(reference_point[2].x - reference_point[0].x,
-                                       reference_point[2].y - reference_point[0].y,
-                                       reference_point[2].z - reference_point[0].z);
-    normal_of_plane = pcl::PointXYZ(
-        vector_on_plane[1].y * vector_on_plane[0].z - vector_on_plane[1].z * vector_on_plane[0].y,
-        vector_on_plane[1].z * vector_on_plane[0].x - vector_on_plane[1].x * vector_on_plane[0].z,
-        vector_on_plane[1].x * vector_on_plane[0].y - vector_on_plane[1].y * vector_on_plane[0].x);
-
-    norm_of_normal = (double)pcl::geometry::distance(origin, normal_of_plane);
-    // Check if points are collinear or the same
-    if (norm_of_normal < min_area_spanned) continue;
-
-    // Setup vote
-    vote(0) = normal_of_plane.x * reference_point[0].x + normal_of_plane.y * reference_point[0].y +
-              normal_of_plane.z * reference_point[0].z;  // rho
-    vote(0) = vote(0) / norm_of_normal;
-    if (vote(0) < 0) {
-      vote(0) = -vote(0);
-      normal_of_plane.x = -normal_of_plane.x;
-      normal_of_plane.y = -normal_of_plane.y;
-      normal_of_plane.z = -normal_of_plane.z;
-    }
-    vote(1) = atan2(normal_of_plane.y, normal_of_plane.x);  // theta
-    vote(2) = atan2(normal_of_plane.z,
-                    sqrt(pow(normal_of_plane.x, 2) + pow(normal_of_plane.y, 2)));  // psi
-
-    accumulator->vote(vote, reference_point_ids);
-  }
-  std::cout << "Voting finished" << std::endl;
-}
-
-void PlaneExtractionLib::rht_eval(int num_main_planes, int min_vote_threshold,
-                                  int k_of_maxima_suppression,
-                                  std::vector<std::vector<double>> &plane_coefficients,
-                                  std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-                                  const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
-                                  PlaneExtractionLib::HoughAccumulator *accumulator) {
-  std::vector<std::vector<int>> inlier_ids;
-
-  pcl::PointCloud<pcl::PointXYZ> used_inliers;
-  pcl::PointCloud<pcl::PointXYZRGB> bit_scan;
-  pcl::copyPointCloud(lidar_frame, bit_scan);  // default is at 255
-
-  // Evaluate voting
-  accumulator->findmaxima(min_vote_threshold, plane_coefficients, inlier_ids,
-                          k_of_maxima_suppression);
-  // Deal with given number of planes, otherwise give out all planes
-  if (num_main_planes != 0 && inlier_ids.size() > num_main_planes) {
-    do {
-      accumulator->findmaxima(++min_vote_threshold, plane_coefficients, inlier_ids,
-                              k_of_maxima_suppression);
-    } while (inlier_ids.size() > num_main_planes);
-    std::cout << "Used " << min_vote_threshold << " as threshold" << std::endl;
-  }
-
-  // Extract inliers
-  for (int i = 0; i < inlier_ids.size(); ++i) {
-    for (auto ids : inlier_ids[i]) {
-      // make sure each point is only included once
-      if (bit_scan.points[ids].a > 125) {
-        used_inliers.push_back(lidar_frame.points[ids]);
-        bit_scan.points[ids].a = 0;
-      }
-    }
-    extracted_planes.push_back(used_inliers);
-    used_inliers.clear();
-  }
-}
-
-std::vector<double> PlaneExtractionLib::iterative_rht_plane_extraction(
+void PlaneExtractionLib::iter_rht_plane_extraction(
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
+    std::vector<std::vector<double>> &plane_coefficients,
     const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub,
     std::string tf_map_frame, ros::NodeHandle &nh_private) {
-  // std::cout << "///////////////////////////////////////////////" << std::endl;
-  // std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
-  // std::cout << "///////////////////////////////////////////////" << std::endl;
+  std::cout << "///////////////////////////////////////////////" << std::endl;
+  std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
+  std::cout << "///////////////////////////////////////////////" << std::endl;
 
-  // double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 100);
-  // double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 20);
-  // double psi_resolution = nh_private.param<double>("iterAccumulatorPsiResolution", 10);
-  // int k_of_maxima_suppression = nh_private.param<int>("iterAccumulatorKMaxSuppress", 0);
-  // int min_vote_threshold = 0;
+  double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 100);
+  double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 20);
+  double psi_resolution = nh_private.param<double>("iterAccumulatorPsiResolution", 10);
+  int k_of_maxima_suppression = nh_private.param<int>("iterAccumulatorKMaxSuppress", 0);
+  int min_vote_threshold = nh_private.param<int>("iterAccumulatorMinThreshold", 0);
 
-  // int iteration_per_plane = nh_private.param<int>("iterRHTIter", 100);
-  // double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 2);
-  // double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.05);
-  // int num_main_planes = nh_private.param<int>("iterRHTPlaneNumber", 0);
+  int iteration_per_plane = nh_private.param<int>("iterRHTIter", 100);
+  double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 2);
+  double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.05);
+  int num_main_planes = nh_private.param<int>("iterRHTPlaneNumber", 8);
+  int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlaneperIter", 1);
 
-  // pcl::PointCloud<pcl::PointXYZ> copy_lidar_frame;
-  // pcl::copyPointCloud(lidar_frame, copy_lidar_frame);
+  // Copy lidar frame to remove points
+  pcl::PointCloud<pcl::PointXYZ>::Ptr copy_lidar_frame(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::copyPointCloud(lidar_frame, *copy_lidar_frame);
 
-  // pcl::PointXYZ origin(0, 0, 0);
-  // double max_distance_to_point = 0;
-  // for (int i = 0; i < lidar_frame.size(); i++) {
-  //   if ((double)pcl::geometry::distance(origin, copy_lidar_frame.points[i]) >
-  //   max_distance_to_point)
-  //     max_distance_to_point = (double)pcl::geometry::distance(origin,
-  //     copy_lidar_frame.points[i]);
-  // }
-  // std::cout << "Point furthest apart has a distance of " << max_distance_to_point
-  //           << " to the origin" << std::endl;
+  // Ball Accumulator setup
+  pcl::PointXYZ origin(0, 0, 0);
+  double max_distance_to_point = 0;
+  for (int i = 0; i < lidar_frame.size(); i++) {
+    if ((double)pcl::geometry::distance(origin, copy_lidar_frame->points[i]) >
+        max_distance_to_point)
+      max_distance_to_point = (double)pcl::geometry::distance(origin, copy_lidar_frame->points[i]);
+  }
+  std::cout << "Initialize ball accumulator" << std::endl;
+  Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
+  Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
+  Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
+  PlaneExtractionLib::HoughAccumulator *accumulator;
+  accumulator = new (PlaneExtractionLib::HoughAccumulator)(
+      PlaneExtractionLib::BallAccumulator(min_coord, bin_size, max_coord));
 
-  // std::cout << "Initialize ball accumulator" << std::endl;
-  // Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
-  // Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
-  // Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-  // PlaneExtractionLib::HoughAccumulator *accumulator;
-  // accumulator = new (PlaneExtractionLib::HoughAccumulator)(
-  //     PlaneExtractionLib::BallAccumulator(min_coord, bin_size, max_coord));
+  pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
+  std::vector<std::vector<int>> inlier_ids;
+  std::vector<int> rm_indices;
 
-  // // Perform RHT
-  // std::vector<pcl::PointXYZ> sampled_points;
-  // pcl::PointXYZ reference_point[3];
-  // pcl::PointXYZ vector_on_plane[2];
-  // pcl::PointXYZ normal_of_plane;
-  // double norm_of_normal;
-  // Eigen::Vector3d vote;
-  // pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
-  // pcl::PointCloud<pcl::PointXYZ>::Ptr filter_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+  std::vector<std::vector<double>> iter_plane_coefficients;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> iter_extracted_planes;
 
-  // int pointcloud_size = copy_lidar_frame.size();
-  // std::vector<int> reference_point_index;
-  // std::vector<int> inliers;
+  for (int iter = 0; iter < num_main_planes; ++iter) {
+    // Perform RHT
+    PlaneExtractionLib::rht_vote(iteration_per_plane, tol_distance_between_points, min_area_spanned,
+                                 *copy_lidar_frame, accumulator);
 
-  // std::vector<double> plane_coefficients;
-  // std::vector<std::vector<int>> maxima_voter_ids;
+    // Evaluation
+    inlier_ids = PlaneExtractionLib::rht_eval(
+        number_of_plane_per_iter, min_vote_threshold, k_of_maxima_suppression,
+        iter_plane_coefficients, iter_extracted_planes, *copy_lidar_frame, accumulator);
 
-  // for (int iter = 0; iter < num_main_planes; ++iter) {
-  //   std::cout << "Start voting" << std::endl;
-  //   for (int i = 0; i < iteration_per_plane; ++i) {
-  //     // Sample random points
-  //     reference_point_index.push_back((rand() % (pointcloud_size + 1)));
-  //     reference_point[0] = copy_lidar_frame.points[reference_point_index.back()];
-  //     reference_point_index.push_back((rand() % (pointcloud_size + 1)));
-  //     reference_point[1] = copy_lidar_frame.points[reference_point_index.back()];
-  //     reference_point_index.push_back((rand() % (pointcloud_size + 1)));
-  //     reference_point[2] = copy_lidar_frame.points[reference_point_index.back()];
-  //     sampled_points.push_back(reference_point[0]);
-  //     sampled_points.push_back(reference_point[1]);
-  //     sampled_points.push_back(reference_point[2]);
+    // Add part result to general result
+    for (int plane_nr = 0; plane_nr < number_of_plane_per_iter; ++plane_nr) {
+      plane_coefficients.push_back(iter_plane_coefficients[plane_nr]);
+      extracted_planes.push_back(iter_extracted_planes[plane_nr]);
+      rm_indices.insert(rm_indices.end(), inlier_ids[plane_nr].begin(), inlier_ids[plane_nr].end());
+    }
 
-  //     // Check if points are too close
-  //     if (pcl::geometry::distance(reference_point[0], reference_point[1]) >
-  //         tol_distance_between_points)
-  //       continue;
+    // Filter out found planes
+    boost::shared_ptr<std::vector<int>> inliers_ptr =
+        boost::make_shared<std::vector<int>>(rm_indices);
+    indices_filter.setInputCloud(copy_lidar_frame);
+    indices_filter.setIndices(inliers_ptr);
+    indices_filter.setNegative(true);
+    indices_filter.filter(*copy_lidar_frame);
+    std::cout << copy_lidar_frame->size() << std::endl;
 
-  //     if (pcl::geometry::distance(reference_point[1], reference_point[2]) >
-  //         tol_distance_between_points)
-  //       continue;
+    // Reset for next iteration
+    iter_extracted_planes.clear();
+    rm_indices.clear();
+    accumulator->reset();
+    min_vote_threshold = 0;
+  }
 
-  //     if (pcl::geometry::distance(reference_point[0], reference_point[2]) >
-  //         tol_distance_between_points)
-  //       continue;
+  visualize_plane(extracted_planes, plane_pub, tf_map_frame);
 
-  //     vector_on_plane[0] = pcl::PointXYZ(reference_point[1].x - reference_point[0].x,
-  //                                        reference_point[1].y - reference_point[0].y,
-  //                                        reference_point[1].z - reference_point[0].z);
-  //     vector_on_plane[1] = pcl::PointXYZ(reference_point[2].x - reference_point[0].x,
-  //                                        reference_point[2].y - reference_point[0].y,
-  //                                        reference_point[2].z - reference_point[0].z);
-  //     normal_of_plane = pcl::PointXYZ(
-  //         vector_on_plane[1].y * vector_on_plane[0].z - vector_on_plane[1].z *
-  //         vector_on_plane[0].y, vector_on_plane[1].z * vector_on_plane[0].x -
-  //         vector_on_plane[1].x * vector_on_plane[0].z, vector_on_plane[1].x *
-  //         vector_on_plane[0].y -
-  //             vector_on_plane[1].y * vector_on_plane[0].x);
-
-  //     norm_of_normal = (double)pcl::geometry::distance(origin, normal_of_plane);
-  //     if (norm_of_normal < min_area_spanned) continue;
-
-  //     vote(0) = normal_of_plane.x * reference_point[0].x +
-  //               normal_of_plane.y * reference_point[0].y +
-  //               normal_of_plane.z * reference_point[0].z;  // rho
-  //     vote(0) = vote(0) / norm_of_normal;
-  //     if (vote(0) < 0) {
-  //       vote(0) = -vote(0);
-  //       normal_of_plane.x = -normal_of_plane.x;
-  //       normal_of_plane.y = -normal_of_plane.y;
-  //       normal_of_plane.z = -normal_of_plane.z;
-  //     }
-
-  //     vote(1) = atan2(normal_of_plane.y, normal_of_plane.x);  // theta
-  //     vote(2) = atan2(normal_of_plane.z,
-  //                     sqrt(pow(normal_of_plane.x, 2) + pow(normal_of_plane.y, 2)));  // psi
-
-  //     accumulator->vote(vote, i + iter * iteration_per_plane);
-  //   }
-  //   std::cout << "Voting finished" << std::endl;
-
-  //   std::vector<double> iter_plane_coefficients;
-  //   std::vector<std::vector<int>> iter_maxima_voter_ids;
-  //   do {
-  //     accumulator->findmaxima(++min_vote_threshold, iter_plane_coefficients,
-  //     iter_maxima_voter_ids,
-  //                             k_of_maxima_suppression);
-  //   } while (iter_maxima_voter_ids.size() > 1);
-
-  //   if (iter_maxima_voter_ids.size() == 0) {
-  //     accumulator->findmaxima(--min_vote_threshold, iter_plane_coefficients,
-  //     iter_maxima_voter_ids,
-  //                             k_of_maxima_suppression);
-  //   }
-
-  //   plane_coefficients.push_back(iter_plane_coefficients[0]);
-  //   plane_coefficients.push_back(iter_plane_coefficients[1]);
-  //   plane_coefficients.push_back(iter_plane_coefficients[2]);
-
-  //   maxima_voter_ids.push_back(iter_maxima_voter_ids[0]);
-
-  //   for (auto voter : iter_maxima_voter_ids[0]) {
-  //     inliers.push_back(reference_point_index[voter * 3]);
-  //     inliers.push_back(reference_point_index[voter * 3 + 1]);
-  //     inliers.push_back(reference_point_index[voter * 3 + 2]);
-  //   }
-
-  //   boost::shared_ptr<std::vector<int>> inliers_ptr =
-  //   boost::make_shared<std::vector<int>>(inliers); pcl::copyPointCloud(copy_lidar_frame,
-  //   *filter_cloud); indices_filter.setInputCloud(filter_cloud);
-  //   indices_filter.setIndices(inliers_ptr);
-  //   indices_filter.setNegative(true);
-  //   indices_filter.filter(*filter_cloud);
-  //   copy_lidar_frame = *filter_cloud;
-
-  //   std::cout << copy_lidar_frame.size() << std::endl;
-
-  //   inliers.clear();
-  //   accumulator->reset();
-  //   min_vote_threshold = 0;
-  // }
-
-  // // Visualization
-  // std::vector<pcl::PointCloud<pcl::PointXYZRGB>> extracted_planes;
-  // pcl::PointXYZRGB converter_point;
-  // pcl::PointCloud<pcl::PointXYZ> used_inliers;
-  // for (int i = 0; i < (int)(plane_coefficients.size() / 3); ++i) {
-  //   for (int maxima = 0; maxima < maxima_voter_ids[i].size(); maxima++) {
-  //     used_inliers.push_back(sampled_points[maxima_voter_ids[i][maxima] * 3]);
-  //     used_inliers.push_back(sampled_points[maxima_voter_ids[i][maxima] * 3 + 1]);
-  //     used_inliers.push_back(sampled_points[maxima_voter_ids[i][maxima] * 3 + 2]);
-  //   }
-  //   extracted_planes.push_back(*(new pcl::PointCloud<pcl::PointXYZRGB>));
-  //   pcl::copyPointCloud(used_inliers, extracted_planes.back());
-  //   used_inliers.clear();
-  // }
-  // visualize_plane(extracted_planes, plane_pub, tf_map_frame);
-
-  // for (int i = 0; i < extracted_planes.size(); ++i) {
-  //   std::cout << plane_coefficients[i * 3] << " " << plane_coefficients[i * 3 + 1] << " "
-  //             << plane_coefficients[i * 3 + 2] << " color: " << i % 8 << std::endl;
-  // }
-  // return plane_coefficients;
+  for (int i = 0; i < extracted_planes.size(); ++i) {
+    std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
+              << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
+  }
 }
 
 // Plane Extraction using pcl tutorial (see also planarSegmentationPCL)
@@ -634,4 +428,116 @@ void PlaneExtractionLib::visualize_plane(
   pcl::toROSMsg(*segmented_point_cloud, segmentation_mesg);
   plane_pub.publish(segmentation_mesg);
   std::cout << "Publish plane segmentation" << std::endl;
+}
+
+void PlaneExtractionLib::rht_vote(int max_iteration, double tol_distance_between_points,
+                                  double min_area_spanned,
+                                  const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
+                                  PlaneExtractionLib::HoughAccumulator *accumulator) {
+  // Setup needed variables
+  pcl::PointXYZ origin(0, 0, 0);
+  int reference_point_ids[3];
+  pcl::PointXYZ reference_point[3];
+  pcl::PointXYZ vector_on_plane[2];
+  pcl::PointXYZ normal_of_plane;
+  double norm_of_normal;
+  Eigen::Vector3d vote;
+
+  int pointcloud_size = lidar_frame.size();
+
+  std::cout << "Start voting" << std::endl;
+  for (int i = 0; i < max_iteration; ++i) {
+    // Sample random points
+    reference_point_ids[0] = (rand() % (pointcloud_size + 1));
+    reference_point_ids[1] = (rand() % (pointcloud_size + 1));
+    reference_point_ids[2] = (rand() % (pointcloud_size + 1));
+    reference_point[0] = lidar_frame.points[reference_point_ids[0]];
+    reference_point[1] = lidar_frame.points[reference_point_ids[1]];
+    reference_point[2] = lidar_frame.points[reference_point_ids[2]];
+
+    // Check if points are close
+    if (pcl::geometry::distance(reference_point[0], reference_point[1]) >
+        tol_distance_between_points)
+      continue;
+
+    if (pcl::geometry::distance(reference_point[1], reference_point[2]) >
+        tol_distance_between_points)
+      continue;
+
+    if (pcl::geometry::distance(reference_point[0], reference_point[2]) >
+        tol_distance_between_points)
+      continue;
+
+    vector_on_plane[0] = pcl::PointXYZ(reference_point[1].x - reference_point[0].x,
+                                       reference_point[1].y - reference_point[0].y,
+                                       reference_point[1].z - reference_point[0].z);
+    vector_on_plane[1] = pcl::PointXYZ(reference_point[2].x - reference_point[0].x,
+                                       reference_point[2].y - reference_point[0].y,
+                                       reference_point[2].z - reference_point[0].z);
+    normal_of_plane = pcl::PointXYZ(
+        vector_on_plane[1].y * vector_on_plane[0].z - vector_on_plane[1].z * vector_on_plane[0].y,
+        vector_on_plane[1].z * vector_on_plane[0].x - vector_on_plane[1].x * vector_on_plane[0].z,
+        vector_on_plane[1].x * vector_on_plane[0].y - vector_on_plane[1].y * vector_on_plane[0].x);
+
+    norm_of_normal = (double)pcl::geometry::distance(origin, normal_of_plane);
+    // Check if points are collinear or the same
+    if (norm_of_normal < min_area_spanned) continue;
+
+    // Setup vote
+    vote(0) = normal_of_plane.x * reference_point[0].x + normal_of_plane.y * reference_point[0].y +
+              normal_of_plane.z * reference_point[0].z;  // rho
+    vote(0) = vote(0) / norm_of_normal;
+    if (vote(0) < 0) {
+      vote(0) = -vote(0);
+      normal_of_plane.x = -normal_of_plane.x;
+      normal_of_plane.y = -normal_of_plane.y;
+      normal_of_plane.z = -normal_of_plane.z;
+    }
+    vote(1) = atan2(normal_of_plane.y, normal_of_plane.x);  // theta
+    vote(2) = atan2(normal_of_plane.z,
+                    sqrt(pow(normal_of_plane.x, 2) + pow(normal_of_plane.y, 2)));  // psi
+
+    accumulator->vote(vote, reference_point_ids);
+  }
+  std::cout << "Voting finished" << std::endl;
+}
+
+std::vector<std::vector<int>> PlaneExtractionLib::rht_eval(
+    int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
+    std::vector<std::vector<double>> &plane_coefficients,
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
+    const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
+    PlaneExtractionLib::HoughAccumulator *accumulator) {
+  std::vector<std::vector<int>> inlier_ids;
+
+  pcl::PointCloud<pcl::PointXYZ> used_inliers;
+  pcl::PointCloud<pcl::PointXYZRGB> bit_scan;
+  pcl::copyPointCloud(lidar_frame, bit_scan);  // default is at 255
+
+  // Evaluate voting
+  accumulator->findmaxima(min_vote_threshold, plane_coefficients, inlier_ids,
+                          k_of_maxima_suppression);
+  // Deal with given number of planes, otherwise give out all planes
+  if (num_main_planes != 0 && inlier_ids.size() > num_main_planes) {
+    do {
+      accumulator->findmaxima(++min_vote_threshold, plane_coefficients, inlier_ids,
+                              k_of_maxima_suppression);
+    } while (inlier_ids.size() > num_main_planes);
+    std::cout << "Used " << min_vote_threshold << " as threshold" << std::endl;
+  }
+
+  // Extract inliers
+  for (int i = 0; i < inlier_ids.size(); ++i) {
+    for (auto ids : inlier_ids[i]) {
+      // make sure each point is only included once
+      if (bit_scan.points[ids].a > 125) {
+        used_inliers.push_back(lidar_frame.points[ids]);
+        bit_scan.points[ids].a = 0;
+      }
+    }
+    extracted_planes.push_back(used_inliers);
+    used_inliers.clear();
+  }
+
+  return inlier_ids;
 }

@@ -167,17 +167,14 @@ void TestMatcher::match() {
   if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
     PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
                                              plane_pub_, tf_map_frame_, nh_private_);
-    // Tests
-    std::cout << plane_coefficients[0][0] << std::endl;
-    std::cout << extracted_planes[0].points[0].x << std::endl;
   }
   if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
     PlaneExtractionLib::rht_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
                                              plane_pub_, tf_map_frame_, nh_private_);
   }
   if (nh_private_.param<bool>("useiterRHTPlaneExtraction", false)) {
-    PlaneExtractionLib::iterative_rht_plane_extraction(lidar_frame_, plane_pub_, tf_map_frame_,
-                                                       nh_private_);
+    PlaneExtractionLib::iter_rht_plane_extraction(
+        extracted_planes, plane_coefficients, lidar_frame_, plane_pub_, tf_map_frame_, nh_private_);
   }
   /*//////////////////////////////////////
                 Transformation

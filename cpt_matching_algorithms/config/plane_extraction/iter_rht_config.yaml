@@ -3,12 +3,14 @@ iterAccumulatorRhoResolution: 0.5
 iterAccumulatorThetaResolution: 0.3
 iterAccumulatorPsiResolution: 0.3
 iterAccumulatorKMaxSuppress: 14 # set to zero to deactivate
+iterAccumulatorMinThreshold: 0
 
 # Settings of RHT
-iterRHTIter: 10000
+iterRHTIter: 100000
 iterRHTTolDist: 2    # makes sure points are not too far apart
 iterRHTMinArea: 0.5
 iterRHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown
+iterRHTNumPlaneperIter: 1
 
 
 

@@ -28,7 +28,9 @@ class PlaneExtractionLib {
                                    const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
                                    ros::Publisher &plane_pub, std::string tf_map_frame,
                                    ros::NodeHandle &nh_private);
-  static std::vector<double> iterative_rht_plane_extraction(
+  static void iter_rht_plane_extraction(
+      std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
+      std::vector<std::vector<double>> &plane_coefficients,
       const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub,
       std::string tf_map_frame, ros::NodeHandle &nh_private);
   static void pcl_plane_extraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
@@ -47,9 +49,10 @@ class PlaneExtractionLib {
   static void rht_vote(int max_iteration, double tol_distance_between_points,
                        double min_area_spanned, const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
                        PlaneExtractionLib::HoughAccumulator *accumulator);
-  static void rht_eval(int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
-                       std::vector<std::vector<double>> &plane_coefficients,
-                       std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-                       const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
-                       PlaneExtractionLib::HoughAccumulator *accumulator);
+  static std::vector<std::vector<int>> rht_eval(
+      int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
+      std::vector<std::vector<double>> &plane_coefficients,
+      std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
+      const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
+      PlaneExtractionLib::HoughAccumulator *accumulator);
 };

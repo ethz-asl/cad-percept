@@ -3,13 +3,13 @@ tfMapFrame: /map
 
 mapSamplingDensity: 20
 
-usetoyproblem: true
+usetoyproblem: false
 
 #Select Matcher (only one)
 usetemplate: false
 useGoICP: false
 useSuper4PCS: false
 usepclPlaneExtraction: false
-useRHTPlaneExtraction: true
-useiterRHTPlaneExtraction: false
+useRHTPlaneExtraction: false
+useiterRHTPlaneExtraction: true
 
