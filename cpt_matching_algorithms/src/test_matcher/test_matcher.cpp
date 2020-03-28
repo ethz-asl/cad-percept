@@ -161,9 +161,10 @@ void TestMatcher::match() {
   //  if (nh_private_.param<bool>("useSuper4PCS", false)) {
   //    super4pcs_match();
   //  }
+
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+  std::vector<std::vector<double>> plane_coefficients;
   if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-    std::vector<std::vector<double>> plane_coefficients;
     PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
                                              plane_pub_, tf_map_frame_, nh_private_);
     // Tests
@@ -171,7 +172,8 @@ void TestMatcher::match() {
     std::cout << extracted_planes[0].points[0].x << std::endl;
   }
   if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
-    PlaneExtractionLib::rht_plane_extraction(lidar_frame_, plane_pub_, tf_map_frame_, nh_private_);
+    PlaneExtractionLib::rht_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
+                                             plane_pub_, tf_map_frame_, nh_private_);
   }
   if (nh_private_.param<bool>("useiterRHTPlaneExtraction", false)) {
     PlaneExtractionLib::iterative_rht_plane_extraction(lidar_frame_, plane_pub_, tf_map_frame_,
