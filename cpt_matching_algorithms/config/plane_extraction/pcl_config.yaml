@@ -1,5 +1,5 @@
 # Settings of PCL
-PCLDistanceThreshold: 1
+PCLDistanceThreshold: 0.01
 PCLMaxNumPlane: 8
 PCLMinInlier: 15
 

@@ -489,7 +489,9 @@ std::vector<double> PlaneExtractionLib::iterative_rht_plane_extraction(
 }
 
 // Plane Extraction using pcl tutorial (see also planarSegmentationPCL)
-std::vector<double> PlaneExtractionLib::pcl_plane_extraction(
+void PlaneExtractionLib::pcl_plane_extraction(
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
+    std::vector<std::vector<double>> &plane_coefficients,
     const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub,
     std::string tf_map_frame, ros::NodeHandle &nh_private) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -500,14 +502,9 @@ std::vector<double> PlaneExtractionLib::pcl_plane_extraction(
   int max_number_of_plane = nh_private.param<int>("PCLMaxNumPlane", 12);
   int min_number_of_inlier = nh_private.param<int>("PCLMinInlier", 15);
 
-  std::vector<pcl::PointCloud<pcl::PointXYZRGB>> extracted_planes;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr extracted_inlier_points(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr colored_inlier_points(
-      new pcl::PointCloud<pcl::PointXYZRGB>);
-
   // Find plane with PCL
-  pcl::PointCloud<pcl::PointXYZ>::Ptr plane_lidar(new pcl::PointCloud<pcl::PointXYZ>);
-  *plane_lidar = lidar_frame;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr copy_lidar_frame(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::copyPointCloud(lidar_frame, *copy_lidar_frame);
 
   std::cout << "Setup Plane Model Extraction" << std::endl;
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
@@ -519,25 +516,28 @@ std::vector<double> PlaneExtractionLib::pcl_plane_extraction(
   // Mandatory
   seg.setModelType(pcl::SACMODEL_PLANE);
   seg.setMethodType(pcl::SAC_RANSAC);
-  seg.setDistanceThreshold(0.01);
+  seg.setDistanceThreshold(distance_threshold);
 
   std::cout << "Start to extract planes" << std::endl;
 
+  pcl::PointCloud<pcl::PointXYZ>::Ptr extracted_inlier_points(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
   pcl::PointXYZ normal_of_plane;
-  std::vector<double> plane_coefficients;
   double norm_of_normal;
+  std::vector<double> actuel_plane_coefficients{0, 0, 0};
 
   do {
-    seg.setInputCloud(plane_lidar);
+    seg.setInputCloud(copy_lidar_frame);
     seg.segment(*inliers, *coefficients);
 
-    if (inliers->indices.size() > min_number_of_inlier) {
-      for (std::size_t i = 0; i < inliers->indices.size(); ++i)
-        extracted_inlier_points->push_back(plane_lidar->points[inliers->indices[i]]);
+    // Extract inlier of actuel plane
+    extracted_inlier_points->clear();
+    for (auto indices : inliers->indices)
+      extracted_inlier_points->push_back(copy_lidar_frame->points[indices]);
 
-      pcl::copyPointCloud(*extracted_inlier_points, *colored_inlier_points);
-      extracted_planes.push_back(*colored_inlier_points);
+    // Add to return data
+    if (extracted_inlier_points->size() > min_number_of_inlier) {
+      extracted_planes.push_back(*extracted_inlier_points);
 
       // Read plane coefficients
       normal_of_plane.x = coefficients->values[0];
@@ -548,31 +548,70 @@ std::vector<double> PlaneExtractionLib::pcl_plane_extraction(
                        normal_of_plane.y * extracted_inlier_points->points[0].y +
                        normal_of_plane.z * extracted_inlier_points->points[0].z;
       if (norm_of_normal < 0) norm_of_normal = -norm_of_normal;
-      plane_coefficients.push_back(norm_of_normal);                               // rho
-      plane_coefficients.push_back(atan2(normal_of_plane.y, normal_of_plane.x));  // theta
-      plane_coefficients.push_back(atan2(
-          normal_of_plane.z, sqrt(pow(normal_of_plane.x, 2) + pow(normal_of_plane.y, 2))));  // psi
+
+      actuel_plane_coefficients[0] = norm_of_normal;                               // rho
+      actuel_plane_coefficients[1] = atan2(normal_of_plane.y, normal_of_plane.x);  // theta
+      actuel_plane_coefficients[2] = atan2(
+          normal_of_plane.z, sqrt(pow(normal_of_plane.x, 2) + pow(normal_of_plane.y, 2)));  // psi
+      plane_coefficients.push_back(actuel_plane_coefficients);
 
       std::cout << "Plane found (nr. " << extracted_planes.size() << ")" << std::endl;
 
-      extracted_inlier_points->clear();
-      indices_filter.setInputCloud(plane_lidar);
+      indices_filter.setInputCloud(copy_lidar_frame);
       indices_filter.setIndices(inliers);
       indices_filter.setNegative(true);
-      indices_filter.filter(*plane_lidar);
+      indices_filter.filter(*copy_lidar_frame);
     }
   } while (extracted_planes.size() < max_number_of_plane &&
-           inliers->indices.size() > min_number_of_inlier);
+           extracted_inlier_points->size() > min_number_of_inlier &&
+           copy_lidar_frame->size() > min_number_of_inlier);
 
   // Visualize plane
-  visualize_plane(extracted_planes, plane_pub, tf_map_frame);
+  temp_visualize_plane(extracted_planes, plane_pub, tf_map_frame);
 
   for (int i = 0; i < extracted_planes.size(); ++i) {
-    std::cout << plane_coefficients[i * 3] << " " << plane_coefficients[i * 3 + 1] << " "
-              << plane_coefficients[i * 3 + 2] << " color: " << i % 8 << std::endl;
+    std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
+              << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
   }
+}
 
-  return plane_coefficients;
+// Visualization of planes in rviz
+void PlaneExtractionLib::temp_visualize_plane(
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes, ros::Publisher &plane_pub,
+    std::string tf_map_frame) {
+  std::cout << "Start Visualization" << std::endl;
+
+  int color[8][3] = {{0, 0, 0},     {255, 0, 0},   {0, 255, 0},   {0, 0, 255},
+                     {255, 255, 0}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
+
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr segmented_point_cloud(
+      new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr colored_inlier_points(
+      new pcl::PointCloud<pcl::PointXYZRGB>);
+
+  if (extracted_planes.size() == 0) {
+    std::cout << "No planes found" << std::endl;
+    return;
+  } else {
+    std::cout << "Found " << extracted_planes.size() << " planes, visualize plane inliers... "
+              << std::endl;
+    for (std::size_t i = 0; i < extracted_planes.size(); ++i) {
+      colored_inlier_points->clear();
+      pcl::copyPointCloud(extracted_planes[i], *colored_inlier_points);
+      for (std::size_t j = 0; j < colored_inlier_points->size(); ++j) {
+        colored_inlier_points->points[j].r = color[i % 8][0];
+        colored_inlier_points->points[j].g = color[i % 8][1];
+        colored_inlier_points->points[j].b = color[i % 8][2];
+        colored_inlier_points->points[j].a = 255;
+      }
+      *segmented_point_cloud += *colored_inlier_points;
+    }
+  }
+  sensor_msgs::PointCloud2 segmentation_mesg;
+  segmented_point_cloud->header.frame_id = tf_map_frame;
+  pcl::toROSMsg(*segmented_point_cloud, segmentation_mesg);
+  plane_pub.publish(segmentation_mesg);
+  std::cout << "Publish plane segmentation" << std::endl;
 }
 
 // Visualization of planes in rviz

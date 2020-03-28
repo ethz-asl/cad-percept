@@ -34,10 +34,13 @@ class PlaneExtractionLib {
   static std::vector<double> iterative_rht_plane_extraction(
       const pcl::PointCloud<pcl::PointXYZ> lidar_frame, ros::Publisher &plane_pub,
       std::string tf_map_frame, ros::NodeHandle &nh_private);
-  static std::vector<double> pcl_plane_extraction(const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
-                                                  ros::Publisher &plane_pub,
-                                                  std::string tf_map_frame,
-                                                  ros::NodeHandle &nh_private);
+  static void pcl_plane_extraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
+                                   std::vector<std::vector<double>> &plane_coefficients,
+                                   const pcl::PointCloud<pcl::PointXYZ> lidar_frame,
+                                   ros::Publisher &plane_pub, std::string tf_map_frame,
+                                   ros::NodeHandle &nh_private);
   static void visualize_plane(std::vector<pcl::PointCloud<pcl::PointXYZRGB>> &extracted_planes,
                               ros::Publisher &plane_pub, std::string tf_map_frame);
+  static void temp_visualize_plane(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
+                                   ros::Publisher &plane_pub, std::string tf_map_frame);
 };

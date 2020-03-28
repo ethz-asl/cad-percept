@@ -108,7 +108,6 @@ void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
     ground_truth_ = gt_in;
     std::cout << "Got ground truth data" << std::endl;
     ground_truth_ready_ = true;
-
     if (ready_for_eval_) {
       evaluate();
     }
@@ -163,7 +162,13 @@ void TestMatcher::match() {
   //    super4pcs_match();
   //  }
   if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
-    PlaneExtractionLib::pcl_plane_extraction(lidar_frame_, plane_pub_, tf_map_frame_, nh_private_);
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+    std::vector<std::vector<double>> plane_coefficients;
+    PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
+                                             plane_pub_, tf_map_frame_, nh_private_);
+    // Tests
+    std::cout << plane_coefficients[0][0] << std::endl;
+    std::cout << extracted_planes[0].points[0].x << std::endl;
   }
   if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
     PlaneExtractionLib::rht_plane_extraction(lidar_frame_, plane_pub_, tf_map_frame_, nh_private_);
@@ -194,7 +199,6 @@ void TestMatcher::match() {
   DP ref_dp = cpt_utils::pointCloudToDP(lidar_frame_);
   scan_pub_.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_, ros::Time::now()));
-
   ready_for_eval_ = true;
 }
 
