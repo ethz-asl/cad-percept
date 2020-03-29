@@ -175,7 +175,12 @@ void TestMatcher::match() {
       CloudFilterLib::static_object_filter(structure_threshold, lidar_frame_,
                                            static_structure_cloud_);
     }
+    if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
+      float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
+      CloudFilterLib::voxel_centroid_filter(search_radius, lidar_frame_);
+    }
 
+    // Plane Extraction
     std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
     std::vector<std::vector<double>> plane_coefficients;
     if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {

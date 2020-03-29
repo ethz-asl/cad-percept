@@ -6,7 +6,7 @@ iterAccumulatorKMaxSuppress: 14 # set to zero to deactivate
 iterAccumulatorMinThreshold: 0
 
 # Settings of RHT
-iterRHTIter: 100000
+iterRHTIter: 1000000
 iterRHTTolDist: 2    # makes sure points are not too far apart
 iterRHTMinArea: 0.5
 iterRHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown

@@ -18,12 +18,15 @@ usePlaneMatcher: true
 useStructureFilter: true
 StructureThreshold: 150
 
+useVoxelCentroidFilter: true
+Voxelsearchradius: 0.1
+
 # Plane Extraction (only one)
 usepclPlaneExtraction: false
 
-useRHTPlaneExtraction: true
+useRHTPlaneExtraction: false
 
-useiterRHTPlaneExtraction: false
+useiterRHTPlaneExtraction: true
 # Plane Matching (only one)
 # Transform Calculation (only one)
 

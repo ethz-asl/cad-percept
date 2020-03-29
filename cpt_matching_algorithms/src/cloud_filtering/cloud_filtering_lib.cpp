@@ -34,3 +34,20 @@ void CloudFilterLib::static_object_filter(int structure_threshold,
   std::cout << "Point Cloud size: " << lidar_frame.size()
             << " Removed: " << static_structure.size() - lidar_frame.size() << std::endl;
 }
+
+void CloudFilterLib::voxel_centroid_filter(float search_radius,
+                                           pcl::PointCloud<pcl::PointXYZ>& lidar_frame) {
+  std::cout << "////    Voxel Centroid Filter   ////" << std::endl;
+  int prev_size = lidar_frame.size();
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr lidar_frame_ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  *lidar_frame_ptr = lidar_frame;
+  pcl::UniformSampling<pcl::PointXYZ> voxel_filter;
+  voxel_filter.setInputCloud(lidar_frame_ptr);
+  voxel_filter.setRadiusSearch(search_radius);
+  voxel_filter.filter(*lidar_frame_ptr);
+  lidar_frame = *lidar_frame_ptr;
+
+  std::cout << "Point Cloud size: " << lidar_frame.size()
+            << " Removed: " << prev_size - lidar_frame.size() << std::endl;
+}
