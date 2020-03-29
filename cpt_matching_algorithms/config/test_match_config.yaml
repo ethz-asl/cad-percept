@@ -7,9 +7,23 @@ usetoyproblem: false
 
 #Select Matcher (only one)
 usetemplate: false
+
 useGoICP: false
+
 useSuper4PCS: false
+
+usePlaneMatcher: true
+# Settings for Plane Matcher
+# Filter (several)
+useStructureFilter: true
+StructureThreshold: 150
+
+# Plane Extraction (only one)
 usepclPlaneExtraction: false
-useRHTPlaneExtraction: false
-useiterRHTPlaneExtraction: true
+
+useRHTPlaneExtraction: true
+
+useiterRHTPlaneExtraction: false
+# Plane Matching (only one)
+# Transform Calculation (only one)
 

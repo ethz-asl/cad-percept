@@ -93,6 +93,13 @@ void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_frame_p2) {
     std::cout << "Lidar frame ready" << std::endl;
     lidar_frame_ready_ = true;
 
+    // Get static structure information point cloud
+    if (nh_private_.param<bool>("useStructureFilter", false)) {
+      // lidar_frame_p2.fields[3].name = "intensity";
+      pcl::fromROSMsg(lidar_frame_p2, static_structure_cloud_);
+      pcl::removeNaNFromPointCloud(static_structure_cloud_, static_structure_cloud_, nan_indices);
+    }
+
     if (map_ready_) {
       match();
       if (ground_truth_ready_) {
@@ -161,20 +168,29 @@ void TestMatcher::match() {
   //  if (nh_private_.param<bool>("useSuper4PCS", false)) {
   //    super4pcs_match();
   //  }
+  if (nh_private_.param<bool>("usePlaneMatcher", false)) {
+    // Filtering / Preprocessing Point Cloud
+    if (nh_private_.param<bool>("useStructureFilter", false)) {
+      int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
+      CloudFilterLib::static_object_filter(structure_threshold, lidar_frame_,
+                                           static_structure_cloud_);
+    }
 
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-  std::vector<std::vector<double>> plane_coefficients;
-  if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
-    PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
-                                             plane_pub_, tf_map_frame_, nh_private_);
-  }
-  if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
-    PlaneExtractionLib::rht_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
-                                             plane_pub_, tf_map_frame_, nh_private_);
-  }
-  if (nh_private_.param<bool>("useiterRHTPlaneExtraction", false)) {
-    PlaneExtractionLib::iter_rht_plane_extraction(
-        extracted_planes, plane_coefficients, lidar_frame_, plane_pub_, tf_map_frame_, nh_private_);
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+    std::vector<std::vector<double>> plane_coefficients;
+    if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
+      PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
+                                               plane_pub_, tf_map_frame_, nh_private_);
+    }
+    if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
+      PlaneExtractionLib::rht_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
+                                               plane_pub_, tf_map_frame_, nh_private_);
+    }
+    if (nh_private_.param<bool>("useiterRHTPlaneExtraction", false)) {
+      PlaneExtractionLib::iter_rht_plane_extraction(extracted_planes, plane_coefficients,
+                                                    lidar_frame_, plane_pub_, tf_map_frame_,
+                                                    nh_private_);
+    }
   }
   /*//////////////////////////////////////
                 Transformation
