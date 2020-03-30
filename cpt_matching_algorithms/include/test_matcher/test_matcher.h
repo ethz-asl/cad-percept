@@ -35,6 +35,7 @@ class TestMatcher {
   std::string cad_topic_;
   cad_percept::cgal::MeshModel::Ptr reference_mesh_;
   float sample_density_;
+  pcl::PointCloud<pcl::PointNormal> map_planes_;
 
   // given Point Cloud data
   bool use_sim_lidar_ = false;

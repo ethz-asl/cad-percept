@@ -6,13 +6,13 @@ mapSamplingDensity: 20
 usetoyproblem: false
 
 #Select Matcher (only one)
-usetemplate: false
+usetemplate: true
 
 useGoICP: false
 
 useSuper4PCS: false
 
-usePlaneMatcher: true
+usePlaneMatcher: false
 # Settings for Plane Matcher
 # Filter (several)
 useStructureFilter: true

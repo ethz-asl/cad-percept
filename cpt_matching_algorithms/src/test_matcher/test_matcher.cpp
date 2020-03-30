@@ -62,6 +62,45 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0,
                                                 &sample_map_);
 
+    // Get planes from mesh
+    // Extract all coplanar facets
+    std::unordered_map<std::string, std::string> facetToPlane;
+    std::unordered_multimap<std::string, std::string> planeToFacets;
+    reference_mesh_->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 1);
+    std::cout << "Extracted coplanar Facets" << std::endl;
+
+    // Extract planes
+    bool found_at_least_one_facet = true;
+    cgal::Plane actual_plane;
+    Eigen::Vector3d point_on_plane;
+    Eigen::Vector3d normal_of_plane;
+    pcl::PointNormal norm_point;
+
+    for (int plane_nr = 0; found_at_least_one_facet; ++plane_nr) {
+      found_at_least_one_facet = false;
+      for (auto itr = planeToFacets.begin(); itr != planeToFacets.end(); ++itr) {
+        // Search for at least one facet of plane
+        if (!(itr->first.compare(std::to_string(plane_nr)))) {
+          actual_plane = reference_mesh_->getPlane(itr->second);
+          point_on_plane = cgal::cgalPointToEigenVector(actual_plane.point());
+          normal_of_plane =
+              cgal::cgalVectorToEigenVector(actual_plane.orthogonal_vector()).normalized();
+
+          norm_point.x = point_on_plane(0);
+          norm_point.y = point_on_plane(1);
+          norm_point.z = point_on_plane(2);
+          norm_point.normal_x = normal_of_plane(0);
+          norm_point.normal_y = normal_of_plane(1);
+          norm_point.normal_z = normal_of_plane(2);
+
+          map_planes_.push_back(norm_point);
+          std::cout << "New plane added from mesh" << std::endl;
+          found_at_least_one_facet = true;
+          break;
+        }
+      }
+    }
+
     std::cout << "CAD ready" << std::endl;
     map_ready_ = true;
 
