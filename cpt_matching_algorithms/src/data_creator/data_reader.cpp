@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
   std::cout << "Cleared data folder" << std::endl;
 
   for (rosbag::MessageInstance const mlidar : view_lidar) {
-    sensor_msgs::PointCloud2::Ptr lidar_frame = mlidar.instantiate<sensor_msgs::PointCloud2>();
+    sensor_msgs::PointCloud2::Ptr lidar_scan = mlidar.instantiate<sensor_msgs::PointCloud2>();
     std::cout << "Got new lidar frame" << std::endl;
 
     // Search for (one of) the corresponding ground truth data at same time stamp
@@ -49,8 +49,8 @@ int main(int argc, char **argv) {
       geometry_msgs::PointStamped::Ptr ground_truth =
           mgt.instantiate<geometry_msgs::PointStamped>();
 
-      if (lidar_frame != NULL && ground_truth != NULL &&
-          abs((int)(lidar_frame->header.stamp.sec - ground_truth->header.stamp.sec)) == 0) {
+      if (lidar_scan != NULL && ground_truth != NULL &&
+          abs((int)(lidar_scan->header.stamp.sec - ground_truth->header.stamp.sec)) == 0) {
         // Valid lidarframe and ground truth pair found
         std::cout << "Found valid lidar and ground truth data pair" << std::endl;
         file_name = save_folder + scan_name + std::to_string(scan_nr) + file_type;
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
         bag_write.open(file_name, rosbag::bagmode::Write);
 
-        bag_write.write("/rslidar_points", ros::Time::now(), *lidar_frame);
+        bag_write.write("/rslidar_points", ros::Time::now(), *lidar_scan);
         bag_write.write("/ground_truth", ros::Time::now(), *ground_truth);
 
         bag_write.close();
@@ -71,9 +71,9 @@ int main(int argc, char **argv) {
 
         break;  // Stop searching for this lidar frame if one ground truth found
 
-      } else if (lidar_frame == NULL && ground_truth == NULL) {
+      } else if (lidar_scan == NULL && ground_truth == NULL) {
         std::cout << "no lidar frame and ground_truth found" << std::endl;
-      } else if (lidar_frame == NULL) {
+      } else if (lidar_scan == NULL) {
         std::cout << "no lidar frame found" << std::endl;
       } else if (ground_truth == NULL) {
         std::cout << "no ground truth found" << std::endl;

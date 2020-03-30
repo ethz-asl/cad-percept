@@ -13,7 +13,7 @@ void TestMatcher::super4pcs_match() {
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr super4pcs_lidar(new pcl::PointCloud<pcl::PointXYZ>);
-  *super4pcs_lidar = lidar_frame;
+  *super4pcs_lidar = lidar_scan;
   pcl::PointCloud<pcl::PointXYZ>::Ptr super4pcs_map(new pcl::PointCloud<pcl::PointXYZ>);
   *super4pcs_map = sample_map;
   pcl::PointCloud<pcl::PointNormal>::Ptr super4pcs_lidar_aligned(

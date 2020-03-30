@@ -104,7 +104,7 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     std::cout << "CAD ready" << std::endl;
     map_ready_ = true;
 
-    if (lidar_frame_ready_) {
+    if (lidar_scan_ready_) {
       match();
       if (ground_truth_ready_) {
         evaluate();
@@ -114,28 +114,28 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
 }
 
 // Get real LiDAR data
-void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_frame_p2) {
-  if (!lidar_frame_ready_ && !use_sim_lidar_) {
-    std::cout << "Processing lidar frame" << std::endl;
+void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
+  if (!lidar_scan_ready_ && !use_sim_lidar_) {
+    std::cout << "Processing lidar scan" << std::endl;
 
     // Convert PointCloud2 to PointCloud
     pcl::PCLPointCloud2 lidar_pc2;
-    pcl_conversions::toPCL(lidar_frame_p2, lidar_pc2);
-    pcl::fromPCLPointCloud2(lidar_pc2, lidar_frame_);
+    pcl_conversions::toPCL(lidar_scan_p2, lidar_pc2);
+    pcl::fromPCLPointCloud2(lidar_pc2, lidar_scan_);
     std::vector<int> nan_indices;
-    pcl::removeNaNFromPointCloud(lidar_frame_, lidar_frame_, nan_indices);
+    pcl::removeNaNFromPointCloud(lidar_scan_, lidar_scan_, nan_indices);
     if (nan_indices.size() != 0) {
       std::cout << "Attention: Detected NaNs in the given point cloud. Removed this values..."
                 << std::endl;
     }
 
-    std::cout << "Lidar frame ready" << std::endl;
-    lidar_frame_ready_ = true;
+    std::cout << "Lidar scan ready" << std::endl;
+    lidar_scan_ready_ = true;
 
     // Get static structure information point cloud
     if (nh_private_.param<bool>("useStructureFilter", false)) {
-      // lidar_frame_p2.fields[3].name = "intensity";
-      pcl::fromROSMsg(lidar_frame_p2, static_structure_cloud_);
+      // lidar_scan_p2.fields[3].name = "intensity";
+      pcl::fromROSMsg(lidar_scan_p2, static_structure_cloud_);
       pcl::removeNaNFromPointCloud(static_structure_cloud_, static_structure_cloud_, nan_indices);
     }
 
@@ -161,14 +161,14 @@ void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
 }
 
 // Get LiDAR data and ground truth from simulator
-void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2& lidar_frame_p2) {
-  if (!lidar_frame_ready_ && use_sim_lidar_) {
+void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
+  if (!lidar_scan_ready_ && use_sim_lidar_) {
     std::cout << "Processing lidar frame" << std::endl;
 
     // Convert PointCloud2 to PointCloud
     pcl::PCLPointCloud2 lidar_pc2;
-    pcl_conversions::toPCL(lidar_frame_p2, lidar_pc2);
-    pcl::fromPCLPointCloud2(lidar_pc2, lidar_frame_);
+    pcl_conversions::toPCL(lidar_scan_p2, lidar_pc2);
+    pcl::fromPCLPointCloud2(lidar_pc2, lidar_scan_);
 
     std::cout << "Simulated Lidar frame ready" << std::endl;
 
@@ -179,7 +179,7 @@ void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2& lidar_frame_p2) {
 
     std::cout << "Got simulated ground truth data" << std::endl;
 
-    lidar_frame_ready_ = true;
+    lidar_scan_ready_ = true;
     ground_truth_ready_ = true;
 
     if (map_ready_) {
@@ -211,28 +211,28 @@ void TestMatcher::match() {
     // Filtering / Preprocessing Point Cloud
     if (nh_private_.param<bool>("useStructureFilter", false)) {
       int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
-      CloudFilterLib::static_object_filter(structure_threshold, lidar_frame_,
+      CloudFilterLib::static_object_filter(structure_threshold, lidar_scan_,
                                            static_structure_cloud_);
     }
     if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
       float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
-      CloudFilterLib::voxel_centroid_filter(search_radius, lidar_frame_);
+      CloudFilterLib::voxel_centroid_filter(search_radius, lidar_scan_);
     }
 
     // Plane Extraction
     std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
     std::vector<std::vector<double>> plane_coefficients;
     if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
-      PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
+      PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_scan_,
                                                plane_pub_, tf_map_frame_, nh_private_);
     }
     if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
-      PlaneExtractionLib::rht_plane_extraction(extracted_planes, plane_coefficients, lidar_frame_,
+      PlaneExtractionLib::rht_plane_extraction(extracted_planes, plane_coefficients, lidar_scan_,
                                                plane_pub_, tf_map_frame_, nh_private_);
     }
     if (nh_private_.param<bool>("useiterRHTPlaneExtraction", false)) {
       PlaneExtractionLib::iter_rht_plane_extraction(extracted_planes, plane_coefficients,
-                                                    lidar_frame_, plane_pub_, tf_map_frame_,
+                                                    lidar_scan_, plane_pub_, tf_map_frame_,
                                                     nh_private_);
     }
   }
@@ -246,7 +246,7 @@ void TestMatcher::match() {
   Eigen::Quaternionf q(transform_TR_[3], transform_TR_[4], transform_TR_[5], transform_TR_[6]);
   res_transform.block(0, 0, 3, 3) = q.matrix();
   res_transform.block(0, 3, 3, 1) = translation;
-  pcl::transformPointCloud(lidar_frame_, lidar_frame_, res_transform.inverse());
+  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform.inverse());
 
   /*//////////////////////////////////////
                 Visualization
@@ -255,7 +255,7 @@ void TestMatcher::match() {
   sample_map_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(
       ref_sample_map, tf_map_frame_, ros::Time::now()));
 
-  DP ref_dp = cpt_utils::pointCloudToDP(lidar_frame_);
+  DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
   scan_pub_.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_, ros::Time::now()));
   ready_for_eval_ = true;
@@ -275,7 +275,7 @@ void TestMatcher::evaluate() {
   float error = sqrt(pow(transform_TR_[0] - ground_truth_.point.x, 2) +
                      pow(transform_TR_[1] - ground_truth_.point.y, 2) +
                      pow(transform_TR_[2] - ground_truth_.point.z, 2));
-  getError(sample_map_, lidar_frame_);
+  getError(sample_map_, lidar_scan_);
   std::cout << "error (euclidean distance of translation): " << error << std::endl;
 }
 

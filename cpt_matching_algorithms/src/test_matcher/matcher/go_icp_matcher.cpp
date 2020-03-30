@@ -14,26 +14,17 @@ void TestMatcher::go_icp_match() {
   std::string downsample_points = nh_private_.param<std::string>("downsample", "1000");
   std::string goicp_location = nh_private_.param<std::string>("goicp_folder", "fail");
 
-  // Centralize point clouds and scale them to [-1,1]³
-  PointCloud go_icp_lidar = lidar_frame_;
+  PointCloud go_icp_lidar = lidar_scan_;
   PointCloud go_icp_map = sample_map_;
 
   // Find translation for centralization
-  pcl::CentroidPoint<pcl::PointXYZ> centroid_lidar;
-  for (PointCloud::iterator i = go_icp_lidar.points.begin(); i < go_icp_lidar.points.end(); i++) {
-    centroid_lidar.add(*i);
-  }
   pcl::PointXYZ transl_lidar;
-  centroid_lidar.get(transl_lidar);
+  pcl::computeCentroid(go_icp_lidar, transl_lidar);
 
-  pcl::CentroidPoint<pcl::PointXYZ> centroid_map;
-  for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
-    centroid_lidar.add(*i);
-  }
   pcl::PointXYZ transl_map;
-  centroid_lidar.get(transl_map);
+  pcl::computeCentroid(go_icp_lidar, transl_map);
 
-  // Apply transformation
+  // Centralize point clouds
   Eigen::Matrix4d transform_lidar = Eigen::Matrix4d::Identity();
   Eigen::Vector3d translation_lidar(transl_lidar.x, transl_lidar.y, transl_lidar.z);
   transform_lidar.block(0, 3, 3, 1) = translation_lidar;
@@ -46,21 +37,21 @@ void TestMatcher::go_icp_match() {
 
   // Find point, which is furthest away from centroid for scaling
   float max_dist_lidar = 0;
-  for (PointCloud::iterator i = go_icp_lidar.points.begin(); i < go_icp_lidar.points.end(); i++) {
-    if (sqrt(pow(i->x, 2) + pow(i->y, 2) + pow(i->z, 2)) >= max_dist_lidar) {
-      max_dist_lidar = sqrt(pow(i->x, 2) + pow(i->y, 2) + pow(i->z, 2));
+  for (auto point : go_icp_lidar.points) {
+    if (sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2)) >= max_dist_lidar) {
+      max_dist_lidar = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
     }
   }
 
   float max_dist_map = 0;
-  for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
-    if (sqrt(pow(i->x, 2) + pow(i->y, 2) + pow(i->z, 2)) >= max_dist_map) {
-      max_dist_map = sqrt(pow(i->x, 2) + pow(i->y, 2) + pow(i->z, 2));
+  for (auto point : go_icp_map.points) {
+    if (sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2)) >= max_dist_map) {
+      max_dist_lidar = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
     }
   }
   float max_dist = std::max(max_dist_map, max_dist_lidar);
 
-  // Scale point clouds
+  // Scale point cloud to [-1,1]³
   Eigen::Matrix4d trans_scale_lidar = Eigen::Matrix4d::Identity();
   trans_scale_lidar(0, 0) = trans_scale_lidar(0, 0) / max_dist;
   trans_scale_lidar(1, 1) = trans_scale_lidar(1, 1) / max_dist;
@@ -83,17 +74,17 @@ void TestMatcher::go_icp_match() {
   std::cout << "Map.txt created" << std::endl;
   map_file.close();
 
-  std::ofstream lidar_file("lidar_frame.txt");
+  std::ofstream lidar_file("lidar_scan.txt");
   lidar_file << go_icp_lidar.width << std::endl;
   for (PointCloud::iterator i = go_icp_lidar.points.begin(); i < go_icp_lidar.points.end(); i++) {
     lidar_file << i->x << " " << i->y << " " << i->z << std::endl;
   }
-  std::cout << "lidar_frame.txt created" << std::endl;
+  std::cout << "lidar_scan.txt created" << std::endl;
   lidar_file.close();
 
   std::cout << "Start Go-ICP" << std::endl;
   std::string command =
-      "./GoICP map.txt lidar_frame.txt " + downsample_points + " config.txt output.txt";
+      "./GoICP map.txt lidar_scan.txt " + downsample_points + " config.txt output.txt";
   system(command.c_str());
   std::cout << "Go-ICP finished" << std::endl;
 
