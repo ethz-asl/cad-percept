@@ -18,7 +18,7 @@ typedef PM::DataPoints DP;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 cad_percept::cgal::MeshModel::Ptr reference_mesh;
-PointCloud lidar_frame;
+PointCloud lidar_scan;
 
 bool got_CAD = false;
 std::string tf_map_frame;
@@ -132,7 +132,7 @@ void simulate_lidar() {
     cad_percept::cgal::Point unit_dir;
     cad_percept::cgal::Intersection inter_point;
     pcl::PointXYZ pcl_inter_point;
-    lidar_frame.clear();
+    lidar_scan.clear();
     for (auto &bin : bin_elevation) {
       for (float theta = 0; theta < 360; theta += dtheta) {
         x_unit = cos(bin * PI_angle) * cos(theta * PI_angle);
@@ -146,7 +146,7 @@ void simulate_lidar() {
           pcl_inter_point.x = (float)inter_point.intersected_point.x();
           pcl_inter_point.y = (float)inter_point.intersected_point.y();
           pcl_inter_point.z = (float)inter_point.intersected_point.z();
-          lidar_frame.push_back(pcl_inter_point);
+          lidar_scan.push_back(pcl_inter_point);
         }
       }
     }
@@ -157,20 +157,20 @@ void simulate_lidar() {
   std::normal_distribution<float> noise(0, noise_variance);
 
   std::cout << "Start to add lidar properties" << std::endl;
-  PointCloud full_lidar_frame = lidar_frame;
-  lidar_frame.clear();
-  for (auto i : full_lidar_frame.points) {
+  PointCloud full_lidar_scan = lidar_scan;
+  lidar_scan.clear();
+  for (auto i : full_lidar_scan.points) {
     if (sqrt(pow(i.x, 2) + pow(i.y, 2) + pow(i.z, 2)) < range_of_lidar) {
       i.x = i.x + noise(generator);
       i.y = i.y + noise(generator);
       i.z = i.z + noise(generator);
 
-      lidar_frame.push_back(i);
+      lidar_scan.push_back(i);
     }
   }
 
   // Publish simulated lidar frame
-  DP ref_scan = cad_percept::cpt_utils::pointCloudToDP(lidar_frame);
+  DP ref_scan = cad_percept::cpt_utils::pointCloudToDP(lidar_scan);
   scan_pub.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan, tf_map_frame, ros::Time::now()));
 
