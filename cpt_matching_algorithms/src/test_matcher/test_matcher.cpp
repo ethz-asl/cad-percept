@@ -29,6 +29,7 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   scan_pub_ =
       nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", input_queue_size_, true);
   sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sample_map", 1, true);
+  plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 }
 
 // Get CAD and sample points
@@ -81,9 +82,21 @@ void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
     pcl::PCLPointCloud2 lidar_pc2;
     pcl_conversions::toPCL(lidar_scan_p2, lidar_pc2);
     pcl::fromPCLPointCloud2(lidar_pc2, lidar_scan_);
+    std::vector<int> nan_indices;
+    pcl::removeNaNFromPointCloud(lidar_scan_, lidar_scan_, nan_indices);
+    if (nan_indices.size() != 0) {
+      std::cout << "Attention: Detected NaNs in the given point cloud. Removed this values..."
+                << std::endl;
+    }
 
-    std::cout << "Lidar frame ready" << std::endl;
+    std::cout << "Lidar scan ready" << std::endl;
     lidar_scan_ready_ = true;
+
+    // Get static structure information point cloud
+    if (nh_private_.param<bool>("useStructureFilter", false)) {
+      pcl::fromROSMsg(lidar_scan_p2, static_structure_cloud_);
+      pcl::removeNaNFromPointCloud(static_structure_cloud_, static_structure_cloud_, nan_indices);
+    }
 
     if (map_ready_) {
       match();
@@ -148,8 +161,39 @@ void TestMatcher::match() {
   if (nh_private_.param<bool>("usetemplate", false)) {
     template_match();
   }
-  if (nh_private_.param<bool>("use_go_icp", false)) {
+
+  if (nh_private_.param<bool>("useGoICP", false)) {
     go_icp_match();
+  }
+
+  if (nh_private_.param<bool>("usePlaneMatcher", false)) {
+    // Filtering / Preprocessing Point Cloud
+    if (nh_private_.param<bool>("useStructureFilter", false)) {
+      int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
+      CloudFilterLib::static_object_filter(structure_threshold, lidar_scan_,
+                                           static_structure_cloud_);
+    }
+    if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
+      float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
+      CloudFilterLib::voxel_centroid_filter(search_radius, lidar_scan_);
+    }
+
+    // Plane Extraction
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+    std::vector<std::vector<double>> plane_coefficients;
+    if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
+      PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                               plane_pub_, tf_map_frame_, nh_private_);
+    }
+    if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
+      PlaneExtractionLib::rht_plane_extraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                               plane_pub_, tf_map_frame_, nh_private_);
+    }
+    if (nh_private_.param<bool>("useiterRHTPlaneExtraction", false)) {
+      PlaneExtractionLib::iter_rht_plane_extraction(extracted_planes, plane_coefficients,
+                                                    lidar_scan_, plane_pub_, tf_map_frame_,
+                                                    nh_private_);
+    }
   }
 
   /*//////////////////////////////////////

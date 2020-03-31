@@ -3,9 +3,30 @@ tfMapFrame: /map
 
 mapSamplingDensity: 20
 
-usetoyproblem: true
+usetoyproblem: false
 
 #Select Matcher (only one)
-use_template: false
-use_go_icp: true
+usetemplate: false
+
+useGoICP: false
+
+useSuper4PCS: false
+
+usePlaneMatcher: true
+# Settings for Plane Matcher
+# Filter (several)
+useStructureFilter: true
+StructureThreshold: 150
+
+useVoxelCentroidFilter: true
+Voxelsearchradius: 0.1
+
+# Plane Extraction (only one)
+usepclPlaneExtraction: false
+
+useRHTPlaneExtraction: false
+
+useiterRHTPlaneExtraction: true
+# Plane Matching (only one)
+# Transform Calculation (only one)
 
