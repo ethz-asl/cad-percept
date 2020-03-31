@@ -35,11 +35,11 @@ class TestMatcher {
 
   // given Point Cloud data
   bool use_sim_lidar_ = false;
-  bool lidar_frame_ready_ = false;
+  bool lidar_scan_ready_ = false;
   bool ground_truth_ready_ = false;
   bool map_ready_ = false;
   bool ready_for_eval_ = false;
-  PointCloud lidar_frame_;
+  PointCloud lidar_scan_;
   PointCloud sample_map_;
 
   // Param from server
@@ -73,7 +73,7 @@ class TestMatcher {
   /**
    * Lidar frame callback
    */
-  void getLidar(const sensor_msgs::PointCloud2 &lidar_frame_p2);
+  void getLidar(const sensor_msgs::PointCloud2 &lidar_scan_p2);
 
   /**
    * Ground truth callback
@@ -83,7 +83,7 @@ class TestMatcher {
   /**
    * Simulated Lidar frame callback
    */
-  void getSimLidar(const sensor_msgs::PointCloud2 &lidar_frame_p2);
+  void getSimLidar(const sensor_msgs::PointCloud2 &lidar_scan_p2);
 
   /**
    * Match function
@@ -103,7 +103,8 @@ class TestMatcher {
   /**
    * Declare matchers
    */
-  void template_match(float (&transform_TR)[7]);
+  void template_match();
+  void go_icp_match();
 };
 
 }  // namespace matching_algorithms
