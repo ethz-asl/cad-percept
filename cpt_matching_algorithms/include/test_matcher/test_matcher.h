@@ -14,6 +14,9 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 
+#include "cloud_filtering/cloud_filtering_lib.h"
+#include "plane_extraction/plane_extraction_lib.h"
+
 namespace cad_percept {
 namespace matching_algorithms {
 
@@ -41,6 +44,7 @@ class TestMatcher {
   bool ready_for_eval_ = false;
   PointCloud lidar_scan_;
   PointCloud sample_map_;
+  pcl::PointCloud<pcl::PointXYZI> static_structure_cloud_;
 
   // Param from server
   int input_queue_size_;
@@ -64,6 +68,7 @@ class TestMatcher {
   // Publisher
   ros::Publisher scan_pub_;
   ros::Publisher sample_map_pub_;
+  ros::Publisher plane_pub_;
 
   /**
    * Sampled map callback
