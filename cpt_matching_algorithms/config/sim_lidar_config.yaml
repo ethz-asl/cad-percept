@@ -1,7 +1,7 @@
-groundtruthx: 5
-groundtruthy: 0
+groundtruthx: -2
+groundtruthy: 2
 groundtruthz: 0
-groundtruth_orientation: [0.6894984, 0, 0, 0.724872] #w x y z
+groundtruth_orientation: [0.66, 0, 0, 0.75] #w x y z
 
 #LiDAR settings
 usebins: true
