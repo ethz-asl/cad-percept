@@ -256,10 +256,8 @@ std::vector<std::vector<int>> PlaneExtractionLib::rht_eval(
     const pcl::PointCloud<pcl::PointXYZ> lidar_scan,
     PlaneExtractionLib::HoughAccumulator *accumulator) {
   std::vector<std::vector<int>> inlier_ids;
-
   pcl::PointCloud<pcl::PointXYZ> used_inliers;
-  pcl::PointCloud<pcl::PointXYZRGB> bit_scan;
-  pcl::copyPointCloud(lidar_scan, bit_scan);  // default is at 255
+  bool bit_point_cloud[lidar_scan.size()] = {false};
 
   // Evaluate voting (select between thresholding or number of extracted planes)
   accumulator->non_maximum_suppression(k_of_maxima_suppression);
@@ -270,16 +268,25 @@ std::vector<std::vector<int>> PlaneExtractionLib::rht_eval(
   }
 
   // Extract inliers
-  for (int i = 0; i < inlier_ids.size(); ++i) {
-    for (auto ids : inlier_ids[i]) {
+  std::vector<int> rm_inlier_ids;
+  for (int plane_nr = 0; plane_nr < num_main_planes; ++plane_nr) {
+    for (int i = 0; i < inlier_ids[plane_nr].size(); ++i) {
       // make sure each point is only included once
-      if (bit_scan.points[ids].a > 125) {
-        used_inliers.push_back(lidar_scan.points[ids]);
-        bit_scan.points[ids].a = 0;
+      if (!bit_point_cloud[inlier_ids[plane_nr][i]]) {
+        used_inliers.push_back(lidar_scan.points[inlier_ids[plane_nr][i]]);
+        bit_point_cloud[inlier_ids[plane_nr][i]] = true;
+      } else {
+        // Add duplicates to remove list
+        rm_inlier_ids.push_back(i);
       }
+    }
+    // Remove duplicates
+    for (auto rm_ids = rm_inlier_ids.rbegin(); rm_ids != rm_inlier_ids.rend(); ++rm_ids) {
+      inlier_ids[plane_nr].erase(inlier_ids[plane_nr].begin() + *rm_ids);
     }
     extracted_planes.push_back(used_inliers);
     used_inliers.clear();
+    rm_inlier_ids.clear();
   }
 
   return inlier_ids;
@@ -423,6 +430,7 @@ void PlaneExtractionLib::iter_rht_plane_extraction(
 
     // Reset for next iteration
     iter_extracted_planes.clear();
+    inlier_ids.clear();
     rm_indices.clear();
     accumulator->reset();
     min_vote_threshold = 0;

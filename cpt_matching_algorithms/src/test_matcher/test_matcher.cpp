@@ -66,8 +66,8 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     // Extract all coplanar facets
     std::unordered_map<std::string, std::string> facetToPlane;
     std::unordered_multimap<std::string, std::string> planeToFacets;
-    reference_mesh_->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 1);
-    std::cout << "Extracted coplanar Facets" << std::endl;
+    reference_mesh_->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 0.1);
+    std::cout << "Extracted coplanar facets" << std::endl;
 
     // Extract planes
     bool found_at_least_one_facet = true;
