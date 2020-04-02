@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+	<!-- declare arg to be passed in -->
+	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
+	<arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
+
+    <node name="lidar_simulator"  pkg="cpt_matching_algorithms" type="sim_lidar_node" output="screen" launch-prefix="tmux split-window">
+        <rosparam command="load" file="$(arg lidar_settings)" />
+
+        <param name="SimMarker" value="true" />
+        <param name="FixLidarScans" value="true" />
+        <param name="SimMarkerPoseTopic" value="/mesh_id_marker/feedback" />
+        <param name="cadTopic" value="/mesh_publisher/mesh_out" />
+    </node>
+
+    <node name="mesh_positioning"
+          pkg="cpt_selective_icp"
+          type="position_cad_with_marker.py">
+        <param name="marker_parent_frame" value="map" />
+        <param name="marker_frame_name" value="marker" />
+    </node>
+
+    <node name="find_id_in_mesh"
+          pkg="cpt_utils"
+          type="find_closest_id_in_mesh.py">
+        <param name="marker_parent_frame" value="marker" />
+    </node>
+
+    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
+        <param name="publish_on_start" value="false"/>
+        <param name="default_filename" value="$(arg cad_file)"/>
+        <param name="frame_name" value="marker"/>
+    </node>
+
+    <node pkg="tf" type="static_transform_publisher" name="laser" args="100 0 0 0 0 0 1  /lidar /rslidar  100"/>
+
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz_movable_lidar_sim.yaml" />
+
+</launch>

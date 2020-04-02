@@ -11,6 +11,7 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <visualization_msgs/InteractiveMarkerFeedback.h>
 #include <random>
 
 typedef PointMatcher<float> PM;
@@ -22,6 +23,9 @@ PointCloud lidar_scan;
 
 bool got_CAD = false;
 std::string tf_map_frame;
+
+bool use_marker_for_sim;
+bool fix_lidar_scan;
 
 float x;
 float y;
@@ -38,6 +42,7 @@ float noise_variance;
 ros::Publisher scan_pub;
 
 void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
+void sim_lidar_at_marker(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
 void simulate_lidar();
 
 int main(int argc, char **argv) {
@@ -51,11 +56,6 @@ int main(int argc, char **argv) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
   // Parameter from server
-  x = nh_private.param<float>("groundtruthx", 0);
-  y = nh_private.param<float>("groundtruthy", 0);
-  z = nh_private.param<float>("groundtruthz", 0);
-  quat = nh_private.param<std::vector<float>>("groundtruth_orientation", {});
-
   range_of_lidar = nh_private.param<float>("range_of_lidar", 20);
   use_bins = nh_private.param<bool>("usebins", false);
   bin_elevation = nh_private.param<std::vector<float>>("bin_elevation", {0});
@@ -63,12 +63,32 @@ int main(int argc, char **argv) {
   lidar_offset = nh_private.param<float>("lidar_offset", 1.5);
   noise_variance = nh_private.param<float>("accuracy_of_lidar", 0.02);
 
-  scan_pub = nh.advertise<sensor_msgs::PointCloud2>("sim_rslidar_points", 1, true);
+  use_marker_for_sim = nh_private.param<bool>("SimMarker", false);
+  fix_lidar_scan = nh_private.param<bool>("FixLidarScans", false);
+  ros::Subscriber marker_pos_sub;
+  if (use_marker_for_sim) {
+    std::cout << "Move marker to get lidar scans" << std::endl;
+    std::string marker_pos_topic = nh_private.param<std::string>("SimMarkerPoseTopic", "fail");
+    marker_pos_sub = nh.subscribe(marker_pos_topic, 20, &sim_lidar_at_marker);
+    // Push back no rotation
+    quat.push_back(1);
+    quat.push_back(0);
+    quat.push_back(0);
+    quat.push_back(0);
+
+  } else {
+    x = nh_private.param<float>("groundtruthx", 0);
+    y = nh_private.param<float>("groundtruthy", 0);
+    z = nh_private.param<float>("groundtruthz", 0);
+    quat = nh_private.param<std::vector<float>>("groundtruth_orientation", {});
+  }
 
   // Get mesh
   std::string cad_topic = nh_private.param<std::string>("cadTopic", "fail");
   ros::Subscriber cad_sub = nh.subscribe(cad_topic, 1, &getCAD);
   std::cout << "Wait for CAD" << std::endl;
+
+  scan_pub = nh.advertise<sensor_msgs::PointCloud2>("sim_rslidar_points", 1, true);
 
   ros::spin();
 
@@ -101,22 +121,53 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     std::cout << "CAD ready" << std::endl;
     got_CAD = true;
 
+    if (!use_marker_for_sim) {
+      simulate_lidar();
+    }
+  }
+}
+
+void sim_lidar_at_marker(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
+  // Change position of lidar to the one of the marker (different coordinate system)
+  x = -(feedback->pose.position.y) - 1;
+  y = feedback->pose.position.x + 1;
+  z = feedback->pose.position.z;
+
+  std::cout << std::endl;
+  std::cout << "Position of marker/lidar: " << x << " " << y << " " << z << std::endl;
+  std::cout << std::endl;
+
+  if (got_CAD) {
     simulate_lidar();
+    lidar_scan.clear();
   }
 }
 
 void simulate_lidar() {
-  // Transform point cloud according to ground truth
+  cad_percept::cgal::Point origin;
   cad_percept::cgal::Transformation ctransformation;
-  Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
-  Eigen::Vector3d translation(x, y, z);
-  Eigen::Quaterniond q(quat[0], quat[1], quat[2], quat[3]);
-  transform.block(0, 0, 3, 3) = q.matrix();
-  transform.block(0, 3, 3, 1) = translation;
-  cad_percept::cgal::eigenTransformationToCgalTransformation(transform, &ctransformation);
-  reference_mesh->transform(ctransformation);
+  if (!fix_lidar_scan) {
+    // Transform point cloud according to ground truth
+    Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
+    Eigen::Vector3d translation(x, y, z);
+    Eigen::Quaterniond q(quat[0], quat[1], quat[2], quat[3]);
+    transform.block(0, 0, 3, 3) = q.matrix();
+    transform.block(0, 3, 3, 1) = translation;
+    cad_percept::cgal::eigenTransformationToCgalTransformation(transform, &ctransformation);
+    reference_mesh->transform(ctransformation.inverse());
 
-  std::cout << "Lidar frame transformed according to ground truth data" << std::endl;
+    if (use_marker_for_sim) {
+      origin = cad_percept::cgal::Point(0, 0, 0);
+    } else {
+      origin = cad_percept::cgal::Point(0, 0, lidar_offset);
+    }
+  } else {
+    if (use_marker_for_sim) {
+      origin = cad_percept::cgal::Point(x, y, z);
+    } else {
+      origin = cad_percept::cgal::Point(x, y, z + lidar_offset);
+    }
+  }
 
   // Add lidar properties
   // Bin characteristic & visible
@@ -128,16 +179,15 @@ void simulate_lidar() {
     float z_unit;
     float PI_angle = (float)(M_PI / 180);
     cad_percept::cgal::Ray bin_ray;
-    cad_percept::cgal::Point origin(0, 0, lidar_offset);
     cad_percept::cgal::Point unit_dir;
     cad_percept::cgal::Intersection inter_point;
     pcl::PointXYZ pcl_inter_point;
     lidar_scan.clear();
     for (auto &bin : bin_elevation) {
       for (float theta = 0; theta < 360; theta += dtheta) {
-        x_unit = cos(bin * PI_angle) * cos(theta * PI_angle);
-        y_unit = cos(bin * PI_angle) * sin(theta * PI_angle);
-        z_unit = sin(bin * PI_angle) + lidar_offset;
+        x_unit = cos(bin * PI_angle) * cos(theta * PI_angle) + origin.x();
+        y_unit = cos(bin * PI_angle) * sin(theta * PI_angle) + origin.y();
+        z_unit = sin(bin * PI_angle) + origin.z();
         unit_dir = cad_percept::cgal::Point(x_unit, y_unit, z_unit);
         bin_ray = cad_percept::cgal::Ray(origin, unit_dir);
 
@@ -173,6 +223,10 @@ void simulate_lidar() {
   DP ref_scan = cad_percept::cpt_utils::pointCloudToDP(lidar_scan);
   scan_pub.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan, tf_map_frame, ros::Time::now()));
-
   std::cout << "LiDAR Simulator starts to publish" << std::endl;
+
+  if (!fix_lidar_scan) {
+    // Transform mesh back for next iteration
+    reference_mesh->transform(ctransformation);
+  }
 }
