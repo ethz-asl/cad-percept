@@ -6,7 +6,7 @@ groundtruth_orientation: [0.66, 0, 0, 0.75] #w x y z
 #LiDAR settings
 usebins: true
 accuracy_of_lidar: 0.0
-range_of_lidar: 20
+range_of_lidar: 50
 bin_elevation: [-15, -13, -11, -9, -7, -5, -3, -1, 15, 13, 11, 9, 7, 5, 3, 1]
 lidar_angular_resolution: 2
 lidar_offset: 1.5 

@@ -14,6 +14,7 @@
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/pcl_config.yaml" />
 
         <param name="tfMapFrame" value="/map" />
+        <param name="tfLidarFrame" value="marker_pose" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
         <param name="lidarTopic" value="rslidar_points" />
         <param name="simlidarTopic" value="sim_rslidar_points" />
@@ -28,12 +29,12 @@
     </node>
     
     <arg name="lidar_frame" value="marker_pose" />
-    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="-2 2 1 0 0 0.724872 0.6894984 map $(arg lidar_frame)  100"/>
+    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="13 -4.5 1 0 0 0 1 map $(arg lidar_frame)  100"/>
 
     <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(arg lidar_scan)" />
 
     <node pkg="rosservice" type="rosservice" name="cad_trigger" args="call /mesh_publisher/publish {}" launch-prefix="bash -c 'sleep 2; $0 $@' "/>
-    <node pkg="tf" type="static_transform_publisher" name="mesh_positioning" args="0 0 0 0 0 1 1  marker map 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="mesh_positioning" args="0 0 0 0 0 0 1  marker map 100"/>
     <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
         <param name="publish_on_start" value="false"/>
         <param name="default_filename" value="$(arg cad_file)"/>

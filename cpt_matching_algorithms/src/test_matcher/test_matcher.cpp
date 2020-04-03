@@ -15,6 +15,7 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   ground_truth_topic_ = nh_private_.param<std::string>("groundtruthTopic", "fail");
   input_queue_size_ = nh_private_.param<int>("inputQueueSize", 10);
   tf_map_frame_ = nh_private_.param<std::string>("tfMapFrame", "/map");
+  tf_lidar_frame_ = nh_private_.param<std::string>("tfLidarFrame", "/marker_pose");
   use_sim_lidar_ = nh_private_.param<bool>("usetoyproblem", false);
 
   // Get Subscriber
@@ -152,6 +153,9 @@ void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
 void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
   if (!ground_truth_ready_ && !use_sim_lidar_) {
     ground_truth_ = gt_in;
+    // Transform gt into map frame
+    ground_truth_.point.x = -ground_truth_.point.x;
+    ground_truth_.point.y = -ground_truth_.point.y;
     std::cout << "Got ground truth data" << std::endl;
     ground_truth_ready_ = true;
     if (ready_for_eval_) {
@@ -172,10 +176,30 @@ void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
 
     std::cout << "Simulated Lidar frame ready" << std::endl;
 
-    ground_truth_.point.x = nh_private_.param<float>("groundtruthx", 0);
-    ground_truth_.point.y = nh_private_.param<float>("groundtruthy", 0);
-    ground_truth_.point.z = nh_private_.param<float>("groundtruthz", 0);
-    gt_quat_ = nh_private_.param<std::vector<float>>("groundtruth_orientation", {});
+    tf::StampedTransform transform;
+    tf::TransformListener tf_listener(ros::Duration(10));
+    try {
+      tf_listener.waitForTransform(tf_map_frame_, tf_lidar_frame_, ros::Time(0),
+                                   ros::Duration(5.0));
+      tf_listener.lookupTransform(tf_map_frame_, tf_lidar_frame_, ros::Time(0), transform);
+    } catch (tf::TransformException ex) {
+      ROS_INFO_STREAM("Couldn't find transformation to lidar frame");
+      return;
+    }
+    cad_percept::cgal::Transformation ctransformation;
+    cgal::tfTransformationToCGALTransformation(transform, ctransformation);
+    Eigen::Matrix4d etransformation;
+    cgal::cgalTransformationToEigenTransformation(ctransformation, &etransformation);
+    Eigen::Matrix3d erotation = etransformation.block(0, 0, 3, 3);
+    Eigen::Quaterniond q(erotation);
+
+    ground_truth_.point.x = etransformation(0, 3);
+    ground_truth_.point.y = etransformation(1, 3);
+    ground_truth_.point.z = etransformation(2, 3);
+    gt_quat_.push_back(q.w());
+    gt_quat_.push_back(q.x());
+    gt_quat_.push_back(q.y());
+    gt_quat_.push_back(q.z());
 
     std::cout << "Got simulated ground truth data" << std::endl;
 
