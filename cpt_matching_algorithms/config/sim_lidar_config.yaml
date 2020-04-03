@@ -1,8 +1,3 @@
-groundtruthx: -2
-groundtruthy: 2
-groundtruthz: 0
-groundtruth_orientation: [0.66, 0, 0, 0.75] #w x y z
-
 #LiDAR settings
 usebins: true
 accuracy_of_lidar: 0.0

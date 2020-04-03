@@ -29,7 +29,7 @@
     </node>
     
     <arg name="lidar_frame" value="marker_pose" />
-    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="13 -4.5 1 0 0 0 1 map $(arg lidar_frame)  100"/>
+    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="13 -4.5 1 0 0 0.3428978 0.9393727 map $(arg lidar_frame)  100"/>
 
     <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(arg lidar_scan)" />
 

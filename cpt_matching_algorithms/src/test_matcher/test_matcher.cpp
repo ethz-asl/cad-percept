@@ -313,11 +313,16 @@ void TestMatcher::evaluate() {
 
   std::cout << "calculated position: x: " << transform_TR_[0] << " y: " << transform_TR_[1]
             << " z: " << transform_TR_[2] << std::endl;
-
   std::cout << "ground truth position: x: " << ground_truth_.point.x
             << " y: " << ground_truth_.point.y << " z: " << ground_truth_.point.z << std::endl;
 
-  std::cout << map_planes_.size() << std::endl;
+  if (use_sim_lidar_) {
+    std::cout << "ground truth orientation: qw: " << transform_TR_[3] << " qx: " << transform_TR_[4]
+              << " qy: " << transform_TR_[5] << " qz: " << transform_TR_[6] << std::endl;
+    std::cout << "ground truth orientation: qw: " << gt_quat_[0] << " qx: " << gt_quat_[1]
+              << " qy: " << gt_quat_[2] << " qz: " << gt_quat_[3] << std::endl;
+  }
+
   float error = sqrt(pow(transform_TR_[0] - ground_truth_.point.x, 2) +
                      pow(transform_TR_[1] - ground_truth_.point.y, 2) +
                      pow(transform_TR_[2] - ground_truth_.point.z, 2));
@@ -358,6 +363,13 @@ void TestMatcher::getError(PointCloud p1, PointCloud p2) {
 void TestMatcher::load_example() {
   // normals for used map
   pcl::PointNormal norm_point;
+  norm_point.x = -3.8;
+  norm_point.y = -0.2;
+  norm_point.z = 0;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 1;
+  map_planes_.push_back(norm_point);
   norm_point.x = 0;
   norm_point.y = 3.5;
   norm_point.z = 1;
@@ -504,13 +516,6 @@ void TestMatcher::load_example() {
   norm_point.normal_x = 0;
   norm_point.normal_y = -1;
   norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -3.8;
-  norm_point.y = -0.2;
-  norm_point.z = 0;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 1;
   map_planes_.push_back(norm_point);
 };
 }  // namespace matching_algorithms

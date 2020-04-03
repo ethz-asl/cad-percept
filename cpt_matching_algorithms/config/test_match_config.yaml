@@ -3,7 +3,7 @@ tfMapFrame: /map
 
 mapSamplingDensity: 20
 
-usetoyproblem: false
+usetoyproblem: true
 
 #Select Matcher (only one)
 usetemplate: false
