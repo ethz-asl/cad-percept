@@ -17,10 +17,10 @@ def frame_callback(marker_msg, tf_broadcaster, map_frame):
         time, rospy.get_param('~marker_frame_name'), map_frame)
 
 if __name__ == "__main__":
-    rospy.init_node("find_id_in_mesh")
+    rospy.init_node("Marker Pose")
     transform_pub = rospy.Publisher('/T_map_marker', Transform, queue_size=10)
     tf_broadcaster = TransformBroadcaster()
-    marker = RosMarker('Marker Pose',
+    marker = RosMarker(rospy.get_param('~marker_name'),
                        'Move this marker',
                        'marker_pose',
                        InteractiveMarkerControl.MOVE_ROTATE_3D,

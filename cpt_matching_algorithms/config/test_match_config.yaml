@@ -6,6 +6,6 @@ mapSamplingDensity: 20
 usetoyproblem: true
 
 #Select Matcher (only one)
-usetemplate: true
-use_go_icp: false
+use_template: false
+use_go_icp: true
 

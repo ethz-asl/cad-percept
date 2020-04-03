@@ -11,7 +11,6 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
-#include <visualization_msgs/InteractiveMarkerFeedback.h>
 #include <random>
 
 typedef PointMatcher<float> PM;
@@ -23,7 +22,7 @@ PointCloud lidar_scan;
 
 bool got_CAD = false;
 std::string tf_map_frame;
-std::string frame_id;
+std::string mesh_frame_id;
 
 bool fix_lidar_scan;
 
@@ -58,7 +57,7 @@ int main(int argc, char **argv) {
   noise_variance = nh_private.param<float>("accuracy_of_lidar", 0.02);
 
   fix_lidar_scan = nh_private.param<bool>("FixLidarScans", true);
-  tf_lidar_frame = nh_private.param<std::string>("lidarFrame", "fail");
+  tf_lidar_frame = nh_private.param<std::string>("lidarFrame", "simulated_lidar_pose");
 
   // Get mesh
   std::string cad_topic = nh_private.param<std::string>("cadTopic", "fail");
@@ -79,15 +78,15 @@ int main(int argc, char **argv) {
 void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   if (!got_CAD) {
     std::cout << "Processing CAD mesh" << std::endl;
-    frame_id = cad_mesh_in.header.frame_id;
+    mesh_frame_id = cad_mesh_in.header.frame_id;
     cad_percept::cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh);
 
     // Get transformation from /map to mesh
     tf::StampedTransform transform;
     tf::TransformListener tf_listener(ros::Duration(30));
     try {
-      tf_listener.waitForTransform(tf_map_frame, frame_id, ros::Time(0), ros::Duration(5.0));
-      tf_listener.lookupTransform(tf_map_frame, frame_id, ros::Time(0),
+      tf_listener.waitForTransform(tf_map_frame, mesh_frame_id, ros::Time(0), ros::Duration(5.0));
+      tf_listener.lookupTransform(tf_map_frame, mesh_frame_id, ros::Time(0),
                                   transform);  // get transformation at latest time T_map_to_frame
     } catch (tf::TransformException ex) {
       ROS_ERROR_STREAM("Couldn't find transformation to mesh system");

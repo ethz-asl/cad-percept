@@ -4,42 +4,36 @@
 	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
 	<arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
     <arg name="SimMarkerLidar" value="true" />
-    <arg name="lidar_frame" value="marker_pose" />
+    <arg name="lidar_frame" value="simulated_lidar_pose" />
 
     <node name="lidar_simulator"  pkg="cpt_matching_algorithms" type="sim_lidar_node" output="screen" launch-prefix="tmux split-window">
         <rosparam command="load" file="$(arg lidar_settings)" />
         
+        <!-- If FixLidarScan is true, the scan does not move at all but stays centered (fixed) at the origin, if FixLidarScan is false, the scan moves with the marker as origin -->
         <param name="FixLidarScans" value="false" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
         <param name="lidarFrame" value="$(arg lidar_frame)" />
     </node>
 
-    <group if ="$(arg SimMarkerLidar)">
     <node name="marker_pose"
           pkg="cpt_utils"
-          type="position_marker_in_mesh.py">
+          type="position_marker_in_mesh.py"
+          if ="$(arg SimMarkerLidar)">
           <param name="marker_parent_frame" value="map" />
           <param name="marker_frame_name" value="$(arg lidar_frame)" />
+          <param name="marker_name" value="Simulated LiDAR" />
     </node>
-    </group>
-    <group unless ="$(arg SimMarkerLidar)">
-        <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="-2 2 1 0 0 0.724872 0.6894984 map $(arg lidar_frame)  100"/>
-    </group>
+    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="-2 2 1 0 0 0.724872 0.6894984 map $(arg lidar_frame)  100" unless ="$(arg SimMarkerLidar)"/>
 
-    <node name="mesh_positioning"
-          pkg="cpt_selective_icp"
-          type="position_cad_with_marker.py">
-        <param name="marker_parent_frame" value="map" />
-        <param name="marker_frame_name" value="marker" />
-    </node>
-
+    <node pkg="rosservice" type="rosservice" name="cad_trigger" args="call /mesh_publisher/publish {}" launch-prefix="bash -c 'sleep 2; $0 $@' "/>
+    <node pkg="tf" type="static_transform_publisher" name="mesh_positioning" args="0 0 0 0 0 1 1  marker map 100"/>
     <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
         <param name="publish_on_start" value="false"/>
         <param name="default_filename" value="$(arg cad_file)"/>
         <param name="frame_name" value="marker"/>
     </node>
 
-    <node pkg="tf" type="static_transform_publisher" name="laser" args="100 0 0 0 0 0 1  /lidar /rslidar  100"/>
+    <node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
 
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz_movable_lidar_sim.yaml" />
 
