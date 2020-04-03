@@ -31,23 +31,18 @@
 
     <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(arg lidar_scan)" />
 
-    <node name="mesh_positioning"
-          pkg="cpt_selective_icp"
-          type="position_cad_with_marker.py">
-        <param name="marker_parent_frame" value="map" />
-        <param name="marker_frame_name" value="marker" />
+    <node pkg="rosservice" type="rosservice" name="cad_trigger" args="call /mesh_publisher/publish {}" launch-prefix="bash -c 'sleep 2; $0 $@' "/>
+    <node pkg="tf" type="static_transform_publisher" name="mesh_positioning" args="0 0 0 0 0 1 1  marker map 100"/>
+    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
+        <param name="publish_on_start" value="false"/>
+        <param name="default_filename" value="$(arg cad_file)"/>
+        <param name="frame_name" value="marker"/>
     </node>
 
     <node name="find_id_in_mesh"
           pkg="cpt_utils"
           type="find_closest_id_in_mesh.py">
         <param name="marker_parent_frame" value="marker" />
-    </node>
-
-    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
-        <param name="publish_on_start" value="false"/>  <!-- if set to true, mesh is published two times -->
-        <param name="default_filename" value="$(arg cad_file)"/>
-        <param name="frame_name" value="marker"/>
     </node>
 
     <node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
