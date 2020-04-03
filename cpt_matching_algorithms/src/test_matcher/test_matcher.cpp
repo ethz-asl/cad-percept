@@ -70,7 +70,8 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     reference_mesh_->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 0.1);
     std::cout << "Extracted coplanar facets" << std::endl;
 
-    // // Extract planes
+    // Extract planes
+    load_example();
     // bool found_at_least_one_facet = true;
     // cgal::Plane actual_plane;
     // Eigen::Vector3d point_on_plane;
@@ -259,6 +260,26 @@ void TestMatcher::match() {
                                                     lidar_scan_, plane_pub_, tf_map_frame_,
                                                     nh_private_);
     }
+
+    // Convert plane coefficients back to normal (could be done easily in the function itself)
+    pcl::PointNormal norm_point;
+    pcl::PointXYZ plane_centroid;
+    int plane_nr = 0;
+    for (auto plane_coefficient : plane_coefficients) {
+      pcl::computeCentroid(extracted_planes[plane_nr], plane_centroid);
+      norm_point.x = plane_centroid.x;
+      norm_point.y = plane_centroid.y;
+      norm_point.z = plane_centroid.z;
+
+      norm_point.normal_x = std::cos(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
+      norm_point.normal_y = std::sin(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
+      norm_point.normal_z = std::sin(plane_coefficient[2]);
+      extracted_planes_.push_back(norm_point);
+      plane_nr++;
+    }
+
+    // Convert plane_coefficients to
+    PlaneMatchLib::prrus(transform_TR_, extracted_planes_, map_planes_);
   }
   /*//////////////////////////////////////
                 Transformation
@@ -296,6 +317,7 @@ void TestMatcher::evaluate() {
   std::cout << "ground truth position: x: " << ground_truth_.point.x
             << " y: " << ground_truth_.point.y << " z: " << ground_truth_.point.z << std::endl;
 
+  std::cout << map_planes_.size() << std::endl;
   float error = sqrt(pow(transform_TR_[0] - ground_truth_.point.x, 2) +
                      pow(transform_TR_[1] - ground_truth_.point.y, 2) +
                      pow(transform_TR_[2] - ground_truth_.point.z, 2));
@@ -332,5 +354,164 @@ void TestMatcher::getError(PointCloud p1, PointCloud p2) {
   std::cout << "Haussdorff quantile distance: " << std::sqrt(haussdorff_quantile_dist) << " m"
             << std::endl;
 }
+
+void TestMatcher::load_example() {
+  // normals for used map
+  pcl::PointNormal norm_point;
+  norm_point.x = 0;
+  norm_point.y = 3.5;
+  norm_point.z = 1;
+  norm_point.normal_x = 1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 10.3;
+  norm_point.y = 6.4;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = -1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 19.8;
+  norm_point.y = 7.1;
+  norm_point.z = 1;
+  norm_point.normal_x = 1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 27.5;
+  norm_point.y = 7.6;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = -1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 34.3;
+  norm_point.y = 3.8;
+  norm_point.z = 1;
+  norm_point.normal_x = -1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 36.15;
+  norm_point.y = 0;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = -1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 37.9;
+  norm_point.y = -1;
+  norm_point.z = 1;
+  norm_point.normal_x = -1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 36.15;
+  norm_point.y = -2.6;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = 1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 34.4;
+  norm_point.y = -4.16;
+  norm_point.z = 1;
+  norm_point.normal_x = -1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 37.65;
+  norm_point.y = -6.3;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = 1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 29.8;
+  norm_point.y = -7.24;
+  norm_point.z = 1;
+  norm_point.normal_x = -1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 26.3;
+  norm_point.y = -8;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = 1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 21.6;
+  norm_point.y = -7.1;
+  norm_point.z = 1;
+  norm_point.normal_x = 1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = 9.74;
+  norm_point.y = -6;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = 1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = -1.86;
+  norm_point.y = -7.1;
+  norm_point.z = 1;
+  norm_point.normal_x = -1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = -3.1;
+  norm_point.y = -7.16;
+  norm_point.z = 1;
+  norm_point.normal_x = 1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = -11.7;
+  norm_point.y = -6.22;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = 1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = -18.5;
+  norm_point.y = -3.95;
+  norm_point.z = 1;
+  norm_point.normal_x = 1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = -20.97;
+  norm_point.y = -2.5;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = 1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = -24;
+  norm_point.y = -1.3;
+  norm_point.z = 1;
+  norm_point.normal_x = 1;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = -11.6;
+  norm_point.y = -0.25;
+  norm_point.z = 1;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = -1;
+  norm_point.normal_z = 0;
+  map_planes_.push_back(norm_point);
+  norm_point.x = -3.8;
+  norm_point.y = -0.2;
+  norm_point.z = 0;
+  norm_point.normal_x = 0;
+  norm_point.normal_y = 0;
+  norm_point.normal_z = 1;
+  map_planes_.push_back(norm_point);
+};
 }  // namespace matching_algorithms
 }  // namespace cad_percept

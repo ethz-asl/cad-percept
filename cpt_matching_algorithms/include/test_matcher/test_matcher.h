@@ -16,6 +16,7 @@
 
 #include "cloud_filtering/cloud_filtering_lib.h"
 #include "plane_extraction/plane_extraction_lib.h"
+#include "plane_matching/plane_matching_lib.h"
 
 namespace cad_percept {
 namespace matching_algorithms {
@@ -36,6 +37,7 @@ class TestMatcher {
   cad_percept::cgal::MeshModel::Ptr reference_mesh_;
   float sample_density_;
   pcl::PointCloud<pcl::PointNormal> map_planes_;
+  pcl::PointCloud<pcl::PointNormal> extracted_planes_;
 
   // given Point Cloud data
   bool use_sim_lidar_ = false;
@@ -112,6 +114,8 @@ class TestMatcher {
   void template_match();
   void go_icp_match();
   //  void super4pcs_match();
+
+  void load_example();
 };
 
 }  // namespace matching_algorithms

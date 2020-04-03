@@ -30,7 +30,7 @@ cs_add_library(test_matcher
 #     src/test_matcher/matcher/super4pcs_matcher.cpp
     src/cloud_filtering/cloud_filtering_lib.cpp
     src/plane_extraction/plane_extraction_lib.cpp
-#    src/plane_matching/plane_matching_lib.cpp
+    src/plane_matching/plane_matching_lib.cpp
 	)
 
 
