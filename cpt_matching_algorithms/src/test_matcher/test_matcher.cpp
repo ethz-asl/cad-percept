@@ -279,8 +279,13 @@ void TestMatcher::match() {
       plane_nr++;
     }
 
-    // Get T_map,lidar
-    PlaneMatchLib::prrus(transform_TR_, extracted_planes_, map_planes_);
+    // Plane Matching (Get T_map,lidar)
+    if (nh_private_.param<bool>("usePRRUS", false)) {
+      PlaneMatchLib::prrus(transform_TR_, extracted_planes_, map_planes_, nh_private_);
+    }
+    if (nh_private_.param<bool>("useMatchSolution", false)) {
+      PlaneMatchLib::load_example_sol(transform_TR_, extracted_planes_, map_planes_, nh_private_);
+    }
   }
   /*//////////////////////////////////////
                 Transformation

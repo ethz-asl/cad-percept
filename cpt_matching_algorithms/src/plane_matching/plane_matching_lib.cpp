@@ -2,20 +2,102 @@
 
 void PlaneMatchLib::prrus(float (&transformTR)[7],
                           const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                          const pcl::PointCloud<pcl::PointNormal> map_planes) {
+                          const pcl::PointCloud<pcl::PointNormal> map_planes,
+                          ros::NodeHandle &nh_private) {
   std::cout << "////  PRRUS Matching Started  ////" << std::endl;
   std::cout << "Number of planes in map: " << map_planes.size() << std::endl;
   std::cout << "Number of planes in scan: " << scan_planes.size() << std::endl;
 
-  float match_score = -1;
+  int k_for_num_of_map = nh_private.param<int>("PRRUSkMap", scan_planes.size());
+  float drop_error_threshold = nh_private.param<float>("PRRUSDropThreshold", 1);
+  int max_drop_costs = nh_private.param<int>("PRRUSMaxDropCosts", 1);
+
+  float match_score = 1;
   std::vector<int> plane_assignment(scan_planes.size(), 0);
 
-  // ToDo Matching part
+  // Get number of possible conditions under nearest neighbor
+  int total_comb_per_plane = 1;
+  for (int i = 1; i < scan_planes.size(); ++i) {
+    total_comb_per_plane = total_comb_per_plane * k_for_num_of_map;
+  }
 
-  for (int plane_nr; plane_nr < scan_planes.size(); ++plane_nr) {
+  float candidate_score = 0;
+  std::vector<int> candidate_plane_assignment(scan_planes.size(), 0);
+  int assignment_offset = 1;
+  int corresp_map_plane;
+  int corresp_map_pair_plane;
+  int dropped_costs = 0;
+  float cost_of_plane_pair = 0;
+
+  std::vector<int> available_map_planes(k_for_num_of_map);
+  std::vector<float> nearest_distances(k_for_num_of_map);
+  pcl::KdTreeFLANN<pcl::PointNormal> kdtree;
+  pcl::PointCloud<pcl::PointNormal>::Ptr inputcloud(new pcl::PointCloud<pcl::PointNormal>);
+  *inputcloud = map_planes;
+  kdtree.setInputCloud(inputcloud);
+
+  for (int map_plane_nr = 0; map_plane_nr < map_planes.size(); ++map_plane_nr) {
+    std::cout << "Set strongest plane from scan to plane " << map_plane_nr
+              << " from map, calculate all possible combinations..." << std::endl;
+    candidate_plane_assignment[0] = map_plane_nr;
+    kdtree.nearestKSearch(map_planes[map_plane_nr], k_for_num_of_map, available_map_planes,
+                          nearest_distances);
+    for (int candidate_nr = 0; candidate_nr < total_comb_per_plane; ++candidate_nr) {
+      // Create plane assignment
+      assignment_offset = 1;
+      for (int scan_plane_nr = 1; scan_plane_nr < scan_planes.size(); ++scan_plane_nr) {
+        candidate_plane_assignment[scan_plane_nr] =
+            available_map_planes[candidate_nr / assignment_offset % available_map_planes.size()];
+        assignment_offset = assignment_offset * available_map_planes.size();
+      }
+
+      // Evaluate assignment
+      candidate_score = 0;
+      dropped_costs = 0;
+      for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
+        for (int pair_plane_nr = 0; pair_plane_nr < scan_planes.size(); ++pair_plane_nr) {
+          corresp_map_plane = candidate_plane_assignment[plane_nr];
+          corresp_map_pair_plane = candidate_plane_assignment[pair_plane_nr];
+          cost_of_plane_pair = std::abs(
+              map_planes.points[corresp_map_plane].normal_x *
+                  map_planes.points[corresp_map_pair_plane].normal_x +
+              map_planes.points[corresp_map_plane].normal_y *
+                  map_planes.points[corresp_map_pair_plane].normal_y +
+              map_planes.points[corresp_map_plane].normal_z *
+                  map_planes.points[corresp_map_pair_plane].normal_z -
+              scan_planes.points[plane_nr].normal_x * scan_planes.points[pair_plane_nr].normal_x -
+              scan_planes.points[plane_nr].normal_y * scan_planes.points[pair_plane_nr].normal_y -
+              scan_planes.points[plane_nr].normal_z * scan_planes.points[pair_plane_nr].normal_z);
+
+          if (cost_of_plane_pair > drop_error_threshold && dropped_costs < max_drop_costs) {
+            ++dropped_costs;
+            continue;
+          }
+          candidate_score = candidate_score - cost_of_plane_pair;
+        }
+      }
+
+      if (candidate_score > match_score || match_score > 0) {
+        match_score = candidate_score;
+        plane_assignment = candidate_plane_assignment;
+        std::cout << "Found new best candidate with score " << match_score << std::endl;
+      }
+    }
+  }
+
+  for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
     std::cout << "Plane " << plane_nr << " from Scan matched with " << plane_assignment[plane_nr]
               << " from mesh" << std::endl;
   }
+
+  transform_average(transformTR, plane_assignment, scan_planes, map_planes);
+}
+
+void PlaneMatchLib::load_example_sol(float (&transformTR)[7],
+                                     const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                     const pcl::PointCloud<pcl::PointNormal> map_planes,
+                                     ros::NodeHandle &nh_private) {
+  std::vector<int> plane_assignment(scan_planes.size(), 0);
   // // Real data
   // // Solution to example
   // plane_assignment[0] = 14;
@@ -69,11 +151,6 @@ void PlaneMatchLib::transform_average(float (&transformTR)[7], std::vector<int> 
     map_normal(1) = map_planes.points[plane_assignment[plane_nr]].normal_y;
     map_normal(2) = map_planes.points[plane_assignment[plane_nr]].normal_z;
     current_quat = Eigen::Quaterniond::FromTwoVectors(scan_normal, map_normal);
-    std::cout << plane_nr << std::endl;
-    std::cout << "scan " << scan_normal << std::endl;
-    std::cout << "map " << map_normal << std::endl;
-    std::cout << "quaternion" << current_quat.w() << " " << current_quat.x() << " "
-              << current_quat.y() << " " << current_quat.z() << std::endl;
     all_quat(0, plane_nr) = current_quat.w();
     all_quat(1, plane_nr) = current_quat.x();
     all_quat(2, plane_nr) = current_quat.y();
@@ -91,8 +168,6 @@ void PlaneMatchLib::transform_average(float (&transformTR)[7], std::vector<int> 
     }
   }
   Eigen::Vector4d res_quat = eigensolver.eigenvectors().col(max_ev_index);
-
-  std::cout << res_quat << std::endl;
 
   // res_quat[0] = 0.939;
   // res_quat[1] = 0;

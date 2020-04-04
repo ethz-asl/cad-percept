@@ -13,6 +13,8 @@
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/iter_rht_config.yaml" />
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/pcl_config.yaml" />
 
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_matching/pprus_config.yaml" />
+
         <param name="tfMapFrame" value="/map" />
         <param name="tfLidarFrame" value="marker_pose" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />

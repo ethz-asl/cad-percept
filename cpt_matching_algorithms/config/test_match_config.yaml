@@ -28,5 +28,9 @@ useRHTPlaneExtraction: false
 
 useiterRHTPlaneExtraction: true
 # Plane Matching (only one)
-# Transform Calculation (only one)
+usePRRUS: true
+
+useMatchSolution: false
+
+
 
