@@ -28,14 +28,25 @@ void PlaneMatchLib::prrus(float (&transformTR)[7],
   // plane_assignment[7] = 4;
 
   // Simulated data
-  // Solution to example
+  // Simulated data
+  // Solution to example with rot 0,0,0,1
+  // plane_assignment[0] = 14;
+  // plane_assignment[1] = 2;
+  // plane_assignment[2] = 0;
+  // plane_assignment[3] = 2;
+  // plane_assignment[4] = 1;
+  // plane_assignment[5] = 0;
+  // plane_assignment[6] = 2;
+  // plane_assignment[7] = 0;
+
+  // Solution to example with rot 0 0 0.3428978 0.9393727
   plane_assignment[0] = 14;
   plane_assignment[1] = 2;
   plane_assignment[2] = 0;
   plane_assignment[3] = 2;
   plane_assignment[4] = 0;
   plane_assignment[5] = 1;
-  plane_assignment[6] = 14;
+  plane_assignment[6] = 0;
   plane_assignment[7] = 2;
 
   transform_average(transformTR, plane_assignment, scan_planes, map_planes);
@@ -45,7 +56,7 @@ void PlaneMatchLib::transform_average(float (&transformTR)[7], std::vector<int> 
                                       const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                       const pcl::PointCloud<pcl::PointNormal> map_planes) {
   std::cout << "Calculate Transformation via plane correspondences" << std::endl;
-  // Calculate average quaternion (Map to Lidar)
+  // Calculate average quaternion (Map to Lidar), R_Map_to_Lidar
   Eigen::MatrixXd all_quat(4, scan_planes.size());
   Eigen::Quaterniond current_quat;
   Eigen::Vector3d map_normal;
@@ -57,7 +68,12 @@ void PlaneMatchLib::transform_average(float (&transformTR)[7], std::vector<int> 
     map_normal(0) = map_planes.points[plane_assignment[plane_nr]].normal_x;
     map_normal(1) = map_planes.points[plane_assignment[plane_nr]].normal_y;
     map_normal(2) = map_planes.points[plane_assignment[plane_nr]].normal_z;
-    current_quat = Eigen::Quaterniond::FromTwoVectors(map_normal, scan_normal);
+    current_quat = Eigen::Quaterniond::FromTwoVectors(scan_normal, map_normal);
+    std::cout << plane_nr << std::endl;
+    std::cout << "scan " << scan_normal << std::endl;
+    std::cout << "map " << map_normal << std::endl;
+    std::cout << "quaternion" << current_quat.w() << " " << current_quat.x() << " "
+              << current_quat.y() << " " << current_quat.z() << std::endl;
     all_quat(0, plane_nr) = current_quat.w();
     all_quat(1, plane_nr) = current_quat.x();
     all_quat(2, plane_nr) = current_quat.y();
@@ -75,10 +91,13 @@ void PlaneMatchLib::transform_average(float (&transformTR)[7], std::vector<int> 
     }
   }
   Eigen::Vector4d res_quat = eigensolver.eigenvectors().col(max_ev_index);
-  res_quat[0] = 0.9393727;
-  res_quat[1] = 0;
-  res_quat[2] = 0;
-  res_quat[3] = 0.3428978;
+
+  std::cout << res_quat << std::endl;
+
+  // res_quat[0] = 0.939;
+  // res_quat[1] = 0;
+  // res_quat[2] = 0;
+  // res_quat[3] = 0.34;
 
   // Assign to solution
   transformTR[3] = res_quat[0];
@@ -102,12 +121,9 @@ void PlaneMatchLib::transform_average(float (&transformTR)[7], std::vector<int> 
   int nr_planes_z = 0;
   int map_index;
   for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
-    std::cout << copy_scan_planes.points[plane_nr].x << std::endl;
-    std::cout << "Map: " << map_planes.points[plane_assignment[plane_nr]].x << std::endl;
     // Must be changed to a multiplication, but works with example
     map_index = plane_assignment[plane_nr];
     if (std::abs(map_planes.points[map_index].normal_x) == 1) {
-      std::cout << plane_nr << std::endl;
       mean_translation_x =
           map_planes.points[map_index].x - copy_scan_planes.points[plane_nr].x + mean_translation_x;
       ++nr_planes_x;
@@ -126,19 +142,19 @@ void PlaneMatchLib::transform_average(float (&transformTR)[7], std::vector<int> 
   if (nr_planes_x != 0) {
     transformTR[0] = mean_translation_x / nr_planes_x;
   } else {
-    std::cout << "Couldn't find transformation as plane with normal x is missing" << std::endl;
+    std::cout << "Couldn't find translation x as plane with normal x is missing" << std::endl;
     transformTR[0] = 0;
   }
   if (nr_planes_y != 0) {
     transformTR[1] = mean_translation_y / nr_planes_y;
   } else {
-    std::cout << "Couldn't find transformation as plane with normal y is missing" << std::endl;
+    std::cout << "Couldn't find translation y as plane with normal y is missing" << std::endl;
     transformTR[1] = 0;
   }
   if (nr_planes_z != 0) {
     transformTR[2] = mean_translation_z / nr_planes_z;
   } else {
-    std::cout << "Couldn't find transformation as plane with normal z is missing" << std::endl;
+    std::cout << "Couldn't find translation z as plane with normal z is missing" << std::endl;
     transformTR[2] = 0;
   }
 };

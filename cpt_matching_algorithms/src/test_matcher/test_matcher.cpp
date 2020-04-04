@@ -194,6 +194,7 @@ void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
     Eigen::Matrix3d erotation = etransformation.block(0, 0, 3, 3);
     Eigen::Quaterniond q(erotation);
 
+    // Ground truth is T_map,lidar
     ground_truth_.point.x = etransformation(0, 3);
     ground_truth_.point.y = etransformation(1, 3);
     ground_truth_.point.z = etransformation(2, 3);
@@ -278,7 +279,7 @@ void TestMatcher::match() {
       plane_nr++;
     }
 
-    // Convert plane_coefficients to
+    // Get T_map,lidar
     PlaneMatchLib::prrus(transform_TR_, extracted_planes_, map_planes_);
   }
   /*//////////////////////////////////////
@@ -291,7 +292,7 @@ void TestMatcher::match() {
   Eigen::Quaternionf q(transform_TR_[3], transform_TR_[4], transform_TR_[5], transform_TR_[6]);
   res_transform.block(0, 0, 3, 3) = q.matrix();
   res_transform.block(0, 3, 3, 1) = translation;
-  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform.inverse());
+  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform);
 
   /*//////////////////////////////////////
                 Visualization
@@ -317,11 +318,11 @@ void TestMatcher::evaluate() {
             << " y: " << ground_truth_.point.y << " z: " << ground_truth_.point.z << std::endl;
 
   if (use_sim_lidar_) {
-    std::cout << "ground truth orientation: qw: " << transform_TR_[3] << " qx: " << transform_TR_[4]
-              << " qy: " << transform_TR_[5] << " qz: " << transform_TR_[6] << std::endl;
     std::cout << "ground truth orientation: qw: " << gt_quat_[0] << " qx: " << gt_quat_[1]
               << " qy: " << gt_quat_[2] << " qz: " << gt_quat_[3] << std::endl;
   }
+  std::cout << "calculated orientation: qw: " << transform_TR_[3] << " qx: " << transform_TR_[4]
+            << " qy: " << transform_TR_[5] << " qz: " << transform_TR_[6] << std::endl;
 
   float error = sqrt(pow(transform_TR_[0] - ground_truth_.point.x, 2) +
                      pow(transform_TR_[1] - ground_truth_.point.y, 2) +
@@ -368,12 +369,12 @@ void TestMatcher::load_example() {
   norm_point.z = 0;
   norm_point.normal_x = 0;
   norm_point.normal_y = 0;
-  norm_point.normal_z = 1;
+  norm_point.normal_z = -1;
   map_planes_.push_back(norm_point);
   norm_point.x = 0;
   norm_point.y = 3.5;
   norm_point.z = 1;
-  norm_point.normal_x = 1;
+  norm_point.normal_x = -1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -381,13 +382,13 @@ void TestMatcher::load_example() {
   norm_point.y = 6.4;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
+  norm_point.normal_y = 1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = 19.8;
   norm_point.y = 7.1;
   norm_point.z = 1;
-  norm_point.normal_x = 1;
+  norm_point.normal_x = -1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -395,13 +396,13 @@ void TestMatcher::load_example() {
   norm_point.y = 7.6;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
+  norm_point.normal_y = 1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = 34.3;
   norm_point.y = 3.8;
   norm_point.z = 1;
-  norm_point.normal_x = -1;
+  norm_point.normal_x = 1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -409,13 +410,13 @@ void TestMatcher::load_example() {
   norm_point.y = 0;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
+  norm_point.normal_y = 1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = 37.9;
   norm_point.y = -1;
   norm_point.z = 1;
-  norm_point.normal_x = -1;
+  norm_point.normal_x = 1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -423,13 +424,13 @@ void TestMatcher::load_example() {
   norm_point.y = -2.6;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
+  norm_point.normal_y = -1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = 34.4;
   norm_point.y = -4.16;
   norm_point.z = 1;
-  norm_point.normal_x = -1;
+  norm_point.normal_x = 1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -437,13 +438,13 @@ void TestMatcher::load_example() {
   norm_point.y = -6.3;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
+  norm_point.normal_y = -1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = 29.8;
   norm_point.y = -7.24;
   norm_point.z = 1;
-  norm_point.normal_x = -1;
+  norm_point.normal_x = 1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -451,13 +452,13 @@ void TestMatcher::load_example() {
   norm_point.y = -8;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
+  norm_point.normal_y = -1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = 21.6;
   norm_point.y = -7.1;
   norm_point.z = 1;
-  norm_point.normal_x = 1;
+  norm_point.normal_x = -1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -465,20 +466,20 @@ void TestMatcher::load_example() {
   norm_point.y = -6;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
+  norm_point.normal_y = -1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = -1.86;
   norm_point.y = -7.1;
   norm_point.z = 1;
-  norm_point.normal_x = -1;
+  norm_point.normal_x = 1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = -3.1;
   norm_point.y = -7.16;
   norm_point.z = 1;
-  norm_point.normal_x = 1;
+  norm_point.normal_x = -1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -486,13 +487,13 @@ void TestMatcher::load_example() {
   norm_point.y = -6.22;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
+  norm_point.normal_y = -1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = -18.5;
   norm_point.y = -3.95;
   norm_point.z = 1;
-  norm_point.normal_x = 1;
+  norm_point.normal_x = -1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -500,13 +501,13 @@ void TestMatcher::load_example() {
   norm_point.y = -2.5;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
+  norm_point.normal_y = -1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = -24;
   norm_point.y = -1.3;
   norm_point.z = 1;
-  norm_point.normal_x = 1;
+  norm_point.normal_x = -1;
   norm_point.normal_y = 0;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
@@ -514,7 +515,7 @@ void TestMatcher::load_example() {
   norm_point.y = -0.25;
   norm_point.z = 1;
   norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
+  norm_point.normal_y = 1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
 };

@@ -118,7 +118,7 @@ void TestMatcher::go_icp_match() {
   }
 
   // Get matrix of unscaled matrix
-  Eigen::Matrix4d final_transf = go_icp_trans.inverse();
+  Eigen::Matrix4d final_transf = go_icp_trans;
 
   Eigen::Matrix3d final_rot = final_transf.block(0, 0, 3, 3);
   Eigen::Quaterniond final_q(final_rot);

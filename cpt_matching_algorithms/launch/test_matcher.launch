@@ -2,7 +2,7 @@
 <launch>
     <!-- declare arg to be passed in -->
     <arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
-    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set/scan100.bag" />
+    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set/scan200.bag" />
     <arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
 
    <node name="test_matcher"  pkg="cpt_matching_algorithms" type="test_matcher_node" output="screen" launch-prefix="tmux split-window -h">
@@ -10,6 +10,11 @@
         
         <param name="goicp_folder" value="$(find go_icp_catkin)"/>
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/go_icp_config.yaml" />
+
+        <rosparam command="load" file="$(arg lidar_settings)" />
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/rht_config.yaml" />
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/iter_rht_config.yaml" />
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/pcl_config.yaml" />
         
         <rosparam command="load" file="$(arg lidar_settings)" />
         <param name="tfMapFrame" value="/map" />
@@ -28,7 +33,7 @@
     </node>
     
     <arg name="lidar_frame" value="marker_pose" />
-    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="13 -4.5 1 0 0 0 1 map $(arg lidar_frame)  100"/>
+    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="13 -4.5 1 0 0 0.3428978 0.9393727 map $(arg lidar_frame)  100"/>
 
     <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(arg lidar_scan)" />
 
