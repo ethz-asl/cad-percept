@@ -22,13 +22,15 @@ useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
 # Plane Extraction (only one)
-usepclPlaneExtraction: false
+usepclPlaneExtraction: true
 
 useRHTPlaneExtraction: false
 
-useiterRHTPlaneExtraction: true
+useiterRHTPlaneExtraction: false
 # Plane Matching (only one)
-usePRRUS: true
+usePRRUS: false
+
+usePlaneDescriptor: true
 
 useMatchSolution: false
 

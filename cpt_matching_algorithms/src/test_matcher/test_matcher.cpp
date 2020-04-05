@@ -277,11 +277,22 @@ void TestMatcher::match() {
       norm_point.normal_z = std::sin(plane_coefficient[2]);
       extracted_planes_.push_back(norm_point);
       plane_nr++;
+
+      // std::cout << plane_nr - 1 << std::endl;
+      // std::cout << norm_point.x << std::endl;
+      // std::cout << norm_point.y << std::endl;
+      // std::cout << norm_point.z << std::endl;
+      // std::cout << norm_point.normal_x << std::endl;
+      // std::cout << norm_point.normal_y << std::endl;
+      // std::cout << norm_point.normal_z << std::endl;
     }
 
     // Plane Matching (Get T_map,lidar)
     if (nh_private_.param<bool>("usePRRUS", false)) {
       PlaneMatchLib::prrus(transform_TR_, extracted_planes_, map_planes_, nh_private_);
+    }
+    if (nh_private_.param<bool>("usePlaneDescriptor", false)) {
+      PlaneMatchLib::PlaneDescriptor(transform_TR_, extracted_planes_, map_planes_, nh_private_);
     }
     if (nh_private_.param<bool>("useMatchSolution", false)) {
       PlaneMatchLib::load_example_sol(transform_TR_, extracted_planes_, map_planes_, nh_private_);

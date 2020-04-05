@@ -503,7 +503,12 @@ void PlaneExtractionLib::pcl_plane_extraction(
       norm_of_normal = normal_of_plane.x * extracted_inlier_points->points[0].x +
                        normal_of_plane.y * extracted_inlier_points->points[0].y +
                        normal_of_plane.z * extracted_inlier_points->points[0].z;
-      if (norm_of_normal < 0) norm_of_normal = -norm_of_normal;
+      if (norm_of_normal < 0) {
+        norm_of_normal = -norm_of_normal;
+        normal_of_plane.x = -normal_of_plane.x;
+        normal_of_plane.y = -normal_of_plane.y;
+        normal_of_plane.z = -normal_of_plane.z;
+      }
 
       actuel_plane_coefficients[0] = norm_of_normal;                               // rho
       actuel_plane_coefficients[1] = atan2(normal_of_plane.y, normal_of_plane.x);  // theta
