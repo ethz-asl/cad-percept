@@ -137,17 +137,17 @@ void PlaneMatchLib::PlaneDescriptor(float (&transformTR)[7],
   getHorizontalDescriptor(horizon_scan_descriptors, scan_horizontal_planes, scan_planes);
   std::cout << "Features calculated" << std::endl;
 
-  for (int map_plane_nr = 0; map_plane_nr < map_vertical_planes.size(); ++map_plane_nr) {
-    std::cout << "map nr " << map_vertical_planes[map_plane_nr] << ": ";
-    for (auto feature : vert_map_descriptors[map_plane_nr]) std::cout << feature << " ";
-    std::cout << std::endl;
-  }
+  // for (int map_plane_nr = 0; map_plane_nr < map_vertical_planes.size(); ++map_plane_nr) {
+  //   std::cout << "map nr " << map_vertical_planes[map_plane_nr] << ": ";
+  //   for (auto feature : vert_map_descriptors[map_plane_nr]) std::cout << feature << " ";
+  //   std::cout << std::endl;
+  // }
 
-  for (int map_plane_nr = 0; map_plane_nr < scan_vertical_planes.size(); ++map_plane_nr) {
-    std::cout << "scan nr " << scan_vertical_planes[map_plane_nr] << ": ";
-    for (auto feature : vert_scan_descriptors[map_plane_nr]) std::cout << feature << " ";
-    std::cout << std::endl;
-  }
+  // for (int map_plane_nr = 0; map_plane_nr < scan_vertical_planes.size(); ++map_plane_nr) {
+  //   std::cout << "scan nr " << scan_vertical_planes[map_plane_nr] << ": ";
+  //   for (auto feature : vert_scan_descriptors[map_plane_nr]) std::cout << feature << " ";
+  //   std::cout << std::endl;
+  // }
 
   // Get both scores
   std::vector<std::vector<float>> vert_assign_score_scan_to_map;
@@ -159,7 +159,9 @@ void PlaneMatchLib::PlaneDescriptor(float (&transformTR)[7],
     vert_assign_score_scan_to_map.push_back(vert_assign_score_to_map);
 
     std::cout << scan_vertical_planes[vert_scan_plane] << " vertical : ";
-    for (auto hor : vert_assign_score_to_map) std::cout << hor << " ";
+    for (int map_plane = 0; map_plane < vert_assign_score_to_map.size(); ++map_plane)
+      std::cout << map_vertical_planes[map_plane] << " " << vert_assign_score_to_map[map_plane]
+                << " ";
     std::cout << std::endl;
   }
 
@@ -173,34 +175,76 @@ void PlaneMatchLib::PlaneDescriptor(float (&transformTR)[7],
     horiz_assign_score_scan_to_map.push_back(horiz_assign_score_to_map);
 
     std::cout << scan_horizontal_planes[horiz_scan_plane] << " horizon : ";
-    for (auto hor : horiz_assign_score_to_map) std::cout << hor << " ";
+    for (int map_plane = 0; map_plane < horiz_assign_score_to_map.size(); ++map_plane)
+      std::cout << map_horizontal_planes[map_plane] << " " << horiz_assign_score_to_map[map_plane]
+                << " ";
     std::cout << std::endl;
   }
 
-  // Take (one) maxima as assignment
-  std::vector<int> plane_assignment(scan_planes.size(), 1);
+  // Take high values as possible assignments
+  float assignment_score_threshold = 0.9;
+  float max_score = 0;
+  std::vector<std::vector<int>> assignment_candidates(scan_planes.size(), std::vector<int>(0));
+  std::vector<float> candidate_list_for_scan_plane;
   for (int vert_plane_nr = 0; vert_plane_nr < vert_assign_score_scan_to_map.size();
        ++vert_plane_nr) {
-    plane_assignment[scan_vertical_planes[vert_plane_nr]] =
-        map_vertical_planes[std::max_element(vert_assign_score_scan_to_map[vert_plane_nr].begin(),
-                                             vert_assign_score_scan_to_map[vert_plane_nr].end()) -
-                            vert_assign_score_scan_to_map[vert_plane_nr].begin()];
+    max_score = *std::max_element(vert_assign_score_scan_to_map[vert_plane_nr].begin(),
+                                  vert_assign_score_scan_to_map[vert_plane_nr].end());
+    // Take map planes with enough high score as possible candidates
+    candidate_list_for_scan_plane.clear();
+    for (int candidate_vert_plane_map_nr = 0;
+         candidate_vert_plane_map_nr < map_vertical_planes.size(); ++candidate_vert_plane_map_nr) {
+      if (vert_assign_score_scan_to_map[vert_plane_nr][candidate_vert_plane_map_nr] >
+          assignment_score_threshold * max_score) {
+        candidate_list_for_scan_plane.push_back(map_vertical_planes[candidate_vert_plane_map_nr]);
+      }
+    }
+    for (auto candidate : candidate_list_for_scan_plane)
+      assignment_candidates[scan_vertical_planes[vert_plane_nr]].push_back(candidate);
   }
+
   for (int horiz_plane_nr = 0; horiz_plane_nr < horiz_assign_score_scan_to_map.size();
        ++horiz_plane_nr) {
-    plane_assignment[scan_horizontal_planes[horiz_plane_nr]] =
-        map_horizontal_planes[std::max_element(
-                                  horiz_assign_score_scan_to_map[horiz_plane_nr].begin(),
-                                  horiz_assign_score_scan_to_map[horiz_plane_nr].end()) -
-                              horiz_assign_score_scan_to_map[horiz_plane_nr].begin()];
+    max_score = *std::max_element(horiz_assign_score_scan_to_map[horiz_plane_nr].begin(),
+                                  horiz_assign_score_scan_to_map[horiz_plane_nr].end());
+    // Take map planes with enough high score as possible candidates
+    candidate_list_for_scan_plane.clear();
+    for (int candidate_horiz_plane_map_nr = 0;
+         candidate_horiz_plane_map_nr < map_horizontal_planes.size();
+         ++candidate_horiz_plane_map_nr) {
+      if (horiz_assign_score_scan_to_map[horiz_plane_nr][candidate_horiz_plane_map_nr] >
+          assignment_score_threshold * max_score) {
+        candidate_list_for_scan_plane.push_back(
+            map_horizontal_planes[candidate_horiz_plane_map_nr]);
+      }
+    }
+    for (auto candidate : candidate_list_for_scan_plane)
+      assignment_candidates[scan_horizontal_planes[horiz_plane_nr]].push_back(candidate);
   }
 
-  for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
-    std::cout << "Plane " << plane_nr << " from Scan matched with " << plane_assignment[plane_nr]
-              << " from mesh" << std::endl;
+  for (int i = 0; i < assignment_candidates.size(); ++i) {
+    std::cout << "scan " << i << " has candidates: ";
+    for (int j = 0; j < assignment_candidates[i].size(); ++j) {
+      std::cout << assignment_candidates[i][j] << " ";
+    }
+    std::cout << std::endl;
   }
 
-  transform_average(transformTR, plane_assignment, scan_planes, map_planes);
+  std::vector<int> plane_assignment(scan_planes.size(), 1);
+  // Assign unique assignments
+  for (int scan_plane_nr = 0; scan_plane_nr < scan_planes.size(); ++scan_plane_nr) {
+    if (assignment_candidates[scan_plane_nr].size() == 1)
+      plane_assignment[scan_plane_nr] = assignment_candidates[scan_plane_nr][0];
+  }
+
+  // Considering geometric consistency choose best candidate for plane
+
+  // for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
+  //   std::cout << "Plane " << plane_nr << " from Scan matched with " << plane_assignment[plane_nr]
+  //             << " from mesh" << std::endl;
+  // }
+
+  // transform_average(transformTR, plane_assignment, scan_planes, map_planes);
 };
 
 void PlaneMatchLib::getDescriptorScore(std::vector<float> &assign_score,
@@ -387,19 +431,18 @@ void PlaneMatchLib::transform_average(float (&transformTR)[7], std::vector<int> 
   int nr_planes_z = 0;
   int map_index;
   for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
-    // Must be changed to a multiplication, but works with example
     map_index = plane_assignment[plane_nr];
-    if (std::abs(map_planes.points[map_index].normal_x) == 1) {
+    if (std::abs(map_planes.points[map_index].normal_x) > 0.5) {
       mean_translation_x =
           map_planes.points[map_index].x - copy_scan_planes.points[plane_nr].x + mean_translation_x;
       ++nr_planes_x;
     }
-    if (std::abs(map_planes.points[map_index].normal_y) == 1) {
+    if (std::abs(map_planes.points[map_index].normal_y) > 0.5) {
       mean_translation_y =
           map_planes.points[map_index].y - copy_scan_planes.points[plane_nr].y + mean_translation_y;
       ++nr_planes_y;
     }
-    if (std::abs(map_planes.points[plane_nr].normal_z) == 1) {
+    if (std::abs(map_planes.points[plane_nr].normal_z) > 0.5) {
       mean_translation_z =
           map_planes.points[map_index].z - copy_scan_planes.points[plane_nr].z + mean_translation_z;
       ++nr_planes_z;
