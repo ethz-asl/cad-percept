@@ -16,9 +16,9 @@ class TestingMesh : public CGAL::Modifier_base<HDS> {
  public:
   TestingMesh() {}
   void operator()(HDS& hds) {
-    // Create a simple plane parallel to y - z - plane at x =1
+    // Create a simple plane parallel to y - z - plane at x = 10
     CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
-    B.begin_surface(4, 3);
+    B.begin_surface(3, 3);
     B.add_vertex(Point(10, 0, 0));
     B.add_vertex(Point(10, 10, 0));
     B.add_vertex(Point(10, 0, 10));
@@ -50,17 +50,25 @@ TEST(RHTExtractionTest, normal_computation_testCase1) {
 
   PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, pointcloud,
                                      tf_map_frame);
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 1) < 0.5 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.2 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.2);
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.5 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.5 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.5);
+
+  cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
+  extracted_planes.clear();
+  plane_coefficients.clear();
   PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_coefficients, pointcloud,
                                      tf_map_frame);
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 1) < 0.5 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.2 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.2);
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.5 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.5 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.5);
+
+  cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
+  extracted_planes.clear();
+  plane_coefficients.clear();
   PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, pointcloud,
                                          tf_map_frame);
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 1) < 0.5 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.2 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.2);
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.5 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.5 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.5);
 }
