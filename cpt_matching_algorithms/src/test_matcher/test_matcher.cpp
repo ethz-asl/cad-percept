@@ -29,7 +29,6 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   scan_pub_ =
       nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", input_queue_size_, true);
   sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sample_map", 1, true);
-  plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 }
 
 // Get CAD and sample points
@@ -158,42 +157,50 @@ void TestMatcher::match() {
   ///////////////////////////////////////*/
 
   // Selection of mapper
-  if (nh_private_.param<bool>("usetemplate", false)) {
-    template_match();
-  }
+  int matcher = nh_private_.param<int>("Matcher", 0);
+  switch (matcher) {
+    case 0:
+      templateMatch();
+      break;
+    case 1:
+      goicpMatch();
+      break;
+    case 2: {
+      // Filtering / Preprocessing Point Cloud
+      if (nh_private_.param<bool>("useStructureFilter", false)) {
+        int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
+        CloudFilter::filterStaticObject(structure_threshold, lidar_scan_, static_structure_cloud_);
+      }
+      if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
+        float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
+        CloudFilter::filterVoxelCentroid(search_radius, lidar_scan_);
+      }
 
-  if (nh_private_.param<bool>("useGoICP", false)) {
-    go_icp_match();
-  }
-
-  if (nh_private_.param<bool>("usePlaneMatcher", false)) {
-    // Filtering / Preprocessing Point Cloud
-    if (nh_private_.param<bool>("useStructureFilter", false)) {
-      int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
-      CloudFilterLib::static_object_filter(structure_threshold, lidar_scan_,
-                                           static_structure_cloud_);
+      // Plane Extraction
+      std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+      std::vector<std::vector<double>> plane_coefficients;
+      int extractor = nh_private_.param<int>("PlaneExtractor", 0);
+      switch (extractor) {
+        case 0:
+          PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                             tf_map_frame_);
+          break;
+        case 1:
+          PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                             tf_map_frame_);
+          break;
+        case 2:
+          PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                                 tf_map_frame_);
+          break;
+        default:
+          PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                                 tf_map_frame_);
+      }
+      break;
     }
-    if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
-      float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
-      CloudFilterLib::voxel_centroid_filter(search_radius, lidar_scan_);
-    }
-
-    // Plane Extraction
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-    std::vector<std::vector<double>> plane_coefficients;
-    if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
-      PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                               plane_pub_, tf_map_frame_, nh_private_);
-    }
-    if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
-      PlaneExtractionLib::rht_plane_extraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                               plane_pub_, tf_map_frame_, nh_private_);
-    }
-    if (nh_private_.param<bool>("useiterRHTPlaneExtraction", false)) {
-      PlaneExtractionLib::iter_rht_plane_extraction(extracted_planes, plane_coefficients,
-                                                    lidar_scan_, plane_pub_, tf_map_frame_,
-                                                    nh_private_);
-    }
+    default:
+      templateMatch();
   }
 
   /*//////////////////////////////////////

@@ -10,7 +10,7 @@ AccumulatorKMaxSuppress: 14 # set to zero to deactivate
 
 # Settings of RHT
 RHTMaxIter: 100000
-RHTTolDist: 2    # makes sure points are not too far apart
+RHTTolDist: 3    # makes sure points are not too far apart
 RHTMinArea: 0.5
 RHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown
 

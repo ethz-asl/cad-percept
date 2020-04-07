@@ -3,30 +3,24 @@ tfMapFrame: /map
 
 mapSamplingDensity: 20
 
-usetoyproblem: false
+usetoyproblem: true
 
-#Select Matcher (only one)
-usetemplate: false
+#Select Matcher
+Matcher: 2 # 0: template, 1: GoICP, 2: PlaneMatcher
 
-useGoICP: false
-
-useSuper4PCS: false
-
-usePlaneMatcher: true
 # Settings for Plane Matcher
-# Filter (several)
+
+# Filters
 useStructureFilter: true
 StructureThreshold: 150
 
 useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
-# Plane Extraction (only one)
-usepclPlaneExtraction: false
+# Plane Extraction
+PlaneExtractor: 2 # 0: pclPlaneExtraction, 1: rhtPlaneExtraction, 2: iterRhtPlaneExtraction
 
-useRHTPlaneExtraction: false
+# Plane Matching
 
-useiterRHTPlaneExtraction: true
-# Plane Matching (only one)
-# Transform Calculation (only one)
+# Transform Calculation
 

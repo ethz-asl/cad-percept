@@ -14,8 +14,8 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 
-#include "cloud_filtering/cloud_filtering_lib.h"
-#include "plane_extraction/plane_extraction_lib.h"
+#include "cloud_filter/cloud_filter.h"
+#include "plane_extraction/plane_extraction.h"
 
 namespace cad_percept {
 namespace matching_algorithms {
@@ -68,7 +68,6 @@ class TestMatcher {
   // Publisher
   ros::Publisher scan_pub_;
   ros::Publisher sample_map_pub_;
-  ros::Publisher plane_pub_;
 
   /**
    * Sampled map callback
@@ -108,8 +107,8 @@ class TestMatcher {
   /**
    * Declare matchers
    */
-  void template_match();
-  void go_icp_match();
+  void templateMatch();
+  void goicpMatch();
 };
 
 }  // namespace matching_algorithms

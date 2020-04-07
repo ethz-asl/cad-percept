@@ -1,11 +1,16 @@
-#include "plane_extraction/plane_extraction_lib.h"
+#include "plane_extraction/plane_extraction.h"
 
-class PlaneExtractionLib::HoughAccumulator {
+namespace cad_percept {
+namespace matching_algorithms {
+
+using namespace pcl;
+
+class PlaneExtractor::HoughAccumulator {
  public:
-  HoughAccumulator() : bin_values_(new pcl::PointCloud<pcl::PointXYZ>){};
+  HoughAccumulator() : bin_values_(new PointCloud<PointXYZ>){};
 
   void vote(Eigen::Vector3d vote, int (&voter)[3]) {
-    pcl::PointXYZ vote_point(vote(0), vote(1), vote(2));
+    PointXYZ vote_point(vote(0), vote(1), vote(2));
     kdtree_.nearestKSearch(vote_point, 1, bin_index_, bin_index_dist_);
     ++bins_[bin_index_[0]];
 
@@ -14,9 +19,9 @@ class PlaneExtractionLib::HoughAccumulator {
     voter_ids_[bin_index_[0]].push_back(voter[2]);
   };
 
-  void non_maximum_suppression(int k_of_maxima_suppression) {
+  void nonMaximumSuppression(int k_of_maxima_suppression) {
     if (k_of_maxima_suppression != 0) {
-      pcl::PointXYZ max_candidate;
+      PointXYZ max_candidate;
       for (int i = 0; i < accumulator_size; ++i) {
         max_candidate.x = bin_values_->points[i].x;
         max_candidate.y = bin_values_->points[i].y;
@@ -34,10 +39,12 @@ class PlaneExtractionLib::HoughAccumulator {
           }
         }
       }
+    } else {
+      std::cout << "Non-maximum Suppression skipped as k is set to zero" << std::endl;
     }
   };
 
-  void findmaxima(int min_vote_threshold, std::vector<std::vector<double>> &plane_coefficients,
+  void findMaxima(int min_vote_threshold, std::vector<std::vector<double>> &plane_coefficients,
                   std::vector<std::vector<int>> &get_voter_ids) {
     std::vector<double> actuel_plane_coefficients;
     plane_coefficients.clear();
@@ -55,7 +62,7 @@ class PlaneExtractionLib::HoughAccumulator {
     }
   };
 
-  void findmaximumplane(int num_main_planes, std::vector<std::vector<double>> &plane_coefficients,
+  void findMaximumPlane(int num_main_planes, std::vector<std::vector<double>> &plane_coefficients,
                         std::vector<std::vector<int>> &get_voter_ids) {
     std::vector<double> actuel_plane_coefficients;
     plane_coefficients.clear();
@@ -81,112 +88,108 @@ class PlaneExtractionLib::HoughAccumulator {
     voter_ids_.clear();
     bins_.clear();
     bins_.resize(accumulator_size);
-    voter_ids_.resize(accumulator_size, std::vector<int>(3));
+    voter_ids_.resize(accumulator_size, std::vector<int>(0));
   }
 
  protected:
-  void initAccumulator(pcl::PointCloud<pcl::PointXYZ>::Ptr accumulator_pc) {
+  void initAccumulator(PointCloud<PointXYZ>::Ptr accumulated_cloud) {
     bins_.resize(accumulator_size);
-    voter_ids_.resize(accumulator_size, std::vector<int>(3));
-    pcl::copyPointCloud(*accumulator_pc, *bin_values_);
+    voter_ids_.resize(accumulator_size, std::vector<int>(0));
+    copyPointCloud(*accumulated_cloud, *bin_values_);
     kdtree_.setInputCloud(bin_values_);
   }
   int accumulator_size;
 
+  int bin_number_rho;
+  int bin_number_theta;
+  int bin_number_psi;
+
  private:
   std::vector<int> bins_;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr bin_values_;
+  PointCloud<PointXYZ>::Ptr bin_values_;
 
-  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree_;
-  pcl::PointXYZ vote_point_;
+  KdTreeFLANN<PointXYZ> kdtree_;
+  PointXYZ vote_point_;
   int k_kdtree_ = 1;
   std::vector<int> bin_index_;
   std::vector<float> bin_index_dist_;
   std::vector<std::vector<int>> voter_ids_;
 };
 
-class PlaneExtractionLib::ArrayAccumulator : public PlaneExtractionLib::HoughAccumulator {
+class PlaneExtractor::ArrayAccumulator : public PlaneExtractor::HoughAccumulator {
  public:
   ArrayAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size, Eigen::Vector3d bin_maxima)
-      : array_accumulator(new pcl::PointCloud<pcl::PointXYZ>) {
-    bin_number_rho_ = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
-    bin_number_theta_ = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
-    bin_number_psi_ = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
-    accumulator_size = bin_number_rho_ * bin_number_theta_ * bin_number_psi_;
+      : accumulated_cloud_(new PointCloud<PointXYZ>) {
+    bin_number_rho = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
+    bin_number_theta = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
+    bin_number_psi = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+    accumulator_size = bin_number_rho * bin_number_theta * bin_number_psi;
 
     std::cout << "ArrayAccumualtor uses a total of " << accumulator_size << std::endl;
-    std::cout << " rho bins: " << bin_number_rho_ << " theta bins: " << bin_number_theta_
-              << " psi bins: " << bin_number_psi_ << std::endl;
+    std::cout << " rho bins: " << bin_number_rho << " theta bins: " << bin_number_theta
+              << " psi bins: " << bin_number_psi << std::endl;
     // Implementation for array accumualtor, should be able to easily adapt to other designs
-    pcl::PointXYZ bin_point;
-    for (int d_rho = 0; d_rho < bin_number_rho_; ++d_rho) {
-      for (int d_theta = 0; d_theta < bin_number_theta_; ++d_theta) {
-        for (int d_psi = 0; d_psi < bin_number_psi_; ++d_psi) {
+    PointXYZ bin_point;
+    for (int d_rho = 0; d_rho < bin_number_rho; ++d_rho) {
+      for (int d_theta = 0; d_theta < bin_number_theta; ++d_theta) {
+        for (int d_psi = 0; d_psi < bin_number_psi; ++d_psi) {
           bin_point.x = d_rho * bin_size[0] + bin_minima[0];
           bin_point.y = d_theta * bin_size[1] + bin_minima[1];
           bin_point.z = d_psi * bin_size[2] + bin_minima[2];
-          array_accumulator->push_back(bin_point);
+          accumulated_cloud_->push_back(bin_point);
         }
       }
     }
-    this->initAccumulator(array_accumulator);
+    this->initAccumulator(accumulated_cloud_);
   }
 
  private:
-  pcl::PointCloud<pcl::PointXYZ>::Ptr array_accumulator;
-  int bin_number_rho_;
-  int bin_number_theta_;
-  int bin_number_psi_;
+  PointCloud<PointXYZ>::Ptr accumulated_cloud_;
 };
 
-class PlaneExtractionLib::BallAccumulator : public PlaneExtractionLib::HoughAccumulator {
+class PlaneExtractor::BallAccumulator : public PlaneExtractor::HoughAccumulator {
  public:
   BallAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size, Eigen::Vector3d bin_maxima)
-      : array_accumulator(new pcl::PointCloud<pcl::PointXYZ>) {
-    bin_number_rho_ = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
-    bin_number_theta_ = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
-    bin_number_psi_ = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
-    accumulator_size = bin_number_rho_ * bin_number_theta_ * bin_number_psi_;
-    accumulator_size = bin_number_rho_ * bin_number_theta_ * bin_number_psi_;
+      : accumulated_cloud_(new PointCloud<PointXYZ>) {
+    bin_number_rho = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
+    bin_number_theta = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
+    bin_number_psi = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+    accumulator_size = bin_number_rho * bin_number_theta * bin_number_psi;
 
     std::cout << "BallAccumualtor uses a total of " << accumulator_size << std::endl;
-    std::cout << " rho bins: " << bin_number_rho_ << " theta bins: " << bin_number_theta_
-              << " psi bins: " << bin_number_psi_ << std::endl;
+    std::cout << " rho bins: " << bin_number_rho << " theta bins: " << bin_number_theta
+              << " psi bins: " << bin_number_psi << std::endl;
     // Implementation for array accumualtor, should be able to easily adapt to other designs
-    pcl::PointXYZ bin_point;
-    for (int d_rho = 0; d_rho < bin_number_rho_; ++d_rho) {
-      for (int d_psi = 0; d_psi < bin_number_psi_; ++d_psi) {
+    PointXYZ bin_point;
+    for (int d_rho = 0; d_rho < bin_number_rho; ++d_rho) {
+      for (int d_psi = 0; d_psi < bin_number_psi; ++d_psi) {
         double delta_theta = 2 * M_PI /
                              (((d_psi + 0.5) * bin_size[2] + bin_minima[2]) *
-                              bin_number_theta_);  // Simplified formula from paper
-        for (int d_theta = 0; d_theta < bin_number_theta_; ++d_theta) {
+                              bin_number_theta);  // Simplified formula from paper
+        for (int d_theta = 0; d_theta < bin_number_theta; ++d_theta) {
           bin_point.x = d_rho * bin_size[0] + bin_minima[0];
           bin_point.y = d_theta * delta_theta + bin_minima[1];
           bin_point.z = d_psi * bin_size[2] + bin_minima[2];
-          array_accumulator->push_back(bin_point);
+          accumulated_cloud_->push_back(bin_point);
         }
       }
     }
-    this->initAccumulator(array_accumulator);
+    this->initAccumulator(accumulated_cloud_);
   }
 
  private:
-  pcl::PointCloud<pcl::PointXYZ>::Ptr array_accumulator;
-  int bin_number_rho_;
-  int bin_number_theta_;
-  int bin_number_psi_;
+  PointCloud<PointXYZ>::Ptr accumulated_cloud_;
 };
 
-void PlaneExtractionLib::rht_vote(int max_iteration, double tol_distance_between_points,
-                                  double min_area_spanned,
-                                  const pcl::PointCloud<pcl::PointXYZ> lidar_scan,
-                                  PlaneExtractionLib::HoughAccumulator *accumulator) {
+void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_points,
+                             double min_area_spanned, PointCloud<PointXYZ> lidar_scan,
+                             HoughAccumulator *accumulator) {
   // Setup needed variables
-  pcl::PointXYZ origin(0, 0, 0);
+  PointXYZ origin(0, 0, 0);
   int reference_point_ids[3];
-  pcl::PointXYZ reference_point[3];
-  pcl::PointXYZ vector_on_plane[2];
-  pcl::PointXYZ normal_of_plane;
+  PointXYZ reference_point[3];
+  PointXYZ vector_on_plane[2];
+  PointXYZ normal_of_plane;
   double norm_of_normal;
   Eigen::Vector3d vote;
 
@@ -203,30 +206,27 @@ void PlaneExtractionLib::rht_vote(int max_iteration, double tol_distance_between
     reference_point[2] = lidar_scan.points[reference_point_ids[2]];
 
     // Check if points are close
-    if (pcl::geometry::distance(reference_point[0], reference_point[1]) >
-        tol_distance_between_points)
+    if (geometry::distance(reference_point[0], reference_point[1]) > tol_distance_between_points)
       continue;
 
-    if (pcl::geometry::distance(reference_point[1], reference_point[2]) >
-        tol_distance_between_points)
+    if (geometry::distance(reference_point[1], reference_point[2]) > tol_distance_between_points)
       continue;
 
-    if (pcl::geometry::distance(reference_point[0], reference_point[2]) >
-        tol_distance_between_points)
+    if (geometry::distance(reference_point[0], reference_point[2]) > tol_distance_between_points)
       continue;
 
-    vector_on_plane[0] = pcl::PointXYZ(reference_point[1].x - reference_point[0].x,
-                                       reference_point[1].y - reference_point[0].y,
-                                       reference_point[1].z - reference_point[0].z);
-    vector_on_plane[1] = pcl::PointXYZ(reference_point[2].x - reference_point[0].x,
-                                       reference_point[2].y - reference_point[0].y,
-                                       reference_point[2].z - reference_point[0].z);
-    normal_of_plane = pcl::PointXYZ(
+    vector_on_plane[0] = PointXYZ(reference_point[1].x - reference_point[0].x,
+                                  reference_point[1].y - reference_point[0].y,
+                                  reference_point[1].z - reference_point[0].z);
+    vector_on_plane[1] = PointXYZ(reference_point[2].x - reference_point[0].x,
+                                  reference_point[2].y - reference_point[0].y,
+                                  reference_point[2].z - reference_point[0].z);
+    normal_of_plane = PointXYZ(
         vector_on_plane[1].y * vector_on_plane[0].z - vector_on_plane[1].z * vector_on_plane[0].y,
         vector_on_plane[1].z * vector_on_plane[0].x - vector_on_plane[1].x * vector_on_plane[0].z,
         vector_on_plane[1].x * vector_on_plane[0].y - vector_on_plane[1].y * vector_on_plane[0].x);
 
-    norm_of_normal = (double)pcl::geometry::distance(origin, normal_of_plane);
+    norm_of_normal = (double)geometry::distance(origin, normal_of_plane);
     // Check if points are collinear or the same
     if (norm_of_normal < min_area_spanned) continue;
 
@@ -249,22 +249,21 @@ void PlaneExtractionLib::rht_vote(int max_iteration, double tol_distance_between
   std::cout << "Voting finished" << std::endl;
 }
 
-std::vector<std::vector<int>> PlaneExtractionLib::rht_eval(
+std::vector<std::vector<int>> PlaneExtractor::rhtEval(
     int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
     std::vector<std::vector<double>> &plane_coefficients,
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-    const pcl::PointCloud<pcl::PointXYZ> lidar_scan,
-    PlaneExtractionLib::HoughAccumulator *accumulator) {
+    std::vector<PointCloud<PointXYZ>> &extracted_planes, PointCloud<PointXYZ> lidar_scan,
+    HoughAccumulator *accumulator) {
   std::vector<std::vector<int>> inlier_ids;
-  pcl::PointCloud<pcl::PointXYZ> used_inliers;
+  PointCloud<PointXYZ> used_inliers;
   bool bit_point_cloud[lidar_scan.size()] = {false};
 
   // Evaluate voting (select between thresholding or number of extracted planes)
-  accumulator->non_maximum_suppression(k_of_maxima_suppression);
+  accumulator->nonMaximumSuppression(k_of_maxima_suppression);
   if (num_main_planes == 0) {
-    accumulator->findmaxima(min_vote_threshold, plane_coefficients, inlier_ids);
+    accumulator->findMaxima(min_vote_threshold, plane_coefficients, inlier_ids);
   } else {
-    accumulator->findmaximumplane(num_main_planes, plane_coefficients, inlier_ids);
+    accumulator->findMaximumPlane(num_main_planes, plane_coefficients, inlier_ids);
   }
 
   // Extract inliers
@@ -293,124 +292,128 @@ std::vector<std::vector<int>> PlaneExtractionLib::rht_eval(
 }
 
 // Plane Extraction using RHT
-void PlaneExtractionLib::rht_plane_extraction(
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-    std::vector<std::vector<double>> &plane_coefficients,
-    const pcl::PointCloud<pcl::PointXYZ> lidar_scan, ros::Publisher &plane_pub,
-    std::string tf_map_frame, ros::NodeHandle &nh_private) {
+void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
+                                        std::vector<std::vector<double>> &plane_coefficients,
+                                        PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         RHT Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
-  int accumulator_choice = nh_private.param<int>("AccumulatorChoice", 1);
-  double rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 100);
-  double theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 20);
-  double psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 10);
+  ros::NodeHandle nh;
+  ros::NodeHandle nh_private("~");
+
+  ros::Publisher plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+
+  int accumulator_choice = nh_private.param<int>("AccumulatorChoice", 2);
+  double rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 0.5);
+  double theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 0.3);
+  double psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 0.3);
   int min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 10);
-  int k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 0);
+  int k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 14);
   float slope_threshold = nh_private.param<float>("AccumulatorSlopeThreshold", 0);
 
-  int max_iteration = nh_private.param<int>("RHTMaxIter", 10000);
-  double tol_distance_between_points = nh_private.param<double>("RHTTolDist", 2);
-  double min_area_spanned = nh_private.param<double>("RHTMinArea", 0.05);
-  int num_main_planes = nh_private.param<int>("RHTPlaneNumber", 0);
+  int max_iteration = nh_private.param<int>("RHTMaxIter", 100000);
+  double tol_distance_between_points = nh_private.param<double>("RHTTolDist", 3);
+  double min_area_spanned = nh_private.param<double>("RHTMinArea", 0.5);
+  int num_main_planes = nh_private.param<int>("RHTPlaneNumber", 8);
 
-  pcl::PointXYZ origin(0, 0, 0);
+  PointXYZ origin(0, 0, 0);
   double max_distance_to_point = 0;
   for (int i = 0; i < lidar_scan.size(); i++) {
-    if ((double)pcl::geometry::distance(origin, lidar_scan.points[i]) > max_distance_to_point)
-      max_distance_to_point = (double)pcl::geometry::distance(origin, lidar_scan.points[i]);
+    if ((double)geometry::distance(origin, lidar_scan.points[i]) > max_distance_to_point)
+      max_distance_to_point = (double)geometry::distance(origin, lidar_scan.points[i]);
   }
 
-  PlaneExtractionLib::HoughAccumulator *accumulator;
+  HoughAccumulator *accumulator;
 
   if (accumulator_choice == 2) {
     std::cout << "Initialize ball accumulator" << std::endl;
     Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
     Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
     Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-    accumulator = new (PlaneExtractionLib::HoughAccumulator)(
-        PlaneExtractionLib::BallAccumulator(min_coord, bin_size, max_coord));
+    accumulator = new (HoughAccumulator)(BallAccumulator(min_coord, bin_size, max_coord));
   } else {
     std::cout << "Initialize array accumulator" << std::endl;
     Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
     Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
     Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-    accumulator = new (PlaneExtractionLib::HoughAccumulator)(
-        PlaneExtractionLib::ArrayAccumulator(min_coord, bin_size, max_coord));
+    accumulator = new (HoughAccumulator)(ArrayAccumulator(min_coord, bin_size, max_coord));
   }
 
   // Perform RHT
-  PlaneExtractionLib::rht_vote(max_iteration, tol_distance_between_points, min_area_spanned,
-                               lidar_scan, accumulator);
+  rhtVote(max_iteration, tol_distance_between_points, min_area_spanned, lidar_scan, accumulator);
   // Evaluation
-  PlaneExtractionLib::rht_eval(num_main_planes, min_vote_threshold, k_of_maxima_suppression,
-                               plane_coefficients, extracted_planes, lidar_scan, accumulator);
+  rhtEval(num_main_planes, min_vote_threshold, k_of_maxima_suppression, plane_coefficients,
+          extracted_planes, lidar_scan, accumulator);
 
-  visualize_plane(extracted_planes, plane_pub, tf_map_frame);
+  visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
+  // Give out information about extracted planes
   for (int i = 0; i < extracted_planes.size(); ++i) {
     std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
               << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
   }
 }
 
-void PlaneExtractionLib::iter_rht_plane_extraction(
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-    std::vector<std::vector<double>> &plane_coefficients,
-    const pcl::PointCloud<pcl::PointXYZ> lidar_scan, ros::Publisher &plane_pub,
-    std::string tf_map_frame, ros::NodeHandle &nh_private) {
+void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
+                                            std::vector<std::vector<double>> &plane_coefficients,
+                                            PointCloud<PointXYZ> lidar_scan,
+                                            std::string tf_map_frame) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
-  double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 100);
-  double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 20);
-  double psi_resolution = nh_private.param<double>("iterAccumulatorPsiResolution", 10);
-  int k_of_maxima_suppression = nh_private.param<int>("iterAccumulatorKMaxSuppress", 0);
+  ros::NodeHandle nh;
+  ros::NodeHandle nh_private("~");
+
+  ros::Publisher plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+
+  double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 0.5);
+  double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 0.3);
+  double psi_resolution = nh_private.param<double>("iterAccumulatorPsiResolution", 0.3);
+  int k_of_maxima_suppression = nh_private.param<int>("iterAccumulatorKMaxSuppress", 14);
   int min_vote_threshold = nh_private.param<int>("iterAccumulatorMinThreshold", 0);
 
-  int iteration_per_plane = nh_private.param<int>("iterRHTIter", 100);
+  int iteration_per_plane = nh_private.param<int>("iterRHTIter", 10000);
   double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 2);
-  double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.05);
+  double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.5);
   int num_main_planes = nh_private.param<int>("iterRHTPlaneNumber", 8);
   int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlaneperIter", 1);
 
   // Copy lidar frame to remove points
-  pcl::PointCloud<pcl::PointXYZ>::Ptr copy_lidar_scan(new pcl::PointCloud<pcl::PointXYZ>());
-  pcl::copyPointCloud(lidar_scan, *copy_lidar_scan);
+  PointCloud<PointXYZ>::Ptr copy_lidar_scan(new PointCloud<PointXYZ>());
+  copyPointCloud(lidar_scan, *copy_lidar_scan);
 
   // Ball Accumulator setup
-  pcl::PointXYZ origin(0, 0, 0);
+  PointXYZ origin(0, 0, 0);
   double max_distance_to_point = 0;
   for (int i = 0; i < lidar_scan.size(); i++) {
-    if ((double)pcl::geometry::distance(origin, copy_lidar_scan->points[i]) > max_distance_to_point)
-      max_distance_to_point = (double)pcl::geometry::distance(origin, copy_lidar_scan->points[i]);
+    if ((double)geometry::distance(origin, copy_lidar_scan->points[i]) > max_distance_to_point)
+      max_distance_to_point = (double)geometry::distance(origin, copy_lidar_scan->points[i]);
   }
   std::cout << "Initialize ball accumulator" << std::endl;
   Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
   Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
   Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-  PlaneExtractionLib::HoughAccumulator *accumulator;
-  accumulator = new (PlaneExtractionLib::HoughAccumulator)(
-      PlaneExtractionLib::BallAccumulator(min_coord, bin_size, max_coord));
+  HoughAccumulator *accumulator;
+  accumulator = new (HoughAccumulator)(BallAccumulator(min_coord, bin_size, max_coord));
 
-  pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
+  ExtractIndices<PointXYZ> indices_filter;
   std::vector<std::vector<int>> inlier_ids;
   std::vector<int> rm_indices;
 
   std::vector<std::vector<double>> iter_plane_coefficients;
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> iter_extracted_planes;
+  std::vector<PointCloud<PointXYZ>> iter_extracted_planes;
 
   for (int iter = 0; iter < num_main_planes; ++iter) {
     // Perform RHT
-    PlaneExtractionLib::rht_vote(iteration_per_plane, tol_distance_between_points, min_area_spanned,
-                                 *copy_lidar_scan, accumulator);
+    rhtVote(iteration_per_plane, tol_distance_between_points, min_area_spanned, *copy_lidar_scan,
+            accumulator);
 
     // Evaluation
-    inlier_ids = PlaneExtractionLib::rht_eval(number_of_plane_per_iter, min_vote_threshold,
-                                              k_of_maxima_suppression, iter_plane_coefficients,
-                                              iter_extracted_planes, *copy_lidar_scan, accumulator);
+    inlier_ids =
+        rhtEval(number_of_plane_per_iter, min_vote_threshold, k_of_maxima_suppression,
+                iter_plane_coefficients, iter_extracted_planes, *copy_lidar_scan, accumulator);
 
     // Add part result to general result
     for (int plane_nr = 0; plane_nr < number_of_plane_per_iter; ++plane_nr) {
@@ -436,8 +439,9 @@ void PlaneExtractionLib::iter_rht_plane_extraction(
     min_vote_threshold = 0;
   }
 
-  visualize_plane(extracted_planes, plane_pub, tf_map_frame);
+  visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
+  // Give out information about extracted planes
   for (int i = 0; i < extracted_planes.size(); ++i) {
     std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
               << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
@@ -445,40 +449,43 @@ void PlaneExtractionLib::iter_rht_plane_extraction(
 }
 
 // Plane Extraction using pcl tutorial (see also planarSegmentationPCL)
-void PlaneExtractionLib::pcl_plane_extraction(
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-    std::vector<std::vector<double>> &plane_coefficients,
-    const pcl::PointCloud<pcl::PointXYZ> lidar_scan, ros::Publisher &plane_pub,
-    std::string tf_map_frame, ros::NodeHandle &nh_private) {
+void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
+                                        std::vector<std::vector<double>> &plane_coefficients,
+                                        PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         PCL Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
+  ros::NodeHandle nh;
+  ros::NodeHandle nh_private("~");
+
+  ros::Publisher plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+
   double distance_threshold = nh_private.param<double>("PCLDistanceThreshold", 0.01);
-  int max_number_of_plane = nh_private.param<int>("PCLMaxNumPlane", 12);
+  int max_number_of_plane = nh_private.param<int>("PCLMaxNumPlane", 8);
   int min_number_of_inlier = nh_private.param<int>("PCLMinInlier", 15);
 
   // Find plane with PCL
-  pcl::PointCloud<pcl::PointXYZ>::Ptr copy_lidar_scan(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::copyPointCloud(lidar_scan, *copy_lidar_scan);
+  PointCloud<PointXYZ>::Ptr copy_lidar_scan(new PointCloud<PointXYZ>);
+  copyPointCloud(lidar_scan, *copy_lidar_scan);
 
   std::cout << "Setup Plane Model Extraction" << std::endl;
-  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+  ModelCoefficients::Ptr coefficients(new ModelCoefficients);
+  PointIndices::Ptr inliers(new PointIndices);
   // Create the segmentation object
-  pcl::SACSegmentation<pcl::PointXYZ> seg;
+  SACSegmentation<PointXYZ> seg;
   // Optional
   seg.setOptimizeCoefficients(true);
   // Mandatory
-  seg.setModelType(pcl::SACMODEL_PLANE);
-  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setModelType(SACMODEL_PLANE);
+  seg.setMethodType(SAC_RANSAC);
   seg.setDistanceThreshold(distance_threshold);
 
   std::cout << "Start to extract planes" << std::endl;
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr extracted_inlier_points(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
-  pcl::PointXYZ normal_of_plane;
+  PointCloud<PointXYZ>::Ptr extracted_inlier_points(new PointCloud<PointXYZ>);
+  ExtractIndices<PointXYZ> indices_filter;
+  PointXYZ normal_of_plane;
   double norm_of_normal;
   std::vector<double> actuel_plane_coefficients{0, 0, 0};
 
@@ -523,8 +530,9 @@ void PlaneExtractionLib::pcl_plane_extraction(
            copy_lidar_scan->size() > min_number_of_inlier);
 
   // Visualize plane
-  visualize_plane(extracted_planes, plane_pub, tf_map_frame);
+  visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
+  // Give out information about extracted planes
   for (int i = 0; i < extracted_planes.size(); ++i) {
     std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
               << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
@@ -532,28 +540,25 @@ void PlaneExtractionLib::pcl_plane_extraction(
 }
 
 // Visualization of planes in rviz
-void PlaneExtractionLib::visualize_plane(
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes, ros::Publisher &plane_pub,
-    std::string tf_map_frame) {
+void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted_planes,
+                                    ros::Publisher &plane_pub, std::string tf_map_frame) {
   std::cout << "Start Visualization" << std::endl;
 
   int color[8][3] = {{0, 0, 0},     {255, 0, 0},   {0, 255, 0},   {0, 0, 255},
                      {255, 255, 0}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
 
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr segmented_point_cloud(
-      new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr colored_inlier_points(
-      new pcl::PointCloud<pcl::PointXYZRGB>);
+  PointCloud<PointXYZRGB>::Ptr segmented_point_cloud(new PointCloud<PointXYZRGB>);
+  PointCloud<PointXYZRGB>::Ptr colored_inlier_points(new PointCloud<PointXYZRGB>);
 
   if (extracted_planes.size() == 0) {
-    std::cout << "No planes found" << std::endl;
+    std::cout << "No planes to visualize" << std::endl;
     return;
   } else {
     std::cout << "Found " << extracted_planes.size() << " planes, visualize plane inliers... "
               << std::endl;
     for (std::size_t i = 0; i < extracted_planes.size(); ++i) {
       colored_inlier_points->clear();
-      pcl::copyPointCloud(extracted_planes[i], *colored_inlier_points);
+      copyPointCloud(extracted_planes[i], *colored_inlier_points);
       for (std::size_t j = 0; j < colored_inlier_points->size(); ++j) {
         colored_inlier_points->points[j].r = color[i % 8][0];
         colored_inlier_points->points[j].g = color[i % 8][1];
@@ -565,7 +570,9 @@ void PlaneExtractionLib::visualize_plane(
   }
   sensor_msgs::PointCloud2 segmentation_mesg;
   segmented_point_cloud->header.frame_id = tf_map_frame;
-  pcl::toROSMsg(*segmented_point_cloud, segmentation_mesg);
+  toROSMsg(*segmented_point_cloud, segmentation_mesg);
   plane_pub.publish(segmentation_mesg);
   std::cout << "Publish plane segmentation" << std::endl;
 }
+}  // namespace matching_algorithms
+}  // namespace cad_percept
