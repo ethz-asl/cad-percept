@@ -308,14 +308,14 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   double rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 0.5);
   double theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 0.3);
   double psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 0.3);
-  int min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 10);
+  int min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 0);
   int k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 14);
   float slope_threshold = nh_private.param<float>("AccumulatorSlopeThreshold", 0);
 
   int max_iteration = nh_private.param<int>("RHTMaxIter", 100000);
   double tol_distance_between_points = nh_private.param<double>("RHTTolDist", 3);
   double min_area_spanned = nh_private.param<double>("RHTMinArea", 0.5);
-  int num_main_planes = nh_private.param<int>("RHTPlaneNumber", 8);
+  int num_main_planes = nh_private.param<int>("RHTPlaneNumber", 1);
 
   PointXYZ origin(0, 0, 0);
   double max_distance_to_point = 0;
@@ -375,7 +375,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   int min_vote_threshold = nh_private.param<int>("iterAccumulatorMinThreshold", 0);
 
   int iteration_per_plane = nh_private.param<int>("iterRHTIter", 10000);
-  double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 2);
+  double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 3);
   double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.5);
   int num_main_planes = nh_private.param<int>("iterRHTPlaneNumber", 8);
   int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlaneperIter", 1);
