@@ -13,8 +13,8 @@ cs_add_library(test_matcher
      src/test_matcher/test_matcher.cpp
      src/test_matcher/matcher/template_matcher.cpp
      src/test_matcher/matcher/go_icp_matcher.cpp
-     src/cloud_filtering/cloud_filtering_lib.cpp
-     src/plane_extraction/plane_extraction_lib.cpp
+     src/cloud_filter/cloud_filter.cpp
+     src/plane_extraction/plane_extraction.cpp
 	)
 
 
@@ -31,13 +31,16 @@ cs_add_executable(sim_lidar_node
     src/test_matcher/sim_lidar_node.cpp
     )
 
-
 target_link_libraries(test_matcher_node test_matcher)
 
 
 #############
 ## Testing ##
 #############
+catkin_add_gtest(${PROJECT_NAME}_tests
+    test/test_main.cpp
+    test/test_plane_extraction.cpp)
+target_link_libraries(${PROJECT_NAME}_tests test_matcher)
 
 #############
 ## EXPORT ##
