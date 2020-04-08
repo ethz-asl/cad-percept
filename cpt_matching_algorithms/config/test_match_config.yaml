@@ -5,7 +5,22 @@ mapSamplingDensity: 20
 
 usetoyproblem: true
 
-#Select Matcher (only one)
-use_template: false
-use_go_icp: true
+#Select Matcher
+Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
+
+# Settings for Plane Matcher
+
+# Filters
+useStructureFilter: true
+StructureThreshold: 150
+
+useVoxelCentroidFilter: true
+Voxelsearchradius: 0.1
+
+# Plane Extraction
+PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
+
+# Plane Matching
+
+# Transform Calculation
 
