@@ -3,7 +3,7 @@
 namespace cad_percept {
 namespace matching_algorithms {
 
-void TestMatcher::template_match() {
+void TestMatcher::templateMatch() {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "            Template matcher started           " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;

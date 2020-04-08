@@ -81,9 +81,21 @@ void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
     pcl::PCLPointCloud2 lidar_pc2;
     pcl_conversions::toPCL(lidar_scan_p2, lidar_pc2);
     pcl::fromPCLPointCloud2(lidar_pc2, lidar_scan_);
+    std::vector<int> nan_indices;
+    pcl::removeNaNFromPointCloud(lidar_scan_, lidar_scan_, nan_indices);
+    if (nan_indices.size() != 0) {
+      std::cout << "Attention: Detected NaNs in the given point cloud. Removed this values..."
+                << std::endl;
+    }
 
-    std::cout << "Lidar frame ready" << std::endl;
+    std::cout << "Lidar scan ready" << std::endl;
     lidar_scan_ready_ = true;
+
+    // Get static structure information point cloud
+    if (nh_private_.param<bool>("useStructureFilter", false)) {
+      pcl::fromROSMsg(lidar_scan_p2, static_structure_cloud_);
+      pcl::removeNaNFromPointCloud(static_structure_cloud_, static_structure_cloud_, nan_indices);
+    }
 
     if (map_ready_) {
       match();
@@ -145,11 +157,39 @@ void TestMatcher::match() {
   ///////////////////////////////////////*/
 
   // Selection of mapper
-  if (nh_private_.param<bool>("usetemplate", false)) {
-    template_match();
-  }
-  if (nh_private_.param<bool>("use_go_icp", false)) {
-    go_icp_match();
+  std::string matcher = nh_private_.param<std::string>("Matcher", "fail");
+  if (!matcher.compare("template")) {
+    templateMatch();
+  } else if (!matcher.compare("GoICP")) {
+    goicpMatch();
+  } else if (!matcher.compare("PlaneMatcher")) {
+    // Filtering / Preprocessing Point Cloud
+    if (nh_private_.param<bool>("useStructureFilter", false)) {
+      int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
+      CloudFilter::filterStaticObject(structure_threshold, lidar_scan_, static_structure_cloud_);
+    }
+    if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
+      float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
+      CloudFilter::filterVoxelCentroid(search_radius, lidar_scan_);
+    }
+    // Plane Extraction
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+    std::vector<std::vector<double>> plane_coefficients;
+    std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
+    if (!extractor.compare("pclPlaneExtraction")) {
+      PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                         tf_map_frame_, plane_pub_);
+    } else if (!extractor.compare("rhtPlaneExtraction")) {
+      PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                         tf_map_frame_, plane_pub_);
+    } else if (!extractor.compare("iterRhtPlaneExtraction")) {
+      PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                             tf_map_frame_, plane_pub_);
+    } else {
+      std::cout << "Error: Could not find given plane extractor" << std::endl;
+    }
+  } else {
+    std::cout << "Error: Could not find given matcher" << std::endl;
   }
 
   /*//////////////////////////////////////
@@ -176,7 +216,7 @@ void TestMatcher::match() {
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_, ros::Time::now()));
 
   ready_for_eval_ = true;
-}
+}  // namespace matching_algorithms
 
 void TestMatcher::evaluate() {
   /*//////////////////////////////////////

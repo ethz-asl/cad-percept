@@ -11,6 +11,8 @@
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
 
+  <test_depend>rosunit</test_depend>
+
   <depend>cgal_conversions</depend>
   <depend>cgal_definitions</depend>
   <depend>cgal_msgs</depend>
