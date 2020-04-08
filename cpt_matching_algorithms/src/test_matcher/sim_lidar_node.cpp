@@ -38,7 +38,7 @@ float noise_variance;
 ros::Publisher scan_pub;
 
 void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
-void simulate_lidar();
+void simulateLidar();
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "lidar_simulator");
@@ -101,11 +101,11 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     std::cout << "CAD ready" << std::endl;
     got_CAD = true;
 
-    simulate_lidar();
+    simulateLidar();
   }
 }
 
-void simulate_lidar() {
+void simulateLidar() {
   // Transform point cloud according to ground truth
   cad_percept::cgal::Transformation ctransformation;
   Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
