@@ -294,7 +294,8 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
 // Plane Extraction using RHT
 void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
                                         std::vector<std::vector<double>> &plane_coefficients,
-                                        PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame) {
+                                        PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
+                                        ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         RHT Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -302,7 +303,7 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
 
-  ros::Publisher plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+  plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
   int accumulator_choice = nh_private.param<int>("AccumulatorChoice", 2);
   double rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 0.5);
@@ -358,7 +359,7 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
 void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
                                             std::vector<std::vector<double>> &plane_coefficients,
                                             PointCloud<PointXYZ> lidar_scan,
-                                            std::string tf_map_frame) {
+                                            std::string tf_map_frame, ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -366,7 +367,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
 
-  ros::Publisher plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+  plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
   double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 0.5);
   double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 0.3);
@@ -429,7 +430,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
     indices_filter.setIndices(inliers_ptr);
     indices_filter.setNegative(true);
     indices_filter.filter(*copy_lidar_scan);
-    std::cout << copy_lidar_scan->size() << std::endl;
+    if (copy_lidar_scan->size() == 0) break;
 
     // Reset for next iteration
     iter_extracted_planes.clear();
@@ -451,7 +452,8 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 // Plane Extraction using pcl tutorial (see also planarSegmentationPCL)
 void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
                                         std::vector<std::vector<double>> &plane_coefficients,
-                                        PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame) {
+                                        PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
+                                        ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         PCL Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -459,7 +461,7 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
 
-  ros::Publisher plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+  plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
   double distance_threshold = nh_private.param<double>("PCLDistanceThreshold", 0.01);
   int max_number_of_plane = nh_private.param<int>("PCLMaxNumPlane", 8);

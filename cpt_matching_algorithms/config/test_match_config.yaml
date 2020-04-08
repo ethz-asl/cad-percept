@@ -6,7 +6,7 @@ mapSamplingDensity: 20
 usetoyproblem: true
 
 #Select Matcher
-Matcher: 2 # 0: template, 1: GoICP, 2: PlaneMatcher
+Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
 
 # Settings for Plane Matcher
 
@@ -18,7 +18,7 @@ useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
 # Plane Extraction
-PlaneExtractor: 2 # 0: pclPlaneExtraction, 1: rhtPlaneExtraction, 2: iterRhtPlaneExtraction
+PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
 
 # Plane Matching
 

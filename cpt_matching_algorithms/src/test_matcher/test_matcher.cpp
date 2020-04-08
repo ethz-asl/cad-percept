@@ -157,50 +157,39 @@ void TestMatcher::match() {
   ///////////////////////////////////////*/
 
   // Selection of mapper
-  int matcher = nh_private_.param<int>("Matcher", 0);
-  switch (matcher) {
-    case 0:
-      templateMatch();
-      break;
-    case 1:
-      goicpMatch();
-      break;
-    case 2: {
-      // Filtering / Preprocessing Point Cloud
-      if (nh_private_.param<bool>("useStructureFilter", false)) {
-        int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
-        CloudFilter::filterStaticObject(structure_threshold, lidar_scan_, static_structure_cloud_);
-      }
-      if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
-        float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
-        CloudFilter::filterVoxelCentroid(search_radius, lidar_scan_);
-      }
-
-      // Plane Extraction
-      std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-      std::vector<std::vector<double>> plane_coefficients;
-      int extractor = nh_private_.param<int>("PlaneExtractor", 0);
-      switch (extractor) {
-        case 0:
-          PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                             tf_map_frame_);
-          break;
-        case 1:
-          PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                             tf_map_frame_);
-          break;
-        case 2:
-          PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                                 tf_map_frame_);
-          break;
-        default:
-          PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                                 tf_map_frame_);
-      }
-      break;
+  std::string matcher = nh_private_.param<std::string>("Matcher", "fail");
+  if (!matcher.compare("template")) {
+    templateMatch();
+  } else if (!matcher.compare("GoICP")) {
+    goicpMatch();
+  } else if (!matcher.compare("PlaneMatcher")) {
+    // Filtering / Preprocessing Point Cloud
+    if (nh_private_.param<bool>("useStructureFilter", false)) {
+      int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
+      CloudFilter::filterStaticObject(structure_threshold, lidar_scan_, static_structure_cloud_);
     }
-    default:
-      templateMatch();
+    if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
+      float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
+      CloudFilter::filterVoxelCentroid(search_radius, lidar_scan_);
+    }
+    // Plane Extraction
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+    std::vector<std::vector<double>> plane_coefficients;
+    std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
+    if (!extractor.compare("pclPlaneExtraction")) {
+      PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                         tf_map_frame_, plane_pub_);
+    } else if (!extractor.compare("rhtPlaneExtraction")) {
+      PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                         tf_map_frame_, plane_pub_);
+    } else if (!extractor.compare("iterRhtPlaneExtraction")) {
+      PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                             tf_map_frame_, plane_pub_);
+    } else {
+      std::cout << "Error: Could not find given plane extractor" << std::endl;
+    }
+  } else {
+    std::cout << "Error: Could not find given matcher" << std::endl;
   }
 
   /*//////////////////////////////////////
@@ -227,7 +216,7 @@ void TestMatcher::match() {
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_, ros::Time::now()));
 
   ready_for_eval_ = true;
-}
+}  // namespace matching_algorithms
 
 void TestMatcher::evaluate() {
   /*//////////////////////////////////////
