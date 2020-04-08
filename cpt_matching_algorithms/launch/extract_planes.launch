@@ -5,16 +5,18 @@
     <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set/scan200.bag" />
     <arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
 
+    <arg name="lidar_frame" value="marker_pose" />
+
    <node name="test_matcher"  pkg="cpt_matching_algorithms" type="test_matcher_node" output="screen" launch-prefix="tmux split-window -h">
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/test_match_config.yaml"/>
 
-        <param name="tfLidarFrame" value="marker_pose" />
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml" />
         
         <param name="goicp_folder" value="$(find go_icp_catkin)"/>
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/go_icp_config.yaml" />
         
         <rosparam command="load" file="$(arg lidar_settings)" />
+        <param name="tfLidarFrame" value="$(arg lidar_frame)" />
         <param name="tfMapFrame" value="/map" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
         <param name="lidarTopic" value="rslidar_points" />
@@ -25,12 +27,11 @@
     <node name="lidar_simulator"  pkg="cpt_matching_algorithms" type="sim_lidar_node" output="screen" launch-prefix="tmux split-window">
         <rosparam command="load" file="$(arg lidar_settings)" />
         
-        <param name="lidarFrame" value="marker_pose" />
+        <param name="tfLidarFrame" value="$(arg lidar_frame)" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
     </node>
-    
-    <arg name="lidar_frame" value="marker_pose" />
-    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="-2 2 1 0 0 0.724872 0.6894984 map $(arg lidar_frame)  100"/>
+
+    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="13 -4.5 1 0 0 0.3428978 0.9393727 map $(arg lidar_frame)  100"/>
 
     <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(arg lidar_scan)" />
 

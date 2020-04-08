@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
   noise_variance = nh_private.param<float>("accuracy_of_lidar", 0.02);
 
   fix_lidar_scan = nh_private.param<bool>("FixLidarScans", true);
-  tf_lidar_frame = nh_private.param<std::string>("lidarFrame", "simulated_lidar_pose");
+  tf_lidar_frame = nh_private.param<std::string>("tfLidarFrame", "marker_pose");
 
   // Get mesh
   std::string cad_topic = nh_private.param<std::string>("cadTopic", "fail");
