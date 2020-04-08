@@ -30,15 +30,15 @@ class PlaneExtractor {
   static void rhtPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
                                  std::vector<std::vector<double>> &plane_coefficients,
                                  pcl::PointCloud<pcl::PointXYZ> lidar_scan,
-                                 std::string tf_map_frame);
+                                 std::string tf_map_frame, ros::Publisher &plane_pub);
   static void iterRhtPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
                                      std::vector<std::vector<double>> &plane_coefficients,
                                      pcl::PointCloud<pcl::PointXYZ> lidar_scan,
-                                     std::string tf_map_frame);
+                                     std::string tf_map_frame, ros::Publisher &plane_pub);
   static void pclPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
                                  std::vector<std::vector<double>> &plane_coefficients,
                                  pcl::PointCloud<pcl::PointXYZ> lidar_scan,
-                                 std::string tf_map_frame);
+                                 std::string tf_map_frame, ros::Publisher &plane_pub);
   static void visualizePlane(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
                              ros::Publisher &plane_pub, std::string tf_map_frame);
 

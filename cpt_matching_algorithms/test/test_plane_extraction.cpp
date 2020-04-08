@@ -33,7 +33,7 @@ class TestingMesh : public CGAL::Modifier_base<HDS> {
   }
 };
 
-TEST(RHTExtractionTest, normal_computation_testCase1) {
+TEST(PlaneExtractionTest, pclPlaneExtraction) {
   Polyhedron m;
   TestingMesh<HalfedgeDS> testcase;
   m.delegate(testcase);
@@ -47,28 +47,71 @@ TEST(RHTExtractionTest, normal_computation_testCase1) {
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
   std::vector<std::vector<double>> plane_coefficients;
   std::string tf_map_frame = "map";
+  ros::Publisher plane_pub_;
 
-  PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, pointcloud,
-                                     tf_map_frame);
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.5 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.5 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.5);
+  PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, pointcloud, tf_map_frame,
+                                     plane_pub_);
+  std::cout << "pclPlaneExtraction found plane at rho: " << plane_coefficients[0][0]
+            << " theta: " << plane_coefficients[0][1] << " psi: " << plane_coefficients[0][2]
+            << std::endl;
 
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.3 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.3 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.3);
+}
+
+TEST(PlaneExtractionTest, rhtPlaneExtraction) {
+  Polyhedron m;
+  TestingMesh<HalfedgeDS> testcase;
+  m.delegate(testcase);
+
+  MeshModel::Ptr model;
+  MeshModel::create(m, &model);
+
+  pcl::PointCloud<pcl::PointXYZ> pointcloud;
   cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
-  extracted_planes.clear();
-  plane_coefficients.clear();
-  PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_coefficients, pointcloud,
-                                     tf_map_frame);
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.5 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.5 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.5);
 
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+  std::vector<std::vector<double>> plane_coefficients;
+  std::string tf_map_frame = "map";
+  ros::Publisher plane_pub_;
+
+  PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_coefficients, pointcloud, tf_map_frame,
+                                     plane_pub_);
+
+  std::cout << "rhtPlaneExtraction found plane at rho: " << plane_coefficients[0][0]
+            << " theta: " << plane_coefficients[0][1] << " psi: " << plane_coefficients[0][2]
+            << std::endl;
+
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.3 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.3 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.3);
+}
+
+TEST(PlaneExtractionTest, interRhtPlaneExtraction) {
+  Polyhedron m;
+  TestingMesh<HalfedgeDS> testcase;
+  m.delegate(testcase);
+
+  MeshModel::Ptr model;
+  MeshModel::create(m, &model);
+
+  pcl::PointCloud<pcl::PointXYZ> pointcloud;
   cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
-  extracted_planes.clear();
-  plane_coefficients.clear();
+
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+  std::vector<std::vector<double>> plane_coefficients;
+  std::string tf_map_frame = "map";
+  ros::Publisher plane_pub_;
+
   PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, pointcloud,
-                                         tf_map_frame);
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.5 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.5 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.5);
+                                         tf_map_frame, plane_pub_);
+
+  std::cout << "iterRhtPlaneExtraction found plane at rho: " << plane_coefficients[0][0]
+            << " theta: " << plane_coefficients[0][1] << " psi: " << plane_coefficients[0][2]
+            << std::endl;
+
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.3 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.3 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.3);
 }

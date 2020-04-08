@@ -9,9 +9,7 @@
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/test_match_config.yaml"/>
         <rosparam command="load" file="$(arg lidar_settings)" />
 
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/rht_config.yaml" />
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/iter_rht_config.yaml" />
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/pcl_config.yaml" />
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml" />
 
         <param name="tfMapFrame" value="/map" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
@@ -32,12 +30,6 @@
           type="position_cad_with_marker.py">
         <param name="marker_parent_frame" value="map" />
         <param name="marker_frame_name" value="marker" />
-    </node>
-
-    <node name="find_id_in_mesh"
-          pkg="cpt_utils"
-          type="find_closest_id_in_mesh.py">
-        <param name="marker_parent_frame" value="marker" />
     </node>
 
     <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">

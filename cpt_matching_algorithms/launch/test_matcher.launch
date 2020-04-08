@@ -7,6 +7,8 @@
 
    <node name="test_matcher"  pkg="cpt_matching_algorithms" type="test_matcher_node" output="screen" launch-prefix="tmux split-window -h">
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/test_match_config.yaml"/>
+
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml" />
         
         <param name="goicp_folder" value="$(find go_icp_catkin)"/>
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/go_icp_config.yaml" />
@@ -31,12 +33,6 @@
           type="position_cad_with_marker.py">
         <param name="marker_parent_frame" value="map" />
         <param name="marker_frame_name" value="marker" />
-    </node>
-
-    <node name="find_id_in_mesh"
-          pkg="cpt_utils"
-          type="find_closest_id_in_mesh.py">
-        <param name="marker_parent_frame" value="marker" />
     </node>
 
     <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">

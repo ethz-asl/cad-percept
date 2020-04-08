@@ -68,6 +68,7 @@ class TestMatcher {
   // Publisher
   ros::Publisher scan_pub_;
   ros::Publisher sample_map_pub_;
+  ros::Publisher plane_pub_;
 
   /**
    * Sampled map callback
