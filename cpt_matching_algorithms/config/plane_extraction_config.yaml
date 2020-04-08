@@ -1,0 +1,43 @@
+# Settings of PCL
+
+PCLDistanceThreshold: 0.01
+PCLMaxNumPlane: 8
+PCLMinInlier: 15
+
+# Settings of accumulator
+
+AccumulatorChoice: 2 # 1: array, 2: ball
+#AccumulatorSlopeThreshold: 2
+AccumulatorRhoResolution: 0.5
+AccumulatorThetaResolution: 0.3
+AccumulatorPsiResolution: 0.3
+AccumulatorThreshold: 10
+AccumulatorKMaxSuppress: 14 # set to zero to deactivate
+
+
+# Settings of RHT
+
+RHTMaxIter: 100000
+RHTTolDist: 3    # makes sure points are not too far apart
+RHTMinArea: 0.5
+RHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown
+
+
+#Settings of iterative RHT
+
+# Settings of accumulator
+iterAccumulatorRhoResolution: 0.5
+iterAccumulatorThetaResolution: 0.3
+iterAccumulatorPsiResolution: 0.3
+iterAccumulatorKMaxSuppress: 14 # set to zero to deactivate
+iterAccumulatorMinThreshold: 0
+
+# Settings of RHT
+iterRHTIter: 1000000
+iterRHTTolDist: 2   # makes sure points are not too far apart
+iterRHTMinArea: 0.5
+iterRHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown
+iterRHTNumPlaneperIter: 1
+
+
+
