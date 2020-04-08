@@ -292,7 +292,7 @@ void TestMatcher::match() {
       PlaneMatchLib::prrus(transform_TR_, extracted_planes_, map_planes_, nh_private_);
     }
     if (nh_private_.param<bool>("usePlaneDescriptor", false)) {
-      PlaneMatchLib::PlaneDescriptor(transform_TR_, extracted_planes_, map_planes_, nh_private_);
+      PlaneMatchLib::PlaneDescriptor(transform_TR_, extracted_planes_, map_planes_);
     }
     if (nh_private_.param<bool>("useMatchSolution", false)) {
       PlaneMatchLib::load_example_sol(transform_TR_, extracted_planes_, map_planes_, nh_private_);

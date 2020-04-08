@@ -1,5 +1,7 @@
 #include "plane_matching/plane_matching_lib.h"
 
+using namespace cad_percept::cgal;
+
 void PlaneMatchLib::prrus(float (&transformTR)[7],
                           const pcl::PointCloud<pcl::PointNormal> scan_planes,
                           const pcl::PointCloud<pcl::PointNormal> map_planes,
@@ -95,238 +97,160 @@ void PlaneMatchLib::prrus(float (&transformTR)[7],
 
 void PlaneMatchLib::PlaneDescriptor(float (&transformTR)[7],
                                     const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                    const pcl::PointCloud<pcl::PointNormal> map_planes,
-                                    ros::NodeHandle &nh_private) {
+                                    const pcl::PointCloud<pcl::PointNormal> map_planes) {
   float threshold_horizontal = 0.8;
   float parallel_threshold = 0.5;
   std::cout << "////  Plane Descriptor Started  ////" << std::endl;
 
-  // Seperate planes into vertical and horizontal
-  // Use of IMU?
-  std::vector<int> map_horizontal_planes;
-  std::vector<int> map_vertical_planes;
-  for (int plane_nr = 0; plane_nr < map_planes.size(); ++plane_nr) {
-    if (std::abs(map_planes.points[plane_nr].normal_z) > threshold_horizontal) {
-      // std::cout << "horizontal map : " << plane_nr << std::endl;
-      map_horizontal_planes.push_back(plane_nr);
-    } else {
-      map_vertical_planes.push_back(plane_nr);
-    }
-  }
+  std::vector<std::vector<Eigen::Vector3d>> scan_intersection_points;
+  std::vector<std::vector<std::array<int, 3>>> used_scan_planes;
+  std::vector<std::vector<Eigen::Vector3d>> map_intersection_points;
+  std::vector<std::vector<std::array<int, 3>>> used_map_planes;
 
-  std::vector<int> scan_horizontal_planes;
-  std::vector<int> scan_vertical_planes;
-  for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
-    if (std::abs(scan_planes.points[plane_nr].normal_z) > threshold_horizontal) {
-      // std::cout << "horizontal scan : " << plane_nr << std::endl;
-      scan_horizontal_planes.push_back(plane_nr);
-    } else {
-      scan_vertical_planes.push_back(plane_nr);
-    }
-  }
+  // Find intersection points of intersection line of two planes with one other plane
+  //  getPlaneIntersectionPoints(scan_intersection_points, used_scan_planes, parallel_threshold,
+  //                             scan_planes);
+  getPlaneIntersectionPoints(map_intersection_points, used_map_planes, parallel_threshold,
+                             map_planes);
 
-  // Find descriptors
-  std::vector<std::vector<float>> vert_map_descriptors;
-  getVerticalDescriptor(vert_map_descriptors, map_vertical_planes, parallel_threshold, map_planes);
-  std::vector<std::vector<float>> horizon_map_descriptors;
-  getHorizontalDescriptor(horizon_map_descriptors, map_horizontal_planes, map_planes);
-  std::vector<std::vector<float>> vert_scan_descriptors;
-  getVerticalDescriptor(vert_scan_descriptors, scan_vertical_planes, parallel_threshold,
-                        scan_planes);
-  std::vector<std::vector<float>> horizon_scan_descriptors;
-  getHorizontalDescriptor(horizon_scan_descriptors, scan_horizontal_planes, scan_planes);
-  std::cout << "Features calculated" << std::endl;
+  // getCornerDescriptors();
+  // getCornerDescriptors();
 
-  // for (int map_plane_nr = 0; map_plane_nr < map_vertical_planes.size(); ++map_plane_nr) {
-  //   std::cout << "map nr " << map_vertical_planes[map_plane_nr] << ": ";
-  //   for (auto feature : vert_map_descriptors[map_plane_nr]) std::cout << feature << " ";
-  //   std::cout << std::endl;
-  // }
-
-  // for (int map_plane_nr = 0; map_plane_nr < scan_vertical_planes.size(); ++map_plane_nr) {
-  //   std::cout << "scan nr " << scan_vertical_planes[map_plane_nr] << ": ";
-  //   for (auto feature : vert_scan_descriptors[map_plane_nr]) std::cout << feature << " ";
-  //   std::cout << std::endl;
-  // }
-
-  // Get both scores
-  std::vector<std::vector<float>> vert_assign_score_scan_to_map;
-  std::vector<float> vert_assign_score_to_map;
-  for (int vert_scan_plane = 0; vert_scan_plane < scan_vertical_planes.size(); ++vert_scan_plane) {
-    vert_assign_score_to_map.clear();
-    getDescriptorScore(vert_assign_score_to_map, vert_map_descriptors,
-                       vert_scan_descriptors[vert_scan_plane]);
-    vert_assign_score_scan_to_map.push_back(vert_assign_score_to_map);
-
-    std::cout << scan_vertical_planes[vert_scan_plane] << " vertical : ";
-    for (int map_plane = 0; map_plane < vert_assign_score_to_map.size(); ++map_plane)
-      std::cout << map_vertical_planes[map_plane] << " " << vert_assign_score_to_map[map_plane]
-                << " ";
-    std::cout << std::endl;
-  }
-
-  std::vector<std::vector<float>> horiz_assign_score_scan_to_map;
-  std::vector<float> horiz_assign_score_to_map;
-  for (int horiz_scan_plane = 0; horiz_scan_plane < scan_horizontal_planes.size();
-       ++horiz_scan_plane) {
-    horiz_assign_score_to_map.clear();
-    getDescriptorScore(horiz_assign_score_to_map, horizon_map_descriptors,
-                       horizon_scan_descriptors[horiz_scan_plane]);
-    horiz_assign_score_scan_to_map.push_back(horiz_assign_score_to_map);
-
-    std::cout << scan_horizontal_planes[horiz_scan_plane] << " horizon : ";
-    for (int map_plane = 0; map_plane < horiz_assign_score_to_map.size(); ++map_plane)
-      std::cout << map_horizontal_planes[map_plane] << " " << horiz_assign_score_to_map[map_plane]
-                << " ";
-    std::cout << std::endl;
-  }
-
-  // Take high values as possible assignments
-  float assignment_score_threshold = 0.9;
-  float max_score = 0;
-  std::vector<std::vector<int>> assignment_candidates(scan_planes.size(), std::vector<int>(0));
-  std::vector<float> candidate_list_for_scan_plane;
-  for (int vert_plane_nr = 0; vert_plane_nr < vert_assign_score_scan_to_map.size();
-       ++vert_plane_nr) {
-    max_score = *std::max_element(vert_assign_score_scan_to_map[vert_plane_nr].begin(),
-                                  vert_assign_score_scan_to_map[vert_plane_nr].end());
-    // Take map planes with enough high score as possible candidates
-    candidate_list_for_scan_plane.clear();
-    for (int candidate_vert_plane_map_nr = 0;
-         candidate_vert_plane_map_nr < map_vertical_planes.size(); ++candidate_vert_plane_map_nr) {
-      if (vert_assign_score_scan_to_map[vert_plane_nr][candidate_vert_plane_map_nr] >
-          assignment_score_threshold * max_score) {
-        candidate_list_for_scan_plane.push_back(map_vertical_planes[candidate_vert_plane_map_nr]);
-      }
-    }
-    for (auto candidate : candidate_list_for_scan_plane)
-      assignment_candidates[scan_vertical_planes[vert_plane_nr]].push_back(candidate);
-  }
-
-  for (int horiz_plane_nr = 0; horiz_plane_nr < horiz_assign_score_scan_to_map.size();
-       ++horiz_plane_nr) {
-    max_score = *std::max_element(horiz_assign_score_scan_to_map[horiz_plane_nr].begin(),
-                                  horiz_assign_score_scan_to_map[horiz_plane_nr].end());
-    // Take map planes with enough high score as possible candidates
-    candidate_list_for_scan_plane.clear();
-    for (int candidate_horiz_plane_map_nr = 0;
-         candidate_horiz_plane_map_nr < map_horizontal_planes.size();
-         ++candidate_horiz_plane_map_nr) {
-      if (horiz_assign_score_scan_to_map[horiz_plane_nr][candidate_horiz_plane_map_nr] >
-          assignment_score_threshold * max_score) {
-        candidate_list_for_scan_plane.push_back(
-            map_horizontal_planes[candidate_horiz_plane_map_nr]);
-      }
-    }
-    for (auto candidate : candidate_list_for_scan_plane)
-      assignment_candidates[scan_horizontal_planes[horiz_plane_nr]].push_back(candidate);
-  }
-
-  for (int i = 0; i < assignment_candidates.size(); ++i) {
-    std::cout << "scan " << i << " has candidates: ";
-    for (int j = 0; j < assignment_candidates[i].size(); ++j) {
-      std::cout << assignment_candidates[i][j] << " ";
-    }
-    std::cout << std::endl;
-  }
-
-  std::vector<int> plane_assignment(scan_planes.size(), 1);
-  // Assign unique assignments
-  for (int scan_plane_nr = 0; scan_plane_nr < scan_planes.size(); ++scan_plane_nr) {
-    if (assignment_candidates[scan_plane_nr].size() == 1)
-      plane_assignment[scan_plane_nr] = assignment_candidates[scan_plane_nr][0];
-  }
-
-  // Considering geometric consistency choose best candidate for plane
-
-  // for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
-  //   std::cout << "Plane " << plane_nr << " from Scan matched with " << plane_assignment[plane_nr]
-  //             << " from mesh" << std::endl;
-  // }
-
-  // transform_average(transformTR, plane_assignment, scan_planes, map_planes);
+  // getCornerMatchScore();
+  // getCornerMatchScore();
 };
 
-void PlaneMatchLib::getDescriptorScore(std::vector<float> &assign_score,
-                                       std::vector<std::vector<float>> map_descriptors,
-                                       std::vector<float> scan_descriptor) {
-  float deviation_offset = 1;
-  // Get error of all assingments
-  assign_score.clear();
-  std::vector<float> feature_errors;
-  std::vector<float> min_current_error;
-  float current_score;
-  for (int map_plane_nr = 0; map_plane_nr < map_descriptors.size(); ++map_plane_nr) {
-    min_current_error.clear();
-    for (auto scan_feature : scan_descriptor) {
-      feature_errors.clear();
-      for (auto map_feature : map_descriptors[map_plane_nr]) {
-        feature_errors.push_back(std::abs(scan_feature - map_feature));
-      }
-      min_current_error.push_back(*std::min_element(feature_errors.begin(), feature_errors.end()));
-    }
-    current_score = 0;
-    for (auto feature_error : min_current_error) {
-      current_score = current_score + std::max(-1.0, (deviation_offset - pow(feature_error, 2)));
-    }
-    assign_score.push_back(current_score);
-  }
-}
+void PlaneMatchLib::getPlaneIntersectionPoints(
+    std::vector<std::vector<Eigen::Vector3d>> &tot_plane_intersections,
+    std::vector<std::vector<std::array<int, 3>>> &used_planes, float parallel_threshold,
+    const pcl::PointCloud<pcl::PointNormal> planes) {
+  Plane cgal_plane;
+  Plane cgal_pair_plane;
+  Line intersection_line;
 
-void PlaneMatchLib::getVerticalDescriptor(std::vector<std::vector<float>> &rel_plane_descriptor,
-                                          std::vector<int> consider_planes,
-                                          float parallel_threshold,
-                                          const pcl::PointCloud<pcl::PointNormal> planes) {
-  Eigen::Vector2f point_plane;
-  Eigen::Vector2f point_plane_dir;
-  Eigen::Vector2f point_pair_plane;
-  Eigen::Vector2f point_pair_plane_dir;
-  Eigen::Hyperplane<float, 2> line_plane;
-  Eigen::Hyperplane<float, 2> line_pair_plane;
-  std::vector<float> current_descriptor;
-  float current_feature;
+  Plane cgal_candidate_plane;
+  Point intersection_point;
+  std::array<int, 3> used_plane;
 
-  for (auto plane : consider_planes) {
-    // Needs to be changed for rotation in pitch or roll (mult with cos)
-    point_plane(0) = planes.points[plane].x;
-    point_plane(1) = planes.points[plane].y;
-    point_plane_dir(0) = planes.points[plane].normal_x;
-    point_plane_dir(1) = planes.points[plane].normal_y;
-    line_plane = Eigen::Hyperplane<float, 2>::Through(point_plane, point_plane + point_plane_dir);
-    current_descriptor.clear();
-    for (auto pair_plane : consider_planes) {
-      point_pair_plane(0) = planes.points[pair_plane].x;
-      point_pair_plane(1) = planes.points[pair_plane].y;
-      point_pair_plane_dir(0) = planes.points[pair_plane].normal_y;
-      point_pair_plane_dir(1) = -planes.points[pair_plane].normal_x;
-      if (std::abs(point_plane_dir.transpose() * point_pair_plane_dir) < parallel_threshold) {
-        line_pair_plane = Eigen::Hyperplane<float, 2>::Through(
-            point_pair_plane, point_pair_plane + point_pair_plane_dir);
-        current_feature =
-            (point_plane - line_plane.intersection(line_pair_plane)).transpose() * point_plane_dir;
-        current_descriptor.push_back(current_feature);
-      } else {
+  tot_plane_intersections.clear();
+  tot_plane_intersections =
+      std::vector<std::vector<Eigen::Vector3d>>(planes.size(), std::vector<Eigen::Vector3d>(0));
+  used_planes.clear();
+  used_planes = std::vector<std::vector<std::array<int, 3>>>(planes.size(),
+                                                             std::vector<std::array<int, 3>>(0));
+
+  // Get point on intersection plane
+  int plane_nr = 0;
+  int pair_plane_nr = 0;
+  int candidate_nr = 0;
+  CGAL::Object result_intersection_line;
+  CGAL::Object result_intersection_point;
+
+  for (auto plane : planes) {
+    cgal_plane = Plane(Point(plane.x, plane.y, plane.z),
+                       Vector(plane.normal_x, plane.normal_y, plane.normal_z));
+    pair_plane_nr = 0;
+    for (auto pair_plane : planes) {
+      cgal_pair_plane =
+          Plane(Point(pair_plane.x, pair_plane.y, pair_plane.z),
+                Vector(pair_plane.normal_x, pair_plane.normal_y, pair_plane.normal_z));
+      // Make sure planes are not too parallel
+      if (cgal_plane.orthogonal_vector() * cgal_pair_plane.orthogonal_vector() > parallel_threshold)
         continue;
+      result_intersection_line = CGAL::intersection(cgal_plane, cgal_pair_plane);
+      // Skip plane pair if there is no intersection_line (should not happen)
+      if (!CGAL::assign(intersection_line, result_intersection_line)) continue;
+      candidate_nr = 0;
+      for (auto candidate_plane : planes) {
+        cgal_candidate_plane = Plane(
+            Point(candidate_plane.x, candidate_plane.y, candidate_plane.z),
+            Vector(candidate_plane.normal_x, candidate_plane.normal_y, candidate_plane.normal_z));
+        result_intersection_point = CGAL::intersection(cgal_candidate_plane, intersection_line);
+        if (!CGAL::assign(intersection_point, result_intersection_point)) continue;
+
+        tot_plane_intersections[candidate_nr].push_back(
+            Eigen::Vector3d((double)(intersection_point.x()), (double)(intersection_point.y()),
+                            (double)(intersection_point.z())));
+        used_plane = {candidate_nr, pair_plane_nr, plane_nr};
+        used_planes[candidate_nr].push_back(used_plane);
+
+        std::cout << "map: " << (double)(intersection_point.x()) << " "
+                  << (double)(intersection_point.y()) << " " << (double)(intersection_point.z())
+                  << std::endl;
+        std::cout << " " << used_plane[0] << " " << used_plane[1] << " " << used_plane[2]
+                  << std::endl;
+
+        candidate_nr++;
       }
+      pair_plane_nr++;
     }
-    sort(current_descriptor.begin(), current_descriptor.end());
-    rel_plane_descriptor.push_back(current_descriptor);
+    plane_nr++;
   }
 }
 
-void PlaneMatchLib::getHorizontalDescriptor(std::vector<std::vector<float>> &rel_plane_descriptor,
-                                            std::vector<int> consider_planes,
-                                            const pcl::PointCloud<pcl::PointNormal> planes) {
-  std::vector<float> current_descriptor;
-  for (auto plane : consider_planes) {
-    current_descriptor.clear();
-    for (auto pair_plane : consider_planes) {
-      current_descriptor.push_back(planes.points[pair_plane].z - planes.points[plane].z);
-    }
-    sort(current_descriptor.begin(), current_descriptor.end());
-    rel_plane_descriptor.push_back(current_descriptor);
-  }
-}
+//   for (auto plane : planes) {
+//     plane_normal = Eigen::Vector3d(plane.normal_x, plane.normal_y, plane.normal_z);
+//     pair_plane_nr = 0;
+//     for (auto pair_plane : planes) {
+//       pair_plane_normal =
+//           Eigen::Vector3d(pair_plane.normal_x, pair_plane.normal_y, pair_plane.normal_z);
+//       if (plane_normal.dot(pair_plane_normal) > parallel_threshold) {
+//         continue;
+//       }
+//       normal_of_common_plane = plane_normal.cross(pair_plane_normal);
+//       intersect_plane = normal_of_common_plane.cross(plane_normal);
+//       intersect_pair_plane = normal_of_common_plane.cross(pair_plane_normal);
+
+//       // Cite fromula
+//       // Get point on intersection lines
+//       float scale_vector_one = intersect_pair_plane.cross(
+//           Eigen::Vector3d((double)(plane.x - pair_plane.x), (double)(plane.y - pair_plane.y),
+//                           (double)(plane.z - pair_plane.z)));
+//       float scale_vector_two = intersect_pair_plane.cross(intersect_plane);
+
+//       distance_to_edge = scale_vector_one.norm() / scale_vector_two.norm();
+//       if (scale_vector_one.dot(scale_vector_two) < 0) {
+//         distance_to_edge = -distance_to_edge;
+//       }
+//       edge_point = Eigen::Vector3d(plane.x, plane.y, plane.z + distance_to_edge *
+//       intersect_plane);
+
+//       intersection_line = Line(Point(edge_point(0), edge_point(1), edge_point(2)),
+//                                eigenVectorToCgalPoint(normal_of_common_plane));
+//       candidate_nr = 0;
+//       for (auto intersection_plane : planes) {
+//         // if the planes contribute to the line, skip
+//         if (candidate_nr == plane_nr || candidate_nr == pair_plane_nr) continue;
+//         candidate_plane =
+//             Plane(Point(intersection_plane.x, intersection_plane.y, intersection_plane.z,
+//                         Vector(intersection_plane.normal_x, intersection_plane.normal_y,
+//                                intersection_plane.normal_z)));
+//         result = CGAL::intersection(candidate_plane, intersection_line);
+//         if (CGAL::assign(intersection_point, result)) {
+//           used_plane = {candidate_nr, pair_plane_nr, plane_nr};
+//           used_planes[candidate_nr].push_back(used_plane);
+//           tot_plane_descriptor[candidate_nr].push_back(cgalVectorToEigenVector(intersection_point));
+//         } else {
+//           // No unique intersection, skip
+//           continue;
+//         }
+//         candidate_nr++;
+//       }
+//       pair_plane_nr++;
+//     }
+//     plane_nr++;
+//   }
+// }
+
+// void PlaneMatchLib::getDescriptorScore(std::vector<float> &assign_score,
+//                                        std::vector<std::vector<float>> map_descriptors,
+//                                        std::vector<float> scan_descriptor) {
+//   float deviation_offset = 1;
+// }
+
+// void PlaneMatchLib::getPlaneDescriptor(std::vector<std::vector<float>> descriptor_list,
+//                                        std::vector<std::vector<Eigen::Vector3d>> corner_points)
+//                                        {}
 
 void PlaneMatchLib::load_example_sol(float (&transformTR)[7],
                                      const pcl::PointCloud<pcl::PointNormal> scan_planes,
