@@ -110,17 +110,40 @@ void PlaneMatchLib::PlaneDescriptor(float (&transformTR)[7],
   // Find intersection points of intersection line of two planes with one other plane
   //  getPlaneIntersectionPoints(scan_intersection_points, used_scan_planes, parallel_threshold,
   //                             scan_planes);
-  getPlaneIntersectionPoints(map_intersection_points, used_map_planes, parallel_threshold,
-                             map_planes);
+  getprojPlaneIntersectionPoints(map_intersection_points, used_map_planes, parallel_threshold,
+                                 scan_planes);
+
+  int plane = 0;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr test_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointXYZ points;
+  for (auto map_plane : map_intersection_points[plane]) {
+    // std::cout << map_plane(0) << " " << map_plane(1) << " " << map_plane(2) << std::endl;
+    points.x = map_plane(0);
+    points.y = map_plane(1);
+    points.z = map_plane(2);
+    test_cloud->push_back(points);
+  }
+  float search_radius = 0.2;
+  CloudFilterLib::voxel_centroid_filter(search_radius, *test_cloud);
+
+  ros::NodeHandle nh;
+  ros::Publisher test_pub = nh.advertise<sensor_msgs::PointCloud2>("test_extracted", 1, true);
+  std::string tf_map_frame = "/map";
+  sensor_msgs::PointCloud2 segmentation_mesg;
+  test_cloud->header.frame_id = tf_map_frame;
+  pcl::toROSMsg(*test_cloud, segmentation_mesg);
+  test_pub.publish(segmentation_mesg);
+
+  ros::spin();
 
   // getCornerDescriptors();
   // getCornerDescriptors();
 
   // getCornerMatchScore();
   // getCornerMatchScore();
-};
+}
 
-void PlaneMatchLib::getPlaneIntersectionPoints(
+void PlaneMatchLib::getprojPlaneIntersectionPoints(
     std::vector<std::vector<Eigen::Vector3d>> &tot_plane_intersections,
     std::vector<std::vector<std::array<int, 3>>> &used_planes, float parallel_threshold,
     const pcl::PointCloud<pcl::PointNormal> planes) {
@@ -139,118 +162,52 @@ void PlaneMatchLib::getPlaneIntersectionPoints(
   used_planes = std::vector<std::vector<std::array<int, 3>>>(planes.size(),
                                                              std::vector<std::array<int, 3>>(0));
 
-  // Get point on intersection plane
-  int plane_nr = 0;
-  int pair_plane_nr = 0;
-  int candidate_nr = 0;
+  // Project centroids on plane
   CGAL::Object result_intersection_line;
   CGAL::Object result_intersection_point;
+  int candidate_nr = 0;
 
-  for (auto plane : planes) {
-    cgal_plane = Plane(Point(plane.x, plane.y, plane.z),
-                       Vector(plane.normal_x, plane.normal_y, plane.normal_z));
-    pair_plane_nr = 0;
-    for (auto pair_plane : planes) {
-      cgal_pair_plane =
-          Plane(Point(pair_plane.x, pair_plane.y, pair_plane.z),
-                Vector(pair_plane.normal_x, pair_plane.normal_y, pair_plane.normal_z));
-      // Make sure planes are not too parallel
-      if (cgal_plane.orthogonal_vector() * cgal_pair_plane.orthogonal_vector() > parallel_threshold)
-        continue;
-      result_intersection_line = CGAL::intersection(cgal_plane, cgal_pair_plane);
-      // Skip plane pair if there is no intersection_line (should not happen)
-      if (!CGAL::assign(intersection_line, result_intersection_line)) continue;
-      candidate_nr = 0;
-      for (auto candidate_plane : planes) {
-        cgal_candidate_plane = Plane(
-            Point(candidate_plane.x, candidate_plane.y, candidate_plane.z),
-            Vector(candidate_plane.normal_x, candidate_plane.normal_y, candidate_plane.normal_z));
+  // Get intersections of each pair of planes with the plane
+  for (auto candidate_plane : planes) {
+    cgal_candidate_plane =
+        Plane(Point(candidate_plane.x, candidate_plane.y, candidate_plane.z),
+              Vector(candidate_plane.normal_x, candidate_plane.normal_y, candidate_plane.normal_z));
+    for (int plane_nr = 0; plane_nr < planes.size(); ++plane_nr) {
+      if (plane_nr == candidate_nr) continue;
+      cgal_plane = Plane(
+          Point(planes.points[plane_nr].x, planes.points[plane_nr].y, planes.points[plane_nr].z),
+          Vector(planes.points[plane_nr].normal_x, planes.points[plane_nr].normal_y,
+                 planes.points[plane_nr].normal_z));
+      for (int plane_pair_nr = (plane_nr + 1); plane_pair_nr < planes.size(); ++plane_pair_nr) {
+        if (plane_pair_nr == plane_nr || plane_pair_nr == candidate_nr) continue;
+        cgal_pair_plane = Plane(
+            Point(planes.points[plane_pair_nr].x, planes.points[plane_pair_nr].y,
+                  planes.points[plane_pair_nr].z),
+            Vector(planes.points[plane_pair_nr].normal_x, planes.points[plane_pair_nr].normal_y,
+                   planes.points[plane_pair_nr].normal_z));
+        // Make sure planes are not too parallel
+        if (cgal_plane.orthogonal_vector() * cgal_pair_plane.orthogonal_vector() >
+            parallel_threshold)
+          continue;
+
+        result_intersection_line = CGAL::intersection(cgal_plane, cgal_pair_plane);
+        // Skip plane pair if there is no intersection_line
+        if (!CGAL::assign(intersection_line, result_intersection_line)) continue;
+
         result_intersection_point = CGAL::intersection(cgal_candidate_plane, intersection_line);
+        // Skip intersection plane if there is no intersection with candidate plane
         if (!CGAL::assign(intersection_point, result_intersection_point)) continue;
 
         tot_plane_intersections[candidate_nr].push_back(
             Eigen::Vector3d((double)(intersection_point.x()), (double)(intersection_point.y()),
                             (double)(intersection_point.z())));
-        used_plane = {candidate_nr, pair_plane_nr, plane_nr};
+        used_plane = {candidate_nr, plane_nr, plane_pair_nr};
         used_planes[candidate_nr].push_back(used_plane);
-
-        std::cout << "map: " << (double)(intersection_point.x()) << " "
-                  << (double)(intersection_point.y()) << " " << (double)(intersection_point.z())
-                  << std::endl;
-        std::cout << " " << used_plane[0] << " " << used_plane[1] << " " << used_plane[2]
-                  << std::endl;
-
-        candidate_nr++;
       }
-      pair_plane_nr++;
     }
-    plane_nr++;
+    ++candidate_nr;
   }
 }
-
-//   for (auto plane : planes) {
-//     plane_normal = Eigen::Vector3d(plane.normal_x, plane.normal_y, plane.normal_z);
-//     pair_plane_nr = 0;
-//     for (auto pair_plane : planes) {
-//       pair_plane_normal =
-//           Eigen::Vector3d(pair_plane.normal_x, pair_plane.normal_y, pair_plane.normal_z);
-//       if (plane_normal.dot(pair_plane_normal) > parallel_threshold) {
-//         continue;
-//       }
-//       normal_of_common_plane = plane_normal.cross(pair_plane_normal);
-//       intersect_plane = normal_of_common_plane.cross(plane_normal);
-//       intersect_pair_plane = normal_of_common_plane.cross(pair_plane_normal);
-
-//       // Cite fromula
-//       // Get point on intersection lines
-//       float scale_vector_one = intersect_pair_plane.cross(
-//           Eigen::Vector3d((double)(plane.x - pair_plane.x), (double)(plane.y - pair_plane.y),
-//                           (double)(plane.z - pair_plane.z)));
-//       float scale_vector_two = intersect_pair_plane.cross(intersect_plane);
-
-//       distance_to_edge = scale_vector_one.norm() / scale_vector_two.norm();
-//       if (scale_vector_one.dot(scale_vector_two) < 0) {
-//         distance_to_edge = -distance_to_edge;
-//       }
-//       edge_point = Eigen::Vector3d(plane.x, plane.y, plane.z + distance_to_edge *
-//       intersect_plane);
-
-//       intersection_line = Line(Point(edge_point(0), edge_point(1), edge_point(2)),
-//                                eigenVectorToCgalPoint(normal_of_common_plane));
-//       candidate_nr = 0;
-//       for (auto intersection_plane : planes) {
-//         // if the planes contribute to the line, skip
-//         if (candidate_nr == plane_nr || candidate_nr == pair_plane_nr) continue;
-//         candidate_plane =
-//             Plane(Point(intersection_plane.x, intersection_plane.y, intersection_plane.z,
-//                         Vector(intersection_plane.normal_x, intersection_plane.normal_y,
-//                                intersection_plane.normal_z)));
-//         result = CGAL::intersection(candidate_plane, intersection_line);
-//         if (CGAL::assign(intersection_point, result)) {
-//           used_plane = {candidate_nr, pair_plane_nr, plane_nr};
-//           used_planes[candidate_nr].push_back(used_plane);
-//           tot_plane_descriptor[candidate_nr].push_back(cgalVectorToEigenVector(intersection_point));
-//         } else {
-//           // No unique intersection, skip
-//           continue;
-//         }
-//         candidate_nr++;
-//       }
-//       pair_plane_nr++;
-//     }
-//     plane_nr++;
-//   }
-// }
-
-// void PlaneMatchLib::getDescriptorScore(std::vector<float> &assign_score,
-//                                        std::vector<std::vector<float>> map_descriptors,
-//                                        std::vector<float> scan_descriptor) {
-//   float deviation_offset = 1;
-// }
-
-// void PlaneMatchLib::getPlaneDescriptor(std::vector<std::vector<float>> descriptor_list,
-//                                        std::vector<std::vector<Eigen::Vector3d>> corner_points)
-//                                        {}
 
 void PlaneMatchLib::load_example_sol(float (&transformTR)[7],
                                      const pcl::PointCloud<pcl::PointNormal> scan_planes,

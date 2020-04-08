@@ -1,3 +1,6 @@
+#ifndef CLOUD_FILTER_H_
+#define CLOUD_FILTER_H_
+
 #include <pcl/point_types.h>
 #include <ros/ros.h>
 
@@ -13,3 +16,5 @@ class CloudFilterLib {
   static void voxel_centroid_filter(float search_radius,
                                     pcl::PointCloud<pcl::PointXYZ>& lidar_scan);
 };
+
+#endif  // SELECTIVE_ICP_MAPPER_H_
