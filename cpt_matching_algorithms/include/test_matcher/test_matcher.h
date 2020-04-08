@@ -14,9 +14,8 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 
-#include "cloud_filtering/cloud_filtering_lib.h"
-#include "plane_extraction/plane_extraction_lib.h"
-#include "plane_matching/plane_matching_lib.h"
+#include "cloud_filter/cloud_filter.h"
+#include "plane_extraction/plane_extraction.h"
 
 namespace cad_percept {
 namespace matching_algorithms {
@@ -36,8 +35,6 @@ class TestMatcher {
   std::string cad_topic_;
   cad_percept::cgal::MeshModel::Ptr reference_mesh_;
   float sample_density_;
-  pcl::PointCloud<pcl::PointNormal> map_planes_;
-  pcl::PointCloud<pcl::PointNormal> extracted_planes_;
 
   // given Point Cloud data
   bool use_sim_lidar_ = false;
@@ -53,7 +50,6 @@ class TestMatcher {
   int input_queue_size_;
   int map_sampling_density_;
   std::string tf_map_frame_;
-  std::string tf_lidar_frame_;
 
   // Evaluation / Ground Truth data
   float transform_TR_[7] = {0, 0, 0, 0, 0, 0, 0};  // x y z qw qx qy qz
@@ -68,6 +64,7 @@ class TestMatcher {
   ros::Subscriber lidar_sub_;
   ros::Subscriber lidar_sim_sub_;
   ros::Subscriber gt_sub_;
+
   // Publisher
   ros::Publisher scan_pub_;
   ros::Publisher sample_map_pub_;
@@ -111,11 +108,8 @@ class TestMatcher {
   /**
    * Declare matchers
    */
-  void template_match();
-  void go_icp_match();
-  //  void super4pcs_match();
-
-  void load_example();
+  void templateMatch();
+  void goicpMatch();
 };
 
 }  // namespace matching_algorithms

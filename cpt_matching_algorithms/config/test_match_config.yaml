@@ -5,28 +5,21 @@ mapSamplingDensity: 20
 
 usetoyproblem: true
 
-#Select Matcher (only one)
-usetemplate: false
+#Select Matcher
+Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
 
-useGoICP: false
-
-useSuper4PCS: false
-
-usePlaneMatcher: true
 # Settings for Plane Matcher
-# Filter (several)
+
+# Filters
 useStructureFilter: true
 StructureThreshold: 150
 
 useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
-# Plane Extraction (only one)
-usepclPlaneExtraction: true
+# Plane Extraction
+PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
 
-useRHTPlaneExtraction: false
-
-useiterRHTPlaneExtraction: false
 # Plane Matching (only one)
 usePRRUS: false
 
@@ -34,5 +27,5 @@ usePlaneDescriptor: true
 
 useMatchSolution: false
 
-
+# Transform Calculation
 

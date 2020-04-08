@@ -6,7 +6,7 @@
 namespace cad_percept {
 namespace matching_algorithms {
 
-void TestMatcher::go_icp_match() {
+void TestMatcher::goicpMatch() {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "             Go-ICP matcher started            " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;

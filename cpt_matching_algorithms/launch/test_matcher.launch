@@ -7,48 +7,39 @@
 
    <node name="test_matcher"  pkg="cpt_matching_algorithms" type="test_matcher_node" output="screen" launch-prefix="tmux split-window -h">
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/test_match_config.yaml"/>
+
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml" />
         
         <param name="goicp_folder" value="$(find go_icp_catkin)"/>
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/go_icp_config.yaml" />
-
-        <rosparam command="load" file="$(arg lidar_settings)" />
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/rht_config.yaml" />
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/iter_rht_config.yaml" />
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction/pcl_config.yaml" />
         
         <rosparam command="load" file="$(arg lidar_settings)" />
         <param name="tfMapFrame" value="/map" />
-        <param name="tfLidarFrame" value="marker_pose" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
         <param name="lidarTopic" value="rslidar_points" />
         <param name="simlidarTopic" value="sim_rslidar_points" />
-        <param name="groundtruthTopic" value="ground_truth" />
+        <param name="groundTruthTopic" value="ground_truth" />
     </node>
 
     <node name="lidar_simulator"  pkg="cpt_matching_algorithms" type="sim_lidar_node" output="screen" launch-prefix="tmux split-window">
         <rosparam command="load" file="$(arg lidar_settings)" />
 
-        <param name="lidarFrame" value="marker_pose" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
     </node>
-    
-    <arg name="lidar_frame" value="marker_pose" />
-    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="13 -4.5 1 0 0 0.3428978 0.9393727 map $(arg lidar_frame)  100"/>
 
     <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(arg lidar_scan)" />
 
-    <node pkg="rosservice" type="rosservice" name="cad_trigger" args="call /mesh_publisher/publish {}" launch-prefix="bash -c 'sleep 2; $0 $@' "/>
-    <node pkg="tf" type="static_transform_publisher" name="mesh_positioning" args="0 0 0 0 0 0 1  marker map 100"/>
-    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
-        <param name="publish_on_start" value="false"/>
-        <param name="default_filename" value="$(arg cad_file)"/>
-        <param name="frame_name" value="marker"/>
+    <node name="mesh_positioning"
+          pkg="cpt_selective_icp"
+          type="position_cad_with_marker.py">
+        <param name="marker_parent_frame" value="map" />
+        <param name="marker_frame_name" value="marker" />
     </node>
 
-    <node name="find_id_in_mesh"
-          pkg="cpt_utils"
-          type="find_closest_id_in_mesh.py">
-        <param name="marker_parent_frame" value="marker" />
+    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
+        <param name="publish_on_start" value="false"/>  <!-- if set to true, mesh is published two times -->
+        <param name="default_filename" value="$(arg cad_file)"/>
+        <param name="frame_name" value="marker"/>
     </node>
 
     <node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>

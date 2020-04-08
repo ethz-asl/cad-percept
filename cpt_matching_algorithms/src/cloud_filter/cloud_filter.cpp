@@ -1,15 +1,19 @@
-#include "cloud_filtering/cloud_filtering_lib.h"
+#include "cloud_filter/cloud_filter.h"
 
-void CloudFilterLib::static_object_filter(int structure_threshold,
-                                          pcl::PointCloud<pcl::PointXYZ>& lidar_scan,
-                                          const pcl::PointCloud<pcl::PointXYZI> static_structure) {
+namespace cad_percept {
+namespace matching_algorithms {
+
+using namespace pcl;
+
+void CloudFilter::filterStaticObject(int structure_threshold, PointCloud<PointXYZ>& lidar_scan,
+                                     const PointCloud<PointXYZI> static_structure) {
   std::cout << "////  Static Object Filter  ////" << std::endl;
 
-  pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
+  ExtractIndices<pcl::PointXYZ> indices_filter;
 
   if (lidar_scan.size() != static_structure.size()) {
     std::cout << "Error: The sizes of the two point cloud do not match" << std::endl;
-    std::cout << "Skip Static Object Fitler" << std::endl;
+    std::cout << "Skip Static Object Filter" << std::endl;
     return;
   }
 
@@ -20,7 +24,7 @@ void CloudFilterLib::static_object_filter(int structure_threshold,
     }
   }
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr lidar_scan_ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  PointCloud<pcl::PointXYZ>::Ptr lidar_scan_ptr(new PointCloud<PointXYZ>());
   *lidar_scan_ptr = lidar_scan;
   boost::shared_ptr<std::vector<int>> inliers_ptr = boost::make_shared<std::vector<int>>(rm_idx);
   indices_filter.setInputCloud(lidar_scan_ptr);
@@ -35,14 +39,13 @@ void CloudFilterLib::static_object_filter(int structure_threshold,
             << " Removed: " << static_structure.size() - lidar_scan.size() << std::endl;
 }
 
-void CloudFilterLib::voxel_centroid_filter(float search_radius,
-                                           pcl::PointCloud<pcl::PointXYZ>& lidar_scan) {
+void CloudFilter::filterVoxelCentroid(float search_radius, PointCloud<PointXYZ>& lidar_scan) {
   std::cout << "////    Voxel Centroid Filter   ////" << std::endl;
   int prev_size = lidar_scan.size();
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr lidar_scan_ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  PointCloud<PointXYZ>::Ptr lidar_scan_ptr(new PointCloud<PointXYZ>());
   *lidar_scan_ptr = lidar_scan;
-  pcl::UniformSampling<pcl::PointXYZ> voxel_filter;
+  UniformSampling<PointXYZ> voxel_filter;
   voxel_filter.setInputCloud(lidar_scan_ptr);
   voxel_filter.setRadiusSearch(search_radius);
   voxel_filter.filter(*lidar_scan_ptr);
@@ -51,3 +54,5 @@ void CloudFilterLib::voxel_centroid_filter(float search_radius,
   std::cout << "Point Cloud size: " << lidar_scan.size()
             << " Removed: " << prev_size - lidar_scan.size() << std::endl;
 }
+}  // namespace matching_algorithms
+}  // namespace cad_percept

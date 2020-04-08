@@ -5,6 +5,8 @@
 #include <rosbag/view.h>
 #include <fstream>
 
+// The idea of this program is to create smaller bag files including one corresponding
+// frame and one ground thruth data, such that one has direct access to the single frames.
 int main(int argc, char **argv) {
   ros::init(argc, argv, "mapper");
   ros::NodeHandle nh;

@@ -3,13 +3,14 @@
 namespace cad_percept {
 namespace matching_algorithms {
 
-void TestMatcher::template_match() {
+void TestMatcher::templateMatch() {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "            Template matcher started           " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "This is only a template matcher. It returns a translation in z direction."
             << std::endl;
-  transform_TR_[2] = 1.0;
+
+  transform_TR_[2] = -5.0;
 }
 
 }  // namespace matching_algorithms

@@ -15,7 +15,6 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   ground_truth_topic_ = nh_private_.param<std::string>("groundtruthTopic", "fail");
   input_queue_size_ = nh_private_.param<int>("inputQueueSize", 10);
   tf_map_frame_ = nh_private_.param<std::string>("tfMapFrame", "/map");
-  tf_lidar_frame_ = nh_private_.param<std::string>("tfLidarFrame", "/marker_pose");
   use_sim_lidar_ = nh_private_.param<bool>("usetoyproblem", false);
 
   // Get Subscriber
@@ -30,7 +29,6 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   scan_pub_ =
       nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", input_queue_size_, true);
   sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sample_map", 1, true);
-  plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 }
 
 // Get CAD and sample points
@@ -51,7 +49,6 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
       ROS_ERROR_STREAM("Couldn't find transformation to mesh system");
     }
 
-    // Transform CAD to map
     cad_percept::cgal::Transformation ctransformation;
     cgal::tfTransformationToCGALTransformation(transform, ctransformation);
     reference_mesh_->transform(ctransformation);
@@ -62,47 +59,6 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     int n_points = reference_mesh_->getArea() * sample_density_;
     cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0,
                                                 &sample_map_);
-
-    // Get planes from mesh
-    // Extract all coplanar facets
-    std::unordered_map<std::string, std::string> facetToPlane;
-    std::unordered_multimap<std::string, std::string> planeToFacets;
-    reference_mesh_->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 0.1);
-    std::cout << "Extracted coplanar facets" << std::endl;
-
-    // Extract planes
-    load_example();
-    // bool found_at_least_one_facet = true;
-    // cgal::Plane actual_plane;
-    // Eigen::Vector3d point_on_plane;
-    // Eigen::Vector3d normal_of_plane;
-    // pcl::PointNormal norm_point;
-
-    // for (int plane_nr = 0; found_at_least_one_facet; ++plane_nr) {
-    //   found_at_least_one_facet = false;
-    //   for (auto itr = planeToFacets.begin(); itr != planeToFacets.end(); ++itr) {
-    //     // Search for at least one facet of plane
-    //     if (!(itr->first.compare(std::to_string(plane_nr)))) {
-    //       actual_plane = reference_mesh_->getPlane(itr->second);
-    //       point_on_plane = cgal::cgalPointToEigenVector(actual_plane.point());
-    //       normal_of_plane =
-    //           cgal::cgalVectorToEigenVector(actual_plane.orthogonal_vector()).normalized();
-
-    //       norm_point.x = point_on_plane(0);
-    //       norm_point.y = point_on_plane(1);
-    //       norm_point.z = point_on_plane(2);
-    //       norm_point.normal_x = normal_of_plane(0);
-    //       norm_point.normal_y = normal_of_plane(1);
-    //       norm_point.normal_z = normal_of_plane(2);
-
-    //       map_planes_.push_back(norm_point);
-    //       std::cout << "New plane added from mesh" << std::endl;
-    //       found_at_least_one_facet = true;
-    //       break;
-    //     }
-    //   }
-    // }
-
     std::cout << "CAD ready" << std::endl;
     map_ready_ = true;
 
@@ -118,7 +74,7 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
 // Get real LiDAR data
 void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
   if (!lidar_scan_ready_ && !use_sim_lidar_) {
-    std::cout << "Processing lidar scan" << std::endl;
+    std::cout << "Processing lidar frame" << std::endl;
 
     // Convert PointCloud2 to PointCloud
     pcl::PCLPointCloud2 lidar_pc2;
@@ -136,7 +92,6 @@ void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
 
     // Get static structure information point cloud
     if (nh_private_.param<bool>("useStructureFilter", false)) {
-      // lidar_scan_p2.fields[3].name = "intensity";
       pcl::fromROSMsg(lidar_scan_p2, static_structure_cloud_);
       pcl::removeNaNFromPointCloud(static_structure_cloud_, static_structure_cloud_, nan_indices);
     }
@@ -154,11 +109,10 @@ void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
 void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
   if (!ground_truth_ready_ && !use_sim_lidar_) {
     ground_truth_ = gt_in;
-    // Transform gt into map frame
-    ground_truth_.point.x = -ground_truth_.point.x;
-    ground_truth_.point.y = -ground_truth_.point.y;
+
     std::cout << "Got ground truth data" << std::endl;
     ground_truth_ready_ = true;
+
     if (ready_for_eval_) {
       evaluate();
     }
@@ -177,31 +131,10 @@ void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
 
     std::cout << "Simulated Lidar frame ready" << std::endl;
 
-    tf::StampedTransform transform;
-    tf::TransformListener tf_listener(ros::Duration(10));
-    try {
-      tf_listener.waitForTransform(tf_map_frame_, tf_lidar_frame_, ros::Time(0),
-                                   ros::Duration(5.0));
-      tf_listener.lookupTransform(tf_map_frame_, tf_lidar_frame_, ros::Time(0), transform);
-    } catch (tf::TransformException ex) {
-      ROS_INFO_STREAM("Couldn't find transformation to lidar frame");
-      return;
-    }
-    cad_percept::cgal::Transformation ctransformation;
-    cgal::tfTransformationToCGALTransformation(transform, ctransformation);
-    Eigen::Matrix4d etransformation;
-    cgal::cgalTransformationToEigenTransformation(ctransformation, &etransformation);
-    Eigen::Matrix3d erotation = etransformation.block(0, 0, 3, 3);
-    Eigen::Quaterniond q(erotation);
-
-    // Ground truth is T_map,lidar
-    ground_truth_.point.x = etransformation(0, 3);
-    ground_truth_.point.y = etransformation(1, 3);
-    ground_truth_.point.z = etransformation(2, 3);
-    gt_quat_.push_back(q.w());
-    gt_quat_.push_back(q.x());
-    gt_quat_.push_back(q.y());
-    gt_quat_.push_back(q.z());
+    ground_truth_.point.x = nh_private_.param<float>("groundtruthx", 0);
+    ground_truth_.point.y = nh_private_.param<float>("groundtruthy", 0);
+    ground_truth_.point.z = nh_private_.param<float>("groundtruthz", 0);
+    gt_quat_ = nh_private_.param<std::vector<float>>("groundtruth_orientation", {});
 
     std::cout << "Got simulated ground truth data" << std::endl;
 
@@ -224,80 +157,41 @@ void TestMatcher::match() {
   ///////////////////////////////////////*/
 
   // Selection of mapper
-  if (nh_private_.param<bool>("usetemplate", false)) {
-    template_match();
-  }
-  if (nh_private_.param<bool>("useGoICP", false)) {
-    go_icp_match();
-  }
-  //  if (nh_private_.param<bool>("useSuper4PCS", false)) {
-  //    super4pcs_match();
-  //  }
-  if (nh_private_.param<bool>("usePlaneMatcher", false)) {
+  std::string matcher = nh_private_.param<std::string>("Matcher", "fail");
+  if (!matcher.compare("template")) {
+    templateMatch();
+  } else if (!matcher.compare("GoICP")) {
+    goicpMatch();
+  } else if (!matcher.compare("PlaneMatcher")) {
     // Filtering / Preprocessing Point Cloud
     if (nh_private_.param<bool>("useStructureFilter", false)) {
       int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
-      CloudFilterLib::static_object_filter(structure_threshold, lidar_scan_,
-                                           static_structure_cloud_);
+      CloudFilter::filterStaticObject(structure_threshold, lidar_scan_, static_structure_cloud_);
     }
     if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
       float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
-      CloudFilterLib::voxel_centroid_filter(search_radius, lidar_scan_);
+      CloudFilter::filterVoxelCentroid(search_radius, lidar_scan_);
     }
-
     // Plane Extraction
     std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
     std::vector<std::vector<double>> plane_coefficients;
-    if (nh_private_.param<bool>("usepclPlaneExtraction", false)) {
-      PlaneExtractionLib::pcl_plane_extraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                               plane_pub_, tf_map_frame_, nh_private_);
+    std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
+    if (!extractor.compare("pclPlaneExtraction")) {
+      PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                         tf_map_frame_, plane_pub_);
+    } else if (!extractor.compare("rhtPlaneExtraction")) {
+      PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                         tf_map_frame_, plane_pub_);
+    } else if (!extractor.compare("iterRhtPlaneExtraction")) {
+      PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
+                                             tf_map_frame_, plane_pub_);
+    } else {
+      std::cout << "Error: Could not find given plane extractor" << std::endl;
     }
-    if (nh_private_.param<bool>("useRHTPlaneExtraction", false)) {
-      PlaneExtractionLib::rht_plane_extraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                               plane_pub_, tf_map_frame_, nh_private_);
-    }
-    if (nh_private_.param<bool>("useiterRHTPlaneExtraction", false)) {
-      PlaneExtractionLib::iter_rht_plane_extraction(extracted_planes, plane_coefficients,
-                                                    lidar_scan_, plane_pub_, tf_map_frame_,
-                                                    nh_private_);
-    }
-
-    // Convert plane coefficients back to normal (could be done easily in the function itself)
-    pcl::PointNormal norm_point;
-    pcl::PointXYZ plane_centroid;
-    int plane_nr = 0;
-    for (auto plane_coefficient : plane_coefficients) {
-      pcl::computeCentroid(extracted_planes[plane_nr], plane_centroid);
-      norm_point.x = plane_centroid.x;
-      norm_point.y = plane_centroid.y;
-      norm_point.z = plane_centroid.z;
-
-      norm_point.normal_x = std::cos(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
-      norm_point.normal_y = std::sin(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
-      norm_point.normal_z = std::sin(plane_coefficient[2]);
-      extracted_planes_.push_back(norm_point);
-      plane_nr++;
-
-      // std::cout << plane_nr - 1 << std::endl;
-      // std::cout << norm_point.x << std::endl;
-      // std::cout << norm_point.y << std::endl;
-      // std::cout << norm_point.z << std::endl;
-      // std::cout << norm_point.normal_x << std::endl;
-      // std::cout << norm_point.normal_y << std::endl;
-      // std::cout << norm_point.normal_z << std::endl;
-    }
-
-    // Plane Matching (Get T_map,lidar)
-    if (nh_private_.param<bool>("usePRRUS", false)) {
-      PlaneMatchLib::prrus(transform_TR_, extracted_planes_, map_planes_, nh_private_);
-    }
-    if (nh_private_.param<bool>("usePlaneDescriptor", false)) {
-      PlaneMatchLib::PlaneDescriptor(transform_TR_, extracted_planes_, map_planes_);
-    }
-    if (nh_private_.param<bool>("useMatchSolution", false)) {
-      PlaneMatchLib::load_example_sol(transform_TR_, extracted_planes_, map_planes_, nh_private_);
-    }
+  } else {
+    std::cout << "Error: Could not find given matcher" << std::endl;
   }
+
   /*//////////////////////////////////////
                 Transformation
   ///////////////////////////////////////*/
@@ -308,7 +202,8 @@ void TestMatcher::match() {
   Eigen::Quaternionf q(transform_TR_[3], transform_TR_[4], transform_TR_[5], transform_TR_[6]);
   res_transform.block(0, 0, 3, 3) = q.matrix();
   res_transform.block(0, 3, 3, 1) = translation;
-  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform);
+
+  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform.inverse());
 
   /*//////////////////////////////////////
                 Visualization
@@ -320,6 +215,7 @@ void TestMatcher::match() {
   DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
   scan_pub_.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_, ros::Time::now()));
+
   ready_for_eval_ = true;
 }
 
@@ -330,15 +226,9 @@ void TestMatcher::evaluate() {
 
   std::cout << "calculated position: x: " << transform_TR_[0] << " y: " << transform_TR_[1]
             << " z: " << transform_TR_[2] << std::endl;
+
   std::cout << "ground truth position: x: " << ground_truth_.point.x
             << " y: " << ground_truth_.point.y << " z: " << ground_truth_.point.z << std::endl;
-
-  if (use_sim_lidar_) {
-    std::cout << "ground truth orientation: qw: " << gt_quat_[0] << " qx: " << gt_quat_[1]
-              << " qy: " << gt_quat_[2] << " qz: " << gt_quat_[3] << std::endl;
-  }
-  std::cout << "calculated orientation: qw: " << transform_TR_[3] << " qx: " << transform_TR_[4]
-            << " qy: " << transform_TR_[5] << " qz: " << transform_TR_[6] << std::endl;
 
   float error = sqrt(pow(transform_TR_[0] - ground_truth_.point.x, 2) +
                      pow(transform_TR_[1] - ground_truth_.point.y, 2) +
@@ -377,163 +267,5 @@ void TestMatcher::getError(PointCloud p1, PointCloud p2) {
             << std::endl;
 }
 
-void TestMatcher::load_example() {
-  // normals for used map
-  pcl::PointNormal norm_point;
-  norm_point.x = -3.8;
-  norm_point.y = -0.2;
-  norm_point.z = 0;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = -1;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 0;
-  norm_point.y = 3.5;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 10.3;
-  norm_point.y = 6.4;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 19.8;
-  norm_point.y = 7.1;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 27.5;
-  norm_point.y = 7.6;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 34.3;
-  norm_point.y = 3.8;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 36.15;
-  norm_point.y = 0;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 37.9;
-  norm_point.y = -1;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 36.15;
-  norm_point.y = -2.6;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 34.4;
-  norm_point.y = -4.16;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 37.65;
-  norm_point.y = -6.3;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 29.8;
-  norm_point.y = -7.24;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 26.3;
-  norm_point.y = -8;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 21.6;
-  norm_point.y = -7.1;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 9.74;
-  norm_point.y = -6;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -1.86;
-  norm_point.y = -7.1;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -3.1;
-  norm_point.y = -7.16;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -11.7;
-  norm_point.y = -6.22;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -18.5;
-  norm_point.y = -3.95;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -20.97;
-  norm_point.y = -2.5;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -24;
-  norm_point.y = -1.3;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -11.6;
-  norm_point.y = -0.25;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-};
 }  // namespace matching_algorithms
 }  // namespace cad_percept
