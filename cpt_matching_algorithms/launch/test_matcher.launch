@@ -13,7 +13,6 @@
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml" />
         
         <param name="goicp_folder" value="$(find go_icp_catkin)"/>
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/go_icp_config.yaml" />
         
         <rosparam command="load" file="$(arg lidar_settings)" />
         <param name="tfLidarFrame" value="$(arg lidar_frame)" />
@@ -46,6 +45,6 @@
 
     <node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz.yaml" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz/rviz_test_matcher.yaml" />
 
 </launch>

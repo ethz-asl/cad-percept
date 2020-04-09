@@ -12,7 +12,7 @@
         <!-- If FixLidarScan is true, the scan does not move at all but stays centered (fixed) at the origin, if FixLidarScan is false, the scan moves with the marker as origin -->
         <param name="FixLidarScans" value="false" />
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
-        <param name="lidarFrame" value="$(arg lidar_frame)" />
+        <param name="tfLidarFrame" value="$(arg lidar_frame)" />
     </node>
 
     <node name="marker_pose"
@@ -37,6 +37,6 @@
 
     <node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz_movable_lidar_sim.yaml" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz/rviz_movable_lidar_sim.yaml" />
 
 </launch>

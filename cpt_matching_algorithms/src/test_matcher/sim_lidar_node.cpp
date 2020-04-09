@@ -36,8 +36,7 @@ ros::Publisher scan_pub;
 std::string tf_lidar_frame;
 
 void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
-void set_lidar_in_mesh(const ros::TimerEvent &);
-void simulate_lidar();
+void simulate_lidar(const ros::TimerEvent &);
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "lidar_simulator");
@@ -67,7 +66,7 @@ int main(int argc, char **argv) {
   scan_pub = nh.advertise<sensor_msgs::PointCloud2>("sim_rslidar_points", 1, true);
 
   // Create timer for simulation
-  ros::Timer simtimer = nh.createTimer(ros::Duration(0.01), set_lidar_in_mesh);
+  ros::Timer simtimer = nh.createTimer(ros::Duration(0.01), simulate_lidar);
 
   ros::spin();
 
@@ -102,7 +101,7 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   }
 }
 
-void set_lidar_in_mesh(const ros::TimerEvent &) {
+void simulate_lidar(const ros::TimerEvent &) {
   if (got_CAD) {
     // Get tf transformation from cad to lidar
     tf::StampedTransform transform;
@@ -126,72 +125,67 @@ void set_lidar_in_mesh(const ros::TimerEvent &) {
               << std::endl;
     std::cout << std::endl;
 
-    // Simulate Lidar
-    simulate_lidar();
+    // Add lidar properties
+    // Bin characteristic & visible
+    std::cout << "Simulate bins of LiDAR" << std::endl;
+
+    float x_unit;
+    float y_unit;
+    float z_unit;
+    float PI_angle = (float)(M_PI / 180);
+    cad_percept::cgal::Ray bin_ray;
+    cad_percept::cgal::Point origin(0, 0, 0);
+    cad_percept::cgal::Point unit_dir;
+    cad_percept::cgal::Intersection inter_point;
+    pcl::PointXYZ pcl_inter_point;
+    lidar_scan.clear();
+    for (auto &bin : bin_elevation) {
+      for (float theta = 0; theta < 360; theta += dtheta) {
+        x_unit = cos(bin * PI_angle) * cos(theta * PI_angle);
+        y_unit = cos(bin * PI_angle) * sin(theta * PI_angle);
+        z_unit = sin(bin * PI_angle);
+        unit_dir = cad_percept::cgal::Point(x_unit, y_unit, z_unit);
+        bin_ray = cad_percept::cgal::Ray(origin, unit_dir);
+
+        if (reference_mesh->isIntersection(bin_ray)) {
+          inter_point = reference_mesh->getIntersection(bin_ray);
+          pcl_inter_point.x = (float)inter_point.intersected_point.x();
+          pcl_inter_point.y = (float)inter_point.intersected_point.y();
+          pcl_inter_point.z = (float)inter_point.intersected_point.z();
+          lidar_scan.push_back(pcl_inter_point);
+        }
+      }
+    }
+
+    // Sensor noise
+    std::default_random_engine generator;
+    std::normal_distribution<float> noise(0, noise_variance);
+
+    std::cout << "Start to add lidar properties" << std::endl;
+    PointCloud full_lidar_scan = lidar_scan;
+    lidar_scan.clear();
+    for (auto i : full_lidar_scan.points) {
+      if (sqrt(pow(i.x, 2) + pow(i.y, 2) + pow(i.z, 2)) < range_of_lidar) {
+        i.x = i.x + noise(generator);
+        i.y = i.y + noise(generator);
+        i.z = i.z + noise(generator);
+
+        lidar_scan.push_back(i);
+      }
+    }
+
+    // Publish simulated lidar frame
+    DP ref_scan = cad_percept::cpt_utils::pointCloudToDP(lidar_scan);
+    if (fix_lidar_scan) {
+      scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan, tf_map_frame,
+                                                                          ros::Time::now()));
+    } else {
+      scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan, tf_lidar_frame,
+                                                                          ros::Time::now()));
+    }
+    std::cout << "LiDAR Simulator starts to publish" << std::endl;
 
     // Transform mesh back for next iteration
     reference_mesh->transform(ctransformation);
   }
-}
-
-void simulate_lidar() {
-  // Add lidar properties
-  // Bin characteristic & visible
-  std::cout << "Simulate bins of LiDAR" << std::endl;
-
-  float x_unit;
-  float y_unit;
-  float z_unit;
-  float PI_angle = (float)(M_PI / 180);
-  cad_percept::cgal::Ray bin_ray;
-  cad_percept::cgal::Point origin(0, 0, 0);
-  cad_percept::cgal::Point unit_dir;
-  cad_percept::cgal::Intersection inter_point;
-  pcl::PointXYZ pcl_inter_point;
-  lidar_scan.clear();
-  for (auto &bin : bin_elevation) {
-    for (float theta = 0; theta < 360; theta += dtheta) {
-      x_unit = cos(bin * PI_angle) * cos(theta * PI_angle);
-      y_unit = cos(bin * PI_angle) * sin(theta * PI_angle);
-      z_unit = sin(bin * PI_angle);
-      unit_dir = cad_percept::cgal::Point(x_unit, y_unit, z_unit);
-      bin_ray = cad_percept::cgal::Ray(origin, unit_dir);
-
-      if (reference_mesh->isIntersection(bin_ray)) {
-        inter_point = reference_mesh->getIntersection(bin_ray);
-        pcl_inter_point.x = (float)inter_point.intersected_point.x();
-        pcl_inter_point.y = (float)inter_point.intersected_point.y();
-        pcl_inter_point.z = (float)inter_point.intersected_point.z();
-        lidar_scan.push_back(pcl_inter_point);
-      }
-    }
-  }
-
-  // Sensor noise
-  std::default_random_engine generator;
-  std::normal_distribution<float> noise(0, noise_variance);
-
-  std::cout << "Start to add lidar properties" << std::endl;
-  PointCloud full_lidar_scan = lidar_scan;
-  lidar_scan.clear();
-  for (auto i : full_lidar_scan.points) {
-    if (sqrt(pow(i.x, 2) + pow(i.y, 2) + pow(i.z, 2)) < range_of_lidar) {
-      i.x = i.x + noise(generator);
-      i.y = i.y + noise(generator);
-      i.z = i.z + noise(generator);
-
-      lidar_scan.push_back(i);
-    }
-  }
-
-  // Publish simulated lidar frame
-  DP ref_scan = cad_percept::cpt_utils::pointCloudToDP(lidar_scan);
-  if (fix_lidar_scan) {
-    scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan, tf_map_frame,
-                                                                        ros::Time::now()));
-  } else {
-    scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan, tf_lidar_frame,
-                                                                        ros::Time::now()));
-  }
-  std::cout << "LiDAR Simulator starts to publish" << std::endl;
 }
