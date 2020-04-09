@@ -12,7 +12,7 @@ class PlaneExtractor::HoughAccumulator {
   void vote(Eigen::Vector3d vote, int (&voter)[3]) {
     PointXYZ vote_point(vote(0), vote(1), vote(2));
     kdtree_.nearestKSearch(vote_point, 1, bin_index_, bin_index_dist_);
-    ++bins_[bin_index_[0]];
+    bins_(1, bin_index_[0]) = bins_(1, bin_index_[0]) + 1;
 
     voter_ids_[bin_index_[0]].push_back(voter[0]);
     voter_ids_[bin_index_[0]].push_back(voter[1]);
@@ -30,11 +30,11 @@ class PlaneExtractor::HoughAccumulator {
                                bin_index_dist_);
         // Check neighbourhood, do not care about bin_index[0] as it discribes point itself
         for (int j = 1; j < bin_index_.size(); ++j) {
-          if (bins_[i] < bins_[bin_index_[j]]) break;  // non local maxima
-          if (j == (bin_index_.size() - 1)) {          // local maxima
+          if (bins_(1, i) < bins_(1, bin_index_[j])) break;  // non local maxima
+          if (j == (bin_index_.size() - 1)) {                // local maxima
             for (int n = 1; n < bin_index_.size(); ++n) {
-              bins_[i] += bins_[bin_index_[n]];
-              bins_[bin_index_[n]] = 0;
+              bins_(1, i) += bins_(1, bin_index_[n]);
+              bins_(1, bin_index_[n]) = 0;
             }
           }
         }
@@ -50,7 +50,7 @@ class PlaneExtractor::HoughAccumulator {
     plane_coefficients.clear();
     get_voter_ids.clear();
     for (int i = 0; i < accumulator_size; ++i) {
-      if (bins_[i] >= min_vote_threshold) {
+      if (bins_(1, i) >= min_vote_threshold) {
         actuel_plane_coefficients.push_back(bin_values_->points[i].x);  // rho
         actuel_plane_coefficients.push_back(bin_values_->points[i].y);  // theta
         actuel_plane_coefficients.push_back(bin_values_->points[i].z);  // psi
@@ -69,9 +69,10 @@ class PlaneExtractor::HoughAccumulator {
     get_voter_ids.clear();
 
     int maximum_idx;
-    std::vector<int> copy_bins = bins_;
+
+    Eigen::Matrix<int, 1, Eigen::Dynamic> copy_bins = bins_;
     for (int i = 0; i < num_main_planes; ++i) {
-      maximum_idx = std::max_element(copy_bins.begin(), copy_bins.end()) - copy_bins.begin();
+      copy_bins.maxCoeff(&maximum_idx);
       actuel_plane_coefficients.push_back(bin_values_->points[maximum_idx].x);  // rho
       actuel_plane_coefficients.push_back(bin_values_->points[maximum_idx].y);  // theta
       actuel_plane_coefficients.push_back(bin_values_->points[maximum_idx].z);  // psi
@@ -80,20 +81,19 @@ class PlaneExtractor::HoughAccumulator {
       get_voter_ids.push_back(voter_ids_[maximum_idx]);
 
       actuel_plane_coefficients.clear();
-      copy_bins[maximum_idx] = 0;
+      copy_bins(1, maximum_idx) = 0;
     }
   };
 
   void reset() {
     voter_ids_.clear();
-    bins_.clear();
-    bins_.resize(accumulator_size);
+    bins_ = Eigen::Matrix<int, 1, Eigen::Dynamic>::Zero(1, accumulator_size);
     voter_ids_.resize(accumulator_size, std::vector<int>(0));
   }
 
  protected:
   void initAccumulator(PointCloud<PointXYZ>::Ptr accumulated_cloud) {
-    bins_.resize(accumulator_size);
+    bins_ = Eigen::Matrix<int, 1, Eigen::Dynamic>::Zero(1, accumulator_size);
     voter_ids_.resize(accumulator_size, std::vector<int>(0));
     copyPointCloud(*accumulated_cloud, *bin_values_);
     kdtree_.setInputCloud(bin_values_);
@@ -105,7 +105,7 @@ class PlaneExtractor::HoughAccumulator {
   int bin_number_psi;
 
  private:
-  std::vector<int> bins_;
+  Eigen::Matrix<int, 1, Eigen::Dynamic> bins_;
   PointCloud<PointXYZ>::Ptr bin_values_;
 
   KdTreeFLANN<PointXYZ> kdtree_;
