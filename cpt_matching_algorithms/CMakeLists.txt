@@ -37,7 +37,9 @@ target_link_libraries(test_matcher_node test_matcher)
 #############
 ## Testing ##
 #############
-catkin_add_gtest(${PROJECT_NAME}_tests
+find_package(rostest REQUIRED)
+add_rostest_gtest(${PROJECT_NAME}_tests
+    test/testlaunch.launch
     test/test_main.cpp
     test/test_plane_extraction.cpp)
 target_link_libraries(${PROJECT_NAME}_tests test_matcher)
