@@ -16,6 +16,7 @@
 
 #include "cloud_filter/cloud_filter.h"
 #include "plane_extraction/plane_extraction.h"
+#include "plane_matching/plane_matching.h"
 
 namespace cad_percept {
 namespace matching_algorithms {
@@ -45,6 +46,8 @@ class TestMatcher {
   PointCloud lidar_scan_;
   PointCloud sample_map_;
   pcl::PointCloud<pcl::PointXYZI> static_structure_cloud_;
+  pcl::PointCloud<pcl::PointNormal> scan_planes_;
+  pcl::PointCloud<pcl::PointNormal> map_planes_;
 
   // Param from server
   int input_queue_size_;
@@ -111,6 +114,8 @@ class TestMatcher {
    */
   void templateMatch();
   void goicpMatch();
+
+  void load_example();
 };
 
 }  // namespace matching_algorithms

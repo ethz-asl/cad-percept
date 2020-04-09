@@ -1,8 +1,3 @@
-# Settings of PPRUS
-PRRUSkMap: 10 # This value determines the k of the nearest neighbor search in the map, 
-             # after assigning the first plane from the scan to reduce the considered combinations. 
-             # Due to complexity it shouldn't be set too high
-PRRUSDropThreshold: 1 # Can be set to remove score of probably wrong extracted planes
-PRRUSMaxDropCosts: 2 # Maximal number of costs which can be considered coming from wrong extracted planes  
+
 
 

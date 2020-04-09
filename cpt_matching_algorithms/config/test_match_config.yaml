@@ -23,14 +23,13 @@ useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
 # Plane Extraction
-PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
+PlaneExtractor: pclPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
 
 # Plane Matching (only one)
-usePRRUS: false
-
 usePlaneDescriptor: true
 
 useMatchSolution: false
+
 
 # Transform Calculation
 
