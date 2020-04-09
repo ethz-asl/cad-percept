@@ -118,11 +118,13 @@ class PlaneExtractor::HoughAccumulator {
 
 class PlaneExtractor::ArrayAccumulator : public PlaneExtractor::HoughAccumulator {
  public:
-  ArrayAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size, Eigen::Vector3d bin_maxima)
-      : accumulated_cloud_(new PointCloud<PointXYZ>) {
-    bin_number_rho = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
-    bin_number_theta = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
-    bin_number_psi = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+  ArrayAccumulator(Eigen::Matrix3d bin_allocation) : accumulated_cloud_(new PointCloud<PointXYZ>) {
+    bin_number_rho =
+        (int)((bin_allocation(0, 2) - bin_allocation(0, 0)) / bin_allocation(0, 1) + 1);
+    bin_number_theta =
+        (int)((bin_allocation(1, 2) - bin_allocation(1, 0)) / bin_allocation(1, 1) + 1);
+    bin_number_psi =
+        (int)((bin_allocation(2, 2) - bin_allocation(2, 0)) / bin_allocation(2, 1) + 1);
     accumulator_size = bin_number_rho * bin_number_theta * bin_number_psi;
 
     std::cout << "ArrayAccumualtor uses a total of " << accumulator_size << std::endl;
@@ -133,9 +135,9 @@ class PlaneExtractor::ArrayAccumulator : public PlaneExtractor::HoughAccumulator
     for (int d_rho = 0; d_rho < bin_number_rho; ++d_rho) {
       for (int d_theta = 0; d_theta < bin_number_theta; ++d_theta) {
         for (int d_psi = 0; d_psi < bin_number_psi; ++d_psi) {
-          bin_point.x = d_rho * bin_size[0] + bin_minima[0];
-          bin_point.y = d_theta * bin_size[1] + bin_minima[1];
-          bin_point.z = d_psi * bin_size[2] + bin_minima[2];
+          bin_point.x = d_rho * bin_allocation(0, 1) + bin_allocation(0, 0);
+          bin_point.y = d_theta * bin_allocation(1, 1) + bin_allocation(1, 0);
+          bin_point.z = d_psi * bin_allocation(2, 1) + bin_allocation(2, 0);
           accumulated_cloud_->push_back(bin_point);
         }
       }
@@ -149,11 +151,13 @@ class PlaneExtractor::ArrayAccumulator : public PlaneExtractor::HoughAccumulator
 
 class PlaneExtractor::BallAccumulator : public PlaneExtractor::HoughAccumulator {
  public:
-  BallAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size, Eigen::Vector3d bin_maxima)
-      : accumulated_cloud_(new PointCloud<PointXYZ>) {
-    bin_number_rho = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
-    bin_number_theta = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
-    bin_number_psi = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+  BallAccumulator(Eigen::Matrix3d bin_allocation) : accumulated_cloud_(new PointCloud<PointXYZ>) {
+    bin_number_rho =
+        (int)((bin_allocation(0, 2) - bin_allocation(0, 0)) / bin_allocation(0, 1) + 1);
+    bin_number_theta =
+        (int)((bin_allocation(1, 2) - bin_allocation(1, 0)) / bin_allocation(1, 1) + 1);
+    bin_number_psi =
+        (int)((bin_allocation(2, 2) - bin_allocation(2, 0)) / bin_allocation(2, 1) + 1);
     accumulator_size = bin_number_rho * bin_number_theta * bin_number_psi;
 
     std::cout << "BallAccumualtor uses a total of " << accumulator_size << std::endl;
@@ -164,12 +168,12 @@ class PlaneExtractor::BallAccumulator : public PlaneExtractor::HoughAccumulator 
     for (int d_rho = 0; d_rho < bin_number_rho; ++d_rho) {
       for (int d_psi = 0; d_psi < bin_number_psi; ++d_psi) {
         double delta_theta = 2 * M_PI /
-                             (((d_psi + 0.5) * bin_size[2] + bin_minima[2]) *
+                             (((d_psi + 0.5) * bin_allocation(2, 1) + bin_allocation(2, 0)) *
                               bin_number_theta);  // Simplified formula from paper
         for (int d_theta = 0; d_theta < bin_number_theta; ++d_theta) {
-          bin_point.x = d_rho * bin_size[0] + bin_minima[0];
-          bin_point.y = d_theta * delta_theta + bin_minima[1];
-          bin_point.z = d_psi * bin_size[2] + bin_minima[2];
+          bin_point.x = d_rho * bin_allocation(0, 1) + bin_allocation(0, 0);
+          bin_point.y = d_theta * delta_theta + bin_allocation(1, 0);
+          bin_point.z = d_psi * bin_allocation(2, 1) + bin_allocation(2, 0);
           accumulated_cloud_->push_back(bin_point);
         }
       }
@@ -327,18 +331,26 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
 
   HoughAccumulator *accumulator;
 
+  Eigen::Matrix3d bin_allocation;
+  // Minimum values
+  bin_allocation(0, 0) = 0;
+  bin_allocation(1, 0) = -(double)M_PI;
+  bin_allocation(2, 0) = -(double)M_PI / 2;
+  // Bin sizes
+  bin_allocation(0, 1) = rho_resolution;
+  bin_allocation(1, 1) = theta_resolution;
+  bin_allocation(2, 1) = psi_resolution;
+  // Maximum values
+  bin_allocation(0, 2) = max_distance_to_point;
+  bin_allocation(1, 2) = (double)M_PI;
+  bin_allocation(2, 2) = (double)M_PI / 2;
+
   if (accumulator_choice == 2) {
     std::cout << "Initialize ball accumulator" << std::endl;
-    Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
-    Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
-    Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-    accumulator = new (HoughAccumulator)(BallAccumulator(min_coord, bin_size, max_coord));
+    accumulator = new (HoughAccumulator)(BallAccumulator(bin_allocation));
   } else {
     std::cout << "Initialize array accumulator" << std::endl;
-    Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
-    Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
-    Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-    accumulator = new (HoughAccumulator)(ArrayAccumulator(min_coord, bin_size, max_coord));
+    accumulator = new (HoughAccumulator)(ArrayAccumulator(bin_allocation));
   }
 
   // Perform RHT
@@ -392,12 +404,25 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
     if ((double)geometry::distance(origin, copy_lidar_scan->points[i]) > max_distance_to_point)
       max_distance_to_point = (double)geometry::distance(origin, copy_lidar_scan->points[i]);
   }
-  std::cout << "Initialize ball accumulator" << std::endl;
-  Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
-  Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
-  Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
+
   HoughAccumulator *accumulator;
-  accumulator = new (HoughAccumulator)(BallAccumulator(min_coord, bin_size, max_coord));
+
+  Eigen::Matrix3d bin_allocation;
+  // Minimum values
+  bin_allocation(0, 0) = 0;
+  bin_allocation(1, 0) = -(double)M_PI;
+  bin_allocation(2, 0) = -(double)M_PI / 2;
+  // Bin sizes
+  bin_allocation(0, 1) = rho_resolution;
+  bin_allocation(1, 1) = theta_resolution;
+  bin_allocation(2, 1) = psi_resolution;
+  // Maximum values
+  bin_allocation(0, 2) = max_distance_to_point;
+  bin_allocation(1, 2) = (double)M_PI;
+  bin_allocation(2, 2) = (double)M_PI / 2;
+
+  std::cout << "Initialize ball accumulator" << std::endl;
+  accumulator = new (HoughAccumulator)(ArrayAccumulator(bin_allocation));
 
   ExtractIndices<PointXYZ> indices_filter;
   std::vector<std::vector<int>> inlier_ids;
