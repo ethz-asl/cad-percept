@@ -16,10 +16,10 @@ downsample: "1000"
 # Settings for Plane Matcher
 
 # Filters
-useStructureFilter: true
+useStructureFilter: false
 StructureThreshold: 150
 
-useVoxelCentroidFilter: true
+useVoxelCentroidFilter: false
 Voxelsearchradius: 0.1
 
 # Plane Extraction
