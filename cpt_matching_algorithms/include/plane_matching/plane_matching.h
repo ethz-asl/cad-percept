@@ -33,7 +33,8 @@ class PlaneMatch {
  public:
   static void IntersectionPatternMatcher(float (&transformTR)[7],
                                          const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                         const pcl::PointCloud<pcl::PointNormal> map_planes);
+                                         const pcl::PointCloud<pcl::PointNormal> map_planes,
+                                         Eigen::Matrix<float, 22, 2> room_boundaries);
   static void loadExampleSol(float (&transformTR)[7],
                              const pcl::PointCloud<pcl::PointNormal> scan_planes,
                              const pcl::PointCloud<pcl::PointNormal> map_planes);

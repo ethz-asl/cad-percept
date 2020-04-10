@@ -48,6 +48,7 @@ class TestMatcher {
   pcl::PointCloud<pcl::PointXYZI> static_structure_cloud_;
   pcl::PointCloud<pcl::PointNormal> scan_planes_;
   pcl::PointCloud<pcl::PointNormal> map_planes_;
+  Eigen::Matrix<float, 22, 2> room_boundaries;
 
   // Param from server
   int input_queue_size_;

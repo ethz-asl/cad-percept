@@ -1,8 +1,8 @@
 # Intersection Pattern Matcher
-IntersectionPatternParallelThreshold: 0.1
-IntersectionPatternCornerThreshold: 0.0
-IntersectionPatternCoarseness: 1 # Defines radius in which points are bunched together 
+IntersectionPatternParallelThreshold: 0.8
+IntersectionPatternCornerThreshold: -0.1 #does not work yet, set to zero for no changes
+IntersectionPatternCoarseness: 0.2 # Defines radius in which points are bunched together 
 IntersectionPatternDevOffset: 1 # parameter of error/score function
-IntersectionPatternDevGrade: 1 # parameter of error/score function
+IntersectionPatternDevGrade: 0.5 # parameter of error/score function
 
 

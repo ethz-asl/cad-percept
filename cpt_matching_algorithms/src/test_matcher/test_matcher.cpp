@@ -274,7 +274,8 @@ void TestMatcher::match() {
     }
     // Plane Matching (Get T_map,lidar)
     if (nh_private_.param<bool>("usePlaneDescriptor", false)) {
-      PlaneMatch::IntersectionPatternMatcher(transform_TR_, scan_planes_, map_planes_);
+      PlaneMatch::IntersectionPatternMatcher(transform_TR_, scan_planes_, map_planes_,
+                                             room_boundaries);
     }
     if (nh_private_.param<bool>("useMatchSolution", false)) {
       PlaneMatch::loadExampleSol(transform_TR_, scan_planes_, map_planes_);
@@ -520,6 +521,50 @@ void TestMatcher::load_example() {
   norm_point.normal_y = 1;
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
+
+  // load map boundaries
+  room_boundaries(1, 0) = 0;
+  room_boundaries(1, 1) = 6.4;
+  room_boundaries(2, 0) = 0;
+  room_boundaries(2, 1) = 19.8;
+  room_boundaries(3, 0) = 6.4;
+  room_boundaries(3, 1) = 7.1;
+  room_boundaries(4, 0) = 19.8;
+  room_boundaries(4, 1) = 34.3;
+  room_boundaries(5, 0) = 0;
+  room_boundaries(5, 1) = 7.6;
+  room_boundaries(6, 0) = 34.3;
+  room_boundaries(6, 1) = 37.9;
+  room_boundaries(7, 0) = -2.6;
+  room_boundaries(7, 1) = 0;
+  room_boundaries(8, 0) = 34.4;
+  room_boundaries(8, 1) = 37.9;
+  room_boundaries(9, 0) = -6.3;
+  room_boundaries(9, 1) = -2.6;
+  room_boundaries(10, 0) = 29.8;
+  room_boundaries(10, 1) = 36.15;
+  room_boundaries(11, 0) = -8;
+  room_boundaries(11, 1) = -6.3;
+  room_boundaries(12, 0) = 21.6;
+  room_boundaries(12, 1) = 29.8;
+  room_boundaries(13, 0) = -8;
+  room_boundaries(13, 1) = -6.3;
+  room_boundaries(14, 0) = -1.86;
+  room_boundaries(14, 1) = 21.6;
+  room_boundaries(15, 0) = -100;
+  room_boundaries(15, 1) = -6;
+  room_boundaries(16, 0) = -100;
+  room_boundaries(16, 1) = -6.22;
+  room_boundaries(17, 0) = -18.5;
+  room_boundaries(17, 1) = -3.1;
+  room_boundaries(18, 0) = -6.22;
+  room_boundaries(18, 1) = -2.5;
+  room_boundaries(19, 0) = -24;
+  room_boundaries(19, 1) = -18.5;
+  room_boundaries(20, 0) = -2.5;
+  room_boundaries(20, 1) = -0.25;
+  room_boundaries(21, 0) = -24;
+  room_boundaries(21, 1) = 0;
 };
 
 }  // namespace matching_algorithms
