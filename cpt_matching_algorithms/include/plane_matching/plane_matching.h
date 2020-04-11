@@ -60,6 +60,8 @@ class PlaneMatch {
       std::vector<std::vector<SortRelativeTriangle>> triangles_in_map_planes);
   static void filterIntersectionPoints(
       std::vector<std::vector<IntersectionCornernessPoint>> &intersection_points);
+  static void filterIntersectionPoints(
+      std::vector<std::vector<SortRelativeTriangle>> &triangles_in_planes);
   static void transformAverage(float (&transformTR)[7], std::vector<int> plane_assignement,
                                const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                const pcl::PointCloud<pcl::PointNormal> map_planes);

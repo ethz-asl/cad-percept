@@ -11,15 +11,15 @@ class PlaneMatch::SortRelativeTriangle {
 
   void insert(float input_edges[3], bool input_isline) {
     isline = input_isline;
-    if (input_edges[0] > input_edges[1]) {
-      if (input_edges[0] > input_edges[2]) {
-        edges_[0] = input_edges[0];
-        if (input_edges[1] > input_edges[2]) {
-          edges_[1] = input_edges[1];
-          edges_[2] = input_edges[2];
-        } else {
+    if (input_edges[0] < input_edges[1]) {
+      if (input_edges[0] < input_edges[2]) {
+        edges_[2] = input_edges[0];
+        if (input_edges[1] < input_edges[2]) {
+          edges_[0] = input_edges[1];
           edges_[1] = input_edges[2];
-          edges_[2] = input_edges[1];
+        } else {
+          edges_[0] = input_edges[2];
+          edges_[1] = input_edges[1];
         }
       } else {
         edges_[0] = input_edges[1];
@@ -27,9 +27,9 @@ class PlaneMatch::SortRelativeTriangle {
         edges_[2] = input_edges[2];
       }
     } else {
-      if (input_edges[0] < input_edges[2]) {
+      if (input_edges[0] > input_edges[2]) {
         edges_[0] = input_edges[0];
-        if (input_edges[1] > input_edges[2]) {
+        if (input_edges[1] < input_edges[2]) {
           edges_[1] = input_edges[2];
           edges_[2] = input_edges[1];
         } else {
@@ -75,25 +75,25 @@ void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
   getprojPlaneIntersectionPoints(map_intersection_points, parallel_threshold, map_planes);
   std::cout << "Searched for intersection points in scan and map" << std::endl;
 
-  std::cout << "scan" << std::endl;
-  for (auto point : scan_intersection_points) {
-    std::cout << point.size() << std::endl;
-  }
-  std::cout << "map" << std::endl;
-  for (auto point : map_intersection_points) {
-    std::cout << point.size() << std::endl;
-  }
+  // std::cout << "scan" << std::endl;
+  // for (auto point : scan_intersection_points) {
+  //   std::cout << point.size() << std::endl;
+  // }
+  // std::cout << "map" << std::endl;
+  // for (auto point : map_intersection_points) {
+  //   std::cout << point.size() << std::endl;
+  // }
 
-  std::cout << "scan" << std::endl;
-  for (auto point : scan_intersection_points[4]) {
-    std::cout << point.intersection_point.x() << " " << point.intersection_point.y() << " "
-              << point.intersection_point.z() << std::endl;
-  }
-  std::cout << "map" << std::endl;
-  for (auto point : map_intersection_points[1]) {
-    std::cout << point.intersection_point.x() << " " << point.intersection_point.y() << " "
-              << point.intersection_point.z() << std::endl;
-  }
+  // std::cout << "scan" << std::endl;
+  // for (auto point : scan_intersection_points[4]) {
+  //   std::cout << point.intersection_point.x() << " " << point.intersection_point.y() << " "
+  //             << point.intersection_point.z() << std::endl;
+  // }
+  // std::cout << "map" << std::endl;
+  // for (auto point : map_intersection_points[1]) {
+  //   std::cout << point.intersection_point.x() << " " << point.intersection_point.y() << " "
+  //             << point.intersection_point.z() << std::endl;
+  // }
 
   filterIntersectionPoints(scan_intersection_points);
   filterIntersectionPoints(map_intersection_points);
@@ -125,25 +125,25 @@ void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
     }
   }
 
-  std::cout << "scan" << std::endl;
-  for (auto point : scan_intersection_points) {
-    std::cout << point.size() << std::endl;
-  }
-  std::cout << "map" << std::endl;
-  for (auto point : map_intersection_points) {
-    std::cout << point.size() << std::endl;
-  }
+  // std::cout << "scan" << std::endl;
+  // for (auto point : scan_intersection_points) {
+  //   std::cout << point.size() << std::endl;
+  // }
+  // std::cout << "map" << std::endl;
+  // for (auto point : map_intersection_points) {
+  //   std::cout << point.size() << std::endl;
+  // }
 
-  std::cout << "scan" << std::endl;
-  for (auto point : scan_intersection_points[4]) {
-    std::cout << point.intersection_point.x() << " " << point.intersection_point.y() << " "
-              << point.intersection_point.z() << std::endl;
-  }
-  std::cout << "map" << std::endl;
-  for (auto point : map_intersection_points[1]) {
-    std::cout << point.intersection_point.x() << " " << point.intersection_point.y() << " "
-              << point.intersection_point.z() << std::endl;
-  }
+  // std::cout << "scan" << std::endl;
+  // for (auto point : scan_intersection_points[4]) {
+  //   std::cout << point.intersection_point.x() << " " << point.intersection_point.y() << " "
+  //             << point.intersection_point.z() << std::endl;
+  // }
+  // std::cout << "map" << std::endl;
+  // for (auto point : map_intersection_points[1]) {
+  //   std::cout << point.intersection_point.x() << " " << point.intersection_point.y() << " "
+  //             << point.intersection_point.z() << std::endl;
+  // }
 
   // get strong triangles of intersection points (trivial for given example)
   std::vector<std::vector<SortRelativeTriangle>> triangles_in_scan_planes;
@@ -152,6 +152,8 @@ void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
   std::vector<std::vector<SortRelativeTriangle>> triangles_in_map_planes;
   getIntersectionCornerTriangle(triangles_in_map_planes, threshold_cornerness,
                                 map_intersection_points);
+  // filterIntersectionPoints(triangles_in_scan_planes);
+  // filterIntersectionPoints(triangles_in_map_planes);
   std::cout << "Constructed all triangles in scan and map" << std::endl;
 
   // std::cout << "scan" << std::endl;
@@ -163,24 +165,24 @@ void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
   //   std::cout << point.size() << std::endl;
   // }
 
-  std::cout << "scan" << std::endl;
-  Eigen::Vector3f scan_triangle_sides;
-  for (auto point : triangles_in_scan_planes[4]) {
-    if (!point.getEdges(scan_triangle_sides)) {
-      std::cout << scan_triangle_sides[0] << " " << scan_triangle_sides[1] << " "
-                << scan_triangle_sides[2] << std::endl;
-    } else
-      std::cout << "line: " << scan_triangle_sides[0] << std::endl;
-  }
-  std::cout << "map" << std::endl;
-  Eigen::Vector3f map_triangle_sides;
-  for (auto point : triangles_in_map_planes[1]) {
-    if (!point.getEdges(map_triangle_sides)) {
-      std::cout << map_triangle_sides[0] << " " << map_triangle_sides[1] << " "
-                << map_triangle_sides[2] << std::endl;
-    } else
-      std::cout << "line: " << map_triangle_sides[0] << std::endl;
-  }
+  // std::cout << "scan" << std::endl;
+  // Eigen::Vector3f scan_triangle_sides;
+  // for (auto point : triangles_in_scan_planes[4]) {
+  //   if (!point.getEdges(scan_triangle_sides)) {
+  //     std::cout << scan_triangle_sides[0] << " " << scan_triangle_sides[1] << " "
+  //               << scan_triangle_sides[2] << std::endl;
+  //   } else
+  //     std::cout << "line: " << scan_triangle_sides[0] << std::endl;
+  // }
+  // std::cout << "map" << std::endl;
+  // Eigen::Vector3f map_triangle_sides;
+  // for (auto point : triangles_in_map_planes[1]) {
+  //   if (!point.getEdges(map_triangle_sides)) {
+  //     std::cout << map_triangle_sides[0] << " " << map_triangle_sides[1] << " "
+  //               << map_triangle_sides[2] << std::endl;
+  //   } else
+  //     std::cout << "line: " << map_triangle_sides[0] << std::endl;
+  // }
 
   Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> scan_to_map_score;
   findTriangleCorrespondences(scan_to_map_score, triangles_in_scan_planes, triangles_in_map_planes);
@@ -316,8 +318,8 @@ void PlaneMatch::findTriangleCorrespondences(
       triangles_in_scan_planes.size(), triangles_in_map_planes.size());
 
   ros::NodeHandle nh_private("~");
-  float deviation_tri_offset = nh_private.param<float>("IntersectionPatternDevOffset", 1);
-  float deviation_tri_grade = nh_private.param<float>("IntersectionPatternDevGrade", 1);
+  float deviation_tri_offset = nh_private.param<float>("IntersectionPatternTriangleDevOffset", 1);
+  float deviation_tri_grade = nh_private.param<float>("IntersectionPatternTriangleDevGrade", 1);
   float deviation_lin_offset = nh_private.param<float>("IntersectionPatternLineDevOffset", 1);
   float deviation_lin_grade = nh_private.param<float>("IntersectionPatternLineDevGrade", 1);
 
@@ -341,6 +343,11 @@ void PlaneMatch::findTriangleCorrespondences(
           for (auto scan_plane_triangle : scan_plane) {
             // scan_plane_triangle.getEdges(scan_triangle_sides);
             if (!scan_plane_triangle.getEdges(scan_triangle_sides)) {  // Triangle in Map and Scan
+              // std::cout << "scan tri: " << scan_triangle_sides[0] << " " <<
+              // scan_triangle_sides[1]
+              //           << " " << scan_triangle_sides[2] << std::endl;
+              // std::cout << "map tri: " << map_triangle_sides[0] << " " << map_triangle_sides[1]
+              //           << " " << map_triangle_sides[2] << std::endl;
               triangle_error.push_back((map_triangle_sides - scan_triangle_sides).norm());
               line_compare.push_back(false);
             } else {  // Line in Scan, Triangle in Map
@@ -382,14 +389,14 @@ void PlaneMatch::findTriangleCorrespondences(
                       triangle_error.begin();
           if (line_compare[min_index]) {
             // Line Evaluation
-            additional_score =
-                deviation_lin_offset +
-                std::max(-deviation_lin_offset, -triangle_error[min_index] / deviation_lin_grade);
+            additional_score = deviation_lin_offset +
+                               deviation_lin_offset * std::max(-1.0f, -triangle_error[min_index] /
+                                                                          deviation_lin_grade);
           } else {
             // Triangle Evaluation
-            additional_score =
-                deviation_tri_offset +
-                std::max(-deviation_tri_offset, -triangle_error[min_index] / deviation_lin_grade);
+            additional_score = deviation_tri_offset +
+                               deviation_tri_offset * std::max(-1.0f, -triangle_error[min_index] /
+                                                                          deviation_tri_grade);
           }
           score(scan_plane_nr, map_plane_nr) += additional_score;
         }
@@ -447,6 +454,45 @@ void PlaneMatch::filterIntersectionPoints(
     for (auto points : *filter_cloud) {
       corner_point = {Point(points.x, points.y, points.z), points.intensity};
       intersection_points[plane_nr].push_back(corner_point);
+    }
+    plane_nr++;
+  }
+}
+
+void PlaneMatch::filterIntersectionPoints(
+    std::vector<std::vector<SortRelativeTriangle>> &triangles_in_planes) {
+  ros::NodeHandle nh_private("~");
+  float search_radius = nh_private.param<float>("IntersectionPatternCoarseness", 1);
+  float environment_max_size = nh_private.param<float>("IntersectionPatternMaxSize", 100);
+
+  pcl::UniformSampling<pcl::PointXYZI> voxel_filter;
+  voxel_filter.setRadiusSearch(search_radius);
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr filter_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PointXYZI pcl_point;
+  SortRelativeTriangle triangle;
+  Eigen::Vector3f triangle_sides;
+  float edges[3];
+  int plane_nr = 0;
+  for (auto plane_triangle : triangles_in_planes) {
+    filter_cloud->clear();
+    for (auto points : plane_triangle) {
+      pcl_point.intensity = points.getEdges(triangle_sides);
+      pcl_point.x = triangle_sides[0];
+      pcl_point.y = triangle_sides[1];
+      pcl_point.z = triangle_sides[2];
+      filter_cloud->push_back(pcl_point);
+    }
+    voxel_filter.setInputCloud(filter_cloud);
+    voxel_filter.filter(*filter_cloud);
+
+    triangles_in_planes[plane_nr].clear();
+    for (auto points : *filter_cloud) {
+      edges[0] = points.x;
+      edges[1] = points.y;
+      edges[2] = points.z;
+      triangle.insert(edges, (bool)points.intensity);
+      triangles_in_planes[plane_nr].push_back(triangle);
     }
     plane_nr++;
   }

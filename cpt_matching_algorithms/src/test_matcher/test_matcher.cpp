@@ -263,22 +263,16 @@ void TestMatcher::match() {
       norm_point.normal_z = std::sin(plane_coefficient[2]);
       scan_planes_.push_back(norm_point);
       plane_nr++;
-
-      // std::cout << plane_nr - 1 << std::endl;
-      // std::cout << norm_point.x << std::endl;
-      // std::cout << norm_point.y << std::endl;
-      // std::cout << norm_point.z << std::endl;
-      // std::cout << norm_point.normal_x << std::endl;
-      // std::cout << norm_point.normal_y << std::endl;
-      // std::cout << norm_point.normal_z << std::endl;
     }
+    std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
     // Plane Matching (Get T_map,lidar)
-    if (nh_private_.param<bool>("usePlaneDescriptor", false)) {
+    if (!plane_matcher.compare("IntersectionPatternMatcher")) {
       PlaneMatch::IntersectionPatternMatcher(transform_TR_, scan_planes_, map_planes_,
                                              room_boundaries);
-    }
-    if (nh_private_.param<bool>("useMatchSolution", false)) {
+    } else if (!plane_matcher.compare("useMatchSolution")) {
       PlaneMatch::loadExampleSol(transform_TR_, scan_planes_, map_planes_);
+    } else {
+      std::cout << "Error: Could not find given plane matcher" << std::endl;
     }
   } else {
     std::cout << "Error: Could not find given matcher" << std::endl;
