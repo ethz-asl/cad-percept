@@ -9,6 +9,7 @@
 #include <cgal_conversions/eigen_conversions.h>
 #include <cgal_definitions/cgal_typedefs.h>
 
+#include <pcl/filters/passthrough.h>
 #include "cloud_filter/cloud_filter.h"
 
 // Remove this again
@@ -54,7 +55,7 @@ class PlaneMatch {
       float threshold_cornerness,
       std::vector<std::vector<IntersectionCornernessPoint>> tot_plane_intersections);
   static void findTriangleCorrespondences(
-      Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> &score,
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &score,
       std::vector<std::vector<SortRelativeTriangle>> triangles_in_scan_planes,
       std::vector<std::vector<SortRelativeTriangle>> triangles_in_map_planes);
   static void filterIntersectionPoints(

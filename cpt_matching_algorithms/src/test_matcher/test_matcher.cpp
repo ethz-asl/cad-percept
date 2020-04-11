@@ -515,7 +515,7 @@ void TestMatcher::load_example() {
   norm_point.normal_z = 0;
   map_planes_.push_back(norm_point);
   norm_point.x = -11.6;
-  norm_point.y = -0.25;
+  norm_point.y = -0;
   norm_point.z = 1;
   norm_point.normal_x = 0;
   norm_point.normal_y = 1;
@@ -562,7 +562,7 @@ void TestMatcher::load_example() {
   room_boundaries(19, 0) = -24;
   room_boundaries(19, 1) = -18.5;
   room_boundaries(20, 0) = -2.5;
-  room_boundaries(20, 1) = -0.25;
+  room_boundaries(20, 1) = -0;
   room_boundaries(21, 0) = -24;
   room_boundaries(21, 1) = 0;
 };
