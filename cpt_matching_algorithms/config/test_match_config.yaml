@@ -26,7 +26,7 @@ Voxelsearchradius: 0.1
 PlaneExtractor: pclPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
 
 # Plane Matching (only one)
-PlaneMatch: IntersectionPatternMatcher # useMatchSolution, IntersectionPatternMatcher
+PlaneMatch: IntersectionPatternMatcher # useMatchSolution, IntersectionPatternMatcher, IntersectionLineRANSAC
 
 useMatchSolution: false
 

@@ -409,8 +409,11 @@ void PlaneMatch::findTriangleCorrespondences(
   // Scale vote according to map plane feature number
   for (int i = 0; i < triangles_in_scan_planes.size(); i++) {
     for (int j = 0; j < triangles_in_map_planes.size(); j++) {
-      if (triangles_in_map_planes[j].size() != 0)
-        score(i, j) = (int)((score(i, j) / triangles_in_map_planes[j].size()) * 100);
+      if (triangles_in_map_planes[j].size() != 0) {
+        score(i, j) = (int)((score(i, j) /
+                             (pow((float)(6 * triangles_in_map_planes[j].size()), 1.0f / 3.0f))) *
+                            100);
+      }
     }
   }
 }
