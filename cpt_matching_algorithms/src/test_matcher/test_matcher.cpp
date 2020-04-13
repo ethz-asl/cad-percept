@@ -522,7 +522,7 @@ void TestMatcher::load_example() {
   room_boundaries(2, 0) = 0;
   room_boundaries(2, 1) = 19.8;
   room_boundaries(3, 0) = 6.4;
-  room_boundaries(3, 1) = 7.1;
+  room_boundaries(3, 1) = 7.6;
   room_boundaries(4, 0) = 19.8;
   room_boundaries(4, 1) = 34.3;
   room_boundaries(5, 0) = 0;

@@ -41,25 +41,21 @@ class PlaneMatch {
                              const pcl::PointCloud<pcl::PointNormal> map_planes);
 
  private:
-  struct IntersectionCornernessPoint {
-    Point intersection_point;
-    float cornerness;
-  };
   class SortRelativeTriangle;
 
   static void getprojPlaneIntersectionPoints(
-      std::vector<std::vector<IntersectionCornernessPoint>> &tot_plane_intersections,
+      std::vector<pcl::PointCloud<pcl::PointXYZ>> &tot_plane_intersections,
       float parallel_threshold, const pcl::PointCloud<pcl::PointNormal> planes);
   static void getIntersectionCornerTriangle(
       std::vector<std::vector<SortRelativeTriangle>> &triangles_in_planes,
       float threshold_cornerness,
-      std::vector<std::vector<IntersectionCornernessPoint>> tot_plane_intersections);
+      std::vector<pcl::PointCloud<pcl::PointXYZ>> tot_plane_intersections);
   static void findTriangleCorrespondences(
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &score,
       std::vector<std::vector<SortRelativeTriangle>> triangles_in_scan_planes,
       std::vector<std::vector<SortRelativeTriangle>> triangles_in_map_planes);
   static void filterIntersectionPoints(
-      std::vector<std::vector<IntersectionCornernessPoint>> &intersection_points);
+      std::vector<pcl::PointCloud<pcl::PointXYZ>> &intersection_points);
   static void filterIntersectionPoints(
       std::vector<std::vector<SortRelativeTriangle>> &triangles_in_planes);
   static void transformAverage(float (&transformTR)[7], std::vector<int> plane_assignement,
