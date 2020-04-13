@@ -88,9 +88,9 @@ void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
   //   std::cout << map_point.x << " " << map_point.y << " " << map_point.z << " " << std::endl;
   // }
 
-  // std::cout << "Filtered intersection points" << std::endl;
-  // filterIntersectionPoints(scan_intersection_points);
-  // filterIntersectionPoints(map_intersection_points);
+  std::cout << "Filtered intersection points" << std::endl;
+  filterIntersectionPoints(scan_intersection_points);
+  filterIntersectionPoints(map_intersection_points);
 
   // std::cout << "map" << std::endl;
   // for (auto map_point : map_intersection_points[consider_map_plane]) {
@@ -192,7 +192,7 @@ void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
 
   // std::cout << "scan" << std::endl;
   // Eigen::Vector3f scan_triangle_sides;
-  // for (auto point : triangles_in_scan_planes[0]) {
+  // for (auto point : triangles_in_scan_planes[1]) {
   //   if (!point.getEdges(scan_triangle_sides)) {
   //     std::cout << scan_triangle_sides[0] << " " << scan_triangle_sides[1] << " "
   //               << scan_triangle_sides[2] << std::endl;
@@ -201,7 +201,7 @@ void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
   // }
   // std::cout << "map" << std::endl;
   // Eigen::Vector3f map_triangle_sides;
-  // for (auto point : triangles_in_map_planes[consider_map_plane]) {
+  // for (auto point : triangles_in_map_planes[0]) {
   //   if (!point.getEdges(map_triangle_sides)) {
   //     std::cout << map_triangle_sides[0] << " " << map_triangle_sides[1] << " "
   //               << map_triangle_sides[2] << std::endl;
@@ -358,8 +358,7 @@ void PlaneMatch::findTriangleCorrespondences(
 
   score = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(
       triangles_in_scan_planes.size(), triangles_in_map_planes.size());
-  std::vector<int> vote_weights(triangles_in_map_planes.size(), 0);
-
+  std::vector<int> voted_scores(triangles_in_map_planes.size(), 0);
   Eigen::Vector3f scan_triangle_sides;
   Eigen::Vector3f map_triangle_sides;
   std::vector<float> triangle_error;
@@ -422,14 +421,13 @@ void PlaneMatch::findTriangleCorrespondences(
             additional_score = deviation_lin_offset +
                                deviation_lin_offset * std::max(-1.0f, -triangle_error[min_index] /
                                                                           deviation_lin_grade);
-            vote_weights[map_plane_nr] += deviation_lin_offset;
           } else {
             // Triangle Evaluation
             additional_score = deviation_tri_offset +
                                deviation_tri_offset * std::max(-1.0f, -triangle_error[min_index] /
                                                                           deviation_tri_grade);
-            vote_weights[map_plane_nr] += deviation_tri_offset;
           }
+          voted_scores[map_plane_nr] += 1;
           score(scan_plane_nr, map_plane_nr) += additional_score;
         }
       }
@@ -442,7 +440,7 @@ void PlaneMatch::findTriangleCorrespondences(
   for (int i = 0; i < triangles_in_scan_planes.size(); i++) {
     for (int j = 0; j < triangles_in_map_planes.size(); j++) {
       if (triangles_in_map_planes[j].size() != 0) {
-        score(i, j) = (int)(score(i, j) / vote_weights[j] * 1000);
+        score(i, j) = (int)(score(i, j) / (voted_scores[j]) * 1000);
       }
     }
   }
@@ -514,6 +512,8 @@ void PlaneMatch::filterIntersectionPoints(
     plane_nr++;
   }
 }
+
+// void PlaneMatch::LineSegmentRansac(){};
 
 void PlaneMatch::loadExampleSol(float (&transformTR)[7],
                                 const pcl::PointCloud<pcl::PointNormal> scan_planes,
