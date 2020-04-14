@@ -440,7 +440,7 @@ void PlaneMatch::findTriangleCorrespondences(
   for (int i = 0; i < triangles_in_scan_planes.size(); i++) {
     for (int j = 0; j < triangles_in_map_planes.size(); j++) {
       if (triangles_in_map_planes[j].size() != 0) {
-        score(i, j) = (int)(score(i, j) / (voted_scores[j]) * 1000);
+        score(i, j) = (int)(score(i, j) / (triangles_in_map_planes[j].size()) * 1000);
       }
     }
   }
@@ -481,7 +481,6 @@ void PlaneMatch::filterIntersectionPoints(
 
 void PlaneMatch::filterIntersectionPoints(
     std::vector<std::vector<SortRelativeTriangle>> &triangles_in_planes) {
-  ros::NodeHandle nh_private("~");
   // Remove triangles which can't be seen by the LiDAR due to range
   float triangle_side_max_size = 50;
 
@@ -521,16 +520,17 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
   std::cout << "////       Line Segment RANSAC Started      ////" << std::endl;
   std::cout << "////////////////////////////////////////////////" << std::endl;
 
-  int max_size_subset = 100;
+  ros::NodeHandle nh_private("~");
+  int max_size_subset = nh_private.param<int>("LineSegmentRansacSubsetSize", 100);
 
   std::vector<SegmentedLine> map_lines;
   std::vector<SegmentedLine> scan_lines;
 
-  getSegmentedLines(map_lines, scan_planes, true, room_boundaries);
-  getSegmentedLines(scan_lines, map_planes, false, room_boundaries);
+  getSegmentedLines(map_lines, map_planes, true, room_boundaries);
+  getSegmentedLines(scan_lines, scan_planes, false, room_boundaries);
 
-  std::cout << map_lines.size() << std::endl;
-  std::cout << scan_lines.size() << std::endl;
+  // std::cout << map_lines.size() << std::endl;
+  // std::cout << scan_lines.size() << std::endl;
 
   Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> match_score;
   getMatchProbLines(map_lines, scan_lines, match_score);
@@ -550,12 +550,22 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
               return i.match_score > j.match_score;
             });
 
+  int number = 0;
+  for (auto line_assignment : line_assignments) {
+    std::cout << "scan: " << scan_lines[line_assignment.scan_line_nr].plane_nr << " "
+              << scan_lines[line_assignment.scan_line_nr].pair_plane_nr << std::endl;
+    std::cout << "map: " << map_lines[line_assignment.map_line_nr].plane_nr << " "
+              << map_lines[line_assignment.map_line_nr].pair_plane_nr << std::endl;
+    number++;
+    if (number == 50) break;
+  }
+
   // RANSAC
   SegmentedLine candidate_scan_line_one;
   SegmentedLine candidate_scan_line_two;
   SegmentedLine candidate_map_line_one;
   SegmentedLine candidate_map_line_two;
-  Eigen::Matrix<int, 2, 4> assingment;
+  Eigen::Matrix<int, 2, 4> assignment;
   float error = 0;
   Eigen::Matrix<int, 2, 4> max_assignement;
   float min_error = -1;
@@ -569,84 +579,136 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
       candidate_map_line_two = map_lines[line_assignments[j].map_line_nr];
 
       // Try out all four possibilities
-      assingment(0, 0) = candidate_scan_line_one.plane_nr;
-      assingment(0, 1) = candidate_scan_line_one.pair_plane_nr;
-      assingment(0, 2) = candidate_scan_line_two.plane_nr;
-      assingment(0, 3) = candidate_scan_line_two.pair_plane_nr;
-      assingment(1, 0) = candidate_map_line_one.plane_nr;
-      assingment(1, 1) = candidate_map_line_one.pair_plane_nr;
-      assingment(1, 2) = candidate_map_line_two.plane_nr;
-      assingment(1, 3) = candidate_map_line_two.pair_plane_nr;
-      if (getLineSegmentAssignmentError(assingment, actual_transformation, map_planes,
-                                        scan_planes)) {
-        if (error < min_error || min_error < 0) {
-          for (int i = 0; i < 7; ++i) {
-            transformTR[i] = actual_transformation[i];
+      assignment(0, 0) = candidate_scan_line_one.plane_nr;
+      assignment(0, 1) = candidate_scan_line_one.pair_plane_nr;
+      assignment(0, 2) = candidate_scan_line_two.plane_nr;
+      assignment(0, 3) = candidate_scan_line_two.pair_plane_nr;
+      assignment(1, 0) = candidate_map_line_one.plane_nr;
+      assignment(1, 1) = candidate_map_line_one.pair_plane_nr;
+      assignment(1, 2) = candidate_map_line_two.plane_nr;
+      assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
+
+      if (getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
+                                        map_planes)) {
+        if (0 < error && (error < min_error || min_error < 0)) {
+          for (int s = 0; s < 7; ++s) {
+            transformTR[s] = actual_transformation[s];
           }
+          min_error = error;
+          std::cout << "error: " << min_error << std::endl;
+          std::cout << "scan     map" << std::endl;
+          std::cout << assignment(0, 0) << " " << assignment(1, 0) << std::endl;
+          std::cout << assignment(0, 1) << " " << assignment(1, 1) << std::endl;
+          std::cout << assignment(0, 2) << " " << assignment(1, 2) << std::endl;
+          std::cout << assignment(0, 3) << " " << assignment(1, 3) << std::endl;
         }
       }
-      assingment(0, 0) = candidate_scan_line_one.pair_plane_nr;
-      assingment(0, 1) = candidate_scan_line_one.plane_nr;
-      assingment(0, 2) = candidate_scan_line_two.plane_nr;
-      assingment(0, 3) = candidate_scan_line_two.pair_plane_nr;
-      assingment(1, 0) = candidate_map_line_one.plane_nr;
-      assingment(1, 1) = candidate_map_line_one.pair_plane_nr;
-      assingment(1, 2) = candidate_map_line_two.plane_nr;
-      assingment(1, 3) = candidate_map_line_two.pair_plane_nr;
-      if (getLineSegmentAssignmentError(assingment, actual_transformation, map_planes,
-                                        scan_planes)) {
-        if (error < min_error || min_error < 0) {
-          for (int i = 0; i < 7; ++i) {
-            transformTR[i] = actual_transformation[i];
+
+      assignment(0, 0) = candidate_scan_line_one.pair_plane_nr;
+      assignment(0, 1) = candidate_scan_line_one.plane_nr;
+      assignment(0, 2) = candidate_scan_line_two.plane_nr;
+      assignment(0, 3) = candidate_scan_line_two.pair_plane_nr;
+      assignment(1, 0) = candidate_map_line_one.plane_nr;
+      assignment(1, 1) = candidate_map_line_one.pair_plane_nr;
+      assignment(1, 2) = candidate_map_line_two.plane_nr;
+      assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
+      if (getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
+                                        map_planes)) {
+        if (0 < error && (error < min_error || min_error < 0)) {
+          for (int s = 0; s < 7; ++s) {
+            transformTR[s] = actual_transformation[s];
           }
+          min_error = error;
+          std::cout << "error: " << min_error << std::endl;
+          std::cout << "scan     map" << std::endl;
+          std::cout << assignment(0, 0) << " " << assignment(1, 0) << std::endl;
+          std::cout << assignment(0, 1) << " " << assignment(1, 1) << std::endl;
+          std::cout << assignment(0, 2) << " " << assignment(1, 2) << std::endl;
+          std::cout << assignment(0, 3) << " " << assignment(1, 3) << std::endl;
         }
       }
-      assingment(0, 0) = candidate_scan_line_one.plane_nr;
-      assingment(0, 1) = candidate_scan_line_one.pair_plane_nr;
-      assingment(0, 2) = candidate_scan_line_two.pair_plane_nr;
-      assingment(0, 3) = candidate_scan_line_two.plane_nr;
-      assingment(1, 0) = candidate_map_line_one.plane_nr;
-      assingment(1, 1) = candidate_map_line_one.pair_plane_nr;
-      assingment(1, 2) = candidate_map_line_two.plane_nr;
-      assingment(1, 3) = candidate_map_line_two.pair_plane_nr;
-      if (getLineSegmentAssignmentError(assingment, actual_transformation, map_planes,
-                                        scan_planes)) {
-        if (error < min_error || min_error < 0) {
-          for (int i = 0; i < 7; ++i) {
-            transformTR[i] = actual_transformation[i];
+      assignment(0, 0) = candidate_scan_line_one.plane_nr;
+      assignment(0, 1) = candidate_scan_line_one.pair_plane_nr;
+      assignment(0, 2) = candidate_scan_line_two.pair_plane_nr;
+      assignment(0, 3) = candidate_scan_line_two.plane_nr;
+      assignment(1, 0) = candidate_map_line_one.plane_nr;
+      assignment(1, 1) = candidate_map_line_one.pair_plane_nr;
+      assignment(1, 2) = candidate_map_line_two.plane_nr;
+      assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
+      if (getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
+                                        map_planes)) {
+        if (0 < error && (error < min_error || min_error < 0)) {
+          for (int s = 0; s < 7; ++s) {
+            transformTR[s] = actual_transformation[s];
           }
+          min_error = error;
+          std::cout << "error: " << min_error << std::endl;
+          std::cout << "scan     map" << std::endl;
+          std::cout << assignment(0, 0) << " " << assignment(1, 0) << std::endl;
+          std::cout << assignment(0, 1) << " " << assignment(1, 1) << std::endl;
+          std::cout << assignment(0, 2) << " " << assignment(1, 2) << std::endl;
+          std::cout << assignment(0, 3) << " " << assignment(1, 3) << std::endl;
         }
       }
-      assingment(0, 0) = candidate_scan_line_one.pair_plane_nr;
-      assingment(0, 1) = candidate_scan_line_one.plane_nr;
-      assingment(0, 2) = candidate_scan_line_two.pair_plane_nr;
-      assingment(0, 3) = candidate_scan_line_two.plane_nr;
-      assingment(1, 0) = candidate_map_line_one.plane_nr;
-      assingment(1, 1) = candidate_map_line_one.pair_plane_nr;
-      assingment(1, 2) = candidate_map_line_two.plane_nr;
-      assingment(1, 3) = candidate_map_line_two.pair_plane_nr;
-      if (getLineSegmentAssignmentError(assingment, actual_transformation, map_planes,
-                                        scan_planes)) {
-        if (error < min_error || min_error < 0) {
-          for (int i = 0; i < 7; ++i) {
-            transformTR[i] = actual_transformation[i];
+      assignment(0, 0) = candidate_scan_line_one.pair_plane_nr;
+      assignment(0, 1) = candidate_scan_line_one.plane_nr;
+      assignment(0, 2) = candidate_scan_line_two.pair_plane_nr;
+      assignment(0, 3) = candidate_scan_line_two.plane_nr;
+      assignment(1, 0) = candidate_map_line_one.plane_nr;
+      assignment(1, 1) = candidate_map_line_one.pair_plane_nr;
+      assignment(1, 2) = candidate_map_line_two.plane_nr;
+      assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
+      if (getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
+                                        map_planes)) {
+        if (0 < error && (error < min_error || min_error < 0)) {
+          for (int s = 0; s < 7; ++s) {
+            transformTR[s] = actual_transformation[s];
           }
+          min_error = error;
+          std::cout << "error: " << min_error << std::endl;
+          std::cout << "scan     map" << std::endl;
+          std::cout << assignment(0, 0) << " " << assignment(1, 0) << std::endl;
+          std::cout << assignment(0, 1) << " " << assignment(1, 1) << std::endl;
+          std::cout << assignment(0, 2) << " " << assignment(1, 2) << std::endl;
+          std::cout << assignment(0, 3) << " " << assignment(1, 3) << std::endl;
         }
       }
     }
   }
+  std::cout << min_error << std::endl;
 };
 
-bool PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assingment,
-                                               float (&transform)[7],
+bool PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignment,
+                                               float &transform_error, float (&transform)[7],
                                                const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                                const pcl::PointCloud<pcl::PointNormal> map_planes) {
-  float orthogonality_threshold = 0.3;
-  float weighting_rotation = 0.5;
-  float weighting_translation = 0.5;
+  ros::NodeHandle nh_private("~");
+  float orthogonality_threshold = nh_private.param<float>("LineSegmentRansacOrthThreshold", 0.5);
+  float weighting_rotation = nh_private.param<float>("LineSegmentRansacRotWeight", 0.5);
+  float weighting_translation = nh_private.param<float>("LineSegmentRansacTransWeight", 0.5);
 
-  int scan_planes_nr[4] = {assingment(0, 0), assingment(0, 1), assingment(0, 2), assingment(0, 3)};
-  int map_planes_nr[4] = {assingment(1, 0), assingment(1, 1), assingment(1, 2), assingment(1, 3)};
+  int scan_planes_nr[4] = {assignment(0, 0), assignment(0, 1), assignment(0, 2), assignment(0, 3)};
+  int map_planes_nr[4] = {assignment(1, 0), assignment(1, 1), assignment(1, 2), assignment(1, 3)};
+
+  // scan_planes_nr[0] = 2;
+  // scan_planes_nr[1] = 4;
+  // scan_planes_nr[2] = 1;
+  // scan_planes_nr[3] = 7;
+  // map_planes_nr[0] = 2;
+  // map_planes_nr[1] = 1;
+  // map_planes_nr[2] = 0;
+  // map_planes_nr[3] = 5;
+
+  // bool check = (scan_planes_nr[0] == 1 && scan_planes_nr[1] == 7 && scan_planes_nr[2] == 1 &&
+  //               scan_planes_nr[3] == 4) &&
+  //              (map_planes_nr[0] == 0 && map_planes_nr[1] == 5 && map_planes_nr[2] == 0 &&
+  //               map_planes_nr[3] == 1);
+  // if (check) std::cout << "Assignment found" << std::endl;
+
+  // std::cout << scan_planes_nr[0] << " " << scan_planes_nr[1] << " " << scan_planes_nr[2] << " "
+  //           << scan_planes_nr[3] << std::endl;
+  // std::cout << map_planes_nr[0] << " " << map_planes_nr[1] << " " << map_planes_nr[2] << " "
+  //           << map_planes_nr[3] << std::endl;
 
   // Check if calculation of transformation is possible and which planes to use
   float transformation_score;
@@ -663,8 +725,8 @@ bool PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assingme
   float translation_error;
   float rotation_error;
 
+  transform_error = -1;
   float error[4] = {-1, -1, -1, -1};
-  float max_score = -1;
 
   pcl::PointCloud<pcl::PointNormal> reduced_map_planes, reduced_scan_planes;
   for (int i = 0; i < 4; ++i) {
@@ -688,7 +750,9 @@ bool PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assingme
             .dot(Eigen::Vector3f(scan_planes.points[scan_planes_nr[(i + 3) % 4]].normal_x,
                                  scan_planes.points[scan_planes_nr[(i + 3) % 4]].normal_y,
                                  scan_planes.points[scan_planes_nr[(i + 3) % 4]].normal_z)));
-    transformation_score = scan_transformation_score * map_transformation_score;
+    transformation_score = map_transformation_score * scan_transformation_score;
+
+    // if (check) std::cout << map_transformation_score << std::endl;
 
     // Calculate transformation
     if (transformation_score > orthogonality_threshold) {
@@ -711,32 +775,46 @@ bool PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assingme
       actual_transform.block(0, 0, 3, 3) = q.matrix();
       actual_transform.block(0, 3, 3, 1) = translation;
 
-      reduced_scan_planes.clear();
+      // Push back forth point
+      reduced_scan_planes.push_back(scan_planes.points[scan_planes_nr[i % 4]]);
+      reduced_map_planes.push_back(map_planes.points[map_planes_nr[i % 4]]);
+
       pcl::transformPointCloud(reduced_scan_planes, reduced_scan_planes, actual_transform);
 
+      translation_error = 0;
+      rotation_error = 0;
       for (int j = 0; j < reduced_scan_planes.size(); ++j) {
         translation_error += std::abs(
             (Eigen::Vector3f(reduced_scan_planes.points[j].x, reduced_scan_planes.points[j].y,
                              reduced_scan_planes.points[j].z) -
-             Eigen::Vector3f(map_planes.points[j].x, map_planes.points[j].y,
-                             map_planes.points[j].z))
-                .dot(Eigen::Vector3f(map_planes.points[j].normal_x, map_planes.points[j].normal_y,
-                                     map_planes.points[j].normal_z)));
+             Eigen::Vector3f(reduced_map_planes.points[j].x, reduced_map_planes.points[j].y,
+                             reduced_map_planes.points[j].z))
+                .dot(Eigen::Vector3f(reduced_map_planes.points[j].normal_x,
+                                     reduced_map_planes.points[j].normal_y,
+                                     reduced_map_planes.points[j].normal_z)));
         rotation_error += 1 - (Eigen::Vector3f(reduced_scan_planes.points[j].normal_x,
                                                reduced_scan_planes.points[j].normal_y,
                                                reduced_scan_planes.points[j].normal_z)
-                                   .dot(Eigen::Vector3f(map_planes.points[j].normal_x,
-                                                        map_planes.points[j].normal_y,
-                                                        map_planes.points[j].normal_z)));
+                                   .dot(Eigen::Vector3f(reduced_map_planes.points[j].normal_x,
+                                                        reduced_map_planes.points[j].normal_y,
+                                                        reduced_map_planes.points[j].normal_z)));
       }
-      error[i] += weighting_translation * translation_error + weighting_rotation * rotation_error;
+      error[i] = weighting_rotation * rotation_error + weighting_translation * translation_error;
 
-      if (error[i] < max_score || max_score < 0) {
-        for (int i = 0; i < 7; ++i) {
-          transform[i] = actual_transformation[i];
+      if (error[i] < transform_error || transform_error < 0) {
+        for (int j = 0; j < 7; ++j) {
+          transform[j] = actual_transformation[j];
         }
+        transform_error = error[i];
       }
     }
+  }
+
+  // if (check) std::cout << transform_error << std::endl;
+  if (error[0] == -1 && error[1] == -1 && error[2] == -1 && error[3] == -1) {
+    return false;
+  } else {
+    return true;
   }
 }
 
@@ -782,6 +860,11 @@ void PlaneMatch::getSegmentedLines(
       // Skip plane pair if there is no intersection_line
       if (!CGAL::assign(candidate_intersection_line, result_intersection_line)) continue;
 
+      // std::cout << "line: " << plane_nr << " " << pair_plane_nr << " "
+      //           << candidate_intersection_line.to_vector()[0] << " "
+      //           << candidate_intersection_line.to_vector()[1] << " "
+      //           << candidate_intersection_line.to_vector()[2] << std::endl;
+
       intersection_points.clear();
       for (auto candidate_plane : planes) {
         cgal_candidate_plane = Plane(
@@ -825,21 +908,32 @@ void PlaneMatch::getSegmentedLines(
         }
         ++intersection_point_nr;
       }
+
+      // if (ismap) {
+      //   std::cout << "lines of " << plane_nr << " " << pair_plane_nr << "includes" << std::endl;
+      //   for (auto intersection_point : intersection_points) {
+      //     std::cout << intersection_point.x() << " " << intersection_point.y() << " "
+      //               << intersection_point.z() << std::endl;
+      //   }
+      // }
       if (candidate_dist.size() != 0) {
         std::sort(candidate_dist.begin(), candidate_dist.end());
         segmentedline = {candidate_intersection_line, candidate_dist, plane_nr, pair_plane_nr};
         segmented_lines.push_back(segmentedline);
       }
     }
+    ++plane_nr;
   }
-  ++plane_nr;
 }
 
 void PlaneMatch::getMatchProbLines(
     std::vector<SegmentedLine> map_lines, std::vector<SegmentedLine> scan_lines,
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &match_score) {
+  ros::NodeHandle nh_private("~");
+  float deviation_grade = nh_private.param<float>("SegmentedLineDeviationGrade", 0.5);
+
   std::vector<float> description_error;
-  float deviation_grade = 1;
+  float min_deviation;
 
   match_score = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(scan_lines.size(),
                                                                            map_lines.size());
@@ -853,14 +947,20 @@ void PlaneMatch::getMatchProbLines(
         for (auto scan_line_description : scan_line.line_segments) {
           description_error.push_back(std::abs(map_line_description - scan_line_description));
         }
+        min_deviation = *std::min_element(description_error.begin(), description_error.end());
         match_score(scan_line_nr, map_line_nr) +=
-            1.0f +
-            std::max(-1.0f, -*std::min_element(description_error.begin(), description_error.end()) /
-                                deviation_grade);
+            1.0f + std::max(-1.0f, -(powf(min_deviation, 2) / deviation_grade));
       }
       ++scan_line_nr;
     }
     ++map_line_nr;
+  }
+
+  for (int i = 0; i < scan_lines.size(); ++i) {
+    for (int j = 0; j < map_lines.size(); ++j) {
+      if (map_lines[j].line_segments.size() != 0)
+        match_score(i, j) = match_score(i, j) / (2 * sqrt(map_lines[j].line_segments.size()));
+    }
   }
 };
 
@@ -907,8 +1007,8 @@ void PlaneMatch::loadExampleSol(float (&transformTR)[7],
 void PlaneMatch::transformAverage(float (&transformTR)[7], std::vector<int> plane_assignment,
                                   const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                   const pcl::PointCloud<pcl::PointNormal> map_planes) {
-  std::cout << "Calculate Transformation via plane correspondences" << std::endl;
-  // Calculate average quaternion (Map to Lidar), R_Map_to_Lidar
+  // std::cout << "Calculate Transformation via plane correspondences" << std::endl;
+  // Calculate average quaternion (Map to Lidar), R_Map,Lidar
   Eigen::MatrixXd all_quat(4, scan_planes.size());
   Eigen::Quaterniond current_quat;
   Eigen::Vector3d map_normal;
@@ -970,6 +1070,7 @@ void PlaneMatch::transformAverage(float (&transformTR)[7], std::vector<int> plan
     if (std::abs(map_planes.points[map_index].normal_x) > 0.5) {
       mean_translation_x =
           map_planes.points[map_index].x - copy_scan_planes.points[plane_nr].x + mean_translation_x;
+      ;
       ++nr_planes_x;
     }
     if (std::abs(map_planes.points[map_index].normal_y) > 0.5) {
@@ -986,19 +1087,19 @@ void PlaneMatch::transformAverage(float (&transformTR)[7], std::vector<int> plan
   if (nr_planes_x != 0) {
     transformTR[0] = mean_translation_x / nr_planes_x;
   } else {
-    std::cout << "Couldn't find translation x as plane with normal x is missing" << std::endl;
+    // std::cout << "Couldn't find translation x as plane with normal x is missing" << std::endl;
     transformTR[0] = 0;
   }
   if (nr_planes_y != 0) {
     transformTR[1] = mean_translation_y / nr_planes_y;
   } else {
-    std::cout << "Couldn't find translation y as plane with normal y is missing" << std::endl;
+    // std::cout << "Couldn't find translation y as plane with normal y is missing" << std::endl;
     transformTR[1] = 0;
   }
   if (nr_planes_z != 0) {
     transformTR[2] = mean_translation_z / nr_planes_z;
   } else {
-    std::cout << "Couldn't find translation z as plane with normal z is missing" << std::endl;
+    // std::cout << "Couldn't find translation z as plane with normal z is missing" << std::endl;
     transformTR[2] = 0;
   }
 };
