@@ -39,6 +39,10 @@ class PlaneMatch {
   static void loadExampleSol(float (&transformTR)[7],
                              const pcl::PointCloud<pcl::PointNormal> scan_planes,
                              const pcl::PointCloud<pcl::PointNormal> map_planes);
+  static void LineSegmentRansac(float (&transformTR)[7],
+                                const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                const pcl::PointCloud<pcl::PointNormal> map_planes,
+                                Eigen::Matrix<float, 22, 2> room_boundaries);
 
  private:
   class SortRelativeTriangle;
@@ -58,6 +62,29 @@ class PlaneMatch {
       std::vector<pcl::PointCloud<pcl::PointXYZ>> &intersection_points);
   static void filterIntersectionPoints(
       std::vector<std::vector<SortRelativeTriangle>> &triangles_in_planes);
+
+  struct SegmentedLine {
+    Line intersection_line;
+    std::vector<float> line_segments;
+    int plane_nr;
+    int pair_plane_nr;
+  };
+  struct SegmentedLineAssignment {
+    int scan_line_nr;
+    int map_line_nr;
+    float match_score;
+  };
+
+  static void getSegmentedLines(
+      std::vector<SegmentedLine> &segmented_lines, const pcl::PointCloud<pcl::PointNormal> planes,
+      bool ismap, Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> room_boundaries);
+  static void getMatchProbLines(std::vector<SegmentedLine>, std::vector<SegmentedLine>,
+                                Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &match_score);
+  static bool getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assingment,
+                                            float (&transform)[7],
+                                            const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                            const pcl::PointCloud<pcl::PointNormal> map_planes);
+
   static void transformAverage(float (&transformTR)[7], std::vector<int> plane_assignement,
                                const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                const pcl::PointCloud<pcl::PointNormal> map_planes);

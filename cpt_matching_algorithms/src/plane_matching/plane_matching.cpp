@@ -513,7 +513,356 @@ void PlaneMatch::filterIntersectionPoints(
   }
 }
 
-// void PlaneMatch::LineSegmentRansac(){};
+void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
+                                   const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                   const pcl::PointCloud<pcl::PointNormal> map_planes,
+                                   Eigen::Matrix<float, 22, 2> room_boundaries) {
+  std::cout << "////////////////////////////////////////////////" << std::endl;
+  std::cout << "////       Line Segment RANSAC Started      ////" << std::endl;
+  std::cout << "////////////////////////////////////////////////" << std::endl;
+
+  int max_size_subset = 100;
+
+  std::vector<SegmentedLine> map_lines;
+  std::vector<SegmentedLine> scan_lines;
+
+  getSegmentedLines(map_lines, scan_planes, true, room_boundaries);
+  getSegmentedLines(scan_lines, map_planes, false, room_boundaries);
+
+  std::cout << map_lines.size() << std::endl;
+  std::cout << scan_lines.size() << std::endl;
+
+  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> match_score;
+  getMatchProbLines(map_lines, scan_lines, match_score);
+  std::cout << match_score.block(0, 0, scan_lines.size(), 10) << std::endl;
+
+  std::vector<SegmentedLineAssignment> line_assignments;
+  SegmentedLineAssignment line_assignment;
+
+  for (int scan_line_nr = 0; scan_line_nr < scan_lines.size(); ++scan_line_nr) {
+    for (int map_line_nr = 0; map_line_nr < map_lines.size(); ++map_line_nr) {
+      line_assignment = {scan_line_nr, map_line_nr, match_score(scan_line_nr, map_line_nr)};
+      line_assignments.push_back(line_assignment);
+    }
+  }
+  std::sort(line_assignments.begin(), line_assignments.end(),
+            [](const SegmentedLineAssignment &i, const SegmentedLineAssignment &j) {
+              return i.match_score > j.match_score;
+            });
+
+  // RANSAC
+  SegmentedLine candidate_scan_line_one;
+  SegmentedLine candidate_scan_line_two;
+  SegmentedLine candidate_map_line_one;
+  SegmentedLine candidate_map_line_two;
+  Eigen::Matrix<int, 2, 4> assingment;
+  float error = 0;
+  Eigen::Matrix<int, 2, 4> max_assignement;
+  float min_error = -1;
+  float actual_transformation[7];
+
+  for (int i = 0; i < max_size_subset; ++i) {
+    candidate_scan_line_one = scan_lines[line_assignments[i].scan_line_nr];
+    candidate_map_line_one = map_lines[line_assignments[i].map_line_nr];
+    for (int j = i + 1; j < max_size_subset; ++j) {
+      candidate_scan_line_two = scan_lines[line_assignments[j].scan_line_nr];
+      candidate_map_line_two = map_lines[line_assignments[j].map_line_nr];
+
+      // Try out all four possibilities
+      assingment(0, 0) = candidate_scan_line_one.plane_nr;
+      assingment(0, 1) = candidate_scan_line_one.pair_plane_nr;
+      assingment(0, 2) = candidate_scan_line_two.plane_nr;
+      assingment(0, 3) = candidate_scan_line_two.pair_plane_nr;
+      assingment(1, 0) = candidate_map_line_one.plane_nr;
+      assingment(1, 1) = candidate_map_line_one.pair_plane_nr;
+      assingment(1, 2) = candidate_map_line_two.plane_nr;
+      assingment(1, 3) = candidate_map_line_two.pair_plane_nr;
+      if (getLineSegmentAssignmentError(assingment, actual_transformation, map_planes,
+                                        scan_planes)) {
+        if (error < min_error || min_error < 0) {
+          for (int i = 0; i < 7; ++i) {
+            transformTR[i] = actual_transformation[i];
+          }
+        }
+      }
+      assingment(0, 0) = candidate_scan_line_one.pair_plane_nr;
+      assingment(0, 1) = candidate_scan_line_one.plane_nr;
+      assingment(0, 2) = candidate_scan_line_two.plane_nr;
+      assingment(0, 3) = candidate_scan_line_two.pair_plane_nr;
+      assingment(1, 0) = candidate_map_line_one.plane_nr;
+      assingment(1, 1) = candidate_map_line_one.pair_plane_nr;
+      assingment(1, 2) = candidate_map_line_two.plane_nr;
+      assingment(1, 3) = candidate_map_line_two.pair_plane_nr;
+      if (getLineSegmentAssignmentError(assingment, actual_transformation, map_planes,
+                                        scan_planes)) {
+        if (error < min_error || min_error < 0) {
+          for (int i = 0; i < 7; ++i) {
+            transformTR[i] = actual_transformation[i];
+          }
+        }
+      }
+      assingment(0, 0) = candidate_scan_line_one.plane_nr;
+      assingment(0, 1) = candidate_scan_line_one.pair_plane_nr;
+      assingment(0, 2) = candidate_scan_line_two.pair_plane_nr;
+      assingment(0, 3) = candidate_scan_line_two.plane_nr;
+      assingment(1, 0) = candidate_map_line_one.plane_nr;
+      assingment(1, 1) = candidate_map_line_one.pair_plane_nr;
+      assingment(1, 2) = candidate_map_line_two.plane_nr;
+      assingment(1, 3) = candidate_map_line_two.pair_plane_nr;
+      if (getLineSegmentAssignmentError(assingment, actual_transformation, map_planes,
+                                        scan_planes)) {
+        if (error < min_error || min_error < 0) {
+          for (int i = 0; i < 7; ++i) {
+            transformTR[i] = actual_transformation[i];
+          }
+        }
+      }
+      assingment(0, 0) = candidate_scan_line_one.pair_plane_nr;
+      assingment(0, 1) = candidate_scan_line_one.plane_nr;
+      assingment(0, 2) = candidate_scan_line_two.pair_plane_nr;
+      assingment(0, 3) = candidate_scan_line_two.plane_nr;
+      assingment(1, 0) = candidate_map_line_one.plane_nr;
+      assingment(1, 1) = candidate_map_line_one.pair_plane_nr;
+      assingment(1, 2) = candidate_map_line_two.plane_nr;
+      assingment(1, 3) = candidate_map_line_two.pair_plane_nr;
+      if (getLineSegmentAssignmentError(assingment, actual_transformation, map_planes,
+                                        scan_planes)) {
+        if (error < min_error || min_error < 0) {
+          for (int i = 0; i < 7; ++i) {
+            transformTR[i] = actual_transformation[i];
+          }
+        }
+      }
+    }
+  }
+};
+
+bool PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assingment,
+                                               float (&transform)[7],
+                                               const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                               const pcl::PointCloud<pcl::PointNormal> map_planes) {
+  float orthogonality_threshold = 0.3;
+  float weighting_rotation = 0.5;
+  float weighting_translation = 0.5;
+
+  int scan_planes_nr[4] = {assingment(0, 0), assingment(0, 1), assingment(0, 2), assingment(0, 3)};
+  int map_planes_nr[4] = {assingment(1, 0), assingment(1, 1), assingment(1, 2), assingment(1, 3)};
+
+  // Check if calculation of transformation is possible and which planes to use
+  float transformation_score;
+  float map_transformation_score;
+  float scan_transformation_score;
+  float actual_transformation[7];
+  std::vector<int> actual_plane_assignement;
+  actual_plane_assignement.push_back(0);
+  actual_plane_assignement.push_back(1);
+  actual_plane_assignement.push_back(2);
+  Eigen::Matrix4f actual_transform = Eigen::Matrix4f::Identity();
+  Eigen::Vector3f translation;
+  Eigen::Quaternionf q;
+  float translation_error;
+  float rotation_error;
+
+  float error[4] = {-1, -1, -1, -1};
+  float max_score = -1;
+
+  pcl::PointCloud<pcl::PointNormal> reduced_map_planes, reduced_scan_planes;
+  for (int i = 0; i < 4; ++i) {
+    map_transformation_score =
+        std::abs(Eigen::Vector3f(map_planes.points[map_planes_nr[(i + 1) % 4]].normal_x,
+                                 map_planes.points[map_planes_nr[(i + 1) % 4]].normal_y,
+                                 map_planes.points[map_planes_nr[(i + 1) % 4]].normal_z)
+                     .cross(Eigen::Vector3f(map_planes.points[map_planes_nr[(i + 2) % 4]].normal_x,
+                                            map_planes.points[map_planes_nr[(i + 2) % 4]].normal_y,
+                                            map_planes.points[map_planes_nr[(i + 2) % 4]].normal_z))
+                     .dot(Eigen::Vector3f(map_planes.points[map_planes_nr[(i + 3) % 4]].normal_x,
+                                          map_planes.points[map_planes_nr[(i + 3) % 4]].normal_y,
+                                          map_planes.points[map_planes_nr[(i + 3) % 4]].normal_z)));
+    scan_transformation_score = std::abs(
+        Eigen::Vector3f(scan_planes.points[scan_planes_nr[(i + 1) % 4]].normal_x,
+                        scan_planes.points[scan_planes_nr[(i + 1) % 4]].normal_y,
+                        scan_planes.points[scan_planes_nr[(i + 1) % 4]].normal_z)
+            .cross(Eigen::Vector3f(scan_planes.points[scan_planes_nr[(i + 2) % 4]].normal_x,
+                                   scan_planes.points[scan_planes_nr[(i + 2) % 4]].normal_y,
+                                   scan_planes.points[scan_planes_nr[(i + 2) % 4]].normal_z))
+            .dot(Eigen::Vector3f(scan_planes.points[scan_planes_nr[(i + 3) % 4]].normal_x,
+                                 scan_planes.points[scan_planes_nr[(i + 3) % 4]].normal_y,
+                                 scan_planes.points[scan_planes_nr[(i + 3) % 4]].normal_z)));
+    transformation_score = scan_transformation_score * map_transformation_score;
+
+    // Calculate transformation
+    if (transformation_score > orthogonality_threshold) {
+      reduced_scan_planes.clear();
+      reduced_map_planes.clear();
+
+      for (int j = 1; j < 4; ++j) {
+        reduced_scan_planes.push_back(scan_planes.points[scan_planes_nr[(i + j) % 4]]);
+        reduced_map_planes.push_back(map_planes.points[map_planes_nr[(i + j) % 4]]);
+      }
+
+      transformAverage(actual_transformation, actual_plane_assignement, reduced_scan_planes,
+                       reduced_map_planes);
+
+      actual_transform = Eigen::Matrix4f::Identity();
+      translation = Eigen::Vector3f(actual_transformation[0], actual_transformation[1],
+                                    actual_transformation[2]);
+      q = Eigen::Quaternionf(actual_transformation[3], actual_transformation[4],
+                             actual_transformation[5], actual_transformation[6]);
+      actual_transform.block(0, 0, 3, 3) = q.matrix();
+      actual_transform.block(0, 3, 3, 1) = translation;
+
+      reduced_scan_planes.clear();
+      pcl::transformPointCloud(reduced_scan_planes, reduced_scan_planes, actual_transform);
+
+      for (int j = 0; j < reduced_scan_planes.size(); ++j) {
+        translation_error += std::abs(
+            (Eigen::Vector3f(reduced_scan_planes.points[j].x, reduced_scan_planes.points[j].y,
+                             reduced_scan_planes.points[j].z) -
+             Eigen::Vector3f(map_planes.points[j].x, map_planes.points[j].y,
+                             map_planes.points[j].z))
+                .dot(Eigen::Vector3f(map_planes.points[j].normal_x, map_planes.points[j].normal_y,
+                                     map_planes.points[j].normal_z)));
+        rotation_error += 1 - (Eigen::Vector3f(reduced_scan_planes.points[j].normal_x,
+                                               reduced_scan_planes.points[j].normal_y,
+                                               reduced_scan_planes.points[j].normal_z)
+                                   .dot(Eigen::Vector3f(map_planes.points[j].normal_x,
+                                                        map_planes.points[j].normal_y,
+                                                        map_planes.points[j].normal_z)));
+      }
+      error[i] += weighting_translation * translation_error + weighting_rotation * rotation_error;
+
+      if (error[i] < max_score || max_score < 0) {
+        for (int i = 0; i < 7; ++i) {
+          transform[i] = actual_transformation[i];
+        }
+      }
+    }
+  }
+}
+
+void PlaneMatch::getSegmentedLines(
+    std::vector<SegmentedLine> &segmented_lines, const pcl::PointCloud<pcl::PointNormal> planes,
+    bool ismap, Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> room_boundaries) {
+  ros::NodeHandle nh_private("~");
+  float parallel_threshold = nh_private.param<float>("SegmentedLineParallelThreshold", 0.9);
+  float max_distance = nh_private.param<float>("SegmentedLineDistanceThreshold", 100);
+
+  Plane cgal_plane;
+  Plane cgal_pair_plane;
+  Line candidate_intersection_line;
+
+  Plane cgal_candidate_plane;
+  std::vector<Point> intersection_points;
+  Point intersection_point;
+
+  segmented_lines.clear();
+  SegmentedLine segmentedline;
+  std::vector<float> candidate_dist;
+
+  CGAL::Object result_intersection_line;
+  CGAL::Object result_intersection_point;
+
+  int plane_nr = 0;
+  int intersection_point_nr = 0;
+  for (auto plane : planes) {
+    cgal_plane = Plane(Point(plane.x, plane.y, plane.z),
+                       Vector(plane.normal_x, plane.normal_y, plane.normal_z));
+    for (int pair_plane_nr = (plane_nr + 1); pair_plane_nr < planes.size(); ++pair_plane_nr) {
+      cgal_pair_plane =
+          Plane(Point(planes.points[pair_plane_nr].x, planes.points[pair_plane_nr].y,
+                      planes.points[pair_plane_nr].z),
+                Vector(planes.points[pair_plane_nr].normal_x, planes.points[pair_plane_nr].normal_y,
+                       planes.points[pair_plane_nr].normal_z));
+
+      if (std::abs(cgal_plane.orthogonal_vector() * cgal_pair_plane.orthogonal_vector()) >
+          parallel_threshold)
+        continue;
+
+      result_intersection_line = CGAL::intersection(cgal_plane, cgal_pair_plane);
+      // Skip plane pair if there is no intersection_line
+      if (!CGAL::assign(candidate_intersection_line, result_intersection_line)) continue;
+
+      intersection_points.clear();
+      for (auto candidate_plane : planes) {
+        cgal_candidate_plane = Plane(
+            Point(candidate_plane.x, candidate_plane.y, candidate_plane.z),
+            Vector(candidate_plane.normal_x, candidate_plane.normal_y, candidate_plane.normal_z));
+
+        result_intersection_point =
+            CGAL::intersection(cgal_candidate_plane, candidate_intersection_line);
+        // Skip intersection plane if there is no intersection with candidate plane
+        if (!CGAL::assign(intersection_point, result_intersection_point)) continue;
+
+        if (ismap && ((std::abs(plane.normal_x) > 0.8 &&
+                       (intersection_point.y() < (room_boundaries(plane_nr, 0) - 0.5) ||
+                        intersection_point.y() > (room_boundaries(plane_nr, 1) + 0.5))) ||
+                      ((std::abs(plane.normal_y) > 0.8 &&
+                        (intersection_point.x() < (room_boundaries(plane_nr, 0) - 0.5) ||
+                         intersection_point.x() > (room_boundaries(plane_nr, 1) + 0.5))))))
+          continue;
+        if (ismap && ((std::abs(planes.points[pair_plane_nr].normal_x) > 0.8 &&
+                       (intersection_point.y() < (room_boundaries(pair_plane_nr, 0) - 0.5) ||
+                        intersection_point.y() > (room_boundaries(pair_plane_nr, 1) + 0.5))) ||
+                      ((std::abs(planes.points[pair_plane_nr].normal_y) > 0.8 &&
+                        (intersection_point.x() < (room_boundaries(pair_plane_nr, 0) - 0.5) ||
+                         intersection_point.x() > (room_boundaries(pair_plane_nr, 1) + 0.5))))))
+          continue;
+        intersection_points.push_back(intersection_point);
+      }
+
+      // Get distance between intersection points (if they are not too large) as additional
+      // description
+      candidate_dist.clear();
+      for (auto intersection_point : intersection_points) {
+        for (int intersection_pair_point = 0; intersection_pair_point < intersection_points.size();
+             ++intersection_pair_point) {
+          candidate_dist.push_back(
+              sqrt((intersection_point - intersection_points[intersection_pair_point])
+                       .squared_length()));
+          if (candidate_dist.back() > max_distance) {
+            candidate_dist.pop_back();
+          }
+        }
+        ++intersection_point_nr;
+      }
+      if (candidate_dist.size() != 0) {
+        std::sort(candidate_dist.begin(), candidate_dist.end());
+        segmentedline = {candidate_intersection_line, candidate_dist, plane_nr, pair_plane_nr};
+        segmented_lines.push_back(segmentedline);
+      }
+    }
+  }
+  ++plane_nr;
+}
+
+void PlaneMatch::getMatchProbLines(
+    std::vector<SegmentedLine> map_lines, std::vector<SegmentedLine> scan_lines,
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &match_score) {
+  std::vector<float> description_error;
+  float deviation_grade = 1;
+
+  match_score = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(scan_lines.size(),
+                                                                           map_lines.size());
+  int map_line_nr = 0;
+  int scan_line_nr = 0;
+  for (auto map_line : map_lines) {
+    scan_line_nr = 0;
+    for (auto scan_line : scan_lines) {
+      for (auto map_line_description : map_line.line_segments) {
+        description_error.clear();
+        for (auto scan_line_description : scan_line.line_segments) {
+          description_error.push_back(std::abs(map_line_description - scan_line_description));
+        }
+        match_score(scan_line_nr, map_line_nr) +=
+            1.0f +
+            std::max(-1.0f, -*std::min_element(description_error.begin(), description_error.end()) /
+                                deviation_grade);
+      }
+      ++scan_line_nr;
+    }
+    ++map_line_nr;
+  }
+};
 
 void PlaneMatch::loadExampleSol(float (&transformTR)[7],
                                 const pcl::PointCloud<pcl::PointNormal> scan_planes,

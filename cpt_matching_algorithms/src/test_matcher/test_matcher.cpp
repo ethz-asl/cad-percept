@@ -271,6 +271,8 @@ void TestMatcher::match() {
                                              room_boundaries);
     } else if (!plane_matcher.compare("useMatchSolution")) {
       PlaneMatch::loadExampleSol(transform_TR_, scan_planes_, map_planes_);
+    } else if (!plane_matcher.compare("LineSegmentRansac")) {
+      PlaneMatch::LineSegmentRansac(transform_TR_, scan_planes_, map_planes_, room_boundaries);
     } else {
       std::cout << "Error: Could not find given plane matcher" << std::endl;
     }
