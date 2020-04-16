@@ -63,36 +63,88 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
 
     // Extract planes
     load_example();
-    // bool found_at_least_one_facet = true;
+    // std::unordered_map<std::string, std::string> facetToPlane;
+    // std::unordered_multimap<std::string, std::string> planeToFacets;
+    // reference_mesh_->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 1);
+    // std::cout << "Extracted coplanar Facets" << std::endl;
+
+    // std::multimap<std::string, std::string> grouped_planeToFacets(planeToFacets.begin(),
+    //                                                               planeToFacets.end());
+
     // cgal::Plane actual_plane;
     // Eigen::Vector3d point_on_plane;
     // Eigen::Vector3d normal_of_plane;
     // pcl::PointNormal norm_point;
+    // float map_plane_area_threshold = 5;
+    // float max_facet_size;
+    // std::string previous_plane_id = "-1";
 
-    // for (int plane_nr = 0; found_at_least_one_facet; ++plane_nr) {
-    //   found_at_least_one_facet = false;
-    //   for (auto itr = planeToFacets.begin(); itr != planeToFacets.end(); ++itr) {
-    //     // Search for at least one facet of plane
-    //     if (!(itr->first.compare(std::to_string(plane_nr)))) {
-    //       actual_plane = reference_mesh_->getPlane(itr->second);
-    //       point_on_plane = cgal::cgalPointToEigenVector(actual_plane.point());
-    //       normal_of_plane =
-    //           cgal::cgalVectorToEigenVector(actual_plane.orthogonal_vector()).normalized();
-
-    //       norm_point.x = point_on_plane(0);
-    //       norm_point.y = point_on_plane(1);
-    //       norm_point.z = point_on_plane(2);
-    //       norm_point.normal_x = normal_of_plane(0);
-    //       norm_point.normal_y = normal_of_plane(1);
-    //       norm_point.normal_z = normal_of_plane(2);
+    // for (auto facet_of_plane : grouped_planeToFacets) {
+    //   // Search for largest facet of a plane
+    //   if (facet_of_plane.first.compare(previous_plane_id)) {
+    //     // Reset max size and add best desription of previous plane if a new plane id appears
+    //     if (previous_plane_id.compare("-1")) {
+    //       std::cout << "added plane from mesh nr " << previous_plane_id << std::endl;
+    //       std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " "
+    //                 << norm_point.z << std::endl;
+    //       std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y
+    //                 << " " << norm_point.normal_z << std::endl;
 
     //       map_planes_.push_back(norm_point);
-    //       std::cout << "New plane added from mesh" << std::endl;
-    //       found_at_least_one_facet = true;
-    //       break;
+    //     };
+    //     max_facet_size = 0;
+    //   }
+    //   previous_plane_id = facet_of_plane.first;
+
+    //   if (reference_mesh_->getArea(reference_mesh_->getFacetHandleFromId(facet_of_plane.second))
+    //   >
+    //       std::max(map_plane_area_threshold, max_facet_size)) {
+    //     std::cout << "added new facet candidate" << std::endl;
+    //     actual_plane = reference_mesh_->getPlane(facet_of_plane.second);
+    //     point_on_plane = cgal::cgalPointToEigenVector(actual_plane.point());
+    //     normal_of_plane =
+    //         cgal::cgalVectorToEigenVector(actual_plane.orthogonal_vector()).normalized();
+
+    //     norm_point.x = point_on_plane(0);
+    //     norm_point.y = point_on_plane(1);
+    //     norm_point.z = point_on_plane(2);
+    //     norm_point.normal_x = normal_of_plane(0);
+    //     norm_point.normal_y = normal_of_plane(1);
+    //     norm_point.normal_z = normal_of_plane(2);
+
+    //     // direct normal away from origin
+    //     if ((norm_point.x * norm_point.normal_x + norm_point.y * norm_point.normal_y +
+    //          norm_point.z * norm_point.normal_z) < 0) {
+    //       norm_point.normal_x = -norm_point.normal_x;
+    //       norm_point.normal_y = -norm_point.normal_y;
+    //       norm_point.normal_z = -norm_point.normal_z;
     //     }
+
+    //     max_facet_size =
+    //         reference_mesh_->getArea(reference_mesh_->getFacetHandleFromId(facet_of_plane.second));
     //   }
     // }
+    // std::cout << "Found " << map_planes_.size() << " planes in the map, filter out similar
+    // ones... "
+    //           << std::endl;
+    // // Not sure if that should be necessary
+    // pcl::PointCloud<pcl::PointNormal>::Ptr map_plane_ptr(new
+    // pcl::PointCloud<pcl::PointNormal>()); *map_plane_ptr = map_planes_;
+    // pcl::UniformSampling<pcl::PointNormal> voxel_filter;
+    // voxel_filter.setInputCloud(map_plane_ptr);
+    // voxel_filter.setRadiusSearch(0.3);
+    // voxel_filter.filter(*map_plane_ptr);
+    // map_planes_ = *map_plane_ptr;
+    // std::cout << "/////////////////////////////////////////////////" << std::endl;
+    // for (auto norm_point : map_planes_) {
+    //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " <<
+    //   norm_point.z
+    //             << std::endl;
+    //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
+    //             << norm_point.normal_z << std::endl;
+    // }
+    // std::cout << "Found " << map_planes_.size() << " planes in mesh after filter similar ones"
+    //           << std::endl;
 
     std::cout << "CAD ready" << std::endl;
     map_ready_ = true;

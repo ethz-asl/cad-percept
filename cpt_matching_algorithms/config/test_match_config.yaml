@@ -6,7 +6,7 @@ mapSamplingDensity: 20
 usetoyproblem: true
 
 #Select Matcher
-Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
+Matcher: template # template, GoICP, PlaneMatcher
 
 #Settings for GoICP
 
