@@ -48,7 +48,7 @@ class TestMatcher {
   pcl::PointCloud<pcl::PointXYZI> static_structure_cloud_;
   pcl::PointCloud<pcl::PointNormal> scan_planes_;
   pcl::PointCloud<pcl::PointNormal> map_planes_;
-  Eigen::Matrix<float, 22, 2> room_boundaries;
+  Eigen::Matrix<float, 21, 2> room_boundaries;
 
   // Param from server
   int input_queue_size_;
@@ -116,7 +116,7 @@ class TestMatcher {
   void templateMatch();
   void goicpMatch();
 
-  void load_example();
+  void load_map_boundaries();
 };
 
 }  // namespace matching_algorithms

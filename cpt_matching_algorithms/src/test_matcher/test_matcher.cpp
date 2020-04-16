@@ -66,6 +66,7 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     float translation_diff_threshold = nh_private_.param<float>("MapPlaneTransThreshold", 0.1);
     float translation_diff_along_plane = nh_private_.param<float>("MapPlaneTransAlongPlane", 30);
     float rotation_diff_threshold = nh_private_.param<float>("MapPlaneRotDiffThreshold", 0.9);
+    std::vector<float> map_pos = nh_private_.param<std::vector<float>>("MapPlanePos", {0});
 
     std::unordered_map<std::string, std::string> facetToPlane;
     std::unordered_multimap<std::string, std::string> planeToFacets;
@@ -131,6 +132,7 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     Eigen::Vector3f map_plane_dir;
     Eigen::Vector3f map_pair_plane_pos;
     Eigen::Vector3f map_pair_plane_dir;
+    Eigen::Vector3f map_pos_normal(map_pos[0], map_pos[1], map_pos[2]);
     bool assigned_planes[map_planes_.size()] = {false};
 
     int num_point_on_plane = 1;
@@ -170,6 +172,13 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
         }
         ++pair_plane_nr;
       }
+
+      // Correct some normals
+      if ((map_plane_pos - map_pos_normal).dot(map_plane_dir) < 0) {
+        average_plane.normal_x = -average_plane.normal_x;
+        average_plane.normal_y = -average_plane.normal_y;
+        average_plane.normal_z = -average_plane.normal_z;
+      }
       average_plane.x = average_plane.x / num_point_on_plane;
       average_plane.y = average_plane.y / num_point_on_plane;
       average_plane.z = average_plane.z / num_point_on_plane;
@@ -180,35 +189,36 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     map_planes_.clear();
     map_planes_ = new_map_planes;
 
-    for (auto norm_point : map_planes_) {
-      std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " << norm_point.z
-                << std::endl;
-      std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
-                << norm_point.normal_z << std::endl;
-    }
-    std::cout << "Found " << map_planes_.size() << " planes in the map after reduction"
-              << std::endl;
+    // for (auto norm_point : map_planes_) {
+    //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " <<
+    //   norm_point.z
+    //             << std::endl;
+    //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
+    //             << norm_point.normal_z << std::endl;
+    // }
+    // std::cout << "Found " << map_planes_.size() << " planes in the map after reduction"
+    //           << std::endl;
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr test_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointXYZ points;
-    for (auto map_plane : map_planes_) {
-      // std::cout << map_plane(0) << " " << map_plane(1) << " " << map_plane(2) << std::endl;
-      points.x = map_plane.x;
-      points.y = map_plane.y;
-      points.z = map_plane.z;
-      test_cloud->push_back(points);
-    }
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr test_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    // pcl::PointXYZ points;
+    // for (auto map_plane : map_planes_) {
+    //   // std::cout << map_plane(0) << " " << map_plane(1) << " " << map_plane(2) << std::endl;
+    //   points.x = map_plane.x;
+    //   points.y = map_plane.y;
+    //   points.z = map_plane.z;
+    //   test_cloud->push_back(points);
+    // }
 
-    ros::Publisher test_pub = nh_.advertise<sensor_msgs::PointCloud2>("test_extracted", 1, true);
-    std::string tf_map_frame = "/map";
-    sensor_msgs::PointCloud2 segmentation_mesg;
-    test_cloud->header.frame_id = tf_map_frame;
-    pcl::toROSMsg(*test_cloud, segmentation_mesg);
-    test_pub.publish(segmentation_mesg);
+    // ros::Publisher test_pub = nh_.advertise<sensor_msgs::PointCloud2>("test_extracted", 1, true);
+    // std::string tf_map_frame = "/map";
+    // sensor_msgs::PointCloud2 segmentation_mesg;
+    // test_cloud->header.frame_id = tf_map_frame;
+    // pcl::toROSMsg(*test_cloud, segmentation_mesg);
+    // test_pub.publish(segmentation_mesg);
 
-    ros::spin();
+    // ros::spin();
 
-    // load_map_boundaries();
+    load_map_boundaries();
 
     std::cout << "CAD ready" << std::endl;
     map_ready_ = true;
@@ -476,207 +486,55 @@ void TestMatcher::getError(PointCloud p1, PointCloud p2) {
             << std::endl;
 }
 
-void TestMatcher::load_example() {
-  // normals for used map
-  pcl::PointNormal norm_point;
-  norm_point.x = -3.8;
-  norm_point.y = -0.2;
-  norm_point.z = 0;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = -1;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 0;
-  norm_point.y = 3.5;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 10.3;
-  norm_point.y = 6.4;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 19.8;
-  norm_point.y = 7.1;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 27.5;
-  norm_point.y = 7.6;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 34.3;
-  norm_point.y = 3.8;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 36.15;
-  norm_point.y = 0;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 37.9;
-  norm_point.y = -1;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 36.15;
-  norm_point.y = -2.6;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 34.4;
-  norm_point.y = -4.16;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 37.65;
-  norm_point.y = -6.3;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 29.8;
-  norm_point.y = -7.24;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 26.3;
-  norm_point.y = -8;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 21.6;
-  norm_point.y = -7.1;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = 9.74;
-  norm_point.y = -6;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -1.86;
-  norm_point.y = -7.1;
-  norm_point.z = 1;
-  norm_point.normal_x = 1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -3.1;
-  norm_point.y = -7.16;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -11.7;
-  norm_point.y = -6.22;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -18.5;
-  norm_point.y = -3.95;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -20.97;
-  norm_point.y = -2.5;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = -1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -24;
-  norm_point.y = -1.3;
-  norm_point.z = 1;
-  norm_point.normal_x = -1;
-  norm_point.normal_y = 0;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
-  norm_point.x = -11.6;
-  norm_point.y = -0;
-  norm_point.z = 1;
-  norm_point.normal_x = 0;
-  norm_point.normal_y = 1;
-  norm_point.normal_z = 0;
-  map_planes_.push_back(norm_point);
+void TestMatcher::load_map_boundaries() {
+  // correct for normals in used map
+  map_planes_.points[1].normal_x = map_planes_.points[1].normal_x;
+  map_planes_.points[1].normal_y = map_planes_.points[1].normal_y;
+  map_planes_.points[1].normal_z = map_planes_.points[1].normal_z;
 
   // load map boundaries
-  room_boundaries(1, 0) = 0;
-  room_boundaries(1, 1) = 6.4;
-  room_boundaries(2, 0) = 0;
-  room_boundaries(2, 1) = 19.8;
-  room_boundaries(3, 0) = 6.4;
-  room_boundaries(3, 1) = 7.6;
-  room_boundaries(4, 0) = 19.8;
-  room_boundaries(4, 1) = 34.3;
-  room_boundaries(5, 0) = 0;
-  room_boundaries(5, 1) = 7.6;
-  room_boundaries(6, 0) = 34.3;
-  room_boundaries(6, 1) = 37.9;
-  room_boundaries(7, 0) = -2.6;
-  room_boundaries(7, 1) = 0;
-  room_boundaries(8, 0) = 34.4;
-  room_boundaries(8, 1) = 37.9;
-  room_boundaries(9, 0) = -6.3;
-  room_boundaries(9, 1) = -2.6;
-  room_boundaries(10, 0) = 29.8;
-  room_boundaries(10, 1) = 36.15;
-  room_boundaries(11, 0) = -8;
-  room_boundaries(11, 1) = -6.3;
-  room_boundaries(12, 0) = 21.6;
-  room_boundaries(12, 1) = 29.8;
-  room_boundaries(13, 0) = -8;
-  room_boundaries(13, 1) = -6.3;
-  room_boundaries(14, 0) = -1.86;
-  room_boundaries(14, 1) = 21.6;
-  room_boundaries(15, 0) = -100;
-  room_boundaries(15, 1) = -6;
-  room_boundaries(16, 0) = -100;
-  room_boundaries(16, 1) = -6.22;
-  room_boundaries(17, 0) = -18.5;
-  room_boundaries(17, 1) = -3.1;
-  room_boundaries(18, 0) = -6.22;
-  room_boundaries(18, 1) = -2.5;
-  room_boundaries(19, 0) = -24;
-  room_boundaries(19, 1) = -18.5;
-  room_boundaries(20, 0) = -2.5;
-  room_boundaries(20, 1) = -0;
-  room_boundaries(21, 0) = -24;
-  room_boundaries(21, 1) = 0;
+  room_boundaries(0, 0) = 0;
+  room_boundaries(0, 0) = 6.45;
+  room_boundaries(1, 0) = -100;
+  room_boundaries(1, 1) = -5.62;
+  room_boundaries(2, 0) = -18.57;
+  room_boundaries(2, 1) = 22.5;
+  room_boundaries(3, 0) = -23.88;
+  room_boundaries(3, 1) = 0;
+  room_boundaries(4, 0) = -5.62;
+  room_boundaries(4, 1) = -2.39;
+  room_boundaries(5, 0) = -23.88;
+  room_boundaries(5, 1) = -18.57;
+  room_boundaries(6, 0) = 0;
+  room_boundaries(6, 1) = 19.89;
+  room_boundaries(7, 0) = 34.145;
+  room_boundaries(7, 1) = 37.77;
+  room_boundaries(8, 0) = 19.89;
+  room_boundaries(8, 1) = 34.145;
+  room_boundaries(9, 0) = 0;
+  room_boundaries(9, 1) = 0;
+  room_boundaries(10, 0) = -5.9;
+  room_boundaries(10, 1) = 7.7;
+  room_boundaries(11, 0) = -2.47;
+  room_boundaries(11, 1) = 0.034;
+  room_boundaries(12, 0) = -7.84;
+  room_boundaries(12, 1) = -5.9;
+  room_boundaries(13, 0) = -7.84;
+  room_boundaries(13, 1) = -5.62;
+  room_boundaries(14, 0) = 22.5;
+  room_boundaries(14, 1) = 29.34;
+  room_boundaries(15, 0) = -18.57;
+  room_boundaries(15, 1) = 22.5;
+  room_boundaries(16, 0) = 34.145;
+  room_boundaries(16, 1) = 37.77;
+  room_boundaries(17, 0) = 29.34;
+  room_boundaries(17, 1) = 34.145;
+  room_boundaries(18, 0) = -2.39;
+  room_boundaries(18, 1) = -0.118;
+  room_boundaries(19, 0) = -18.57;
+  room_boundaries(19, 1) = 22.5;
+  room_boundaries(20, 0) = -100;
+  room_boundaries(20, 1) = -5.62;
 };
 
 }  // namespace matching_algorithms

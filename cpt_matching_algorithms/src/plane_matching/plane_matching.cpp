@@ -58,10 +58,10 @@ class PlaneMatch::SortRelativeTriangle {
   bool isline = false;
 };
 
-void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
-                                            const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                            const pcl::PointCloud<pcl::PointNormal> map_planes,
-                                            Eigen::Matrix<float, 22, 2> room_boundaries) {
+void PlaneMatch::IntersectionPatternMatcher(
+    float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
+    const pcl::PointCloud<pcl::PointNormal> map_planes,
+    Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries) {
   std::cout << "////////////////////////////////////////////////" << std::endl;
   std::cout << "////  Intersection Pattern Matcher Started  ////" << std::endl;
   std::cout << "////////////////////////////////////////////////" << std::endl;
@@ -102,7 +102,7 @@ void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
   pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
   pcl::PointCloud<pcl::PointXYZ>::Ptr filter_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   int point_index = 0;
-  for (int i = 0; i < 22; i++) {
+  for (int i = 0; i < map_planes.size(); i++) {
     point_index = 0;
     rm_index.clear();
     filter_cloud->clear();
@@ -515,7 +515,7 @@ void PlaneMatch::filterIntersectionPoints(
 void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
                                    const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                    const pcl::PointCloud<pcl::PointNormal> map_planes,
-                                   Eigen::Matrix<float, 22, 2> room_boundaries) {
+                                   Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries) {
   std::cout << "////////////////////////////////////////////////" << std::endl;
   std::cout << "////       Line Segment RANSAC Started      ////" << std::endl;
   std::cout << "////////////////////////////////////////////////" << std::endl;

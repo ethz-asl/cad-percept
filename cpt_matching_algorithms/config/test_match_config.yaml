@@ -7,6 +7,7 @@ MapPlaneExtractionMinArea: 4 #Min area of a map plane (resp. of facet)
 MapPlaneTransThreshold: 0.16 #Max difference between translation along plane normal
 MapPlaneTransAlongPlane: 28 #Max distance between points of same plane which will be combined
 MapPlaneRotDiffThreshold: 0.9 #Max difference in rotation of normals
+MapPlanePos: [23, -1, 1] #Consider planes from this point to get most conventions of normals right
 
 usetoyproblem: true
 

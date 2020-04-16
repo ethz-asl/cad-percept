@@ -35,14 +35,14 @@ class PlaneMatch {
   static void IntersectionPatternMatcher(float (&transformTR)[7],
                                          const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                          const pcl::PointCloud<pcl::PointNormal> map_planes,
-                                         Eigen::Matrix<float, 22, 2> room_boundaries);
+                                         Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries);
   static void loadExampleSol(float (&transformTR)[7],
                              const pcl::PointCloud<pcl::PointNormal> scan_planes,
                              const pcl::PointCloud<pcl::PointNormal> map_planes);
   static void LineSegmentRansac(float (&transformTR)[7],
                                 const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                 const pcl::PointCloud<pcl::PointNormal> map_planes,
-                                Eigen::Matrix<float, 22, 2> room_boundaries);
+                                Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries);
 
  private:
   class SortRelativeTriangle;
