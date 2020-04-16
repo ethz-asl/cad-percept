@@ -64,12 +64,12 @@ Visualization Manager:
       Backface Culling: false
       Class: cgal_visualizations/TriangleMeshDisplay
       Edge Color: 186; 189; 182
-      Enabled: false
+      Enabled: true
       Name: TriangleMeshDisplay
       Surface Color: 255; 255; 255
       Topic: /mesh_publisher/mesh_out
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -183,8 +183,8 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
+      Color: 239; 41; 41
+      Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -197,7 +197,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.10000000149011612
+      Size (m): 0.5
       Style: Flat Squares
       Topic: /test_extracted
       Unreliable: false
@@ -247,10 +247,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6997973918914795
+      Pitch: 0.38979747891426086
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.791748523712158
+      Yaw: 3.626730442047119
     Saved: ~
 Window Geometry:
   Displays:
