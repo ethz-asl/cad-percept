@@ -417,7 +417,7 @@ void TestMatcher::match() {
   res_transform.block(0, 0, 3, 3) = q.matrix();
   res_transform.block(0, 3, 3, 1) = translation;
 
-  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform.inverse());
+  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform);
 
   /*//////////////////////////////////////
                 Visualization
@@ -430,7 +430,7 @@ void TestMatcher::match() {
   scan_pub_.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_, ros::Time::now()));
   ready_for_eval_ = true;
-}  // namespace matching_algorithms
+}
 
 void TestMatcher::evaluate() {
   /*//////////////////////////////////////
@@ -487,14 +487,23 @@ void TestMatcher::getError(PointCloud p1, PointCloud p2) {
 }
 
 void TestMatcher::load_map_boundaries() {
-  // correct for normals in used map
-  map_planes_.points[1].normal_x = map_planes_.points[1].normal_x;
-  map_planes_.points[1].normal_y = map_planes_.points[1].normal_y;
-  map_planes_.points[1].normal_z = map_planes_.points[1].normal_z;
+  // corrections of map description
+  map_planes_.points[1].normal_x = -map_planes_.points[1].normal_x;
+  map_planes_.points[1].normal_y = -map_planes_.points[1].normal_y;
+  map_planes_.points[1].normal_z = -map_planes_.points[1].normal_z;
+
+  pcl::PointNormal map_plane;
+  map_plane.x = 19.89;
+  map_plane.y = 7;
+  map_plane.z = 1;
+  map_plane.normal_x = -1;
+  map_plane.normal_y = 0;
+  map_plane.normal_z = 0;
+  map_planes_.push_back(map_plane);
 
   // load map boundaries
   room_boundaries(0, 0) = 0;
-  room_boundaries(0, 0) = 6.45;
+  room_boundaries(0, 1) = 6.45;
   room_boundaries(1, 0) = -100;
   room_boundaries(1, 1) = -5.62;
   room_boundaries(2, 0) = -18.57;
@@ -535,6 +544,8 @@ void TestMatcher::load_map_boundaries() {
   room_boundaries(19, 1) = 22.5;
   room_boundaries(20, 0) = -100;
   room_boundaries(20, 1) = -5.62;
+  room_boundaries(21, 0) = 6.45;
+  room_boundaries(21, 1) = 7.7;
 };
 
 }  // namespace matching_algorithms
