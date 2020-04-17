@@ -22,7 +22,7 @@ void TestMatcher::goicpMatch() {
   pcl::computeCentroid(go_icp_lidar, transl_lidar);
 
   pcl::PointXYZ transl_map;
-  pcl::computeCentroid(go_icp_lidar, transl_map);
+  pcl::computeCentroid(go_icp_map, transl_map);
 
   // Centralize point clouds
   Eigen::Matrix4d transform_lidar = Eigen::Matrix4d::Identity();

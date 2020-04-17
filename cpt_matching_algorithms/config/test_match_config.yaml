@@ -17,7 +17,7 @@ Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
 #Settings for GoICP
 
 #Change MSE Threshold & Trimmer Settings in Go-ICP/demo/config.txt
-downsample: "1000"
+GoICPdownsample: "1000"
 
 # Settings for Plane Matcher
 
