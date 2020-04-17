@@ -482,7 +482,7 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
                                         PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
                                         ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
-  std::cout << "         PCL Plane Extraction started          " << std::endl;
+  std::cout << "      PCL RANSAC Plane Extraction started      " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
   ros::NodeHandle nh;
@@ -574,6 +574,111 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
     ++color;
   }
 }
+
+void PlaneExtractor::cgalRegionGrowing(
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
+    std::vector<Eigen::Vector3d> &plane_normals, PointCloud<pcl::PointXYZ> lidar_scan,
+    std::string tf_map_frame, ros::Publisher &plane_pub) {
+  std::cout << "///////////////////////////////////////////////" << std::endl;
+  std::cout << "         CGAL Region Growing started           " << std::endl;
+  std::cout << "///////////////////////////////////////////////" << std::endl;
+
+  ros::NodeHandle nh;
+  ros::NodeHandle nh_private("~");
+  plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+
+  // Code is from cpt_deviation_analysis/deviations.cpp/Deviations::runShapeDetection with some
+  // modifications
+
+  // https://doc.cgal.org/4.13.1/Point_set_shape_detection_3/index.html#title7
+
+  cgal::Pwn_vector points;  // Points with normals.
+
+  // load points from pcl cloud
+  for (auto point : lidar_scan.points) {
+    cgal::Point_with_normal pwn;
+    pwn.first = cgal::ShapeKernel::Point_3(point.x, point.y, point.z);
+    points.push_back(pwn);
+  }
+
+  // Estimate normals direction
+  const int nb_neighbors = 20;
+  CGAL::pca_estimate_normals<CGAL::Parallel_tag>(
+      points, nb_neighbors,
+      CGAL::parameters::point_map(cgal::Point_map()).normal_map(cgal::Normal_map()));
+
+  // Instantiate shape detection engine.
+  cgal::Region_growing shape_detection;
+  shape_detection.set_input(points);
+  // Registers planar shapes via template method (could also register other shapes)
+  shape_detection.template add_shape_factory<cgal::ShapePlane>();
+  // Build internal data structures.
+  shape_detection.preprocess();
+
+  // Sets parameters for shape detection.
+  cgal::Region_growing::Parameters parameters;
+
+  // Detect shapes with at least X points.
+  parameters.min_points = nh_private.param<int>("CGALRegionGrowMinNumInliers", 40);
+  // Sets maximum Euclidean distance between a point and a shape.
+  parameters.epsilon = nh_private.param<float>("CGALRegionGrowMaxDistToPlane", 0.5);
+  // Sets maximum Euclidean distance between points to be clustered.
+  parameters.cluster_epsilon = nh_private.param<float>("CGALRegionGrowMaxDistBetwPoint", 3);
+  // Sets maximum normal deviation.
+  parameters.normal_threshold =
+      nh_private.param<float>("CGALRegionGrowMaxDiffNormalThreshold", 0.2);
+
+  // Detect registered shapes with parameters
+  shape_detection.detect(parameters);
+
+  // Compute coverage, i.e. ratio of the points assigned to a shape
+  cgal::FT coverage = cgal::FT(points.size() - shape_detection.number_of_unassigned_points()) /
+                      cgal::FT(points.size());
+
+  // Prints number of assigned shapes and unassigned points
+  std::cout << shape_detection.shapes().end() - shape_detection.shapes().begin() << " primitives, "
+            << coverage << " coverage" << std::endl;
+
+  // Take result
+  cgal::Region_growing::Shape_range shapes = shape_detection.shapes();
+
+  // Characterize shapes
+  cgal::Region_growing::Shape_range::iterator shapeIt = shapes.begin();
+  PointCloud<PointXYZ> actual_plane_inlier;
+  while (shapeIt != shapes.end()) {
+    cgal::ShapePlane *plane = dynamic_cast<cgal::ShapePlane *>(shapeIt->get());
+    cgal::ShapeKernel::Vector_3 normal = plane->plane_normal();
+
+    plane_normals.push_back(Eigen::Vector3d(normal.x(), normal.y(), normal.z()));
+
+    // Iterates through point indices assigned to each detected shape
+    std::vector<std::size_t>::const_iterator index_it =
+        (*shapeIt)->indices_of_assigned_points().begin();
+    actual_plane_inlier.clear();
+    while (index_it != (*shapeIt)->indices_of_assigned_points().end()) {
+      // Retrieve point
+      const cgal::Point_with_normal &p = *(points.begin() + (*index_it));
+
+      // Add point to inliers of plane
+      PointXYZ pc_point(p.first.x(), p.first.y(), p.first.z());
+      actual_plane_inlier.push_back(pc_point);
+      // Proceeds with next point
+      index_it++;
+    }
+    extracted_planes.push_back(actual_plane_inlier);
+    shapeIt++;
+  }
+
+  // Give out information about extracted planes
+  int color = 0;
+  for (auto plane_normal : plane_normals) {
+    std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
+              << " color: " << color % 8 << std::endl;
+    ++color;
+  }
+  std::cout << extracted_planes[0].size() << std::endl;
+  visualizePlane(extracted_planes, plane_pub, tf_map_frame);
+};
 
 // Visualization of planes in rviz
 void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted_planes,

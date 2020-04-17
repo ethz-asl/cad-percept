@@ -22,6 +22,8 @@
 #include <pcl/common/geometry.h>
 #include <pcl/kdtree/kdtree_flann.h>
 
+#include <CGAL/pca_estimate_normals.h>
+
 namespace cad_percept {
 namespace matching_algorithms {
 
@@ -39,6 +41,11 @@ class PlaneExtractor {
                                  std::vector<Eigen::Vector3d> &plane_coefficients,
                                  pcl::PointCloud<pcl::PointXYZ> lidar_scan,
                                  std::string tf_map_frame, ros::Publisher &plane_pub);
+  static void cgalRegionGrowing(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
+                                std::vector<Eigen::Vector3d> &plane_normals,
+                                pcl::PointCloud<pcl::PointXYZ> lidar_scan, std::string tf_map_frame,
+                                ros::Publisher &plane_pub);
+
   static void visualizePlane(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
                              ros::Publisher &plane_pub, std::string tf_map_frame);
 

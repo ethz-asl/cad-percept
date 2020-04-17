@@ -9,7 +9,7 @@ MapPlaneTransAlongPlane: 28 #Max distance between points of same plane which wil
 MapPlaneRotDiffThreshold: 0.9 #Max difference in rotation of normals
 MapPlanePos: [23, -1, 1] #Consider planes from this point to get most conventions of normals right
 
-usetoyproblem: true
+usetoyproblem: false
 
 #Select Matcher
 Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
@@ -29,11 +29,9 @@ useVoxelCentroidFilter: false
 Voxelsearchradius: 0.1
 
 # Plane Extraction
-PlaneExtractor: pclPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
+PlaneExtractor: cgalRegionGrowing # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction, cgalRegionGrowing
 
 # Plane Matching (only one)
-PlaneMatch: LineSegmentRansac # useMatchSolution, IntersectionPatternMatcher, LineSegmentRansac
+PlaneMatch: fail # useMatchSolution, IntersectionPatternMatcher, LineSegmentRansac
 
-
-# Transform Calculation
 

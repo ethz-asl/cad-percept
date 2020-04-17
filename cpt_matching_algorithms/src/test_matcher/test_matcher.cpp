@@ -370,26 +370,29 @@ void TestMatcher::match() {
       PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
                                              tf_map_frame_, plane_pub_);
 
+    } else if (!extractor.compare("cgalRegionGrowing")) {
+      PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_coefficients, lidar_scan_,
+                                        tf_map_frame_, plane_pub_);
     } else {
       std::cout << "Error: Could not find given plane extractor" << std::endl;
     }
 
-    // Convert plane coefficients back to normal (could be done easily in the function itself)
-    pcl::PointNormal norm_point;
-    pcl::PointXYZ plane_centroid;
-    int plane_nr = 0;
-    for (auto plane_coefficient : plane_coefficients) {
-      pcl::computeCentroid(extracted_planes[plane_nr], plane_centroid);
-      norm_point.x = plane_centroid.x;
-      norm_point.y = plane_centroid.y;
-      norm_point.z = plane_centroid.z;
+    // // Convert plane coefficients back to normal (could be done easily in the function itself)
+    // pcl::PointNormal norm_point;
+    // pcl::PointXYZ plane_centroid;
+    // int plane_nr = 0;
+    // for (auto plane_coefficient : plane_coefficients) {
+    //   pcl::computeCentroid(extracted_planes[plane_nr], plane_centroid);
+    //   norm_point.x = plane_centroid.x;
+    //   norm_point.y = plane_centroid.y;
+    //   norm_point.z = plane_centroid.z;
 
-      norm_point.normal_x = std::cos(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
-      norm_point.normal_y = std::sin(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
-      norm_point.normal_z = std::sin(plane_coefficient[2]);
-      scan_planes_.push_back(norm_point);
-      plane_nr++;
-    }
+    //   norm_point.normal_x = std::cos(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
+    //   norm_point.normal_y = std::sin(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
+    //   norm_point.normal_z = std::sin(plane_coefficient[2]);
+    //   scan_planes_.push_back(norm_point);
+    //   plane_nr++;
+    // }
     std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
     // Plane Matching (Get T_map,lidar)
     if (!plane_matcher.compare("IntersectionPatternMatcher")) {
