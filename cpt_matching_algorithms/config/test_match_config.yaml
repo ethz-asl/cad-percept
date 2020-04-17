@@ -8,19 +8,19 @@ usetoyproblem: true
 #Select Matcher
 Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
 
+#Settings for GoICP
+
+#Change MSE Threshold & Trimmer Settings in Go-ICP/demo/config.txt
+GoICPdownsample: "1000"
+
 # Settings for Plane Matcher
 
 # Filters
-useStructureFilter: true
+useStructureFilter: false
 StructureThreshold: 150
 
-useVoxelCentroidFilter: true
+useVoxelCentroidFilter: false
 Voxelsearchradius: 0.1
 
 # Plane Extraction
-PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
-
-# Plane Matching
-
-# Transform Calculation
-
+PlaneExtractor: pclPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
