@@ -44,27 +44,26 @@ class PlaneExtractor::HoughAccumulator {
     }
   };
 
-  void findMaxima(int min_vote_threshold, std::vector<std::vector<double>> &plane_coefficients,
+  void findMaxima(int min_vote_threshold, std::vector<Eigen::Vector3d> &plane_coefficients,
                   std::vector<std::vector<int>> &get_voter_ids) {
-    std::vector<double> actuel_plane_coefficients;
+    Eigen::Vector3d actuel_plane_coefficients;
     plane_coefficients.clear();
     get_voter_ids.clear();
     for (int i = 0; i < accumulator_size; ++i) {
       if (bins_(1, i) >= min_vote_threshold) {
-        actuel_plane_coefficients.push_back(bin_values_->points[i].x);  // rho
-        actuel_plane_coefficients.push_back(bin_values_->points[i].y);  // theta
-        actuel_plane_coefficients.push_back(bin_values_->points[i].z);  // psi
+        actuel_plane_coefficients[0] = bin_values_->points[i].x;  // rho
+        actuel_plane_coefficients[1] = bin_values_->points[i].y;  // theta
+        actuel_plane_coefficients[2] = bin_values_->points[i].z;  // psi
         plane_coefficients.push_back(actuel_plane_coefficients);
-        actuel_plane_coefficients.clear();
 
         get_voter_ids.push_back(voter_ids_[i]);
       }
     }
   };
 
-  void findMaximumPlane(int num_main_planes, std::vector<std::vector<double>> &plane_coefficients,
+  void findMaximumPlane(int num_main_planes, std::vector<Eigen::Vector3d> &plane_coefficients,
                         std::vector<std::vector<int>> &get_voter_ids) {
-    std::vector<double> actuel_plane_coefficients;
+    Eigen::Vector3d actuel_plane_coefficients;
     plane_coefficients.clear();
     get_voter_ids.clear();
 
@@ -73,14 +72,13 @@ class PlaneExtractor::HoughAccumulator {
     Eigen::Matrix<int, 1, Eigen::Dynamic> copy_bins = bins_;
     for (int i = 0; i < num_main_planes; ++i) {
       copy_bins.maxCoeff(&maximum_idx);
-      actuel_plane_coefficients.push_back(bin_values_->points[maximum_idx].x);  // rho
-      actuel_plane_coefficients.push_back(bin_values_->points[maximum_idx].y);  // theta
-      actuel_plane_coefficients.push_back(bin_values_->points[maximum_idx].z);  // psi
+      actuel_plane_coefficients[0] = bin_values_->points[maximum_idx].x;  // rho
+      actuel_plane_coefficients[1] = bin_values_->points[maximum_idx].y;  // theta
+      actuel_plane_coefficients[2] = bin_values_->points[maximum_idx].z;  // psi
 
       plane_coefficients.push_back(actuel_plane_coefficients);
       get_voter_ids.push_back(voter_ids_[maximum_idx]);
 
-      actuel_plane_coefficients.clear();
       copy_bins(1, maximum_idx) = 0;
     }
   };
@@ -255,7 +253,7 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
 
 std::vector<std::vector<int>> PlaneExtractor::rhtEval(
     int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
-    std::vector<std::vector<double>> &plane_coefficients,
+    std::vector<Eigen::Vector3d> &plane_coefficients,
     std::vector<PointCloud<PointXYZ>> &extracted_planes, PointCloud<PointXYZ> lidar_scan,
     HoughAccumulator *accumulator) {
   std::vector<std::vector<int>> inlier_ids;
@@ -297,7 +295,7 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
 
 // Plane Extraction using RHT
 void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                        std::vector<std::vector<double>> &plane_coefficients,
+                                        std::vector<Eigen::Vector3d> &plane_coefficients,
                                         PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
                                         ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -362,14 +360,16 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
-  for (int i = 0; i < extracted_planes.size(); ++i) {
-    std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
-              << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
+  int color = 0;
+  for (auto plane_coefficient : plane_coefficients) {
+    std::cout << plane_coefficient[0] << " " << plane_coefficient[1] << " " << plane_coefficient[2]
+              << " color: " << color % 8 << std::endl;
+    ++color;
   }
 }
 
 void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                            std::vector<std::vector<double>> &plane_coefficients,
+                                            std::vector<Eigen::Vector3d> &plane_coefficients,
                                             PointCloud<PointXYZ> lidar_scan,
                                             std::string tf_map_frame, ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -428,7 +428,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   std::vector<std::vector<int>> inlier_ids;
   std::vector<int> rm_indices;
 
-  std::vector<std::vector<double>> iter_plane_coefficients;
+  std::vector<Eigen::Vector3d> iter_plane_coefficients;
   std::vector<PointCloud<PointXYZ>> iter_extracted_planes;
 
   for (int iter = 0; iter < num_main_planes; ++iter) {
@@ -468,15 +468,17 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
-  for (int i = 0; i < extracted_planes.size(); ++i) {
-    std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
-              << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
+  int color = 0;
+  for (auto plane_coefficient : plane_coefficients) {
+    std::cout << plane_coefficient[0] << " " << plane_coefficient[1] << " " << plane_coefficient[2]
+              << " color: " << color % 8 << std::endl;
+    ++color;
   }
 }
 
 // Plane Extraction using pcl tutorial (see also planarSegmentationPCL)
 void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                        std::vector<std::vector<double>> &plane_coefficients,
+                                        std::vector<Eigen::Vector3d> &plane_coefficients,
                                         PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
                                         ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -514,7 +516,7 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   ExtractIndices<PointXYZ> indices_filter;
   PointXYZ normal_of_plane;
   double norm_of_normal;
-  std::vector<double> actuel_plane_coefficients{0, 0, 0};
+  Eigen::Vector3d actuel_plane_coefficients;
 
   do {
     seg.setInputCloud(copy_lidar_scan);
@@ -565,9 +567,11 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
-  for (int i = 0; i < extracted_planes.size(); ++i) {
-    std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
-              << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
+  int color = 0;
+  for (auto plane_coefficient : plane_coefficients) {
+    std::cout << plane_coefficient[0] << " " << plane_coefficient[1] << " " << plane_coefficient[2]
+              << " color: " << color % 8 << std::endl;
+    ++color;
   }
 }
 

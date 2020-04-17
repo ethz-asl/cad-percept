@@ -358,7 +358,7 @@ void TestMatcher::match() {
     }
     // Plane Extraction
     std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-    std::vector<std::vector<double>> plane_coefficients;
+    std::vector<Eigen::Vector3d> plane_coefficients;
     std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
     if (!extractor.compare("pclPlaneExtraction")) {
       PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
