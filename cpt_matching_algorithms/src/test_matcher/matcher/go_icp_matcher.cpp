@@ -124,8 +124,6 @@ void TestMatcher::goicpMatch() {
   Eigen::Quaterniond final_q(final_rot);
 
   // Revert scaling and translation
-  std::cout << transl_lidar << std::endl;
-  std::cout << transl_map << std::endl;
   transform_TR_[0] = final_transf(0, 3) * max_dist - transl_lidar.x + transl_map.x;
   transform_TR_[1] = final_transf(1, 3) * max_dist - transl_lidar.y + transl_map.y;
   transform_TR_[2] = final_transf(2, 3) * max_dist - transl_lidar.z + transl_map.z;
