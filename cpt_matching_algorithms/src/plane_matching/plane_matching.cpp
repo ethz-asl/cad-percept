@@ -1054,50 +1054,29 @@ void PlaneMatch::transformAverage(float (&transformTR)[7], std::vector<int> plan
   res_rotation.block(0, 0, 3, 3) = q.matrix();
   pcl::transformPointCloud(copy_scan_planes, copy_scan_planes, res_rotation);
 
-  double mean_translation_x = 0;
-  double mean_translation_y = 0;
-  double mean_translation_z = 0;
-  int nr_planes_x = 0;
-  int nr_planes_y = 0;
-  int nr_planes_z = 0;
+  // Median filter for translation
+  std::vector<double> translation_x;
+  std::vector<double> translation_y;
+  std::vector<double> translation_z;
   int map_index;
   for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
     map_index = plane_assignment[plane_nr];
     if (std::abs(map_planes.points[map_index].normal_x) > 0.5) {
-      mean_translation_x =
-          map_planes.points[map_index].x - copy_scan_planes.points[plane_nr].x + mean_translation_x;
-      ;
-      ++nr_planes_x;
+      translation_x.push_back(map_planes.points[map_index].x - copy_scan_planes.points[plane_nr].x);
     }
     if (std::abs(map_planes.points[map_index].normal_y) > 0.5) {
-      mean_translation_y =
-          map_planes.points[map_index].y - copy_scan_planes.points[plane_nr].y + mean_translation_y;
-      ++nr_planes_y;
+      translation_y.push_back(map_planes.points[map_index].y - copy_scan_planes.points[plane_nr].y);
     }
     if (std::abs(map_planes.points[plane_nr].normal_z) > 0.5) {
-      mean_translation_z =
-          map_planes.points[map_index].z - copy_scan_planes.points[plane_nr].z + mean_translation_z;
-      ++nr_planes_z;
+      translation_z.push_back(map_planes.points[map_index].z - copy_scan_planes.points[plane_nr].z);
     }
   }
-  if (nr_planes_x != 0) {
-    transformTR[0] = mean_translation_x / nr_planes_x;
-  } else {
-    // std::cout << "Couldn't find translation x as plane with normal x is missing" << std::endl;
-    transformTR[0] = 0;
-  }
-  if (nr_planes_y != 0) {
-    transformTR[1] = mean_translation_y / nr_planes_y;
-  } else {
-    // std::cout << "Couldn't find translation y as plane with normal y is missing" << std::endl;
-    transformTR[1] = 0;
-  }
-  if (nr_planes_z != 0) {
-    transformTR[2] = mean_translation_z / nr_planes_z;
-  } else {
-    // std::cout << "Couldn't find translation z as plane with normal z is missing" << std::endl;
-    transformTR[2] = 0;
-  }
+  std::sort(translation_x.begin(), translation_x.end());
+  std::sort(translation_y.begin(), translation_y.end());
+  std::sort(translation_z.begin(), translation_z.end());
+  if (translation_x.size() != 0) transformTR[0] = translation_x[translation_x.size() / 2];
+  if (translation_y.size() != 0) transformTR[1] = translation_y[translation_y.size() / 2];
+  if (translation_z.size() != 0) transformTR[2] = translation_z[translation_z.size() / 2];
 };
 
 }  // namespace matching_algorithms
