@@ -12,7 +12,7 @@ class PlaneExtractor::HoughAccumulator {
   void vote(Eigen::Vector3d vote, int (&voter)[3]) {
     PointXYZ vote_point(vote(0), vote(1), vote(2));
     kdtree_.nearestKSearch(vote_point, 1, bin_index_, bin_index_dist_);
-    ++bins_[bin_index_[0]];
+    bins_(1, bin_index_[0]) = bins_(1, bin_index_[0]) + 1;
 
     voter_ids_[bin_index_[0]].push_back(voter[0]);
     voter_ids_[bin_index_[0]].push_back(voter[1]);
@@ -30,11 +30,11 @@ class PlaneExtractor::HoughAccumulator {
                                bin_index_dist_);
         // Check neighbourhood, do not care about bin_index[0] as it discribes point itself
         for (int j = 1; j < bin_index_.size(); ++j) {
-          if (bins_[i] < bins_[bin_index_[j]]) break;  // non local maxima
-          if (j == (bin_index_.size() - 1)) {          // local maxima
+          if (bins_(1, i) < bins_(1, bin_index_[j])) break;  // non local maxima
+          if (j == (bin_index_.size() - 1)) {                // local maxima
             for (int n = 1; n < bin_index_.size(); ++n) {
-              bins_[i] += bins_[bin_index_[n]];
-              bins_[bin_index_[n]] = 0;
+              bins_(1, i) += bins_(1, bin_index_[n]);
+              bins_(1, bin_index_[n]) = 0;
             }
           }
         }
@@ -44,56 +44,54 @@ class PlaneExtractor::HoughAccumulator {
     }
   };
 
-  void findMaxima(int min_vote_threshold, std::vector<std::vector<double>> &plane_coefficients,
+  void findMaxima(int min_vote_threshold, std::vector<Eigen::Vector3d> &plane_coefficients,
                   std::vector<std::vector<int>> &get_voter_ids) {
-    std::vector<double> actuel_plane_coefficients;
+    Eigen::Vector3d actuel_plane_coefficients;
     plane_coefficients.clear();
     get_voter_ids.clear();
     for (int i = 0; i < accumulator_size; ++i) {
-      if (bins_[i] >= min_vote_threshold) {
-        actuel_plane_coefficients.push_back(bin_values_->points[i].x);  // rho
-        actuel_plane_coefficients.push_back(bin_values_->points[i].y);  // theta
-        actuel_plane_coefficients.push_back(bin_values_->points[i].z);  // psi
+      if (bins_(1, i) >= min_vote_threshold) {
+        actuel_plane_coefficients[0] = bin_values_->points[i].x;  // rho
+        actuel_plane_coefficients[1] = bin_values_->points[i].y;  // theta
+        actuel_plane_coefficients[2] = bin_values_->points[i].z;  // psi
         plane_coefficients.push_back(actuel_plane_coefficients);
-        actuel_plane_coefficients.clear();
 
         get_voter_ids.push_back(voter_ids_[i]);
       }
     }
   };
 
-  void findMaximumPlane(int num_main_planes, std::vector<std::vector<double>> &plane_coefficients,
+  void findMaximumPlane(int num_main_planes, std::vector<Eigen::Vector3d> &plane_coefficients,
                         std::vector<std::vector<int>> &get_voter_ids) {
-    std::vector<double> actuel_plane_coefficients;
+    Eigen::Vector3d actuel_plane_coefficients;
     plane_coefficients.clear();
     get_voter_ids.clear();
 
     int maximum_idx;
-    std::vector<int> copy_bins = bins_;
+
+    Eigen::Matrix<int, 1, Eigen::Dynamic> copy_bins = bins_;
     for (int i = 0; i < num_main_planes; ++i) {
-      maximum_idx = std::max_element(copy_bins.begin(), copy_bins.end()) - copy_bins.begin();
-      actuel_plane_coefficients.push_back(bin_values_->points[maximum_idx].x);  // rho
-      actuel_plane_coefficients.push_back(bin_values_->points[maximum_idx].y);  // theta
-      actuel_plane_coefficients.push_back(bin_values_->points[maximum_idx].z);  // psi
+      copy_bins.maxCoeff(&maximum_idx);
+      actuel_plane_coefficients[0] = bin_values_->points[maximum_idx].x;  // rho
+      actuel_plane_coefficients[1] = bin_values_->points[maximum_idx].y;  // theta
+      actuel_plane_coefficients[2] = bin_values_->points[maximum_idx].z;  // psi
 
       plane_coefficients.push_back(actuel_plane_coefficients);
       get_voter_ids.push_back(voter_ids_[maximum_idx]);
 
-      actuel_plane_coefficients.clear();
-      copy_bins[maximum_idx] = 0;
+      copy_bins(1, maximum_idx) = 0;
     }
   };
 
   void reset() {
     voter_ids_.clear();
-    bins_.clear();
-    bins_.resize(accumulator_size);
+    bins_ = Eigen::Matrix<int, 1, Eigen::Dynamic>::Zero(1, accumulator_size);
     voter_ids_.resize(accumulator_size, std::vector<int>(0));
   }
 
  protected:
   void initAccumulator(PointCloud<PointXYZ>::Ptr accumulated_cloud) {
-    bins_.resize(accumulator_size);
+    bins_ = Eigen::Matrix<int, 1, Eigen::Dynamic>::Zero(1, accumulator_size);
     voter_ids_.resize(accumulator_size, std::vector<int>(0));
     copyPointCloud(*accumulated_cloud, *bin_values_);
     kdtree_.setInputCloud(bin_values_);
@@ -105,7 +103,7 @@ class PlaneExtractor::HoughAccumulator {
   int bin_number_psi;
 
  private:
-  std::vector<int> bins_;
+  Eigen::Matrix<int, 1, Eigen::Dynamic> bins_;
   PointCloud<PointXYZ>::Ptr bin_values_;
 
   KdTreeFLANN<PointXYZ> kdtree_;
@@ -118,11 +116,13 @@ class PlaneExtractor::HoughAccumulator {
 
 class PlaneExtractor::ArrayAccumulator : public PlaneExtractor::HoughAccumulator {
  public:
-  ArrayAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size, Eigen::Vector3d bin_maxima)
-      : accumulated_cloud_(new PointCloud<PointXYZ>) {
-    bin_number_rho = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
-    bin_number_theta = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
-    bin_number_psi = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+  ArrayAccumulator(Eigen::Matrix3d bin_allocation) : accumulated_cloud_(new PointCloud<PointXYZ>) {
+    bin_number_rho =
+        (int)((bin_allocation(0, 2) - bin_allocation(0, 0)) / bin_allocation(0, 1) + 1);
+    bin_number_theta =
+        (int)((bin_allocation(1, 2) - bin_allocation(1, 0)) / bin_allocation(1, 1) + 1);
+    bin_number_psi =
+        (int)((bin_allocation(2, 2) - bin_allocation(2, 0)) / bin_allocation(2, 1) + 1);
     accumulator_size = bin_number_rho * bin_number_theta * bin_number_psi;
 
     std::cout << "ArrayAccumualtor uses a total of " << accumulator_size << std::endl;
@@ -133,9 +133,9 @@ class PlaneExtractor::ArrayAccumulator : public PlaneExtractor::HoughAccumulator
     for (int d_rho = 0; d_rho < bin_number_rho; ++d_rho) {
       for (int d_theta = 0; d_theta < bin_number_theta; ++d_theta) {
         for (int d_psi = 0; d_psi < bin_number_psi; ++d_psi) {
-          bin_point.x = d_rho * bin_size[0] + bin_minima[0];
-          bin_point.y = d_theta * bin_size[1] + bin_minima[1];
-          bin_point.z = d_psi * bin_size[2] + bin_minima[2];
+          bin_point.x = d_rho * bin_allocation(0, 1) + bin_allocation(0, 0);
+          bin_point.y = d_theta * bin_allocation(1, 1) + bin_allocation(1, 0);
+          bin_point.z = d_psi * bin_allocation(2, 1) + bin_allocation(2, 0);
           accumulated_cloud_->push_back(bin_point);
         }
       }
@@ -149,11 +149,13 @@ class PlaneExtractor::ArrayAccumulator : public PlaneExtractor::HoughAccumulator
 
 class PlaneExtractor::BallAccumulator : public PlaneExtractor::HoughAccumulator {
  public:
-  BallAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size, Eigen::Vector3d bin_maxima)
-      : accumulated_cloud_(new PointCloud<PointXYZ>) {
-    bin_number_rho = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
-    bin_number_theta = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
-    bin_number_psi = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+  BallAccumulator(Eigen::Matrix3d bin_allocation) : accumulated_cloud_(new PointCloud<PointXYZ>) {
+    bin_number_rho =
+        (int)((bin_allocation(0, 2) - bin_allocation(0, 0)) / bin_allocation(0, 1) + 1);
+    bin_number_theta =
+        (int)((bin_allocation(1, 2) - bin_allocation(1, 0)) / bin_allocation(1, 1) + 1);
+    bin_number_psi =
+        (int)((bin_allocation(2, 2) - bin_allocation(2, 0)) / bin_allocation(2, 1) + 1);
     accumulator_size = bin_number_rho * bin_number_theta * bin_number_psi;
 
     std::cout << "BallAccumualtor uses a total of " << accumulator_size << std::endl;
@@ -164,12 +166,12 @@ class PlaneExtractor::BallAccumulator : public PlaneExtractor::HoughAccumulator 
     for (int d_rho = 0; d_rho < bin_number_rho; ++d_rho) {
       for (int d_psi = 0; d_psi < bin_number_psi; ++d_psi) {
         double delta_theta = 2 * M_PI /
-                             (((d_psi + 0.5) * bin_size[2] + bin_minima[2]) *
+                             (((d_psi + 0.5) * bin_allocation(2, 1) + bin_allocation(2, 0)) *
                               bin_number_theta);  // Simplified formula from paper
         for (int d_theta = 0; d_theta < bin_number_theta; ++d_theta) {
-          bin_point.x = d_rho * bin_size[0] + bin_minima[0];
-          bin_point.y = d_theta * delta_theta + bin_minima[1];
-          bin_point.z = d_psi * bin_size[2] + bin_minima[2];
+          bin_point.x = d_rho * bin_allocation(0, 1) + bin_allocation(0, 0);
+          bin_point.y = d_theta * delta_theta + bin_allocation(1, 0);
+          bin_point.z = d_psi * bin_allocation(2, 1) + bin_allocation(2, 0);
           accumulated_cloud_->push_back(bin_point);
         }
       }
@@ -251,7 +253,7 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
 
 std::vector<std::vector<int>> PlaneExtractor::rhtEval(
     int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
-    std::vector<std::vector<double>> &plane_coefficients,
+    std::vector<Eigen::Vector3d> &plane_coefficients,
     std::vector<PointCloud<PointXYZ>> &extracted_planes, PointCloud<PointXYZ> lidar_scan,
     HoughAccumulator *accumulator) {
   std::vector<std::vector<int>> inlier_ids;
@@ -293,7 +295,7 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
 
 // Plane Extraction using RHT
 void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                        std::vector<std::vector<double>> &plane_coefficients,
+                                        std::vector<Eigen::Vector3d> &plane_coefficients,
                                         PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
                                         ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -327,18 +329,26 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
 
   HoughAccumulator *accumulator;
 
+  Eigen::Matrix3d bin_allocation;
+  // Minimum values
+  bin_allocation(0, 0) = 0;
+  bin_allocation(1, 0) = -(double)M_PI;
+  bin_allocation(2, 0) = -(double)M_PI / 2;
+  // Bin sizes
+  bin_allocation(0, 1) = rho_resolution;
+  bin_allocation(1, 1) = theta_resolution;
+  bin_allocation(2, 1) = psi_resolution;
+  // Maximum values
+  bin_allocation(0, 2) = max_distance_to_point;
+  bin_allocation(1, 2) = (double)M_PI;
+  bin_allocation(2, 2) = (double)M_PI / 2;
+
   if (accumulator_choice == 2) {
     std::cout << "Initialize ball accumulator" << std::endl;
-    Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
-    Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
-    Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-    accumulator = new (HoughAccumulator)(BallAccumulator(min_coord, bin_size, max_coord));
+    accumulator = new (HoughAccumulator)(BallAccumulator(bin_allocation));
   } else {
     std::cout << "Initialize array accumulator" << std::endl;
-    Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
-    Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
-    Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-    accumulator = new (HoughAccumulator)(ArrayAccumulator(min_coord, bin_size, max_coord));
+    accumulator = new (HoughAccumulator)(ArrayAccumulator(bin_allocation));
   }
 
   // Perform RHT
@@ -350,14 +360,16 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
-  for (int i = 0; i < extracted_planes.size(); ++i) {
-    std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
-              << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
+  int color = 0;
+  for (auto plane_coefficient : plane_coefficients) {
+    std::cout << plane_coefficient[0] << " " << plane_coefficient[1] << " " << plane_coefficient[2]
+              << " color: " << color % 8 << std::endl;
+    ++color;
   }
 }
 
 void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                            std::vector<std::vector<double>> &plane_coefficients,
+                                            std::vector<Eigen::Vector3d> &plane_coefficients,
                                             PointCloud<PointXYZ> lidar_scan,
                                             std::string tf_map_frame, ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -392,18 +404,31 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
     if ((double)geometry::distance(origin, copy_lidar_scan->points[i]) > max_distance_to_point)
       max_distance_to_point = (double)geometry::distance(origin, copy_lidar_scan->points[i]);
   }
-  std::cout << "Initialize ball accumulator" << std::endl;
-  Eigen::Vector3d min_coord(0, -(double)M_PI, -(double)M_PI / 2);  // rho theta psi
-  Eigen::Vector3d max_coord(max_distance_to_point, (double)M_PI, (double)M_PI / 2);
-  Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
+
   HoughAccumulator *accumulator;
-  accumulator = new (HoughAccumulator)(BallAccumulator(min_coord, bin_size, max_coord));
+
+  Eigen::Matrix3d bin_allocation;
+  // Minimum values
+  bin_allocation(0, 0) = 0;
+  bin_allocation(1, 0) = -(double)M_PI;
+  bin_allocation(2, 0) = -(double)M_PI / 2;
+  // Bin sizes
+  bin_allocation(0, 1) = rho_resolution;
+  bin_allocation(1, 1) = theta_resolution;
+  bin_allocation(2, 1) = psi_resolution;
+  // Maximum values
+  bin_allocation(0, 2) = max_distance_to_point;
+  bin_allocation(1, 2) = (double)M_PI;
+  bin_allocation(2, 2) = (double)M_PI / 2;
+
+  std::cout << "Initialize ball accumulator" << std::endl;
+  accumulator = new (HoughAccumulator)(ArrayAccumulator(bin_allocation));
 
   ExtractIndices<PointXYZ> indices_filter;
   std::vector<std::vector<int>> inlier_ids;
   std::vector<int> rm_indices;
 
-  std::vector<std::vector<double>> iter_plane_coefficients;
+  std::vector<Eigen::Vector3d> iter_plane_coefficients;
   std::vector<PointCloud<PointXYZ>> iter_extracted_planes;
 
   for (int iter = 0; iter < num_main_planes; ++iter) {
@@ -443,15 +468,17 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
-  for (int i = 0; i < extracted_planes.size(); ++i) {
-    std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
-              << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
+  int color = 0;
+  for (auto plane_coefficient : plane_coefficients) {
+    std::cout << plane_coefficient[0] << " " << plane_coefficient[1] << " " << plane_coefficient[2]
+              << " color: " << color % 8 << std::endl;
+    ++color;
   }
 }
 
 // Plane Extraction using pcl tutorial (see also planarSegmentationPCL)
 void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                        std::vector<std::vector<double>> &plane_coefficients,
+                                        std::vector<Eigen::Vector3d> &plane_coefficients,
                                         PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
                                         ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -489,7 +516,7 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   ExtractIndices<PointXYZ> indices_filter;
   PointXYZ normal_of_plane;
   double norm_of_normal;
-  std::vector<double> actuel_plane_coefficients{0, 0, 0};
+  Eigen::Vector3d actuel_plane_coefficients;
 
   do {
     seg.setInputCloud(copy_lidar_scan);
@@ -512,7 +539,12 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
       norm_of_normal = normal_of_plane.x * extracted_inlier_points->points[0].x +
                        normal_of_plane.y * extracted_inlier_points->points[0].y +
                        normal_of_plane.z * extracted_inlier_points->points[0].z;
-      if (norm_of_normal < 0) norm_of_normal = -norm_of_normal;
+      if (norm_of_normal < 0) {
+        norm_of_normal = -norm_of_normal;
+        normal_of_plane.x = -normal_of_plane.x;
+        normal_of_plane.y = -normal_of_plane.y;
+        normal_of_plane.z = -normal_of_plane.z;
+      }
 
       actuel_plane_coefficients[0] = norm_of_normal;                               // rho
       actuel_plane_coefficients[1] = atan2(normal_of_plane.y, normal_of_plane.x);  // theta
@@ -535,9 +567,11 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
-  for (int i = 0; i < extracted_planes.size(); ++i) {
-    std::cout << plane_coefficients[i][0] << " " << plane_coefficients[i][1] << " "
-              << plane_coefficients[i][2] << " color: " << i % 8 << std::endl;
+  int color = 0;
+  for (auto plane_coefficient : plane_coefficients) {
+    std::cout << plane_coefficient[0] << " " << plane_coefficient[1] << " " << plane_coefficient[2]
+              << " color: " << color % 8 << std::endl;
+    ++color;
   }
 }
 

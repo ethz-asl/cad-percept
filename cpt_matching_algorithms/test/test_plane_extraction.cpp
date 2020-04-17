@@ -45,7 +45,7 @@ TEST(PlaneExtractionTest, pclPlaneExtraction) {
   cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-  std::vector<std::vector<double>> plane_coefficients;
+  std::vector<Eigen::Vector3d> plane_coefficients;
   std::string tf_map_frame = "map";
   ros::Publisher plane_pub_;
 
@@ -72,7 +72,7 @@ TEST(PlaneExtractionTest, rhtPlaneExtraction) {
   cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-  std::vector<std::vector<double>> plane_coefficients;
+  std::vector<Eigen::Vector3d> plane_coefficients;
   std::string tf_map_frame = "map";
   ros::Publisher plane_pub_;
 
@@ -100,7 +100,7 @@ TEST(PlaneExtractionTest, interRhtPlaneExtraction) {
   cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-  std::vector<std::vector<double>> plane_coefficients;
+  std::vector<Eigen::Vector3d> plane_coefficients;
   std::string tf_map_frame = "map";
   ros::Publisher plane_pub_;
 
