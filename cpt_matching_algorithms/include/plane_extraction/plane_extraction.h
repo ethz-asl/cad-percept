@@ -31,15 +31,15 @@ namespace matching_algorithms {
 class PlaneExtractor {
  public:
   static void rhtPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-                                 std::vector<Eigen::Vector3d> &plane_coefficients,
+                                 std::vector<Eigen::Vector3d> &plane_normals,
                                  pcl::PointCloud<pcl::PointXYZ> lidar_scan,
                                  std::string tf_map_frame, ros::Publisher &plane_pub);
   static void iterRhtPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-                                     std::vector<Eigen::Vector3d> &plane_coefficients,
+                                     std::vector<Eigen::Vector3d> &plane_normals,
                                      pcl::PointCloud<pcl::PointXYZ> lidar_scan,
                                      std::string tf_map_frame, ros::Publisher &plane_pub);
   static void pclPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-                                 std::vector<Eigen::Vector3d> &plane_coefficients,
+                                 std::vector<Eigen::Vector3d> &plane_normals,
                                  pcl::PointCloud<pcl::PointXYZ> lidar_scan,
                                  std::string tf_map_frame, ros::Publisher &plane_pub);
   static void cgalRegionGrowing(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
@@ -60,7 +60,7 @@ class PlaneExtractor {
                       HoughAccumulator *accumulator);
   static std::vector<std::vector<int>> rhtEval(
       int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
-      std::vector<Eigen::Vector3d> &plane_coefficients,
+      std::vector<Eigen::Vector3d> &plane_normals,
       std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
       const pcl::PointCloud<pcl::PointXYZ> lidar_scan, HoughAccumulator *accumulator);
 };

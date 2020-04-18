@@ -358,26 +358,26 @@ void TestMatcher::match() {
     }
     // Plane Extraction
     std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-    std::vector<Eigen::Vector3d> plane_coefficients;
+    std::vector<Eigen::Vector3d> plane_normals;
     std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
     if (!extractor.compare("pclPlaneExtraction")) {
-      PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                         tf_map_frame_, plane_pub_);
+      PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
+                                         tf_lidar_frame_, plane_pub_);
     } else if (!extractor.compare("rhtPlaneExtraction")) {
-      PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                         tf_map_frame_, plane_pub_);
+      PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
+                                         tf_lidar_frame_, plane_pub_);
     } else if (!extractor.compare("iterRhtPlaneExtraction")) {
-      PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_coefficients, lidar_scan_,
-                                             tf_map_frame_, plane_pub_);
+      PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
+                                             tf_lidar_frame_, plane_pub_);
 
     } else if (!extractor.compare("cgalRegionGrowing")) {
-      PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_coefficients, lidar_scan_,
-                                        tf_map_frame_, plane_pub_);
+      PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan_,
+                                        tf_lidar_frame_, plane_pub_);
     } else {
       std::cout << "Error: Could not find given plane extractor" << std::endl;
     }
 
-    // // Convert plane coefficients back to normal (could be done easily in the function itself)
+    // // Convert planes to PointNormal PointCloud
     // pcl::PointNormal norm_point;
     // pcl::PointXYZ plane_centroid;
     // int plane_nr = 0;

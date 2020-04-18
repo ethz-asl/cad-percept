@@ -253,7 +253,7 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
 
 std::vector<std::vector<int>> PlaneExtractor::rhtEval(
     int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
-    std::vector<Eigen::Vector3d> &plane_coefficients,
+    std::vector<Eigen::Vector3d> &plane_normals,
     std::vector<PointCloud<PointXYZ>> &extracted_planes, PointCloud<PointXYZ> lidar_scan,
     HoughAccumulator *accumulator) {
   std::vector<std::vector<int>> inlier_ids;
@@ -261,11 +261,22 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
   bool bit_point_cloud[lidar_scan.size()] = {false};
 
   // Evaluate voting (select between thresholding or number of extracted planes)
+  std::vector<Eigen::Vector3d> plane_coefficients;
   accumulator->nonMaximumSuppression(k_of_maxima_suppression);
   if (num_main_planes == 0) {
     accumulator->findMaxima(min_vote_threshold, plane_coefficients, inlier_ids);
   } else {
     accumulator->findMaximumPlane(num_main_planes, plane_coefficients, inlier_ids);
+  }
+
+  // Convert plane coefficients to normal
+  plane_normals.clear();
+  Eigen::Vector3d actual_normal;
+  for (auto plane_coefficient : plane_coefficients) {
+    actual_normal[0] = cos(plane_coefficient[1]) * cos(plane_coefficient[2]);
+    actual_normal[1] = sin(plane_coefficient[1]) * cos(plane_coefficient[2]);
+    actual_normal[2] = sin(plane_coefficient[2]);
+    plane_normals.push_back(actual_normal);
   }
 
   // Extract inliers
@@ -295,7 +306,7 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
 
 // Plane Extraction using RHT
 void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                        std::vector<Eigen::Vector3d> &plane_coefficients,
+                                        std::vector<Eigen::Vector3d> &plane_normals,
                                         PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
                                         ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -354,22 +365,22 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   // Perform RHT
   rhtVote(max_iteration, tol_distance_between_points, min_area_spanned, lidar_scan, accumulator);
   // Evaluation
-  rhtEval(num_main_planes, min_vote_threshold, k_of_maxima_suppression, plane_coefficients,
+  rhtEval(num_main_planes, min_vote_threshold, k_of_maxima_suppression, plane_normals,
           extracted_planes, lidar_scan, accumulator);
 
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
   int color = 0;
-  for (auto plane_coefficient : plane_coefficients) {
-    std::cout << plane_coefficient[0] << " " << plane_coefficient[1] << " " << plane_coefficient[2]
+  for (auto plane_normal : plane_normals) {
+    std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
               << " color: " << color % 8 << std::endl;
     ++color;
   }
 }
 
 void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                            std::vector<Eigen::Vector3d> &plane_coefficients,
+                                            std::vector<Eigen::Vector3d> &plane_normals,
                                             PointCloud<PointXYZ> lidar_scan,
                                             std::string tf_map_frame, ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -428,7 +439,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   std::vector<std::vector<int>> inlier_ids;
   std::vector<int> rm_indices;
 
-  std::vector<Eigen::Vector3d> iter_plane_coefficients;
+  std::vector<Eigen::Vector3d> iter_plane_normals;
   std::vector<PointCloud<PointXYZ>> iter_extracted_planes;
 
   for (int iter = 0; iter < num_main_planes; ++iter) {
@@ -437,13 +448,12 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
             accumulator);
 
     // Evaluation
-    inlier_ids =
-        rhtEval(number_of_plane_per_iter, min_vote_threshold, k_of_maxima_suppression,
-                iter_plane_coefficients, iter_extracted_planes, *copy_lidar_scan, accumulator);
+    inlier_ids = rhtEval(number_of_plane_per_iter, min_vote_threshold, k_of_maxima_suppression,
+                         iter_plane_normals, iter_extracted_planes, *copy_lidar_scan, accumulator);
 
     // Add part result to general result
     for (int plane_nr = 0; plane_nr < number_of_plane_per_iter; ++plane_nr) {
-      plane_coefficients.push_back(iter_plane_coefficients[plane_nr]);
+      plane_normals.push_back(iter_plane_normals[plane_nr]);
       extracted_planes.push_back(iter_extracted_planes[plane_nr]);
       rm_indices.insert(rm_indices.end(), inlier_ids[plane_nr].begin(), inlier_ids[plane_nr].end());
     }
@@ -469,8 +479,8 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
   // Give out information about extracted planes
   int color = 0;
-  for (auto plane_coefficient : plane_coefficients) {
-    std::cout << plane_coefficient[0] << " " << plane_coefficient[1] << " " << plane_coefficient[2]
+  for (auto plane_normal : plane_normals) {
+    std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
               << " color: " << color % 8 << std::endl;
     ++color;
   }
@@ -478,7 +488,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
 // Plane Extraction using pcl tutorial (see also planarSegmentationPCL)
 void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                        std::vector<Eigen::Vector3d> &plane_coefficients,
+                                        std::vector<Eigen::Vector3d> &plane_normals,
                                         PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
                                         ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -516,7 +526,7 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   ExtractIndices<PointXYZ> indices_filter;
   PointXYZ normal_of_plane;
   double norm_of_normal;
-  Eigen::Vector3d actuel_plane_coefficients;
+  Eigen::Vector3d actuel_plane_normal;
 
   do {
     seg.setInputCloud(copy_lidar_scan);
@@ -532,25 +542,11 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
       extracted_planes.push_back(*extracted_inlier_points);
 
       // Read plane coefficients
-      normal_of_plane.x = coefficients->values[0];
-      normal_of_plane.y = coefficients->values[1];
-      normal_of_plane.z = coefficients->values[2];
+      actuel_plane_normal[0] = coefficients->values[0];
+      actuel_plane_normal[1] = coefficients->values[1];
+      actuel_plane_normal[2] = coefficients->values[2];
 
-      norm_of_normal = normal_of_plane.x * extracted_inlier_points->points[0].x +
-                       normal_of_plane.y * extracted_inlier_points->points[0].y +
-                       normal_of_plane.z * extracted_inlier_points->points[0].z;
-      if (norm_of_normal < 0) {
-        norm_of_normal = -norm_of_normal;
-        normal_of_plane.x = -normal_of_plane.x;
-        normal_of_plane.y = -normal_of_plane.y;
-        normal_of_plane.z = -normal_of_plane.z;
-      }
-
-      actuel_plane_coefficients[0] = norm_of_normal;                               // rho
-      actuel_plane_coefficients[1] = atan2(normal_of_plane.y, normal_of_plane.x);  // theta
-      actuel_plane_coefficients[2] = atan2(
-          normal_of_plane.z, sqrt(pow(normal_of_plane.x, 2) + pow(normal_of_plane.y, 2)));  // psi
-      plane_coefficients.push_back(actuel_plane_coefficients);
+      plane_normals.push_back(actuel_plane_normal);
 
       std::cout << "Plane found (nr. " << extracted_planes.size() << ")" << std::endl;
 
@@ -568,8 +564,8 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
 
   // Give out information about extracted planes
   int color = 0;
-  for (auto plane_coefficient : plane_coefficients) {
-    std::cout << plane_coefficient[0] << " " << plane_coefficient[1] << " " << plane_coefficient[2]
+  for (auto plane_normal : plane_normals) {
+    std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
               << " color: " << color % 8 << std::endl;
     ++color;
   }
@@ -619,14 +615,14 @@ void PlaneExtractor::cgalRegionGrowing(
   cgal::Region_growing::Parameters parameters;
 
   // Detect shapes with at least X points.
-  parameters.min_points = nh_private.param<int>("CGALRegionGrowMinNumInliers", 40);
+  parameters.min_points = nh_private.param<int>("CGALRegionGrowMinNumInliers", 80);
   // Sets maximum Euclidean distance between a point and a shape.
-  parameters.epsilon = nh_private.param<float>("CGALRegionGrowMaxDistToPlane", 0.5);
+  parameters.epsilon = nh_private.param<float>("CGALRegionGrowMaxDistToPlane", 0.07);
   // Sets maximum Euclidean distance between points to be clustered.
-  parameters.cluster_epsilon = nh_private.param<float>("CGALRegionGrowMaxDistBetwPoint", 3);
+  parameters.cluster_epsilon = nh_private.param<float>("CGALRegionGrowMaxDistBetwPoint", 10);
   // Sets maximum normal deviation.
   parameters.normal_threshold =
-      nh_private.param<float>("CGALRegionGrowMaxDiffNormalThreshold", 0.9);
+      nh_private.param<float>("CGALRegionGrowMaxDiffNormalThreshold", 0.4);
 
   // Detect registered shapes with parameters
   shape_detection.detect(parameters);
