@@ -719,7 +719,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
         std::cout << assignment(0, 3) << "/" << assignment(1, 3) << " " << std::endl;
       }
     }
-    if (min_error < min_error_threshold && min_error > 0) break;
+    // if (min_error < min_error_threshold && min_error > 0) break;
   }
   if (min_error < 0)
     std::cout
@@ -738,14 +738,14 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
   int scan_planes_nr[4] = {assignment(0, 0), assignment(0, 1), assignment(0, 2), assignment(0, 3)};
   int map_planes_nr[4] = {assignment(1, 0), assignment(1, 1), assignment(1, 2), assignment(1, 3)};
 
-  // scan_planes_nr[0] = 2;
-  // scan_planes_nr[1] = 4;
-  // scan_planes_nr[2] = 1;
-  // scan_planes_nr[3] = 7;
-  // map_planes_nr[0] = 2;
-  // map_planes_nr[1] = 1;
-  // map_planes_nr[2] = 0;
-  // map_planes_nr[3] = 5;
+  // scan_planes_nr[0] = 0;
+  // scan_planes_nr[1] = 1;
+  // scan_planes_nr[2] = 2;
+  // scan_planes_nr[3] = 3;
+  // map_planes_nr[0] = 8;
+  // map_planes_nr[1] = 6;
+  // map_planes_nr[2] = 9;
+  // map_planes_nr[3] = 15;
 
   // bool check = (scan_planes_nr[0] == 1 && scan_planes_nr[1] == 7 && scan_planes_nr[2] == 1 &&
   //               scan_planes_nr[3] == 4) &&
@@ -788,6 +788,7 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
 
   transformAverage(transform, actual_plane_assignement, reduced_scan_planes, reduced_map_planes);
 
+  // Evaluate transformation
   actual_transform = Eigen::Matrix4f::Identity();
   translation = Eigen::Vector3f(transform[0], transform[1], transform[2]);
   q = Eigen::Quaternionf(transform[3], transform[4], transform[5], transform[6]);
@@ -813,6 +814,49 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
                                .dot(Eigen::Vector3f(reduced_map_planes.points[j].normal_x,
                                                     reduced_map_planes.points[j].normal_y,
                                                     reduced_map_planes.points[j].normal_z)));
+  }
+
+  // Check rest of planes for translation
+  reduced_scan_planes.clear();
+  pcl::transformPointCloud(scan_planes, reduced_scan_planes, actual_transform);
+
+  std::vector<float> actual_translation_error;
+  std::vector<float> actual_rotation_error;
+
+  for (auto scan_plane : reduced_scan_planes) {
+    actual_translation_error.clear();
+    actual_rotation_error.clear();
+    for (auto map_plane : map_planes) {
+      if (std::abs(Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y, map_plane.normal_z)
+                       .dot(Eigen::Vector3f(scan_plane.normal_x, scan_plane.normal_y,
+                                            scan_plane.normal_z))) < 0.7)
+        continue;
+      // Distane between point along plane too large to be correspondend
+      if (((Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z) -
+            Eigen::Vector3f(scan_plane.normal_x, scan_plane.normal_y, scan_plane.normal_z) *
+                Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z)
+                    .dot(Eigen::Vector3f(scan_plane.normal_x, scan_plane.normal_y,
+                                         scan_plane.normal_z))) -
+           (Eigen::Vector3f(map_plane.x, map_plane.y, map_plane.z) -
+            Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y, map_plane.normal_z) *
+                Eigen::Vector3f(map_plane.x, map_plane.y, map_plane.z)
+                    .dot(Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y,
+                                         map_plane.normal_z))))
+              .norm() > 5)
+        continue;
+
+      actual_translation_error.push_back(std::abs(
+          (Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z) -
+           Eigen::Vector3f(map_plane.x, map_plane.y, map_plane.z))
+              .dot(Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y, map_plane.normal_z))));
+    }
+    if (actual_translation_error.size() != 0) {
+      translation_error +=
+          *std::min_element(actual_translation_error.begin(), actual_translation_error.end());
+    } else {
+      // No possible match function
+      translation_error += 20;  // penalty
+    }
   }
   transform_error = weighting_rotation * rotation_error + weighting_translation * translation_error;
 }
@@ -1057,29 +1101,47 @@ void PlaneMatch::transformAverage(float (&transformTR)[7], std::vector<int> plan
   res_rotation.block(0, 0, 3, 3) = q.matrix();
   pcl::transformPointCloud(copy_scan_planes, copy_scan_planes, res_rotation);
 
-  // Median filter for translation
+  // Mean/Median filter for translation
   std::vector<double> translation_x;
   std::vector<double> translation_y;
   std::vector<double> translation_z;
   int map_index;
   for (int plane_nr = 0; plane_nr < scan_planes.size(); ++plane_nr) {
     map_index = plane_assignment[plane_nr];
-    if (std::abs(map_planes.points[map_index].normal_x) > 0.5) {
+    if (std::abs(map_planes.points[map_index].normal_x) > 0.75) {
       translation_x.push_back(map_planes.points[map_index].x - copy_scan_planes.points[plane_nr].x);
     }
-    if (std::abs(map_planes.points[map_index].normal_y) > 0.5) {
+    if (std::abs(map_planes.points[map_index].normal_y) > 0.75) {
       translation_y.push_back(map_planes.points[map_index].y - copy_scan_planes.points[plane_nr].y);
     }
-    if (std::abs(map_planes.points[plane_nr].normal_z) > 0.5) {
+    if (std::abs(map_planes.points[plane_nr].normal_z) > 0.75) {
       translation_z.push_back(map_planes.points[map_index].z - copy_scan_planes.points[plane_nr].z);
     }
   }
-  std::sort(translation_x.begin(), translation_x.end());
-  std::sort(translation_y.begin(), translation_y.end());
-  std::sort(translation_z.begin(), translation_z.end());
-  if (translation_x.size() != 0) transformTR[0] = translation_x[translation_x.size() / 2];
-  if (translation_y.size() != 0) transformTR[1] = translation_y[translation_y.size() / 2];
-  if (translation_z.size() != 0) transformTR[2] = translation_z[translation_z.size() / 2];
+  if (translation_x.size() != 0) {
+    transformTR[0] =
+        std::accumulate(translation_x.begin(), translation_x.end(), 0.0) / translation_x.size();
+  } else {
+    transformTR[0] = 0;
+  }
+  if (translation_y.size() != 0) {
+    transformTR[1] =
+        std::accumulate(translation_y.begin(), translation_y.end(), 0.0) / translation_y.size();
+  } else {
+    transformTR[1] = 0;
+  }
+  if (translation_z.size() != 0) {
+    transformTR[2] =
+        std::accumulate(translation_z.begin(), translation_z.end(), 0.0) / translation_z.size();
+  } else {
+    transformTR[2] = 0;
+  }
+  // std::sort(translation_x.begin(), translation_x.end());
+  // std::sort(translation_y.begin(), translation_y.end());
+  // std::sort(translation_z.begin(), translation_z.end());
+  // if (translation_x.size() != 0) transformTR[0] = translation_x[translation_x.size() / 2];
+  // if (translation_y.size() != 0) transformTR[1] = translation_y[translation_y.size() / 2];
+  // if (translation_z.size() != 0) transformTR[2] = translation_z[translation_z.size() / 2];
 };
 
 }  // namespace matching_algorithms
