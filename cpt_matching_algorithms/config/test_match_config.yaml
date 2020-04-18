@@ -22,10 +22,10 @@ GoICPdownsample: "1000"
 # Settings for Plane Matcher
 
 # Filters
-useStructureFilter: false
+useStructureFilter: true
 StructureThreshold: 150
 
-useVoxelCentroidFilter: false
+useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
 # Plane Extraction

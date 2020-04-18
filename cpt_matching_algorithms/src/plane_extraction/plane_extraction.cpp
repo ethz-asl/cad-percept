@@ -626,7 +626,7 @@ void PlaneExtractor::cgalRegionGrowing(
   parameters.cluster_epsilon = nh_private.param<float>("CGALRegionGrowMaxDistBetwPoint", 3);
   // Sets maximum normal deviation.
   parameters.normal_threshold =
-      nh_private.param<float>("CGALRegionGrowMaxDiffNormalThreshold", 0.2);
+      nh_private.param<float>("CGALRegionGrowMaxDiffNormalThreshold", 0.9);
 
   // Detect registered shapes with parameters
   shape_detection.detect(parameters);
@@ -640,10 +640,26 @@ void PlaneExtractor::cgalRegionGrowing(
             << coverage << " coverage" << std::endl;
 
   // Take result
-  cgal::Region_growing::Shape_range shapes = shape_detection.shapes();
+  cgal::Region_growing::Plane_range shapes = shape_detection.planes();
+
+  // Apply Regularization
+  if (nh_private.param<bool>("CGALRGRegulActive", false)) {
+    std::cout << "Start Regularization ..." << std::endl;
+    CGAL::regularize_planes(
+        points, cgal::Point_map(), shapes, CGAL::Shape_detection_3::Plane_map<cgal::Traits>(),
+        CGAL::Shape_detection_3::Point_to_shape_index_map<cgal::Traits>(points, shapes),
+        nh_private.param<bool>("CGALRGRegulParall", false),    // regularize parallelism
+        nh_private.param<bool>("CGALRGRegulOrthog", false),    // regularize orthogonality,
+        nh_private.param<bool>("CGALRGRegulCoplanar", false),  // regularize coplanarity
+        false,                                                 // regularize Z-symmetry (default)
+        nh_private.param<float>("CGALRGRegulParallOrthTol",
+                                10),  // tolerance of parallelism / orthogonality
+        nh_private.param<float>("CGALRGRegulCoplanarTol",
+                                0.5));  // tolerance of coplanarity
+  }
 
   // Characterize shapes
-  cgal::Region_growing::Shape_range::iterator shapeIt = shapes.begin();
+  cgal::Region_growing::Plane_range::iterator shapeIt = shapes.begin();
   PointCloud<PointXYZ> actual_plane_inlier;
   while (shapeIt != shapes.end()) {
     cgal::ShapePlane *plane = dynamic_cast<cgal::ShapePlane *>(shapeIt->get());
@@ -676,7 +692,6 @@ void PlaneExtractor::cgalRegionGrowing(
               << " color: " << color % 8 << std::endl;
     ++color;
   }
-  std::cout << extracted_planes[0].size() << std::endl;
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 };
 
