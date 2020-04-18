@@ -377,22 +377,40 @@ void TestMatcher::match() {
       std::cout << "Error: Could not find given plane extractor" << std::endl;
     }
 
-    // // Convert planes to PointNormal PointCloud
-    // pcl::PointNormal norm_point;
-    // pcl::PointXYZ plane_centroid;
-    // int plane_nr = 0;
-    // for (auto plane_coefficient : plane_coefficients) {
-    //   pcl::computeCentroid(extracted_planes[plane_nr], plane_centroid);
-    //   norm_point.x = plane_centroid.x;
-    //   norm_point.y = plane_centroid.y;
-    //   norm_point.z = plane_centroid.z;
+    // Convert planes to PointNormal PointCloud
+    pcl::PointNormal norm_point;
+    pcl::PointXYZ plane_centroid;
+    int plane_nr = 0;
+    for (auto plane_normal : plane_normals) {
+      pcl::computeCentroid(extracted_planes[plane_nr], plane_centroid);
+      norm_point.x = plane_centroid.x;
+      norm_point.y = plane_centroid.y;
+      norm_point.z = plane_centroid.z;
 
-    //   norm_point.normal_x = std::cos(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
-    //   norm_point.normal_y = std::sin(plane_coefficient[1]) * std::cos(plane_coefficient[2]);
-    //   norm_point.normal_z = std::sin(plane_coefficient[2]);
-    //   scan_planes_.push_back(norm_point);
-    //   plane_nr++;
-    // }
+      norm_point.normal_x = plane_normal[0];
+      norm_point.normal_y = plane_normal[1];
+      norm_point.normal_z = plane_normal[2];
+
+      // Correct normals considering normal direction convention for matching
+      if (norm_point.x * norm_point.normal_x + norm_point.y * norm_point.normal_y +
+              norm_point.z * norm_point.normal_z <
+          0) {
+        norm_point.normal_x = -norm_point.normal_x;
+        norm_point.normal_y = -norm_point.normal_y;
+        norm_point.normal_z = -norm_point.normal_z;
+      }
+
+      scan_planes_.push_back(norm_point);
+      plane_nr++;
+    }
+
+    for (auto norm_point : scan_planes_) {
+      std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " << norm_point.z
+                << std::endl;
+      std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
+                << norm_point.normal_z << std::endl;
+    }
+
     std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
     // Plane Matching (Get T_map,lidar)
     if (!plane_matcher.compare("IntersectionPatternMatcher")) {

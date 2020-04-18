@@ -721,7 +721,10 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
     }
     if (min_error < min_error_threshold && min_error > 0) break;
   }
-  std::cout << min_error << std::endl;
+  if (min_error < 0)
+    std::cout
+        << "Couldn't estimate transformation as no orthogonal combination of planes could be found"
+        << std::endl;
 };
 
 void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignment,
