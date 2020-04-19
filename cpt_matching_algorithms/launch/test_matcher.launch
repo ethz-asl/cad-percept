@@ -2,7 +2,7 @@
 <launch>
     <!-- declare arg to be passed in -->
     <arg name="cad_file" default="$(find cpt_selective_icp)/resources/CLA_CAD_simplified_single_wall_no_ceiling_no_pillars.off" />
-    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set/scan25.bag" /> <!--100-->
+    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set/scan200.bag" /> <!--100-->
     <arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
 
     <arg name="lidar_frame" value="marker_pose" />
@@ -31,7 +31,7 @@
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
     </node>
     
-    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="17 -3.5 1 0 0 0.3428978 0.9393727 map $(arg lidar_frame)  100"/> <!--13 -3.5 1 0 0 0.3428978 0.9393727-->
+    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="13 -3.5 1 0 1 0 0 map $(arg lidar_frame)  100"/> <!--13 -3.5 1 0 0 0.3428978 0.9393727-->
 
     <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(arg lidar_scan)" />
 

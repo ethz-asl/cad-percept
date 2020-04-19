@@ -9,7 +9,7 @@ MapPlaneTransAlongPlane: 28 #Max distance between points of same plane which wil
 MapPlaneRotDiffThreshold: 0.9 #Max difference in rotation of normals
 MapPlanePos: [23, -1, 1] #Consider planes from this point to get most conventions of normals right
 
-usetoyproblem: false
+usetoyproblem: true
 
 #Select Matcher
 Matcher: PlaneMatcher # template, GoICP, PlaneMatcher

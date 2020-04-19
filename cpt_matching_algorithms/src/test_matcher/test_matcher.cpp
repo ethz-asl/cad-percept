@@ -404,12 +404,13 @@ void TestMatcher::match() {
       plane_nr++;
     }
 
-    for (auto norm_point : scan_planes_) {
-      std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " << norm_point.z
-                << std::endl;
-      std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
-                << norm_point.normal_z << std::endl;
-    }
+    // for (auto norm_point : scan_planes_) {
+    //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " <<
+    //   norm_point.z
+    //             << std::endl;
+    //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
+    //             << norm_point.normal_z << std::endl;
+    // }
 
     std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
     // Plane Matching (Get T_map,lidar)
