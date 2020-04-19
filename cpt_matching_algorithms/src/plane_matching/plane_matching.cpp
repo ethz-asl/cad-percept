@@ -759,8 +759,9 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
   //               map_planes_nr[3] == 1);
   // if (check) std::cout << "Assignment found" << std::endl;
 
-  // std::cout << scan_planes_nr[0] << " " << scan_planes_nr[1] << " " << scan_planes_nr[2] << " "
-  //           << scan_planes_nr[3] << std::endl;
+  // std::cout << "scan" << scan_planes_nr[0] << " " << scan_planes_nr[1] << " " <<
+  // scan_planes_nr[2]
+  //           << " " << scan_planes_nr[3] << std::endl;
   // std::cout << map_planes_nr[0] << " " << map_planes_nr[1] << " " << map_planes_nr[2] << " "
   //           << map_planes_nr[3] << std::endl;
 
@@ -807,10 +808,9 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
   float rotation_consistency_threshold =
       nh_private.param<float>("LineSegmentRansacRotConsistThreshold", 0.4);
 
-  translation_error = 0;
   rotation_error = 0;
   for (int j = 0; j < reduced_scan_planes.size(); ++j) {
-    translation_error +=
+    transform_error +=
         std::abs((Eigen::Vector3f(reduced_scan_planes.points[j].x, reduced_scan_planes.points[j].y,
                                   reduced_scan_planes.points[j].z) -
                   Eigen::Vector3f(reduced_map_planes.points[j].x, reduced_map_planes.points[j].y,
@@ -849,6 +849,7 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
 
   std::vector<float> actual_translation_error;
   std::vector<float> actual_rotation_error;
+  Eigen::Hyperplane<float, 3> project_plane;
 
   int scan_plane_nr = 0;
   int map_plane_nr = 0;
@@ -903,16 +904,13 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
       //                    .norm()
       //             << std::endl;
       // }
-      if (((Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z) -
-            Eigen::Vector3f(scan_plane.normal_x, scan_plane.normal_y, scan_plane.normal_z) *
-                Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z)
-                    .dot(Eigen::Vector3f(scan_plane.normal_x, scan_plane.normal_y,
-                                         scan_plane.normal_z))) -
-           (Eigen::Vector3f(map_plane.x, map_plane.y, map_plane.z) -
-            Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y, map_plane.normal_z) *
-                Eigen::Vector3f(map_plane.x, map_plane.y, map_plane.z)
-                    .dot(Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y,
-                                         map_plane.normal_z))))
+
+      // Make sure points are not to far away
+      project_plane = Eigen::Hyperplane<float, 3>(
+          Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y, map_plane.normal_z),
+          Eigen::Vector3f(map_plane.x, map_plane.y, map_plane.z));
+      if ((project_plane.projection(Eigen::Vector3f(map_plane.x, map_plane.y, map_plane.z)) -
+           project_plane.projection(Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z)))
               .norm() > translation_along_threshold)
         continue;
 
@@ -923,15 +921,14 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
       map_plane_nr++;
     }
     if (actual_translation_error.size() != 0) {
-      translation_error +=
+      transform_error +=
           *std::min_element(actual_translation_error.begin(), actual_translation_error.end());
     } else {
       // No possible match function
-      translation_error += translation_penalty;
+      transform_error += translation_penalty;
     }
     scan_plane_nr++;
   }
-  transform_error = translation_error;
 }
 
 void PlaneMatch::getSegmentedLines(
@@ -1177,7 +1174,6 @@ void PlaneMatch::transformAverage(float (&transformTR)[7], std::vector<int> plan
     quat_nr++;
   }
 
-  std::cout << all_quat << std::endl;
   // M with weight 1
   Eigen::Matrix4d quat_quat = all_quat * all_quat.transpose();
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix4d> eigensolver(quat_quat);
