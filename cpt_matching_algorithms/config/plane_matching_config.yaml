@@ -11,7 +11,7 @@ IntersectionPatternMaxSize: 100
 SegmentedLineParallelThreshold: 0.6
 SegmentedLineDistanceThreshold: 100
 SegmentedLineDeviationGrade: 2
-LineSegmentRansacSubsetSize: 500
+LineSegmentRansacSubsetSize: 300
 LineSegmentRansacTranAlongPlane: 8
 LineSegmentRansacRotConsistThreshold: 0.5
 LineSegmentRansacErrorThreshold: 0.7
