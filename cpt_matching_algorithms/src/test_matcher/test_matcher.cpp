@@ -189,35 +189,6 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     map_planes_.clear();
     map_planes_ = new_map_planes;
 
-    // for (auto norm_point : map_planes_) {
-    //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " <<
-    //   norm_point.z
-    //             << std::endl;
-    //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
-    //             << norm_point.normal_z << std::endl;
-    // }
-    // std::cout << "Found " << map_planes_.size() << " planes in the map after reduction"
-    //           << std::endl;
-
-    // pcl::PointCloud<pcl::PointXYZ>::Ptr test_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    // pcl::PointXYZ points;
-    // for (auto map_plane : map_planes_) {
-    //   // std::cout << map_plane(0) << " " << map_plane(1) << " " << map_plane(2) << std::endl;
-    //   points.x = map_plane.x;
-    //   points.y = map_plane.y;
-    //   points.z = map_plane.z;
-    //   test_cloud->push_back(points);
-    // }
-
-    // ros::Publisher test_pub = nh_.advertise<sensor_msgs::PointCloud2>("test_extracted", 1, true);
-    // std::string tf_map_frame = "/map";
-    // sensor_msgs::PointCloud2 segmentation_mesg;
-    // test_cloud->header.frame_id = tf_map_frame;
-    // pcl::toROSMsg(*test_cloud, segmentation_mesg);
-    // test_pub.publish(segmentation_mesg);
-
-    // ros::spin();
-
     load_map_boundaries();
 
     std::cout << "CAD ready" << std::endl;
