@@ -110,10 +110,10 @@ void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
 // Get real ground truth position
 void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
   if (!ground_truth_ready_ && !use_sim_lidar_) {
-    ground_truth_ = gt_in;
     // Transform gt into map frame
-    ground_truth_.point.x = -ground_truth_.point.x;
-    ground_truth_.point.y = -ground_truth_.point.y;
+    ground_truth_[0] = -gt_in.point.x;
+    ground_truth_[1] = -gt_in.point.y;
+    ground_truth_[2] = gt_in.point.z;
     std::cout << "Got ground truth data" << std::endl;
     ground_truth_ready_ = true;
 
@@ -145,21 +145,10 @@ void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
       ROS_INFO_STREAM("Couldn't find transformation to lidar frame");
       return;
     }
-    cad_percept::cgal::Transformation ctransformation;
-    cgal::tfTransformationToCGALTransformation(transform, ctransformation);
-    Eigen::Matrix4d etransformation;
-    cgal::cgalTransformationToEigenTransformation(ctransformation, &etransformation);
-    Eigen::Matrix3d erotation = etransformation.block(0, 0, 3, 3);
-    Eigen::Quaterniond q(erotation);
 
     // Ground truth is T_map,lidar
-    ground_truth_.point.x = etransformation(0, 3);
-    ground_truth_.point.y = etransformation(1, 3);
-    ground_truth_.point.z = etransformation(2, 3);
-    gt_quat_.push_back(q.w());
-    gt_quat_.push_back(q.x());
-    gt_quat_.push_back(q.y());
-    gt_quat_.push_back(q.z());
+    tf::quaternionTFToEigen(transform.getRotation(), gt_quat_);
+    tf::vectorTFToEigen(transform.getOrigin(), ground_truth_);
 
     std::cout << "Got simulated ground truth data" << std::endl;
 
@@ -250,19 +239,19 @@ void TestMatcher::evaluate() {
 
   std::cout << "calculated position: x: " << transform_TR_[0] << " y: " << transform_TR_[1]
             << " z: " << transform_TR_[2] << std::endl;
-  std::cout << "ground truth position: x: " << ground_truth_.point.x
-            << " y: " << ground_truth_.point.y << " z: " << ground_truth_.point.z << std::endl;
+  std::cout << "ground truth position: x: " << ground_truth_[0] << " y: " << ground_truth_[1]
+            << " z: " << ground_truth_[2] << std::endl;
   std::cout << "calculated orientation: qw: " << transform_TR_[3] << " qx: " << transform_TR_[4]
             << " qy: " << transform_TR_[5] << " qz: " << transform_TR_[6] << std::endl;
 
   if (use_sim_lidar_) {
-    std::cout << "ground truth orientation: qw: " << gt_quat_[0] << " qx: " << gt_quat_[1]
-              << " qy: " << gt_quat_[2] << " qz: " << gt_quat_[3] << std::endl;
+    std::cout << "ground truth orientation: qw: " << gt_quat_.w() << " qx: " << gt_quat_.x()
+              << " qy: " << gt_quat_.y() << " qz: " << gt_quat_.z() << std::endl;
   }
 
-  float error = sqrt(pow(transform_TR_[0] - ground_truth_.point.x, 2) +
-                     pow(transform_TR_[1] - ground_truth_.point.y, 2) +
-                     pow(transform_TR_[2] - ground_truth_.point.z, 2));
+  float error = sqrt(pow(transform_TR_[0] - ground_truth_[0], 2) +
+                     pow(transform_TR_[1] - ground_truth_[1], 2) +
+                     pow(transform_TR_[2] - ground_truth_[2], 2));
   getError(sample_map_, lidar_scan_);
   std::cout << "error (euclidean distance of translation): " << error << std::endl;
 }

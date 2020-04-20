@@ -55,9 +55,9 @@ TEST(PlaneExtractionTest, pclPlaneExtraction) {
             << " theta: " << plane_coefficients[0][1] << " psi: " << plane_coefficients[0][2]
             << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.3 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.3 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.3);
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.1 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.1 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.1);
 }
 
 TEST(PlaneExtractionTest, rhtPlaneExtraction) {
@@ -83,9 +83,9 @@ TEST(PlaneExtractionTest, rhtPlaneExtraction) {
             << " theta: " << plane_coefficients[0][1] << " psi: " << plane_coefficients[0][2]
             << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.3 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.3 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.3);
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.1 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.1 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.1);
 }
 
 TEST(PlaneExtractionTest, interRhtPlaneExtraction) {
@@ -111,7 +111,7 @@ TEST(PlaneExtractionTest, interRhtPlaneExtraction) {
             << " theta: " << plane_coefficients[0][1] << " psi: " << plane_coefficients[0][2]
             << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.3 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.3 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.3);
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.1 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.1 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.1);
 }
