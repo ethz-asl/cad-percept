@@ -12,7 +12,7 @@ MapPlanePos: [23, -1, 1] #Consider planes from this point to get most convention
 usetoyproblem: true
 
 #Select Matcher
-Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
+Matcher: template # template, GoICP, PlaneMatcher
 
 #Settings for GoICP
 

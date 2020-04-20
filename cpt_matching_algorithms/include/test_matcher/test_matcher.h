@@ -58,8 +58,8 @@ class TestMatcher {
 
   // Evaluation / Ground Truth data
   float transform_TR_[7] = {0, 0, 0, 0, 0, 0, 0};  // x y z qw qx qy qz
-  geometry_msgs::PointStamped ground_truth_;
-  std::vector<float> gt_quat_;
+  Eigen::Vector3d ground_truth_;
+  Eigen::Quaterniond gt_quat_;
 
   // Subscribers
   std::string lidar_topic_;
