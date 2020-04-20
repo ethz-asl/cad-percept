@@ -80,10 +80,11 @@ class PlaneMatch {
       bool ismap, Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> room_boundaries);
   static void getMatchProbLines(std::vector<SegmentedLine>, std::vector<SegmentedLine>,
                                 Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &match_score);
-  static void getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assingment,
-                                            float &transform_error, float (&transform)[7],
-                                            const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                            const pcl::PointCloud<pcl::PointNormal> map_planes);
+  static void getLineSegmentAssignmentError(
+      Eigen::Matrix<int, 2, 4> assingment, float &transform_error, float (&transform)[7],
+      const pcl::PointCloud<pcl::PointNormal> scan_planes,
+      const pcl::PointCloud<pcl::PointNormal> map_planes,
+      Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries);
 
   static void transformAverage(float (&transformTR)[7], std::vector<int> plane_assignement,
                                const pcl::PointCloud<pcl::PointNormal> scan_planes,

@@ -11,12 +11,11 @@ IntersectionPatternMaxSize: 100
 SegmentedLineParallelThreshold: 0.6
 SegmentedLineDistanceThreshold: 100
 SegmentedLineDeviationGrade: 2
-LineSegmentRansacSubsetSize: 300
-LineSegmentRansacRotConsistThreshold: 1
-LineSegmentRansacErrorThreshold: 0.1
-LineSegmentRansacTranErrorNormThreshold: 0.9
-LineSegmentRansacTranErrorAlongThreshold: 8
-LineSegmentRansacTranErrorPenalty: 50
+LineSegmentRansacSubsetSize: 500
+LineSegmentRansacTranAlongPlane: 8
+LineSegmentRansacRotConsistThreshold: 0.5
+LineSegmentRansacErrorThreshold: 0.7
+LineSegmentRansacTranErrorPenalty: 10
 
 
 
