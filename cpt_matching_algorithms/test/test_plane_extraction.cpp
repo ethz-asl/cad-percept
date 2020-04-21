@@ -45,7 +45,7 @@ TEST(PlaneExtractionTest, pclPlaneExtraction) {
   cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-  std::vector<std::vector<double>> plane_coefficients;
+  std::vector<Eigen::Vector3d> plane_coefficients;
   std::string tf_map_frame = "map";
   ros::Publisher plane_pub_;
 
@@ -55,9 +55,9 @@ TEST(PlaneExtractionTest, pclPlaneExtraction) {
             << " theta: " << plane_coefficients[0][1] << " psi: " << plane_coefficients[0][2]
             << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.3 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.3 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.3);
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.1 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.1 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.1);
 }
 
 TEST(PlaneExtractionTest, rhtPlaneExtraction) {
@@ -72,7 +72,7 @@ TEST(PlaneExtractionTest, rhtPlaneExtraction) {
   cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-  std::vector<std::vector<double>> plane_coefficients;
+  std::vector<Eigen::Vector3d> plane_coefficients;
   std::string tf_map_frame = "map";
   ros::Publisher plane_pub_;
 
@@ -83,9 +83,9 @@ TEST(PlaneExtractionTest, rhtPlaneExtraction) {
             << " theta: " << plane_coefficients[0][1] << " psi: " << plane_coefficients[0][2]
             << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.3 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.3 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.3);
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.1 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.1 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.1);
 }
 
 TEST(PlaneExtractionTest, interRhtPlaneExtraction) {
@@ -100,7 +100,7 @@ TEST(PlaneExtractionTest, interRhtPlaneExtraction) {
   cad_percept::cpt_utils::sample_pc_from_mesh(model->getMesh(), 100, 0.0, &pointcloud);
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-  std::vector<std::vector<double>> plane_coefficients;
+  std::vector<Eigen::Vector3d> plane_coefficients;
   std::string tf_map_frame = "map";
   ros::Publisher plane_pub_;
 
@@ -111,7 +111,7 @@ TEST(PlaneExtractionTest, interRhtPlaneExtraction) {
             << " theta: " << plane_coefficients[0][1] << " psi: " << plane_coefficients[0][2]
             << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.3 &&
-              std::abs(plane_coefficients[0][1] - 0) < 0.3 &&
-              std::abs(plane_coefficients[0][2] - 0) < 0.3);
+  EXPECT_TRUE(std::abs(plane_coefficients[0][0] - 10) < 0.1 &&
+              std::abs(plane_coefficients[0][1] - 0) < 0.1 &&
+              std::abs(plane_coefficients[0][2] - 0) < 0.1);
 }
