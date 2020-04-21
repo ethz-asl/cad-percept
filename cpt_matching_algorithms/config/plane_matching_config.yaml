@@ -1,0 +1,21 @@
+# Intersection Pattern Matcher
+IntersectionPatternParallelThreshold: 0.8
+IntersectionPatternCornerThreshold: -0.1 #does not work yet, set negative for no changes
+IntersectionPatternCoarseness: 0.4 # Defines radius in which points are bunched together (should be not larger as minimal plane size in one direction)
+IntersectionPatternTriangleDevOffset: 3 # parameter of error/score function
+IntersectionPatternTriangleDevGrade: 0.5 # parameter of error/score function
+IntersectionPatternLineDevOffset: 1 # parameter of error/score function
+IntersectionPatternLineDevGrade: 0.5 # parameter of error/score function
+IntersectionPatternMaxSize: 100
+
+SegmentedLineParallelThreshold: 0.6
+SegmentedLineDistanceThreshold: 100
+SegmentedLineDeviationGrade: 2
+LineSegmentRansacSubsetSize: 300
+LineSegmentRansacTranAlongPlane: 8
+LineSegmentRansacRotConsistThreshold: 0.5
+LineSegmentRansacErrorThreshold: 0.7
+LineSegmentRansacTranErrorPenalty: 10
+
+
+

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+    <test test-name="cpt_matching_algorithms_tests" pkg="cpt_matching_algorithms" type="cpt_matching_algorithms_tests" />
+</launch>

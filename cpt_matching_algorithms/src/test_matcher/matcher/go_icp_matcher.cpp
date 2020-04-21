@@ -22,7 +22,7 @@ void TestMatcher::goicpMatch() {
   pcl::computeCentroid(go_icp_lidar, transl_lidar);
 
   pcl::PointXYZ transl_map;
-  pcl::computeCentroid(go_icp_lidar, transl_map);
+  pcl::computeCentroid(go_icp_map, transl_map);
 
   // Centralize point clouds
   Eigen::Matrix4d transform_lidar = Eigen::Matrix4d::Identity();
@@ -118,7 +118,7 @@ void TestMatcher::goicpMatch() {
   }
 
   // Get matrix of unscaled matrix
-  Eigen::Matrix4d final_transf = go_icp_trans.inverse();
+  Eigen::Matrix4d final_transf = go_icp_trans;
 
   Eigen::Matrix3d final_rot = final_transf.block(0, 0, 3, 3);
   Eigen::Quaterniond final_q(final_rot);

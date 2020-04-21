@@ -3,10 +3,21 @@ tfMapFrame: /map
 
 mapSamplingDensity: 20
 
-usetoyproblem: true
+MapPlaneExtractionMinArea: 4 #Min area of a map plane (resp. of facet)
+MapPlaneTransThreshold: 0.16 #Max difference between translation along plane normal
+MapPlaneTransAlongPlane: 28 #Max distance between points of same plane which will be combined
+MapPlaneRotDiffThreshold: 0.9 #Max difference in rotation of normals
+MapPlanePos: [23, -1, 1] #Consider planes from this point to get most conventions of normals right
+
+usetoyproblem: false
 
 #Select Matcher
 Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
+
+#Settings for GoICP
+
+#Change MSE Threshold & Trimmer Settings in Go-ICP/demo/config.txt
+GoICPdownsample: "1000"
 
 # Settings for Plane Matcher
 
@@ -18,9 +29,10 @@ useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
 # Plane Extraction
-PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
+PlaneExtractor: cgalRegionGrowing # pclPlaneExtraction, rhtPlaneExtraction, 
+                                   # iterRhtPlaneExtraction, cgalRegionGrowing
 
-# Plane Matching
+# Plane Matching (only one)
+PlaneMatch: fail # useMatchSolution, IntersectionPatternMatcher, LineSegmentRansac
 
-# Transform Calculation
 
