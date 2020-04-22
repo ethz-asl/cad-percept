@@ -3,6 +3,125 @@
 namespace cad_percept {
 namespace matching_algorithms {
 
+class TestMatcher::MapPlanes {
+ public:
+  MapPlanes(){};
+  MapPlanes(std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_inliers,
+            std::vector<Eigen::Vector3d> plane_normals) {
+    // Save plane inliers
+    for (auto plane_inlier : extracted_map_inliers) {
+      plane_inliers_.push_back(plane_inlier);
+    }
+    // Create cloud with centroids and normals
+    pcl::PointNormal norm_point;
+    pcl::PointXYZ plane_centroid;
+    int i = 0;
+    for (auto plane_inlier : plane_inliers_) {
+      pcl::computeCentroid(plane_inlier, plane_centroid);
+      norm_point.x = plane_centroid.x;
+      norm_point.y = plane_centroid.y;
+      norm_point.z = plane_centroid.z;
+      norm_point.normal_x = plane_normals[i][0];
+      norm_point.normal_y = plane_normals[i][1];
+      norm_point.normal_z = plane_normals[i][2];
+      plane_centroid_with_normals_.push_back(norm_point);
+      i++;
+    }
+
+    std::cout << "Loaded normals and centroids of planes, find boundaries of planes ..."
+              << std::endl;
+    // Find boundaries of plane (assume rectangular walls, only works if planes have only normals in
+    // x, y or z yet)
+    plane_boundaries = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(
+        6, plane_centroid_with_normals_.size());
+    std::vector<double> dim_x_of_plane;
+    std::vector<double> dim_y_of_plane;
+    std::vector<double> dim_z_of_plane;
+
+    i = 0;
+    for (auto plane_inlier : plane_inliers_) {
+      dim_x_of_plane.clear();
+      dim_y_of_plane.clear();
+      dim_z_of_plane.clear();
+      for (auto inlier_point : plane_inlier) {
+        dim_x_of_plane.push_back(inlier_point.x);
+        dim_y_of_plane.push_back(inlier_point.y);
+        dim_z_of_plane.push_back(inlier_point.z);
+      }
+      plane_boundaries(0, i) =
+          *std::min_element(dim_x_of_plane.begin(), dim_x_of_plane.end());  // x_min
+      plane_boundaries(1, i) =
+          *std::max_element(dim_x_of_plane.begin(), dim_x_of_plane.end());  // x_max
+      plane_boundaries(2, i) =
+          *std::min_element(dim_y_of_plane.begin(), dim_y_of_plane.end());  // y_min
+      plane_boundaries(3, i) =
+          *std::max_element(dim_y_of_plane.begin(), dim_y_of_plane.end());  // y_max
+      plane_boundaries(4, i) =
+          *std::min_element(dim_z_of_plane.begin(), dim_z_of_plane.end());  // z_min
+      plane_boundaries(5, i) =
+          *std::max_element(dim_z_of_plane.begin(), dim_z_of_plane.end());  // z_max
+
+      i++;
+    }
+  };
+
+  bool is_projection_on_plane(Eigen::Vector3d Point, int plane_nr) {
+    if (std::abs(plane_centroid_with_normals_[plane_nr].normal_x) > 0.9) {  // Normal in x direction
+      return (plane_boundaries(2, plane_nr) - 0.5 < Point[1]) &&
+             (Point[1] < plane_boundaries(3, plane_nr) + 0.5) &&
+             (plane_boundaries(4, plane_nr) - 0.5 < Point[2]) &&
+             (Point[2] < plane_boundaries(5, plane_nr) + 0.5);
+    } else if (std::abs(plane_centroid_with_normals_[plane_nr].normal_y) >
+               0.9) {  // Normal in y direction
+      return (plane_boundaries(0, plane_nr) - 0.5 < Point[0]) &&
+             (Point[0] < plane_boundaries(1, plane_nr) + 0.5) &&
+             (plane_boundaries(4, plane_nr) - 0.5 < Point[2]) &&
+             (Point[2] < plane_boundaries(5, plane_nr) + 0.5);
+    } else {  // Normal in z direction
+      return (plane_boundaries(0, plane_nr) - 0.5 < Point[0]) &&
+             (Point[0] < plane_boundaries(1, plane_nr) + 0.5) &&
+             (plane_boundaries(2, plane_nr) - 0.5 < Point[1]) &&
+             (Point[1] < plane_boundaries(3, plane_nr) + 0.5);
+    }
+  };
+
+  void disp_all_planes() {
+    int plane_nr = 0;
+    std::cout << "Print all information about planes ..." << std::endl;
+    for (auto plane : plane_centroid_with_normals_) {
+      std::cout << "plane nr. " << plane_nr << " x: " << plane.x << " y: " << plane.y
+                << "z : " << plane.z << std::endl;
+      std::cout << "normal x: " << plane.normal_x << " normal y: " << plane.normal_y
+                << " normal z: " << plane.normal_z << std::endl;
+      std::cout << "boundaries: xmin: " << plane_boundaries(0, plane_nr)
+                << " boundaries: xmax: " << plane_boundaries(1, plane_nr) << std::endl;
+      std::cout << "boundaries: ymin: " << plane_boundaries(2, plane_nr)
+                << " boundaries: ymax: " << plane_boundaries(3, plane_nr) << std::endl;
+      std::cout << "boundaries: zmin: " << plane_boundaries(4, plane_nr)
+                << " boundaries: zmax: " << plane_boundaries(5, plane_nr) << std::endl;
+      plane_nr++;
+    }
+  };
+
+  void save_to_yaml_file() {
+    // Create yaml file
+    ros::NodeHandle nh_private("~");
+    std::string file_name = nh_private.param<std::string>("map_plane_file", "fail");
+    std::cout << file_name << std::endl;
+    std::ofstream outfile(file_name);
+    outfile << "# This file includes map plane informations" << std::endl;
+    outfile.close();
+    // Save data in yaml file
+    YAML::Node config;
+  };
+  bool load_from_yaml_file() { return true; };
+
+ private:
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> plane_inliers_;
+  pcl::PointCloud<pcl::PointNormal> plane_centroid_with_normals_;
+  Eigen::Matrix<double, 6, Eigen::Dynamic> plane_boundaries;
+};
+
 TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
     : nh_(nh), nh_private_(nh_private) {
   /*//////////////////////////////////////
@@ -34,6 +153,8 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
 
 // Get CAD and sample points
 void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
+  ros::NodeHandle nh_private_("~");
+
   if (!map_ready_) {
     std::cout << "Processing CAD mesh" << std::endl;
     std::string frame_id = cad_mesh_in.header.frame_id;
@@ -61,135 +182,17 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0,
                                                 &sample_map_);
 
-    // Extract planes from map
-    float map_plane_area_threshold = nh_private_.param<float>("MapPlaneExtractionMinArea", 3);
-    float translation_diff_threshold = nh_private_.param<float>("MapPlaneTransThreshold", 0.1);
-    float translation_diff_along_plane = nh_private_.param<float>("MapPlaneTransAlongPlane", 30);
-    float rotation_diff_threshold = nh_private_.param<float>("MapPlaneRotDiffThreshold", 0.9);
-    std::vector<float> map_pos = nh_private_.param<std::vector<float>>("MapPlanePos", {0});
-
-    std::unordered_map<std::string, std::string> facetToPlane;
-    std::unordered_multimap<std::string, std::string> planeToFacets;
-    // If I set eps to a very large number, shouldn't we then get only one plane?
-    reference_mesh_->findAllCoplanarFacets(&facetToPlane, &planeToFacets, 10);
-    std::cout << "Extracted coplanar Facets" << std::endl;
-
-    std::multimap<std::string, std::string> grouped_planeToFacets(planeToFacets.begin(),
-                                                                  planeToFacets.end());
-
-    cgal::Plane actual_plane;
-    cgal::Triangle actual_facet;
-    cgal::Vector actual_facet_vertex[3];
-    Eigen::Vector3d point_on_plane;
-    Eigen::Vector3d normal_of_plane;
-    pcl::PointNormal norm_point;
-    float max_facet_size;
-    std::string previous_plane_id = "-1";
-
-    for (auto facet_of_plane : grouped_planeToFacets) {
-      // Search for largest facet of a plane
-      if (facet_of_plane.first.compare(previous_plane_id) && previous_plane_id.compare("-1")) {
-        map_planes_.push_back(norm_point);
-        max_facet_size = 0;
-      }
-      // Take largest facet to describe plane
-      if (reference_mesh_->getArea(reference_mesh_->getFacetHandleFromId(facet_of_plane.second)) >
-          std::max(map_plane_area_threshold, max_facet_size)) {
-        actual_facet = reference_mesh_->getTriangle(facet_of_plane.second);
-        actual_plane = actual_facet.supporting_plane();
-        actual_facet_vertex[0] = cgal::Vector(
-            actual_facet.vertex(0).x(), actual_facet.vertex(0).y(), actual_facet.vertex(0).z());
-        actual_facet_vertex[1] = cgal::Vector(
-            actual_facet.vertex(1).x(), actual_facet.vertex(1).y(), actual_facet.vertex(1).z());
-        actual_facet_vertex[2] = cgal::Vector(
-            actual_facet.vertex(2).x(), actual_facet.vertex(2).y(), actual_facet.vertex(2).z());
-
-        point_on_plane = cgal::cgalVectorToEigenVector(
-            (actual_facet_vertex[0] + actual_facet_vertex[1] + actual_facet_vertex[2]) /
-            3);  // mean of vertices of facet
-        normal_of_plane =
-            cgal::cgalVectorToEigenVector(actual_plane.orthogonal_vector()).normalized();
-
-        norm_point.x = point_on_plane(0);
-        norm_point.y = point_on_plane(1);
-        norm_point.z = point_on_plane(2);
-        norm_point.normal_x = normal_of_plane(0);
-        norm_point.normal_y = normal_of_plane(1);
-        norm_point.normal_z = normal_of_plane(2);
-
-        max_facet_size =
-            reference_mesh_->getArea(reference_mesh_->getFacetHandleFromId(facet_of_plane.second));
-      }
-      previous_plane_id = facet_of_plane.first;
+    if (nh_private_.param<bool>("extract_from_map", true)) {
+      std::cout << "extract planes from mesh, this can take some time" << std::endl;
+      extract_planes_from_mesh();
+    } else {
+      // load data from file
+      new_map_planes_ = new MapPlanes();
+      if (!new_map_planes_->load_from_yaml_file()) {
+        std::cout << "Could not load map plane informations" << std::endl;
+        return;
+      };
     }
-    std::cout << "Found " << map_planes_.size()
-              << " planes in the map, combine similar planes in one " << std::endl;
-
-    // Remove points lying on same plane
-    pcl::PointCloud<pcl::PointNormal> new_map_planes;
-    pcl::PointNormal average_plane;
-    Eigen::Vector3f map_plane_pos;
-    Eigen::Vector3f map_plane_dir;
-    Eigen::Vector3f map_pair_plane_pos;
-    Eigen::Vector3f map_pair_plane_dir;
-    Eigen::Vector3f map_pos_normal(map_pos[0], map_pos[1], map_pos[2]);
-    bool assigned_planes[map_planes_.size()] = {false};
-
-    int num_point_on_plane = 1;
-    int plane_nr = 0;
-    int pair_plane_nr = 0;
-    for (auto map_plane : map_planes_) {
-      if (assigned_planes[plane_nr]) {
-        ++plane_nr;
-        continue;
-      }
-      map_plane_pos = Eigen::Vector3f(map_plane.x, map_plane.y, map_plane.z);
-      map_plane_dir = Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y, map_plane.normal_z);
-      average_plane = map_plane;
-      pair_plane_nr = 0;
-      for (auto map_pair_plane : map_planes_) {
-        if (assigned_planes[pair_plane_nr]) {
-          ++pair_plane_nr;
-          continue;
-        }
-        map_pair_plane_pos = Eigen::Vector3f(map_pair_plane.x, map_pair_plane.y, map_pair_plane.z);
-        map_pair_plane_dir = Eigen::Vector3f(map_pair_plane.normal_x, map_pair_plane.normal_y,
-                                             map_pair_plane.normal_z);
-        // Check if points are on same plane and close
-        if (std::abs(map_plane_dir.dot(map_pair_plane_dir)) > rotation_diff_threshold) {
-          if ((map_plane_pos - map_pair_plane_pos).norm() > translation_diff_along_plane) {
-            ++pair_plane_nr;
-            continue;
-          }
-          if (std::abs((map_plane_pos - map_pair_plane_pos).dot(map_plane_dir)) <
-              translation_diff_threshold) {
-            average_plane.x = average_plane.x + map_pair_plane.x;
-            average_plane.y = average_plane.y + map_pair_plane.y;
-            average_plane.z = average_plane.z + map_pair_plane.z;
-            num_point_on_plane += 1;
-            assigned_planes[pair_plane_nr] = true;
-          }
-        }
-        ++pair_plane_nr;
-      }
-
-      // Correct some normals
-      if ((map_plane_pos - map_pos_normal).dot(map_plane_dir) < 0) {
-        average_plane.normal_x = -average_plane.normal_x;
-        average_plane.normal_y = -average_plane.normal_y;
-        average_plane.normal_z = -average_plane.normal_z;
-      }
-      average_plane.x = average_plane.x / num_point_on_plane;
-      average_plane.y = average_plane.y / num_point_on_plane;
-      average_plane.z = average_plane.z / num_point_on_plane;
-      new_map_planes.push_back(average_plane);
-      ++plane_nr;
-      num_point_on_plane = 1;
-    }
-    map_planes_.clear();
-    map_planes_ = new_map_planes;
-
-    load_map_boundaries();
 
     std::cout << "CAD ready" << std::endl;
     map_ready_ = true;
@@ -201,6 +204,17 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
       }
     }
   }
+}
+
+void TestMatcher::extract_planes_from_mesh() {
+  // Find planes from sampled pc of mesh
+  std::vector<Eigen::Vector3d> plane_normals;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_inliers;
+  PlaneExtractor::cgalRegionGrowing(extracted_map_inliers, plane_normals, sample_map_,
+                                    tf_map_frame_, plane_pub_);
+  new_map_planes_ = new MapPlanes(extracted_map_inliers, plane_normals);
+  new_map_planes_->disp_all_planes();
+  new_map_planes_->save_to_yaml_file();
 }
 
 // Get real LiDAR data
@@ -302,6 +316,14 @@ void TestMatcher::match() {
 
   // Selection of mapper
   std::string matcher = nh_private_.param<std::string>("Matcher", "fail");
+
+  if (nh_private_.param<bool>("extract_from_map", true)) {
+    std::cout << "map data was created, set extract_from_map to false to use the matchers, start "
+                 "template matcher ..."
+              << std::endl;
+    matcher = "template";
+  }
+
   if (!matcher.compare("template")) {
     templateMatch();
   } else if (!matcher.compare("GoICP")) {
@@ -467,68 +489,6 @@ void TestMatcher::getError(PointCloud p1, PointCloud p2) {
   std::cout << "Haussdorff quantile distance: " << std::sqrt(haussdorff_quantile_dist) << " m"
             << std::endl;
 }
-
-void TestMatcher::load_map_boundaries() {
-  // corrections of map description
-  map_planes_.points[1].normal_x = -map_planes_.points[1].normal_x;
-  map_planes_.points[1].normal_y = -map_planes_.points[1].normal_y;
-  map_planes_.points[1].normal_z = -map_planes_.points[1].normal_z;
-
-  pcl::PointNormal map_plane;
-  map_plane.x = 19.89;
-  map_plane.y = 7;
-  map_plane.z = 1;
-  map_plane.normal_x = -1;
-  map_plane.normal_y = 0;
-  map_plane.normal_z = 0;
-  map_planes_.push_back(map_plane);
-
-  // load map boundaries
-  room_boundaries(0, 0) = 0;
-  room_boundaries(0, 1) = 6.45;
-  room_boundaries(1, 0) = -100;
-  room_boundaries(1, 1) = -5.62;
-  room_boundaries(2, 0) = -18.57;
-  room_boundaries(2, 1) = 22.5;
-  room_boundaries(3, 0) = -23.88;
-  room_boundaries(3, 1) = 0;
-  room_boundaries(4, 0) = -5.62;
-  room_boundaries(4, 1) = -2.39;
-  room_boundaries(5, 0) = -23.88;
-  room_boundaries(5, 1) = -18.57;
-  room_boundaries(6, 0) = 0;
-  room_boundaries(6, 1) = 19.89;
-  room_boundaries(7, 0) = 34.145;
-  room_boundaries(7, 1) = 37.77;
-  room_boundaries(8, 0) = 19.89;
-  room_boundaries(8, 1) = 34.145;
-  room_boundaries(9, 0) = 0;
-  room_boundaries(9, 1) = 0;
-  room_boundaries(10, 0) = -5.9;
-  room_boundaries(10, 1) = 7.7;
-  room_boundaries(11, 0) = -2.47;
-  room_boundaries(11, 1) = 0.034;
-  room_boundaries(12, 0) = -7.84;
-  room_boundaries(12, 1) = -5.9;
-  room_boundaries(13, 0) = -7.84;
-  room_boundaries(13, 1) = -5.62;
-  room_boundaries(14, 0) = 22.5;
-  room_boundaries(14, 1) = 29.34;
-  room_boundaries(15, 0) = -18.57;
-  room_boundaries(15, 1) = 22.5;
-  room_boundaries(16, 0) = 34.145;
-  room_boundaries(16, 1) = 37.77;
-  room_boundaries(17, 0) = 29.34;
-  room_boundaries(17, 1) = 34.145;
-  room_boundaries(18, 0) = -2.39;
-  room_boundaries(18, 1) = -0.118;
-  room_boundaries(19, 0) = -18.57;
-  room_boundaries(19, 1) = 22.5;
-  room_boundaries(20, 0) = -100;
-  room_boundaries(20, 1) = -5.62;
-  room_boundaries(21, 0) = 6.45;
-  room_boundaries(21, 1) = 7.7;
-};
 
 }  // namespace matching_algorithms
 }  // namespace cad_percept

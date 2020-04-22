@@ -1,0 +1,14 @@
+# Settings of CGAL Region Growing for Map plane extraction
+CGALRegionGrowMinNumInliers: 130
+CGALRegionGrowMaxDistToPlane: 0.001
+CGALRegionGrowMaxDistBetwPoint: 6
+CGALRegionGrowMaxDiffNormalThreshold: 0.949
+
+CGALRGRegulActive: true
+CGALRGRegulParall: true
+CGALRGRegulOrthog: true
+CGALRGRegulCoplanar: true
+CGALRGRegulParallOrthTol: 10
+CGALRGRegulCoplanarTol: 0.2
+
+

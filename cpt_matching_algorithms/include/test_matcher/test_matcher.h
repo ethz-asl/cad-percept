@@ -13,6 +13,7 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <yaml-cpp/yaml.h>
 
 #include "cloud_filter/cloud_filter.h"
 #include "plane_extraction/plane_extraction.h"
@@ -28,6 +29,8 @@ typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 class TestMatcher {
  public:
   TestMatcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
+
+  class MapPlanes;
 
  private:
   ros::NodeHandle &nh_, &nh_private_;
@@ -47,6 +50,8 @@ class TestMatcher {
   PointCloud sample_map_;
   pcl::PointCloud<pcl::PointXYZI> static_structure_cloud_;
   pcl::PointCloud<pcl::PointNormal> scan_planes_;
+  MapPlanes *new_map_planes_;
+
   pcl::PointCloud<pcl::PointNormal> map_planes_;
   Eigen::Matrix<float, 22, 2> room_boundaries;
 
@@ -79,6 +84,11 @@ class TestMatcher {
    * Sampled map callback
    */
   void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
+
+  /**
+   * Find plane normals, one point on plane and dimensions of planes
+   */
+  void extract_planes_from_mesh();
 
   /**
    * Lidar frame callback
@@ -115,8 +125,6 @@ class TestMatcher {
    */
   void templateMatch();
   void goicpMatch();
-
-  void load_map_boundaries();
 };
 
 }  // namespace matching_algorithms

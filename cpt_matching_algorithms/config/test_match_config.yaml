@@ -1,18 +1,10 @@
-inputQueueSize: 1
-tfMapFrame: /map
-
+# Sample density for map (higher density increases time needed by Region Growing)
 mapSamplingDensity: 20
 
-MapPlaneExtractionMinArea: 4 #Min area of a map plane (resp. of facet)
-MapPlaneTransThreshold: 0.16 #Max difference between translation along plane normal
-MapPlaneTransAlongPlane: 28 #Max distance between points of same plane which will be combined
-MapPlaneRotDiffThreshold: 0.9 #Max difference in rotation of normals
-MapPlanePos: [23, -1, 1] #Consider planes from this point to get most conventions of normals right
-
-usetoyproblem: false
+usetoyproblem: false 
 
 #Select Matcher
-Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
+Matcher: template # template, GoICP, PlaneMatcher
 
 #Settings for GoICP
 
@@ -29,7 +21,7 @@ useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
 # Plane Extraction
-PlaneExtractor: cgalRegionGrowing # pclPlaneExtraction, rhtPlaneExtraction, 
+PlaneExtractor: fail # pclPlaneExtraction, rhtPlaneExtraction, 
                                    # iterRhtPlaneExtraction, cgalRegionGrowing
 
 # Plane Matching (only one)
