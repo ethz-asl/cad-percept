@@ -7,7 +7,6 @@ PCLMinInlier: 15
 # Settings of accumulator
 
 AccumulatorChoice: 2 # 1: array, 2: ball
-#AccumulatorSlopeThreshold: 2
 AccumulatorRhoResolution: 0.5
 AccumulatorThetaResolution: 0.3
 AccumulatorPsiResolution: 0.3
@@ -38,6 +37,20 @@ iterRHTTolDist: 2   # makes sure points are not too far apart
 iterRHTMinArea: 0.5
 iterRHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown
 iterRHTNumPlaneperIter: 1
+
+# Settings of CGAL Region Growing
+CGALRegionGrowMinNumInliers: 80
+CGALRegionGrowMaxDistToPlane: 0.07
+CGALRegionGrowMaxDistBetwPoint: 10
+CGALRegionGrowMaxDiffNormalThreshold: 0.9
+
+CGALRGRegulActive: true
+CGALRGRegulParall: true
+CGALRGRegulOrthog: true
+CGALRGRegulCoplanar: false
+CGALRGRegulParallOrthTol: 10
+CGALRGRegulCoplanarTol: 0.2
+
 
 
 
