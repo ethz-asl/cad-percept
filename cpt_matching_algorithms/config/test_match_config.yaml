@@ -1,4 +1,4 @@
-# Sample density for map (higher density increases time needed by Region Growing)
+# Sample density for map
 mapSamplingDensity: 20
 
 usetoyproblem: false 
@@ -24,7 +24,7 @@ Voxelsearchradius: 0.1
 PlaneExtractor: cgalRegionGrowing # pclPlaneExtraction, rhtPlaneExtraction, 
                                    # iterRhtPlaneExtraction, cgalRegionGrowing
 
-# Plane Matching (only one)
+# Plane Matching
 PlaneMatch: LineSegmentRansac # useMatchSolution, IntersectionPatternMatcher, LineSegmentRansac
 
 

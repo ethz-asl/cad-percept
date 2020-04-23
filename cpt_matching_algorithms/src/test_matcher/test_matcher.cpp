@@ -3,7 +3,7 @@
 namespace cad_percept {
 namespace matching_algorithms {
 
-TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
+TestMatcher::TestMatcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     : nh_(nh), nh_private_(nh_private) {
   /*//////////////////////////////////////
                  Setup
@@ -28,9 +28,7 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
 }
 
 // Get CAD and sample points
-void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
-  ros::NodeHandle nh_private_("~");
-
+void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   if (!map_ready_) {
     std::cout << "Processing CAD mesh" << std::endl;
     std::string frame_id = cad_mesh_in.header.frame_id;
@@ -38,11 +36,11 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
 
     // Get transformation from /map to mesh
     tf::StampedTransform transform;
-    tf::TransformListener tf_listener_(ros::Duration(30));
+    tf::TransformListener tf_listener(ros::Duration(30));
     try {
-      tf_listener_.waitForTransform(tf_map_frame_, frame_id, ros::Time(0), ros::Duration(5.0));
-      tf_listener_.lookupTransform(tf_map_frame_, frame_id, ros::Time(0),
-                                   transform);  // get transformation at latest time T_map_to_frame
+      tf_listener.waitForTransform(tf_map_frame_, frame_id, ros::Time(0), ros::Duration(5.0));
+      tf_listener.lookupTransform(tf_map_frame_, frame_id, ros::Time(0),
+                                  transform);  // get transformation at latest time T_map_to_frame
     } catch (tf::TransformException ex) {
       ROS_ERROR_STREAM("Couldn't find transformation to mesh system");
     }
@@ -53,7 +51,7 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
 
     // Sample from mesh
     sample_map_.clear();
-    sample_density_ = nh_private_.param<int>("mapSamplingDensity", 100);
+    sample_density_ = nh_private_.param<int>("mapSamplingDensity", 20);
     int n_points = reference_mesh_->getArea() * sample_density_;
     cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0,
                                                 &sample_map_);
@@ -62,8 +60,8 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
 
     // load data from file
     map_planes_ = new MapPlanes();
-    map_planes_->load_from_yaml_file(file_name);
-    map_planes_->disp_all_planes();
+    map_planes_->loadFromYamlFile(file_name);
+    map_planes_->dispAllPlanes();
 
     std::cout << "CAD ready" << std::endl;
     map_ready_ = true;
@@ -78,7 +76,7 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
 }
 
 // Get real LiDAR data
-void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
+void TestMatcher::getLidar(const sensor_msgs::PointCloud2 &lidar_scan_p2) {
   if (!lidar_scan_ready_ && !use_sim_lidar_) {
     std::cout << "Processing lidar frame" << std::endl;
 
@@ -89,7 +87,8 @@ void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
     std::vector<int> nan_indices;
     pcl::removeNaNFromPointCloud(lidar_scan_, lidar_scan_, nan_indices);
     if (nan_indices.size() != 0) {
-      std::cout << "Attention: Detected NaNs in the given point cloud. Removed this values..."
+      std::cout << "Attention: Detected NaNs in the given point cloud. Removed "
+                   "this values..."
                 << std::endl;
     }
 
@@ -112,7 +111,7 @@ void TestMatcher::getLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
 }
 
 // Get real ground truth position
-void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
+void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped &gt_in) {
   if (!ground_truth_ready_ && !use_sim_lidar_) {
     // Transform gt into map frame
     ground_truth_[0] = -gt_in.point.x;
@@ -128,7 +127,7 @@ void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped& gt_in) {
 }
 
 // Get LiDAR data and ground truth from simulator
-void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2& lidar_scan_p2) {
+void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2 &lidar_scan_p2) {
   if (!lidar_scan_ready_ && use_sim_lidar_) {
     std::cout << "Processing lidar frame" << std::endl;
 
@@ -210,6 +209,7 @@ void TestMatcher::match() {
                                         tf_lidar_frame_, plane_pub_);
     } else {
       std::cout << "Error: Could not find given plane extractor" << std::endl;
+      return;
     }
 
     // Convert planes to PointNormal PointCloud
@@ -239,19 +239,11 @@ void TestMatcher::match() {
       plane_nr++;
     }
 
-    // for (auto norm_point : scan_planes_) {
-    //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " <<
-    //   norm_point.z
-    //             << std::endl;
-    //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << "
-    //   "
-    //             << norm_point.normal_z << std::endl;
-    // }
-
     std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
+    std::cout << plane_matcher << std::endl;
     pcl::PointCloud<pcl::PointNormal> map_planes;
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> room_boundaries;
-    map_planes_->get_map_plane_informations(map_planes, room_boundaries);
+    map_planes_->getMapPlaneInformations(map_planes, room_boundaries);
     // Plane Matching (Get T_map,lidar)
     if (!plane_matcher.compare("IntersectionPatternMatcher")) {
       PlaneMatch::IntersectionPatternMatcher(transform_TR_, scan_planes_, map_planes,
@@ -262,9 +254,11 @@ void TestMatcher::match() {
       PlaneMatch::LineSegmentRansac(transform_TR_, scan_planes_, map_planes, room_boundaries);
     } else {
       std::cout << "Error: Could not find given plane matcher" << std::endl;
+      return;
     }
   } else {
     std::cout << "Error: Could not find given matcher" << std::endl;
+    return;
   }
 
   /*//////////////////////////////////////
@@ -319,7 +313,8 @@ void TestMatcher::getError(PointCloud p1, PointCloud p2) {
   DP p1_dp = cpt_utils::pointCloudToDP(p1);
   DP p2_dp = cpt_utils::pointCloudToDP(p2);
 
-  // Calculation of Hausdorff Distance withot oulier removal, source: cpt_selective_icp::mapper
+  // Calculation of Hausdorff Distance withot oulier removal, source:
+  // cpt_selective_icp::mapper
   const int knn = 1;  // first closest point
   PM::Parameters params;
   params["knn"] = PointMatcherSupport::toParam(knn);
