@@ -13,23 +13,18 @@ TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   lidar_topic_ = nh_private_.param<std::string>("lidarTopic", "fail");
   sim_lidar_topic_ = nh_private_.param<std::string>("simlidarTopic", "fail");
   ground_truth_topic_ = nh_private_.param<std::string>("groundtruthTopic", "fail");
-  input_queue_size_ = nh_private_.param<int>("inputQueueSize", 10);
   tf_map_frame_ = nh_private_.param<std::string>("tfMapFrame", "/map");
   tf_lidar_frame_ = nh_private_.param<std::string>("tfLidarFrame", "/marker_pose");
   use_sim_lidar_ = nh_private_.param<bool>("usetoyproblem", false);
 
   // Get Subscriber
-  map_sub_ = nh_.subscribe(cad_topic_, input_queue_size_, &TestMatcher::getCAD, this);
-  lidar_sub_ = nh_.subscribe(lidar_topic_, input_queue_size_, &TestMatcher::getLidar, this);
-  lidar_sim_sub_ =
-      nh_.subscribe(sim_lidar_topic_, input_queue_size_, &TestMatcher::getSimLidar, this);
-  gt_sub_ =
-      nh_.subscribe(ground_truth_topic_, input_queue_size_, &TestMatcher::getGroundTruth, this);
+  map_sub_ = nh_.subscribe(cad_topic_, 1, &TestMatcher::getCAD, this);
+  lidar_sub_ = nh_.subscribe(lidar_topic_, 1, &TestMatcher::getLidar, this);
+  lidar_sim_sub_ = nh_.subscribe(sim_lidar_topic_, 1, &TestMatcher::getSimLidar, this);
+  gt_sub_ = nh_.subscribe(ground_truth_topic_, 1, &TestMatcher::getGroundTruth, this);
 
   // Get Publisher
-  scan_pub_ =
-      nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", input_queue_size_, true);
-  sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sample_map", input_queue_size_, true);
+  scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1, true);
 }
 
 // Get CAD and sample points
@@ -63,21 +58,12 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
     cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0,
                                                 &sample_map_);
 
-    ros::NodeHandle nh_private("~");
-    std::string file_name = nh_private.param<std::string>("map_plane_file", "fail");
-    if (nh_private_.param<bool>("extract_from_map", true)) {
-      // Create new map data
-      std::cout << "Create new map data, this can take some time" << std::endl;
-      std::vector<float> point_in_map =
-          nh_private_.param<std::vector<float>>("MapPlaneExtractionPointInMap", {0});
-      extract_planes_from_mesh(Eigen::Vector3f(point_in_map[0], point_in_map[1], point_in_map[2]),
-                               file_name);
-    } else {
-      // load data from file
-      map_planes_ = new MapPlanes();
-      map_planes_->load_from_yaml_file(file_name);
-      map_planes_->disp_all_planes();
-    }
+    std::string file_name = nh_private_.param<std::string>("map_plane_file", "fail");
+
+    // load data from file
+    map_planes_ = new MapPlanes();
+    map_planes_->load_from_yaml_file(file_name);
+    map_planes_->disp_all_planes();
 
     std::cout << "CAD ready" << std::endl;
     map_ready_ = true;
@@ -89,18 +75,6 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
       }
     }
   }
-}
-
-void TestMatcher::extract_planes_from_mesh(Eigen::Vector3f point_in_map, std::string file_name) {
-  // Find planes from sampled pc of mesh
-  std::vector<Eigen::Vector3d> plane_normals;
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_inliers;
-  PlaneExtractor::cgalRegionGrowing(extracted_map_inliers, plane_normals, sample_map_,
-                                    tf_map_frame_, plane_pub_);
-
-  map_planes_ = new MapPlanes(extracted_map_inliers, plane_normals, point_in_map);
-  map_planes_->disp_all_planes();
-  map_planes_->save_to_yaml_file(file_name);
 }
 
 // Get real LiDAR data
@@ -202,13 +176,6 @@ void TestMatcher::match() {
 
   // Selection of mapper
   std::string matcher = nh_private_.param<std::string>("Matcher", "fail");
-
-  if (nh_private_.param<bool>("extract_from_map", true)) {
-    std::cout << "map data was created, set extract_from_map to false to use the matchers, skip "
-                 "matchers ..."
-              << std::endl;
-    matcher = "fail";
-  }
 
   if (!matcher.compare("template")) {
     templateMatch();
@@ -316,9 +283,6 @@ void TestMatcher::match() {
   /*//////////////////////////////////////
                 Visualization
   ///////////////////////////////////////*/
-  DP ref_sample_map = cad_percept::cpt_utils::pointCloudToDP(sample_map_);
-  sample_map_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(
-      ref_sample_map, tf_map_frame_, ros::Time::now()));
 
   DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
   scan_pub_.publish(

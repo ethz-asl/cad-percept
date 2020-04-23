@@ -81,11 +81,6 @@ class TestMatcher {
   void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
 
   /**
-   * Find plane normals, one point on plane and dimensions of planes
-   */
-  void extract_planes_from_mesh(Eigen::Vector3f point_in_map, std::string file_name);
-
-  /**
    * Lidar frame callback
    */
   void getLidar(const sensor_msgs::PointCloud2 &lidar_scan_p2);

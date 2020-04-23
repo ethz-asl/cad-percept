@@ -2,23 +2,28 @@
 <launch>
     <!-- declare arg to be passed in -->
     <arg name="cad_file" default="$(find cpt_selective_icp)/resources/CLA_CAD_simplified_single_wall_no_ceiling_no_pillars.off" />
-    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set/scan450.bag" /> 
+    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set/scan300.bag" /> 
     <arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
-    <arg name="create_new_map_file" value = "false" />
-
     <arg name="lidar_frame" value="marker_pose" />
+    <arg name="create_new_map_file" value="false" />
 
-   <node name="test_matcher"  pkg="cpt_matching_algorithms" type="test_matcher_node" output="screen" launch-prefix="tmux split-window -h">
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/test_match_config.yaml"/>
-
-        <param name="extract_from_map" value="$(arg create_new_map_file)"/>
-        <param name="goicp_folder" value="$(find go_icp_catkin)"/>
+   <node name="map_plane_extractor" pkg="cpt_matching_algorithms" type="map_plane_extractor_node" output="screen" launch-prefix="tmux split-window -h" if="$(arg create_new_map_file)">
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/map_plane_extraction_config.yaml"/>
 
         <param name="map_plane_file" value="$(find cpt_matching_algorithms)/config/map_planes_file.yaml" />
+        
+        <param name="tfMapFrame" value="/map" />
+        <param name="cadTopic" value="/mesh_publisher/mesh_out" />
+   </node>
 
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/map_plane_extraction_config.yaml" if="$(arg create_new_map_file)"/>
-        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml" unless="$(arg create_new_map_file)"/>
 
+   <node name="test_matcher"  pkg="cpt_matching_algorithms" type="test_matcher_node" output="screen" launch-prefix="tmux split-window -h" unless="$(arg create_new_map_file)">
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/test_match_config.yaml"/>
+        <param name="map_plane_file" value="$(find cpt_matching_algorithms)/config/map_planes_file.yaml" />
+
+        <param name="goicp_folder" value="$(find go_icp_catkin)"/>
+
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml"/>
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_matching_config.yaml" />
         
         <rosparam command="load" file="$(arg lidar_settings)" />
@@ -30,7 +35,7 @@
         <param name="groundtruthTopic" value="ground_truth" />
     </node>
 
-    <node name="lidar_simulator"  pkg="cpt_matching_algorithms" type="sim_lidar_node" output="screen" launch-prefix="tmux split-window">
+    <node name="lidar_simulator"  pkg="cpt_matching_algorithms" type="sim_lidar_node" output="screen" launch-prefix="tmux split-window" unless="$(arg create_new_map_file)">
         <rosparam command="load" file="$(arg lidar_settings)" />
 
         <param name="tfLidarFrame" value="$(arg lidar_frame)" />
