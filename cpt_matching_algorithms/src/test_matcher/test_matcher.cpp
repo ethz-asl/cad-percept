@@ -7,39 +7,44 @@ class TestMatcher::MapPlanes {
  public:
   MapPlanes(){};
   MapPlanes(std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_inliers,
-            std::vector<Eigen::Vector3d> plane_normals) {
-    // Save plane inliers
-    for (auto plane_inlier : extracted_map_inliers) {
-      plane_inliers_.push_back(plane_inlier);
-    }
+            std::vector<Eigen::Vector3d> plane_normals, Eigen::Vector3f point_in_map) {
     // Create cloud with centroids and normals
     pcl::PointNormal norm_point;
     pcl::PointXYZ plane_centroid;
     int i = 0;
-    for (auto plane_inlier : plane_inliers_) {
+    for (auto plane_inlier : extracted_map_inliers) {
       pcl::computeCentroid(plane_inlier, plane_centroid);
       norm_point.x = plane_centroid.x;
       norm_point.y = plane_centroid.y;
       norm_point.z = plane_centroid.z;
+
       norm_point.normal_x = plane_normals[i][0];
       norm_point.normal_y = plane_normals[i][1];
       norm_point.normal_z = plane_normals[i][2];
+
+      // Set main part of normals to convention
+      if ((Eigen::Vector3f(norm_point.x, norm_point.y, norm_point.z) - point_in_map)
+              .dot(Eigen::Vector3f(norm_point.normal_x, norm_point.normal_y, norm_point.normal_z)) <
+          0) {
+        norm_point.normal_x = -norm_point.normal_x;
+        norm_point.normal_y = -norm_point.normal_y;
+        norm_point.normal_z = -norm_point.normal_z;
+      }
       plane_centroid_with_normals_.push_back(norm_point);
       i++;
     }
-
     std::cout << "Loaded normals and centroids of planes, find boundaries of planes ..."
               << std::endl;
-    // Find boundaries of plane (assume rectangular walls, only works if planes have only normals in
-    // x, y or z yet)
-    plane_boundaries = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(
+    // Find boundaries of plane (assume rectangular walls, only works if planes have only normals
+    // in x, y or z yet)
+    plane_boundaries = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(
         6, plane_centroid_with_normals_.size());
-    std::vector<double> dim_x_of_plane;
-    std::vector<double> dim_y_of_plane;
-    std::vector<double> dim_z_of_plane;
+    std::vector<float> dim_x_of_plane;
+    std::vector<float> dim_y_of_plane;
+    std::vector<float> dim_z_of_plane;
 
     i = 0;
-    for (auto plane_inlier : plane_inliers_) {
+    for (auto plane_inlier : extracted_map_inliers) {
       dim_x_of_plane.clear();
       dim_y_of_plane.clear();
       dim_z_of_plane.clear();
@@ -65,24 +70,12 @@ class TestMatcher::MapPlanes {
     }
   };
 
-  bool is_projection_on_plane(Eigen::Vector3d Point, int plane_nr) {
-    if (std::abs(plane_centroid_with_normals_[plane_nr].normal_x) > 0.9) {  // Normal in x direction
-      return (plane_boundaries(2, plane_nr) - 0.5 < Point[1]) &&
-             (Point[1] < plane_boundaries(3, plane_nr) + 0.5) &&
-             (plane_boundaries(4, plane_nr) - 0.5 < Point[2]) &&
-             (Point[2] < plane_boundaries(5, plane_nr) + 0.5);
-    } else if (std::abs(plane_centroid_with_normals_[plane_nr].normal_y) >
-               0.9) {  // Normal in y direction
-      return (plane_boundaries(0, plane_nr) - 0.5 < Point[0]) &&
-             (Point[0] < plane_boundaries(1, plane_nr) + 0.5) &&
-             (plane_boundaries(4, plane_nr) - 0.5 < Point[2]) &&
-             (Point[2] < plane_boundaries(5, plane_nr) + 0.5);
-    } else {  // Normal in z direction
-      return (plane_boundaries(0, plane_nr) - 0.5 < Point[0]) &&
-             (Point[0] < plane_boundaries(1, plane_nr) + 0.5) &&
-             (plane_boundaries(2, plane_nr) - 0.5 < Point[1]) &&
-             (Point[1] < plane_boundaries(3, plane_nr) + 0.5);
-    }
+  void get_map_plane_informations(
+      pcl::PointCloud<pcl::PointNormal>& output_planes,
+      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>& output_boundaries) {
+    output_planes.clear();
+    for (auto plane : plane_centroid_with_normals_) output_planes.push_back(plane);
+    output_boundaries = plane_boundaries;
   };
 
   void disp_all_planes() {
@@ -104,22 +97,61 @@ class TestMatcher::MapPlanes {
   };
 
   void save_to_yaml_file() {
-    // Create yaml file
     ros::NodeHandle nh_private("~");
     std::string file_name = nh_private.param<std::string>("map_plane_file", "fail");
-    std::cout << file_name << std::endl;
-    std::ofstream outfile(file_name);
-    outfile << "# This file includes map plane informations" << std::endl;
-    outfile.close();
     // Save data in yaml file
-    YAML::Node config;
+    std::string plane_name = "map_plane_nr_";
+    std::string actual_plane_name;
+    YAML::Node node;
+    node["size"] = plane_centroid_with_normals_.size();
+    for (int map_plane_nr = 0; map_plane_nr < plane_centroid_with_normals_.size(); ++map_plane_nr) {
+      actual_plane_name = plane_name + std::to_string(map_plane_nr);
+      node[actual_plane_name].push_back(plane_centroid_with_normals_.points[map_plane_nr].x);
+      node[actual_plane_name].push_back(plane_centroid_with_normals_.points[map_plane_nr].y);
+      node[actual_plane_name].push_back(plane_centroid_with_normals_.points[map_plane_nr].z);
+      node[actual_plane_name].push_back(plane_centroid_with_normals_.points[map_plane_nr].normal_x);
+      node[actual_plane_name].push_back(plane_centroid_with_normals_.points[map_plane_nr].normal_y);
+      node[actual_plane_name].push_back(plane_centroid_with_normals_.points[map_plane_nr].normal_z);
+      node[actual_plane_name].push_back(plane_boundaries(0, map_plane_nr));
+      node[actual_plane_name].push_back(plane_boundaries(1, map_plane_nr));
+      node[actual_plane_name].push_back(plane_boundaries(2, map_plane_nr));
+      node[actual_plane_name].push_back(plane_boundaries(3, map_plane_nr));
+      node[actual_plane_name].push_back(plane_boundaries(4, map_plane_nr));
+      node[actual_plane_name].push_back(plane_boundaries(5, map_plane_nr));
+    }
+    std::ofstream fout(file_name);
+    fout << node;
   };
-  bool load_from_yaml_file() { return true; };
+  void load_from_yaml_file() {
+    ros::NodeHandle nh_private("~");
+    std::string file_name = nh_private.param<std::string>("map_plane_file", "fail");
+    YAML::Node node = YAML::LoadFile(file_name);
+    int map_size = node["size"].as<int>();
+    plane_boundaries = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(6, map_size);
+    std::string actual_plane_name;
+    std::string plane_name = "map_plane_nr_";
+    pcl::PointNormal map_plane;
+    for (int map_plane_nr = 0; map_plane_nr < map_size; ++map_plane_nr) {
+      actual_plane_name = plane_name + std::to_string(map_plane_nr);
+      map_plane.x = node[actual_plane_name][0].as<float>();
+      map_plane.y = node[actual_plane_name][1].as<float>();
+      map_plane.z = node[actual_plane_name][2].as<float>();
+      map_plane.normal_x = node[actual_plane_name][3].as<float>();
+      map_plane.normal_y = node[actual_plane_name][4].as<float>();
+      map_plane.normal_z = node[actual_plane_name][5].as<float>();
+      plane_centroid_with_normals_.push_back(map_plane);
+      plane_boundaries(0, map_plane_nr) = node[actual_plane_name][6].as<float>();
+      plane_boundaries(1, map_plane_nr) = node[actual_plane_name][7].as<float>();
+      plane_boundaries(2, map_plane_nr) = node[actual_plane_name][8].as<float>();
+      plane_boundaries(3, map_plane_nr) = node[actual_plane_name][9].as<float>();
+      plane_boundaries(4, map_plane_nr) = node[actual_plane_name][10].as<float>();
+      plane_boundaries(5, map_plane_nr) = node[actual_plane_name][11].as<float>();
+    }
+  };
 
  private:
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> plane_inliers_;
   pcl::PointCloud<pcl::PointNormal> plane_centroid_with_normals_;
-  Eigen::Matrix<double, 6, Eigen::Dynamic> plane_boundaries;
+  Eigen::Matrix<float, 6, Eigen::Dynamic> plane_boundaries;
 };
 
 TestMatcher::TestMatcher(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
@@ -183,15 +215,16 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
                                                 &sample_map_);
 
     if (nh_private_.param<bool>("extract_from_map", true)) {
-      std::cout << "extract planes from mesh, this can take some time" << std::endl;
-      extract_planes_from_mesh();
+      // Create new map data
+      std::cout << "Create new map data, this can take some time" << std::endl;
+      std::vector<float> point_in_map =
+          nh_private_.param<std::vector<float>>("MapPlaneExtractionPointInMap", {0});
+      extract_planes_from_mesh(Eigen::Vector3f(point_in_map[0], point_in_map[1], point_in_map[2]));
     } else {
       // load data from file
-      new_map_planes_ = new MapPlanes();
-      if (!new_map_planes_->load_from_yaml_file()) {
-        std::cout << "Could not load map plane informations" << std::endl;
-        return;
-      };
+      map_planes_ = new MapPlanes();
+      map_planes_->load_from_yaml_file();
+      map_planes_->disp_all_planes();
     }
 
     std::cout << "CAD ready" << std::endl;
@@ -206,15 +239,16 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in) {
   }
 }
 
-void TestMatcher::extract_planes_from_mesh() {
+void TestMatcher::extract_planes_from_mesh(Eigen::Vector3f point_in_map) {
   // Find planes from sampled pc of mesh
   std::vector<Eigen::Vector3d> plane_normals;
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_inliers;
   PlaneExtractor::cgalRegionGrowing(extracted_map_inliers, plane_normals, sample_map_,
                                     tf_map_frame_, plane_pub_);
-  new_map_planes_ = new MapPlanes(extracted_map_inliers, plane_normals);
-  new_map_planes_->disp_all_planes();
-  new_map_planes_->save_to_yaml_file();
+
+  map_planes_ = new MapPlanes(extracted_map_inliers, plane_normals, point_in_map);
+  map_planes_->disp_all_planes();
+  map_planes_->save_to_yaml_file();
 }
 
 // Get real LiDAR data
@@ -318,10 +352,10 @@ void TestMatcher::match() {
   std::string matcher = nh_private_.param<std::string>("Matcher", "fail");
 
   if (nh_private_.param<bool>("extract_from_map", true)) {
-    std::cout << "map data was created, set extract_from_map to false to use the matchers, start "
-                 "template matcher ..."
+    std::cout << "map data was created, set extract_from_map to false to use the matchers, skip "
+                 "matchers ..."
               << std::endl;
-    matcher = "template";
+    matcher = "fail";
   }
 
   if (!matcher.compare("template")) {
@@ -390,19 +424,23 @@ void TestMatcher::match() {
     //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " <<
     //   norm_point.z
     //             << std::endl;
-    //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
+    //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << "
+    //   "
     //             << norm_point.normal_z << std::endl;
     // }
 
     std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
+    pcl::PointCloud<pcl::PointNormal> map_planes;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> room_boundaries;
+    map_planes_->get_map_plane_informations(map_planes, room_boundaries);
     // Plane Matching (Get T_map,lidar)
     if (!plane_matcher.compare("IntersectionPatternMatcher")) {
-      PlaneMatch::IntersectionPatternMatcher(transform_TR_, scan_planes_, map_planes_,
+      PlaneMatch::IntersectionPatternMatcher(transform_TR_, scan_planes_, map_planes,
                                              room_boundaries);
     } else if (!plane_matcher.compare("useMatchSolution")) {
-      PlaneMatch::loadExampleSol(transform_TR_, scan_planes_, map_planes_);
+      PlaneMatch::loadExampleSol(transform_TR_, scan_planes_, map_planes);
     } else if (!plane_matcher.compare("LineSegmentRansac")) {
-      PlaneMatch::LineSegmentRansac(transform_TR_, scan_planes_, map_planes_, room_boundaries);
+      PlaneMatch::LineSegmentRansac(transform_TR_, scan_planes_, map_planes, room_boundaries);
     } else {
       std::cout << "Error: Could not find given plane matcher" << std::endl;
     }

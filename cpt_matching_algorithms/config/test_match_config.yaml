@@ -4,7 +4,7 @@ mapSamplingDensity: 20
 usetoyproblem: false 
 
 #Select Matcher
-Matcher: template # template, GoICP, PlaneMatcher
+Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
 
 #Settings for GoICP
 
@@ -21,10 +21,10 @@ useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
 # Plane Extraction
-PlaneExtractor: fail # pclPlaneExtraction, rhtPlaneExtraction, 
+PlaneExtractor: cgalRegionGrowing # pclPlaneExtraction, rhtPlaneExtraction, 
                                    # iterRhtPlaneExtraction, cgalRegionGrowing
 
 # Plane Matching (only one)
-PlaneMatch: fail # useMatchSolution, IntersectionPatternMatcher, LineSegmentRansac
+PlaneMatch: LineSegmentRansac # useMatchSolution, IntersectionPatternMatcher, LineSegmentRansac
 
 

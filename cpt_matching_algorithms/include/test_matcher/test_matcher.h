@@ -50,10 +50,7 @@ class TestMatcher {
   PointCloud sample_map_;
   pcl::PointCloud<pcl::PointXYZI> static_structure_cloud_;
   pcl::PointCloud<pcl::PointNormal> scan_planes_;
-  MapPlanes *new_map_planes_;
-
-  pcl::PointCloud<pcl::PointNormal> map_planes_;
-  Eigen::Matrix<float, 22, 2> room_boundaries;
+  MapPlanes *map_planes_;
 
   // Param from server
   int input_queue_size_;
@@ -88,7 +85,7 @@ class TestMatcher {
   /**
    * Find plane normals, one point on plane and dimensions of planes
    */
-  void extract_planes_from_mesh();
+  void extract_planes_from_mesh(Eigen::Vector3f point_in_map);
 
   /**
    * Lidar frame callback

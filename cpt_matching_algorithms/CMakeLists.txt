@@ -32,7 +32,7 @@ cs_add_executable(sim_lidar_node
     src/test_matcher/sim_lidar_node.cpp
     )
 
-target_link_libraries(test_matcher_node test_matcher)
+target_link_libraries(test_matcher_node test_matcher yaml-cpp)
 
 
 #############
