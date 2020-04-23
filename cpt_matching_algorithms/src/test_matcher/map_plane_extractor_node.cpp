@@ -11,6 +11,10 @@
 void extractPlanesFromCAD(const cgal_msgs::TriangleMeshStamped& cad_mesh_in);
 
 int main(int argc, char** argv) {
+  std::cout << "///////////////////////////////////////////////" << std::endl;
+  std::cout << "             Map Plane Extractor started         " << std::endl;
+  std::cout << "///////////////////////////////////////////////" << std::endl;
+
   ros::init(argc, argv, "map_plane_extractor");
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");

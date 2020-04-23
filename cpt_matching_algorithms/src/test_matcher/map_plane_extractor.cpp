@@ -116,6 +116,7 @@ void MapPlanes::save_to_yaml_file(std::string file_name) {
   std::ofstream fout(file_name);
   fout << node;
 };
+
 void MapPlanes::load_from_yaml_file(std::string file_name) {
   YAML::Node node = YAML::LoadFile(file_name);
   int map_size = node["size"].as<int>();
