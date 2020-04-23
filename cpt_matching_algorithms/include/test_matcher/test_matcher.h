@@ -13,11 +13,11 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
-#include <yaml-cpp/yaml.h>
 
 #include "cloud_filter/cloud_filter.h"
 #include "plane_extraction/plane_extraction.h"
 #include "plane_matching/plane_matching.h"
+#include "test_matcher/map_plane_extractor.h"
 
 namespace cad_percept {
 namespace matching_algorithms {
@@ -29,8 +29,6 @@ typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 class TestMatcher {
  public:
   TestMatcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
-
-  class MapPlanes;
 
  private:
   ros::NodeHandle &nh_, &nh_private_;
@@ -85,7 +83,7 @@ class TestMatcher {
   /**
    * Find plane normals, one point on plane and dimensions of planes
    */
-  void extract_planes_from_mesh(Eigen::Vector3f point_in_map);
+  void extract_planes_from_mesh(Eigen::Vector3f point_in_map, std::string file_name);
 
   /**
    * Lidar frame callback

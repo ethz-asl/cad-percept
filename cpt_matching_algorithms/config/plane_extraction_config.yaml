@@ -7,7 +7,6 @@ PCLMinInlier: 15
 # Settings of accumulator
 
 AccumulatorChoice: 2 # 1: array, 2: ball
-#AccumulatorSlopeThreshold: 2
 AccumulatorRhoResolution: 0.5
 AccumulatorThetaResolution: 0.3
 AccumulatorPsiResolution: 0.3
