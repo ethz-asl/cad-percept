@@ -35,13 +35,11 @@ void extractPlanesFromCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   if (!file_created) {
     ros::NodeHandle nh_private("~");
 
-    std::string tf_map_frame =
-        nh_private.param<std::string>("tfMapFrame", "/map");
+    std::string tf_map_frame = nh_private.param<std::string>("tfMapFrame", "/map");
     float sample_density = nh_private.param<float>("mapSamplingDensity", 10);
-    std::string file_name =
-        nh_private.param<std::string>("map_plane_file", "fail");
-    std::vector<float> point_in_map = nh_private.param<std::vector<float>>(
-        "MapPlaneExtractionPointInMap", {0});
+    std::string file_name = nh_private.param<std::string>("map_plane_file", "fail");
+    std::vector<float> point_in_map =
+        nh_private.param<std::vector<float>>("MapPlaneExtractionPointInMap", {0});
 
     std::cout << "Processing CAD mesh" << std::endl;
     std::string frame_id = cad_mesh_in.header.frame_id;
@@ -52,32 +50,28 @@ void extractPlanesFromCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     tf::StampedTransform transform;
     tf::TransformListener tf_listener(ros::Duration(30));
     try {
-      tf_listener.waitForTransform(tf_map_frame, frame_id, ros::Time(0),
-                                   ros::Duration(5.0));
-      tf_listener.lookupTransform(
-          tf_map_frame, frame_id, ros::Time(0),
-          transform); // get transformation at latest time T_map_to_frame
+      tf_listener.waitForTransform(tf_map_frame, frame_id, ros::Time(0), ros::Duration(5.0));
+      tf_listener.lookupTransform(tf_map_frame, frame_id, ros::Time(0),
+                                  transform);  // get transformation at latest time T_map_to_frame
     } catch (tf::TransformException ex) {
       ROS_ERROR_STREAM("Couldn't find transformation to mesh system");
     }
 
     cad_percept::cgal::Transformation ctransformation;
-    cad_percept::cgal::tfTransformationToCGALTransformation(transform,
-                                                            ctransformation);
+    cad_percept::cgal::tfTransformationToCGALTransformation(transform, ctransformation);
     reference_mesh->transform(ctransformation);
 
     // Sample from mesh
     pcl::PointCloud<pcl::PointXYZ> sample_map;
     int n_points = reference_mesh->getArea() * sample_density;
-    cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh->getMesh(),
-                                                n_points, 0.0, &sample_map);
+    cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh->getMesh(), n_points, 0.0,
+                                                &sample_map);
 
     // Find planes from sampled pc of mesh
     std::vector<Eigen::Vector3d> plane_normals;
     std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_inliers;
     cad_percept::matching_algorithms::PlaneExtractor::cgalRegionGrowing(
-        extracted_map_inliers, plane_normals, sample_map, tf_map_frame,
-        plane_pub);
+        extracted_map_inliers, plane_normals, sample_map, tf_map_frame, plane_pub);
 
     cad_percept::matching_algorithms::MapPlanes map_planes(
         extracted_map_inliers, plane_normals,
@@ -85,8 +79,6 @@ void extractPlanesFromCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     map_planes.dispAllPlanes();
     map_planes.saveToYamlFile(file_name);
 
-    std::cout
-        << "Saved map file, set create_new_map_file to false to use matcher"
-        << std::endl;
+    std::cout << "Saved map file, set create_new_map_file to false to use matcher" << std::endl;
   }
 }
