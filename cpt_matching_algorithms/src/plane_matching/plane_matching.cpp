@@ -58,9 +58,306 @@ class PlaneMatch::SortRelativeTriangle {
   bool isline = false;
 };
 
-// void PlaneMatch::PRRUS(){
+void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                       MapPlanes map_planes) {
+  std::cout << "////////////////////////////////////////////////" << std::endl;
+  std::cout << "////              PRRUS Started             ////" << std::endl;
+  std::cout << "////////////////////////////////////////////////" << std::endl;
 
-// };
+  ros::NodeHandle nh_private("~");
+  float translation_penalty = nh_private.param<float>("LineSegmentRansacTranErrorPenalty", 20);
+
+  pcl::PointCloud<pcl::PointNormal> map_planes_pc = map_planes.getPlaneCentroidsAndNormals();
+
+  // Seperate planes into groups containing planes with normals mainly in x,y or z directions
+  std::vector<int> map_planes_x;
+  std::vector<int> map_planes_y;
+  std::vector<int> map_planes_z;
+
+  int map_plane_nr = 0;
+  for (auto map_plane : map_planes_pc) {
+    if (std::abs(map_plane.normal_x) > 0.6) {
+      map_planes_x.push_back(map_plane_nr);
+    } else if (std::abs(map_plane.normal_y) > 0.6) {
+      map_planes_y.push_back(map_plane_nr);
+    } else {
+      map_planes_z.push_back(map_plane_nr);
+    }
+    ++map_plane_nr;
+  }
+
+  // Create orthogonal groups of planes in map
+  std::vector<Eigen::Vector3i> orthogonal_groups_in_map;
+  for (auto map_plane_x : map_planes_x) {
+    for (auto map_plane_y : map_planes_y) {
+      for (auto map_plane_z : map_planes_z) {
+        orthogonal_groups_in_map.push_back(Eigen::Vector3i(map_plane_x, map_plane_y, map_plane_z));
+      }
+    }
+  }
+  if (orthogonal_groups_in_map.size() == 0) {
+    std::cout
+        << "Can not find transformation, as no group of orthogonal planes in map could be found"
+        << std::endl;
+  } else {
+    std::cout << "Found " << orthogonal_groups_in_map.size()
+              << " groups of orthogonal planes in map" << std::endl;
+  }
+
+  // Find groups of orthogonal planes in scan
+  std::vector<Eigen::Vector3i> orthogonal_groups_in_scan;
+  Eigen::Vector3f scan_plane_normal[3];
+  Eigen::Vector3f cross_product;
+  for (int i = 0; i < (scan_planes.size() - 2); ++i) {
+    scan_plane_normal[0] =
+        Eigen::Vector3f(scan_planes.points[i].normal_x, scan_planes.points[i].normal_y,
+                        scan_planes.points[i].normal_z);
+    for (int j = i + 1; j < (scan_planes.size() - 1); ++j) {
+      scan_plane_normal[1] =
+          Eigen::Vector3f(scan_planes.points[j].normal_x, scan_planes.points[j].normal_y,
+                          scan_planes.points[j].normal_z);
+
+      // Continue if normals are collinear
+      cross_product = scan_plane_normal[0].cross(scan_plane_normal[1]);
+      if (cross_product.norm() < 0.6) continue;
+      for (int k = j + 1; k < scan_planes.size(); ++k) {
+        scan_plane_normal[2] =
+            Eigen::Vector3f(scan_planes.points[k].normal_x, scan_planes.points[k].normal_y,
+                            scan_planes.points[k].normal_z);
+        if (std::abs(cross_product.dot(scan_plane_normal[2])) > 0.6) {
+          // If orthogonal set, save combination (all permutatios)
+          orthogonal_groups_in_scan.push_back(Eigen::Vector3i(i, j, k));
+          orthogonal_groups_in_scan.push_back(Eigen::Vector3i(i, k, j));
+          orthogonal_groups_in_scan.push_back(Eigen::Vector3i(j, i, k));
+          orthogonal_groups_in_scan.push_back(Eigen::Vector3i(j, k, i));
+          orthogonal_groups_in_scan.push_back(Eigen::Vector3i(k, i, j));
+          orthogonal_groups_in_scan.push_back(Eigen::Vector3i(k, j, i));
+        }
+      }
+    }
+  }
+  if (orthogonal_groups_in_scan.size() == 0) {
+    std::cout
+        << "Can not find transformation, as no group of orthogonal planes in scan could be found"
+        << std::endl;
+  } else {
+    std::cout << "Found " << orthogonal_groups_in_scan.size()
+              << " groups of orthogonal planes in scan" << std::endl;
+  }
+
+  // Create assignments which are consistent considering rotation
+  std::vector<Eigen::Matrix<int, 2, 3>> assignments;
+  std::vector<Eigen::Quaternionf> rotations_of_assignments;
+  Eigen::Quaternionf current_quat;
+  Eigen::Hyperplane<float, 3> second_rotation_plane;
+  Eigen::Vector3f scan_normal[3];
+  Eigen::Vector3f map_normal[3];
+  Eigen::Vector3f reprojected_map_normal;
+  bool is_valid_assignment;
+  Eigen::Matrix<int, 2, 3> current_assignment;
+  for (auto scan_orth_group : orthogonal_groups_in_scan) {
+    for (auto map_orth_group : orthogonal_groups_in_map) {
+      scan_normal[0] = Eigen::Vector3f(scan_planes.points[scan_orth_group[0]].normal_x,
+                                       scan_planes.points[scan_orth_group[0]].normal_y,
+                                       scan_planes.points[scan_orth_group[0]].normal_z);
+      scan_normal[1] = Eigen::Vector3f(scan_planes.points[scan_orth_group[1]].normal_x,
+                                       scan_planes.points[scan_orth_group[1]].normal_y,
+                                       scan_planes.points[scan_orth_group[1]].normal_z);
+      scan_normal[2] = Eigen::Vector3f(scan_planes.points[scan_orth_group[2]].normal_x,
+                                       scan_planes.points[scan_orth_group[2]].normal_y,
+                                       scan_planes.points[scan_orth_group[2]].normal_z);
+      map_normal[0] = Eigen::Vector3f(map_planes_pc.points[map_orth_group[0]].normal_x,
+                                      map_planes_pc.points[map_orth_group[0]].normal_y,
+                                      map_planes_pc.points[map_orth_group[0]].normal_z);
+      map_normal[1] = Eigen::Vector3f(map_planes_pc.points[map_orth_group[1]].normal_x,
+                                      map_planes_pc.points[map_orth_group[1]].normal_y,
+                                      map_planes_pc.points[map_orth_group[1]].normal_z);
+      map_normal[2] = Eigen::Vector3f(map_planes_pc.points[map_orth_group[2]].normal_x,
+                                      map_planes_pc.points[map_orth_group[2]].normal_y,
+                                      map_planes_pc.points[map_orth_group[2]].normal_z);
+
+      // Calculate corresponding quaternion (algorithm from
+      // https://stackoverflow.com/questions/19445934/quaternion-from-two-vector-pairs)
+      current_quat = Eigen::Quaternionf::FromTwoVectors(scan_normal[1], map_normal[1]);
+      reprojected_map_normal = current_quat.inverse() * map_normal[0];
+      second_rotation_plane = Eigen::Hyperplane<float, 3>(scan_normal[1], Eigen::Vector3f(0, 0, 0));
+      current_quat = (current_quat * Eigen::Quaternionf::FromTwoVectors(
+                                         second_rotation_plane.projection(scan_normal[0]),
+                                         second_rotation_plane.projection(reprojected_map_normal)))
+                         .normalized();
+      // Rotate scan_normals
+      is_valid_assignment = true;
+      for (int i = 0; i < 3 && is_valid_assignment; ++i) {
+        scan_normal[i] = current_quat * scan_normal[i];
+        is_valid_assignment =
+            is_valid_assignment && ((scan_normal[i] - map_normal[i]).norm() < 0.1);
+      }
+      if (is_valid_assignment) {
+        // Add valid assignment
+        current_assignment.row(0) = scan_orth_group;
+        current_assignment.row(1) = map_orth_group;
+        assignments.push_back(current_assignment);
+        rotations_of_assignments.push_back(current_quat);
+      }
+    }
+  }
+
+  if (assignments.size() == 0) {
+    std::cout << "Can not find transformation, as no consistent rotation could be found"
+              << std::endl;
+  } else {
+    std::cout << "Found " << assignments.size() << " possible assignments" << std::endl;
+  }
+
+  // Apply cost function on left free assignments
+  float min_error = -1;
+  float error = 0;
+  float actual_transformation[7];
+  int assignment_nr = 0;
+  for (auto candidate_assignment : assignments) {
+    getTranslationError(candidate_assignment, actual_transformation, error,
+                        rotations_of_assignments[assignment_nr], scan_planes, map_planes,
+                        translation_penalty);
+    if (error < min_error || min_error < 0) {
+      for (int i = 0; i < 7; ++i) {
+        transformTR[i] = actual_transformation[i];
+      }
+      min_error = error;
+      std::cout << "error: " << min_error << std::endl;
+    }
+    ++assignment_nr;
+  }
+  std::cout << "final error: " << min_error << std::endl;
+};
+
+void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assignment,
+                                     float (&actual_transformation)[7], float &transl_error,
+                                     Eigen::Quaternionf rotation,
+                                     const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                     MapPlanes map_planes, float translation_penalty) {
+  transl_error = 0;
+  // Write rotation to resulting transformation
+  actual_transformation[3] = rotation.w();
+  actual_transformation[4] = rotation.x();
+  actual_transformation[5] = rotation.y();
+  actual_transformation[6] = rotation.z();
+
+  pcl::PointCloud<pcl::PointNormal> map_planes_pc = map_planes.getPlaneCentroidsAndNormals();
+  pcl::PointCloud<pcl::PointNormal> reduced_map_planes;
+  pcl::PointCloud<pcl::PointNormal> copy_scan_planes;
+
+  // Find translation (only with assignment)
+  std::vector<std::pair<int, int>> plane_assignment;
+  for (int i = 0; i < assignment.cols(); ++i) {
+    copy_scan_planes.push_back(scan_planes.points[assignment(0, i)]);
+    reduced_map_planes.push_back(map_planes_pc.points[assignment(1, i)]);
+    plane_assignment.push_back(std::make_pair(assignment(0, i), assignment(1, i)));
+  }
+  std::sort(
+      plane_assignment.begin(), plane_assignment.end(),
+      [](const std::pair<int, int> &l, const std::pair<int, int> &r) { return l.first > r.first; });
+
+  Eigen::Matrix4f rotation_transf = Eigen::Matrix4f::Identity();
+  rotation_transf.block(0, 0, 3, 3) = rotation.matrix();
+  pcl::transformPointCloud(copy_scan_planes, copy_scan_planes, rotation_transf);
+
+  // Mean filter for translation
+  std::vector<double> translation_x;
+  std::vector<double> translation_y;
+  std::vector<double> translation_z;
+  for (int plane_nr = 0; plane_nr < copy_scan_planes.size(); ++plane_nr) {
+    if (std::abs(reduced_map_planes.points[plane_nr].normal_x) > 0.6) {
+      translation_x.push_back(reduced_map_planes.points[plane_nr].x -
+                              copy_scan_planes.points[plane_nr].x);
+    }
+    if (std::abs(reduced_map_planes.points[plane_nr].normal_y) > 0.6) {
+      translation_y.push_back(reduced_map_planes.points[plane_nr].y -
+                              copy_scan_planes.points[plane_nr].y);
+    }
+    if (std::abs(reduced_map_planes.points[plane_nr].normal_z) > 0.6) {
+      translation_z.push_back(reduced_map_planes.points[plane_nr].z -
+                              copy_scan_planes.points[plane_nr].z);
+    }
+  }
+  if (translation_x.size() != 0) {
+    actual_transformation[0] =
+        std::accumulate(translation_x.begin(), translation_x.end(), 0.0) / translation_x.size();
+  } else {
+    actual_transformation[0] = 0;
+  }
+  if (translation_y.size() != 0) {
+    actual_transformation[1] =
+        std::accumulate(translation_y.begin(), translation_y.end(), 0.0) / translation_y.size();
+  } else {
+    actual_transformation[1] = 0;
+  }
+  if (translation_z.size() != 0) {
+    actual_transformation[2] =
+        std::accumulate(translation_z.begin(), translation_z.end(), 0.0) / translation_z.size();
+  } else {
+    actual_transformation[2] = 0;
+  }
+
+  // Get transformation matrix
+  Eigen::Matrix4f actual_transform = Eigen::Matrix4f::Identity();
+  Eigen::Vector3f translation =
+      Eigen::Vector3f(actual_transformation[0], actual_transformation[1], actual_transformation[2]);
+  actual_transform.block(0, 3, 3, 1) = translation;
+  actual_transform.block(0, 0, 3, 3) = rotation.matrix();
+
+  copy_scan_planes.clear();
+  pcl::transformPointCloudWithNormals(scan_planes, copy_scan_planes, actual_transform);
+
+  std::vector<float> actual_translation_error;
+  int map_plane_nr = 0;
+  int scan_plane_nr = 0;
+  for (auto scan_plane : copy_scan_planes) {
+    map_plane_nr = 0;
+    actual_translation_error.clear();
+    if (scan_plane_nr == plane_assignment.back().first) {
+      // Take reference if plane is in matching
+      actual_translation_error.push_back(
+          std::abs((Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z) -
+                    Eigen::Vector3f(map_planes_pc.points[plane_assignment.back().second].x,
+                                    map_planes_pc.points[plane_assignment.back().second].y,
+                                    map_planes_pc.points[plane_assignment.back().second].z))
+                       .dot(Eigen::Vector3f(
+                           map_planes_pc.points[plane_assignment.back().second].normal_x,
+                           map_planes_pc.points[plane_assignment.back().second].normal_y,
+                           map_planes_pc.points[plane_assignment.back().second].normal_z))));
+      plane_assignment.pop_back();
+    } else {  // search closest plane
+      // Only accept plane if it has the same normal
+      for (auto map_plane : map_planes_pc) {
+        if (Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y, map_plane.normal_z)
+                .dot(Eigen::Vector3f(scan_plane.normal_x, scan_plane.normal_y,
+                                     scan_plane.normal_z)) < 0.8) {
+          map_plane_nr++;
+          continue;
+        }
+        // Only accept point as possible match if projection lies on this point
+        if (!map_planes.isProjectionOfPointOnPlane(
+                Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z), map_plane_nr)) {
+          map_plane_nr++;
+          continue;
+        }
+        // Push back possible smallest distance to one of the map planes
+        actual_translation_error.push_back(std::abs(
+            (Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z) -
+             Eigen::Vector3f(map_plane.x, map_plane.y, map_plane.z))
+                .dot(Eigen::Vector3f(map_plane.normal_x, map_plane.normal_y, map_plane.normal_z))));
+        map_plane_nr++;
+      }
+    }
+    if (actual_translation_error.size() != 0) {
+      transl_error +=
+          *std::min_element(actual_translation_error.begin(), actual_translation_error.end());
+    } else {
+      transl_error += translation_penalty;
+    }
+    ++scan_plane_nr;
+  }
+};
 
 void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
                                             const pcl::PointCloud<pcl::PointNormal> scan_planes,
@@ -527,7 +824,8 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
   std::vector<SegmentedLine> scan_lines;
 
   // for (auto norm_point : scan_planes) {
-  //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " << norm_point.z
+  //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " <<
+  //   norm_point.z
   //             << std::endl;
   //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
   //             << norm_point.normal_z << std::endl;
@@ -636,8 +934,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
       if (!(possible_comb_map && possible_comb_scan)) continue;
 
       // Try out different possible assignments
-      getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
-                                    map_planes);
+      getAssignmentError(assignment, error, actual_transformation, scan_planes, map_planes);
       if (0 < error && (error < min_error || min_error < 0)) {
         for (int s = 0; s < 7; ++s) {
           transformTR[s] = actual_transformation[s];
@@ -659,8 +956,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
       assignment(1, 1) = candidate_map_line_one.pair_plane_nr;
       assignment(1, 2) = candidate_map_line_two.plane_nr;
       assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
-      getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
-                                    map_planes);
+      getAssignmentError(assignment, error, actual_transformation, scan_planes, map_planes);
       if (0 < error && (error < min_error || min_error < 0)) {
         for (int s = 0; s < 7; ++s) {
           transformTR[s] = actual_transformation[s];
@@ -681,8 +977,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
       assignment(1, 1) = candidate_map_line_one.pair_plane_nr;
       assignment(1, 2) = candidate_map_line_two.plane_nr;
       assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
-      getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
-                                    map_planes);
+      getAssignmentError(assignment, error, actual_transformation, scan_planes, map_planes);
       if (0 < error && (error < min_error || min_error < 0)) {
         for (int s = 0; s < 7; ++s) {
           transformTR[s] = actual_transformation[s];
@@ -703,8 +998,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
       assignment(1, 1) = candidate_map_line_one.pair_plane_nr;
       assignment(1, 2) = candidate_map_line_two.plane_nr;
       assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
-      getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
-                                    map_planes);
+      getAssignmentError(assignment, error, actual_transformation, scan_planes, map_planes);
       if (0 < error && (error < min_error || min_error < 0)) {
         for (int s = 0; s < 7; ++s) {
           transformTR[s] = actual_transformation[s];
@@ -727,10 +1021,10 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
   std::cout << "final error: " << min_error << std::endl;
 };
 
-void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignment,
-                                               float &transform_error, float (&transform)[7],
-                                               const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                               MapPlanes map_planes) {
+void PlaneMatch::getAssignmentError(Eigen::Matrix<int, 2, Eigen::Dynamic> assignment,
+                                    float &transform_error, float (&transform)[7],
+                                    const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                    MapPlanes map_planes) {
   ros::NodeHandle nh_private("~");
 
   float rotation_consistency_threshold =
@@ -740,8 +1034,14 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
   float translation_norm_threshold =
       nh_private.param<float>("LineSegmentRansacTranErrorNormThreshold", 0.7);
 
-  int scan_planes_nr[4] = {assignment(0, 0), assignment(0, 1), assignment(0, 2), assignment(0, 3)};
-  int map_planes_nr[4] = {assignment(1, 0), assignment(1, 1), assignment(1, 2), assignment(1, 3)};
+  std::vector<int> actual_plane_assignement;
+  std::vector<int> scan_planes_nr;
+  std::vector<int> map_planes_nr;
+  for (int assignment_nr = 0; assignment_nr < assignment.cols(); ++assignment_nr) {
+    actual_plane_assignement.push_back(assignment_nr);
+    scan_planes_nr.push_back(assignment(0, assignment_nr));
+    map_planes_nr.push_back(assignment(1, assignment_nr));
+  }
 
   // if (scan_planes_nr[0] == 0 && scan_planes_nr[1] == 1 && scan_planes_nr[2] == 2 &&
   //     scan_planes_nr[3] == 6 && map_planes_nr[0] == 6 && map_planes_nr[1] == 21 &&
@@ -774,11 +1074,6 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
   float transformation_score;
   float map_transformation_score;
   float scan_transformation_score;
-  std::vector<int> actual_plane_assignement;
-  actual_plane_assignement.push_back(0);
-  actual_plane_assignement.push_back(1);
-  actual_plane_assignement.push_back(2);
-  actual_plane_assignement.push_back(3);
   Eigen::Matrix4f actual_transform = Eigen::Matrix4f::Identity();
   Eigen::Vector3f translation;
   Eigen::Quaternionf q;
@@ -792,7 +1087,7 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
   reduced_scan_planes.clear();
   reduced_map_planes.clear();
 
-  for (int j = 0; j < 4; ++j) {
+  for (int j = 0; j < scan_planes_nr.size(); ++j) {
     reduced_scan_planes.push_back(scan_planes.points[scan_planes_nr[j]]);
     reduced_map_planes.push_back(map_planes_pc.points[map_planes_nr[j]]);
   }
@@ -810,7 +1105,8 @@ void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignme
 
   // std::cout << "candidate_scan_transform" << std::endl;
   // for (auto norm_point : reduced_scan_planes) {
-  //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " << norm_point.z
+  //   std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " <<
+  //   norm_point.z
   //             << std::endl;
   //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
   //             << norm_point.normal_z << std::endl;

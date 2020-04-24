@@ -42,6 +42,8 @@ class PlaneMatch {
   static void LineSegmentRansac(float (&transformTR)[7],
                                 const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                 MapPlanes map_planes);
+  static void PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                    MapPlanes map_planes);
 
  private:
   class SortRelativeTriangle;
@@ -79,10 +81,16 @@ class PlaneMatch {
                                 MapPlanes map_planes);
   static void getMatchProbLines(std::vector<SegmentedLine>, std::vector<SegmentedLine>,
                                 Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &match_score);
-  static void getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assingment,
-                                            float &transform_error, float (&transform)[7],
-                                            const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                            MapPlanes map_planes_);
+  static void getAssignmentError(Eigen::Matrix<int, 2, Eigen::Dynamic> assingment,
+                                 float &transform_error, float (&transform)[7],
+                                 const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                 MapPlanes map_planes_);
+
+  static void getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assignment,
+                                  float (&actual_transformation)[7], float &transl_error,
+                                  Eigen::Quaternionf rotation,
+                                  const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                  MapPlanes map_planes, float translation_penalty);
 
   static void transformAverage(float (&transformTR)[7], std::vector<int> plane_assignement,
                                const pcl::PointCloud<pcl::PointNormal> scan_planes,
