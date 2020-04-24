@@ -58,10 +58,13 @@ class PlaneMatch::SortRelativeTriangle {
   bool isline = false;
 };
 
-void PlaneMatch::IntersectionPatternMatcher(
-    float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
-    const pcl::PointCloud<pcl::PointNormal> map_planes,
-    Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries) {
+// void PlaneMatch::PRRUS(){
+
+// };
+
+void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
+                                            const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                            MapPlanes map_planes) {
   std::cout << "////////////////////////////////////////////////" << std::endl;
   std::cout << "////  Intersection Pattern Matcher Started  ////" << std::endl;
   std::cout << "////////////////////////////////////////////////" << std::endl;
@@ -75,7 +78,8 @@ void PlaneMatch::IntersectionPatternMatcher(
   std::vector<pcl::PointCloud<pcl::PointXYZ>> scan_intersection_points;
   std::vector<pcl::PointCloud<pcl::PointXYZ>> map_intersection_points;
   getprojPlaneIntersectionPoints(scan_intersection_points, parallel_threshold, scan_planes);
-  getprojPlaneIntersectionPoints(map_intersection_points, parallel_threshold, map_planes);
+  getprojPlaneIntersectionPoints(map_intersection_points, parallel_threshold,
+                                 map_planes.getPlaneCentroidsAndNormals());
 
   // int consider_map_plane = 6;
   // std::cout << "map" << std::endl;
@@ -102,22 +106,14 @@ void PlaneMatch::IntersectionPatternMatcher(
   pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
   pcl::PointCloud<pcl::PointXYZ>::Ptr filter_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   int point_index = 0;
-  for (int i = 0; i < map_planes.size(); i++) {
+  for (int i = 0; i < map_planes.getMapPlaneNumber(); i++) {
     point_index = 0;
     rm_index.clear();
     filter_cloud->clear();
     for (auto map_point : map_intersection_points[i]) {
-      if (std::abs(map_planes.points[i].normal_x) > 0.8) {
-        if (map_point.y < (room_boundaries(i, 0) - 0.5) ||
-            map_point.y > (room_boundaries(i, 1) + 0.5)) {
-          rm_index.push_back(point_index);
-        }
-      }
-      if (std::abs(map_planes.points[i].normal_y) > 0.8) {
-        if (map_point.x < (room_boundaries(i, 0) - 0.5) ||
-            map_point.x > room_boundaries(i, 1) + 0.5) {
-          rm_index.push_back(point_index);
-        }
+      if (!map_planes.isProjectionOfPointOnPlane(
+              Eigen::Vector3f(map_point.x, map_point.y, map_point.z), point_index)) {
+        rm_index.push_back(point_index);
       }
       point_index++;
     }
@@ -518,8 +514,7 @@ void PlaneMatch::filterIntersectionPoints(
 
 void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
                                    const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                   const pcl::PointCloud<pcl::PointNormal> map_planes,
-                                   Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries) {
+                                   MapPlanes map_planes) {
   std::cout << "////////////////////////////////////////////////" << std::endl;
   std::cout << "////       Line Segment RANSAC Started      ////" << std::endl;
   std::cout << "////////////////////////////////////////////////" << std::endl;
@@ -537,9 +532,10 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
   //   std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
   //             << norm_point.normal_z << std::endl;
   // }
+  pcl::PointCloud<pcl::PointNormal> map_planes_pc = map_planes.getPlaneCentroidsAndNormals();
 
-  getSegmentedLines(map_lines, map_planes, true, room_boundaries);
-  getSegmentedLines(scan_lines, scan_planes, false, room_boundaries);
+  getSegmentedLines(map_lines, map_planes_pc, true, map_planes);
+  getSegmentedLines(scan_lines, scan_planes, false, map_planes);
 
   Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> match_score;
   getMatchProbLines(map_lines, scan_lines, match_score);
@@ -610,18 +606,18 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
       possible_comb_map = false;
       possible_comb_scan = false;
       for (int comb_nr = 0; comb_nr < 3; ++comb_nr) {
-        map_transformation_score =
-            std::abs(Eigen::Vector3f(map_planes.points[assignment(1, (comb_nr + 1) % 4)].normal_x,
-                                     map_planes.points[assignment(1, (comb_nr + 1) % 4)].normal_y,
-                                     map_planes.points[assignment(1, (comb_nr + 1) % 4)].normal_z)
-                         .cross(Eigen::Vector3f(
-                             map_planes.points[assignment(1, (comb_nr + 2) % 4)].normal_x,
-                             map_planes.points[assignment(1, (comb_nr + 2) % 4)].normal_y,
-                             map_planes.points[assignment(1, (comb_nr + 2) % 4)].normal_z))
-                         .dot(Eigen::Vector3f(
-                             map_planes.points[assignment(1, (comb_nr + 3) % 4)].normal_x,
-                             map_planes.points[assignment(1, (comb_nr + 3) % 4)].normal_y,
-                             map_planes.points[assignment(1, (comb_nr + 3) % 4)].normal_z)));
+        map_transformation_score = std::abs(
+            Eigen::Vector3f(map_planes_pc.points[assignment(1, (comb_nr + 1) % 4)].normal_x,
+                            map_planes_pc.points[assignment(1, (comb_nr + 1) % 4)].normal_y,
+                            map_planes_pc.points[assignment(1, (comb_nr + 1) % 4)].normal_z)
+                .cross(Eigen::Vector3f(
+                    map_planes_pc.points[assignment(1, (comb_nr + 2) % 4)].normal_x,
+                    map_planes_pc.points[assignment(1, (comb_nr + 2) % 4)].normal_y,
+                    map_planes_pc.points[assignment(1, (comb_nr + 2) % 4)].normal_z))
+                .dot(Eigen::Vector3f(
+                    map_planes_pc.points[assignment(1, (comb_nr + 3) % 4)].normal_x,
+                    map_planes_pc.points[assignment(1, (comb_nr + 3) % 4)].normal_y,
+                    map_planes_pc.points[assignment(1, (comb_nr + 3) % 4)].normal_z)));
         if (map_transformation_score > transform_score_threshold) possible_comb_map = true;
         scan_transformation_score =
             std::abs(Eigen::Vector3f(scan_planes.points[assignment(0, (comb_nr + 1) % 4)].normal_x,
@@ -641,7 +637,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
 
       // Try out different possible assignments
       getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
-                                    map_planes, room_boundaries);
+                                    map_planes);
       if (0 < error && (error < min_error || min_error < 0)) {
         for (int s = 0; s < 7; ++s) {
           transformTR[s] = actual_transformation[s];
@@ -664,7 +660,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
       assignment(1, 2) = candidate_map_line_two.plane_nr;
       assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
       getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
-                                    map_planes, room_boundaries);
+                                    map_planes);
       if (0 < error && (error < min_error || min_error < 0)) {
         for (int s = 0; s < 7; ++s) {
           transformTR[s] = actual_transformation[s];
@@ -686,7 +682,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
       assignment(1, 2) = candidate_map_line_two.plane_nr;
       assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
       getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
-                                    map_planes, room_boundaries);
+                                    map_planes);
       if (0 < error && (error < min_error || min_error < 0)) {
         for (int s = 0; s < 7; ++s) {
           transformTR[s] = actual_transformation[s];
@@ -708,7 +704,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
       assignment(1, 2) = candidate_map_line_two.plane_nr;
       assignment(1, 3) = candidate_map_line_two.pair_plane_nr;
       getLineSegmentAssignmentError(assignment, error, actual_transformation, scan_planes,
-                                    map_planes, room_boundaries);
+                                    map_planes);
       if (0 < error && (error < min_error || min_error < 0)) {
         for (int s = 0; s < 7; ++s) {
           transformTR[s] = actual_transformation[s];
@@ -728,13 +724,13 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
     std::cout << "Couldn't estimate transformation as no valid orthogonal combination of planes "
                  "could be found"
               << std::endl;
+  std::cout << "final error: " << min_error << std::endl;
 };
 
-void PlaneMatch::getLineSegmentAssignmentError(
-    Eigen::Matrix<int, 2, 4> assignment, float &transform_error, float (&transform)[7],
-    const pcl::PointCloud<pcl::PointNormal> scan_planes,
-    const pcl::PointCloud<pcl::PointNormal> map_planes,
-    Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries) {
+void PlaneMatch::getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assignment,
+                                               float &transform_error, float (&transform)[7],
+                                               const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                               MapPlanes map_planes) {
   ros::NodeHandle nh_private("~");
 
   float rotation_consistency_threshold =
@@ -753,14 +749,14 @@ void PlaneMatch::getLineSegmentAssignmentError(
   //   std::cout << "here" << std::endl;
   // }
   // std::cout << "////////////////////////////" << std::endl;
-  // scan_planes_nr[0] = 1;
-  // scan_planes_nr[1] = 0;
-  // scan_planes_nr[2] = 2;
-  // scan_planes_nr[3] = 3;
+  // scan_planes_nr[0] = 3;
+  // scan_planes_nr[1] = 2;
+  // scan_planes_nr[2] = 5;
+  // scan_planes_nr[3] = 4;
   // map_planes_nr[0] = 0;
-  // map_planes_nr[1] = 8;
-  // map_planes_nr[2] = 9;
-  // map_planes_nr[3] = 15;
+  // map_planes_nr[1] = 4;
+  // map_planes_nr[2] = 17;
+  // map_planes_nr[3] = 18;
 
   // bool check = (scan_planes_nr[0] == 1 && scan_planes_nr[1] == 7 && scan_planes_nr[2] == 1 &&
   //               scan_planes_nr[3] == 4) &&
@@ -790,6 +786,7 @@ void PlaneMatch::getLineSegmentAssignmentError(
   transform_error = 0;
 
   pcl::PointCloud<pcl::PointNormal> reduced_map_planes, reduced_scan_planes;
+  pcl::PointCloud<pcl::PointNormal> map_planes_pc = map_planes.getPlaneCentroidsAndNormals();
 
   // Calculate transformation using the four candidates
   reduced_scan_planes.clear();
@@ -797,7 +794,7 @@ void PlaneMatch::getLineSegmentAssignmentError(
 
   for (int j = 0; j < 4; ++j) {
     reduced_scan_planes.push_back(scan_planes.points[scan_planes_nr[j]]);
-    reduced_map_planes.push_back(map_planes.points[map_planes_nr[j]]);
+    reduced_map_planes.push_back(map_planes_pc.points[map_planes_nr[j]]);
   }
 
   transformAverage(transform, actual_plane_assignement, reduced_scan_planes, reduced_map_planes);
@@ -825,15 +822,15 @@ void PlaneMatch::getLineSegmentAssignmentError(
   for (auto scan_plane : reduced_scan_planes) {
     // Check if plane centroid lies on corresponding plane (should be replaced by projection on
     // plane)
-    if (std::abs(reduced_map_planes.points[plane_nr].normal_x) > 0.8 &&
-        (room_boundaries(map_planes_nr[plane_nr], 0) - 0.5 > scan_plane.y ||
-         room_boundaries(map_planes_nr[plane_nr], 1) + 0.5 < scan_plane.y ||
-         scan_plane.z < 0 - 0.5 || scan_plane.z > 3 + 0.5)) {
-      transform_error += translation_penalty;
-    } else if (std::abs(reduced_map_planes.points[plane_nr].normal_y) > 0.8 &&
-               (room_boundaries(map_planes_nr[plane_nr], 0) - 0.5 > scan_plane.x ||
-                room_boundaries(map_planes_nr[plane_nr], 1) + 0.5 < scan_plane.x ||
-                scan_plane.z < 0 - 0.5 || scan_plane.z > 3 + 0.5)) {
+    // std::cout << "here" << std::endl;
+    // std::cout << map_planes_nr[plane_nr] << std::endl;
+    // std::cout << Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z) << std::endl;
+    // std::cout << map_planes.isProjectionOfPointOnPlane(
+    //                  Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z),
+    //                  map_planes_nr[plane_nr])
+    //           << std::endl;
+    if (!map_planes.isProjectionOfPointOnPlane(
+            Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z), map_planes_nr[plane_nr])) {
       transform_error += translation_penalty;
     } else {
       // Point on plane
@@ -868,11 +865,13 @@ void PlaneMatch::getLineSegmentAssignmentError(
   // Get additional information from other scan planes (without assignment)
   reduced_scan_planes.clear();
   reduced_map_planes.clear();
-  for (int i = 0; i < map_planes.size(); ++i) {
+  std::vector<int> map_planes_index;
+  for (int i = 0; i < map_planes.getMapPlaneNumber(); ++i) {
     if (i == map_planes_nr[0] || i == map_planes_nr[1] || i == map_planes_nr[2] ||
         i == map_planes_nr[3])
       continue;
-    reduced_map_planes.push_back(map_planes.points[i]);
+    reduced_map_planes.push_back(map_planes_pc.points[i]);
+    map_planes_index.push_back(i);
   }
   for (int i = 0; i < scan_planes.size(); ++i) {
     if (i == scan_planes_nr[0] || i == scan_planes_nr[1] || i == scan_planes_nr[2] ||
@@ -895,17 +894,9 @@ void PlaneMatch::getLineSegmentAssignmentError(
         map_plane_nr++;
         continue;
       }
-      if (std::abs(map_plane.normal_x) > 0.8 &&
-          (room_boundaries(map_plane_nr, 0) - 0.5 > scan_plane.y ||
-           room_boundaries(map_plane_nr, 1) + 0.5 < scan_plane.y || scan_plane.z < 0 - 0.5 ||
-           scan_plane.z > 3 + 0.5)) {
-        map_plane_nr++;
-        continue;
-      }
-      if (std::abs(map_plane.normal_y) > 0.8 &&
-          (room_boundaries(map_plane_nr, 0) - 0.5 > scan_plane.x ||
-           room_boundaries(map_plane_nr, 1) + 0.5 < scan_plane.x || scan_plane.z < 0 - 0.5 ||
-           scan_plane.z > 3 + 0.5)) {
+      if (!map_planes.isProjectionOfPointOnPlane(
+              Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z),
+              map_planes_index[map_plane_nr])) {
         map_plane_nr++;
         continue;
       }
@@ -929,9 +920,9 @@ void PlaneMatch::getLineSegmentAssignmentError(
   }
 }
 
-void PlaneMatch::getSegmentedLines(
-    std::vector<SegmentedLine> &segmented_lines, const pcl::PointCloud<pcl::PointNormal> planes,
-    bool ismap, Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> room_boundaries) {
+void PlaneMatch::getSegmentedLines(std::vector<SegmentedLine> &segmented_lines,
+                                   const pcl::PointCloud<pcl::PointNormal> planes, bool ismap,
+                                   MapPlanes map_planes) {
   ros::NodeHandle nh_private("~");
   float parallel_threshold = nh_private.param<float>("SegmentedLineParallelThreshold", 0.9);
   float max_distance = nh_private.param<float>("SegmentedLineDistanceThreshold", 100);
@@ -987,19 +978,15 @@ void PlaneMatch::getSegmentedLines(
         // Skip intersection plane if there is no intersection with candidate plane
         if (!CGAL::assign(intersection_point, result_intersection_point)) continue;
 
-        if (ismap && ((std::abs(plane.normal_x) > 0.8 &&
-                       (intersection_point.y() < (room_boundaries(plane_nr, 0) - 0.5) ||
-                        intersection_point.y() > (room_boundaries(plane_nr, 1) + 0.5))) ||
-                      ((std::abs(plane.normal_y) > 0.8 &&
-                        (intersection_point.x() < (room_boundaries(plane_nr, 0) - 0.5) ||
-                         intersection_point.x() > (room_boundaries(plane_nr, 1) + 0.5))))))
+        if (ismap && !map_planes.isProjectionOfPointOnPlane(
+                         Eigen::Vector3f(intersection_point.x(), intersection_point.y(),
+                                         intersection_point.z()),
+                         plane_nr))
           continue;
-        if (ismap && ((std::abs(planes.points[pair_plane_nr].normal_x) > 0.8 &&
-                       (intersection_point.y() < (room_boundaries(pair_plane_nr, 0) - 0.5) ||
-                        intersection_point.y() > (room_boundaries(pair_plane_nr, 1) + 0.5))) ||
-                      ((std::abs(planes.points[pair_plane_nr].normal_y) > 0.8 &&
-                        (intersection_point.x() < (room_boundaries(pair_plane_nr, 0) - 0.5) ||
-                         intersection_point.x() > (room_boundaries(pair_plane_nr, 1) + 0.5))))))
+        if (ismap && !map_planes.isProjectionOfPointOnPlane(
+                         Eigen::Vector3f(intersection_point.x(), intersection_point.y(),
+                                         intersection_point.z()),
+                         pair_plane_nr))
           continue;
         intersection_points.push_back(intersection_point);
       }
@@ -1077,7 +1064,7 @@ void PlaneMatch::getMatchProbLines(
 
 void PlaneMatch::loadExampleSol(float (&transformTR)[7],
                                 const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                const pcl::PointCloud<pcl::PointNormal> map_planes) {
+                                MapPlanes map_planes) {
   std::vector<int> plane_assignment(scan_planes.size(), 0);
   // // Real data
   // // Solution to example
@@ -1110,7 +1097,8 @@ void PlaneMatch::loadExampleSol(float (&transformTR)[7],
   plane_assignment[4] = 0;
   plane_assignment[5] = 2;
 
-  transformAverage(transformTR, plane_assignment, scan_planes, map_planes);
+  transformAverage(transformTR, plane_assignment, scan_planes,
+                   map_planes.getPlaneCentroidsAndNormals());
 }
 
 void PlaneMatch::transformAverage(float (&transformTR)[7], std::vector<int> plane_assignment,

@@ -14,7 +14,7 @@ SegmentedLineDeviationGrade: 2
 LineSegmentRansacSubsetSize: 300
 LineSegmentRansacTranAlongPlane: 8
 LineSegmentRansacRotConsistThreshold: 0.5
-LineSegmentRansacErrorThreshold: 0.7
+LineSegmentRansacErrorThreshold: 1
 LineSegmentRansacTranErrorPenalty: 10
 
 

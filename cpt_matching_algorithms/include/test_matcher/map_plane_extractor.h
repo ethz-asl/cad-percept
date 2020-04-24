@@ -23,6 +23,15 @@ class MapPlanes {
       pcl::PointCloud<pcl::PointNormal> &output_planes,
       Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &output_boundaries);
 
+  // Get plane normals and centroids
+  pcl::PointCloud<pcl::PointNormal> getPlaneCentroidsAndNormals();
+
+  // Get info if point projection lies on plane
+  bool isProjectionOfPointOnPlane(Eigen::Vector3f point, int map_plane_nr);
+
+  // Get number of planes of map
+  int getMapPlaneNumber();
+
   // Print information about each plane
   void dispAllPlanes();
 

@@ -66,6 +66,28 @@ MapPlanes::MapPlanes(std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_i
   }
 };
 
+bool MapPlanes::isProjectionOfPointOnPlane(Eigen::Vector3f point, int map_plane_nr) {
+  pcl::PointNormal plane = plane_centroid_with_normals_.points[map_plane_nr];
+  float tol = 0.5;
+  if (std::abs(plane.normal_x) > 0.8) {
+    return plane_boundaries(2, map_plane_nr) - tol < point[1] &&
+           point[1] < plane_boundaries(3, map_plane_nr) + tol &&
+           plane_boundaries(4, map_plane_nr) - tol < point[2] &&
+           point[2] < plane_boundaries(5, map_plane_nr) + tol;
+  } else if (std::abs(plane.normal_y) > 0.8) {
+    return plane_boundaries(0, map_plane_nr) - tol < point[0] &&
+           point[0] < plane_boundaries(1, map_plane_nr) + tol &&
+           plane_boundaries(4, map_plane_nr) - tol < point[2] &&
+           point[2] < plane_boundaries(5, map_plane_nr) + tol;
+  } else if (std::abs(plane.normal_z) > 0.8) {
+    return plane_boundaries(0, map_plane_nr) - tol < point[0] &&
+           point[0] < plane_boundaries(1, map_plane_nr) + tol &&
+           plane_boundaries(2, map_plane_nr) - tol < point[1] &&
+           point[1] < plane_boundaries(3, map_plane_nr) + tol;
+  }
+  return false;
+};
+
 void MapPlanes::getMapPlaneInformations(
     pcl::PointCloud<pcl::PointNormal> &output_planes,
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &output_boundaries) {
@@ -73,6 +95,12 @@ void MapPlanes::getMapPlaneInformations(
   for (auto plane : plane_centroid_with_normals_) output_planes.push_back(plane);
   output_boundaries = plane_boundaries;
 };
+
+pcl::PointCloud<pcl::PointNormal> MapPlanes::getPlaneCentroidsAndNormals() {
+  return plane_centroid_with_normals_;
+}
+
+int MapPlanes::getMapPlaneNumber() { return plane_centroid_with_normals_.size(); };
 
 void MapPlanes::dispAllPlanes() {
   int plane_nr = 0;

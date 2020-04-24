@@ -239,19 +239,21 @@ void TestMatcher::match() {
       plane_nr++;
     }
 
+    for (auto norm_point : scan_planes_) {
+      std::cout << "point on plane " << norm_point.x << " " << norm_point.y << " " << norm_point.z
+                << std::endl;
+      std::cout << "normal of plane " << norm_point.normal_x << " " << norm_point.normal_y << " "
+                << norm_point.normal_z << std::endl;
+    }
+
     std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
-    std::cout << plane_matcher << std::endl;
-    pcl::PointCloud<pcl::PointNormal> map_planes;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> room_boundaries;
-    map_planes_->getMapPlaneInformations(map_planes, room_boundaries);
     // Plane Matching (Get T_map,lidar)
     if (!plane_matcher.compare("IntersectionPatternMatcher")) {
-      PlaneMatch::IntersectionPatternMatcher(transform_TR_, scan_planes_, map_planes,
-                                             room_boundaries);
+      PlaneMatch::IntersectionPatternMatcher(transform_TR_, scan_planes_, *map_planes_);
     } else if (!plane_matcher.compare("useMatchSolution")) {
-      PlaneMatch::loadExampleSol(transform_TR_, scan_planes_, map_planes);
+      PlaneMatch::loadExampleSol(transform_TR_, scan_planes_, *map_planes_);
     } else if (!plane_matcher.compare("LineSegmentRansac")) {
-      PlaneMatch::LineSegmentRansac(transform_TR_, scan_planes_, map_planes, room_boundaries);
+      PlaneMatch::LineSegmentRansac(transform_TR_, scan_planes_, *map_planes_);
     } else {
       std::cout << "Error: Could not find given plane matcher" << std::endl;
       return;

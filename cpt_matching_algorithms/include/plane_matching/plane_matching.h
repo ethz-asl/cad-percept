@@ -11,8 +11,9 @@
 
 #include <pcl/filters/passthrough.h>
 #include "cloud_filter/cloud_filter.h"
+#include "test_matcher/map_plane_extractor.h"
 
-// Remove this again
+#include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_conversions/tf_conversions.h>
 #include <cgal_definitions/mesh_model.h>
@@ -34,15 +35,13 @@ class PlaneMatch {
  public:
   static void IntersectionPatternMatcher(float (&transformTR)[7],
                                          const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                         const pcl::PointCloud<pcl::PointNormal> map_planes,
-                                         Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries);
+                                         MapPlanes map_planes);
   static void loadExampleSol(float (&transformTR)[7],
                              const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                             const pcl::PointCloud<pcl::PointNormal> map_planes);
+                             MapPlanes map_planes);
   static void LineSegmentRansac(float (&transformTR)[7],
                                 const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                const pcl::PointCloud<pcl::PointNormal> map_planes,
-                                Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries);
+                                MapPlanes map_planes);
 
  private:
   class SortRelativeTriangle;
@@ -75,16 +74,15 @@ class PlaneMatch {
     float match_score;
   };
 
-  static void getSegmentedLines(
-      std::vector<SegmentedLine> &segmented_lines, const pcl::PointCloud<pcl::PointNormal> planes,
-      bool ismap, Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> room_boundaries);
+  static void getSegmentedLines(std::vector<SegmentedLine> &segmented_lines,
+                                const pcl::PointCloud<pcl::PointNormal> planes, bool ismap,
+                                MapPlanes map_planes);
   static void getMatchProbLines(std::vector<SegmentedLine>, std::vector<SegmentedLine>,
                                 Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &match_score);
-  static void getLineSegmentAssignmentError(
-      Eigen::Matrix<int, 2, 4> assingment, float &transform_error, float (&transform)[7],
-      const pcl::PointCloud<pcl::PointNormal> scan_planes,
-      const pcl::PointCloud<pcl::PointNormal> map_planes,
-      Eigen::Matrix<float, Eigen::Dynamic, 2> room_boundaries);
+  static void getLineSegmentAssignmentError(Eigen::Matrix<int, 2, 4> assingment,
+                                            float &transform_error, float (&transform)[7],
+                                            const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                                            MapPlanes map_planes_);
 
   static void transformAverage(float (&transformTR)[7], std::vector<int> plane_assignement,
                                const pcl::PointCloud<pcl::PointNormal> scan_planes,
