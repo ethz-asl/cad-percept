@@ -78,6 +78,7 @@ class PlaneExtractor::HoughAccumulator {
 
       plane_coefficients.push_back(actuel_plane_coefficients);
       get_voter_ids.push_back(voter_ids_[maximum_idx]);
+      std::cout << actuel_plane_coefficients << std::endl;
 
       copy_bins(1, maximum_idx) = 0;
     }
@@ -183,11 +184,10 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
                              double min_area_spanned, PointCloud<PointXYZ> lidar_scan,
                              HoughAccumulator *accumulator) {
   // Setup needed variables
-  PointXYZ origin(0, 0, 0);
   int reference_point_ids[3];
-  PointXYZ reference_point[3];
-  PointXYZ vector_on_plane[2];
-  PointXYZ normal_of_plane;
+  PointXYZ sampled_point[3];
+  Eigen::Vector3f reference_point[3];
+  Eigen::Vector3f normal_of_plane;
   double norm_of_normal;
   Eigen::Vector3d vote;
 
@@ -199,47 +199,44 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
     reference_point_ids[0] = (rand() % (pointcloud_size + 1));
     reference_point_ids[1] = (rand() % (pointcloud_size + 1));
     reference_point_ids[2] = (rand() % (pointcloud_size + 1));
-    reference_point[0] = lidar_scan.points[reference_point_ids[0]];
-    reference_point[1] = lidar_scan.points[reference_point_ids[1]];
-    reference_point[2] = lidar_scan.points[reference_point_ids[2]];
+    sampled_point[0] = lidar_scan.points[reference_point_ids[0]];
+    sampled_point[1] = lidar_scan.points[reference_point_ids[1]];
+    sampled_point[2] = lidar_scan.points[reference_point_ids[2]];
+
+    reference_point[0] =
+        Eigen::Vector3f(sampled_point[0].x, sampled_point[0].y, sampled_point[0].z);
+    reference_point[1] =
+        Eigen::Vector3f(sampled_point[1].x, sampled_point[1].y, sampled_point[1].z);
+    reference_point[2] =
+        Eigen::Vector3f(sampled_point[2].x, sampled_point[2].y, sampled_point[2].z);
 
     // Check if points are close
-    if (geometry::distance(reference_point[0], reference_point[1]) > tol_distance_between_points)
+    if ((reference_point[0] - reference_point[1]).norm() > tol_distance_between_points ||
+        (reference_point[1] - reference_point[2]).norm() > tol_distance_between_points ||
+        (reference_point[0] - reference_point[2]).norm() > tol_distance_between_points) {
+      --i;
       continue;
+    }
 
-    if (geometry::distance(reference_point[1], reference_point[2]) > tol_distance_between_points)
-      continue;
+    normal_of_plane =
+        (reference_point[0] - reference_point[1]).cross(reference_point[0] - reference_point[2]);
+    norm_of_normal = normal_of_plane.norm();
 
-    if (geometry::distance(reference_point[0], reference_point[2]) > tol_distance_between_points)
-      continue;
-
-    vector_on_plane[0] = PointXYZ(reference_point[1].x - reference_point[0].x,
-                                  reference_point[1].y - reference_point[0].y,
-                                  reference_point[1].z - reference_point[0].z);
-    vector_on_plane[1] = PointXYZ(reference_point[2].x - reference_point[0].x,
-                                  reference_point[2].y - reference_point[0].y,
-                                  reference_point[2].z - reference_point[0].z);
-    normal_of_plane = PointXYZ(
-        vector_on_plane[1].y * vector_on_plane[0].z - vector_on_plane[1].z * vector_on_plane[0].y,
-        vector_on_plane[1].z * vector_on_plane[0].x - vector_on_plane[1].x * vector_on_plane[0].z,
-        vector_on_plane[1].x * vector_on_plane[0].y - vector_on_plane[1].y * vector_on_plane[0].x);
-
-    norm_of_normal = (double)geometry::distance(origin, normal_of_plane);
     // Check if points are collinear or the same
-    if (norm_of_normal < min_area_spanned) continue;
+    if (norm_of_normal < min_area_spanned) {
+      --i;
+      continue;
+    }
 
     // Setup vote
-    vote(0) = normal_of_plane.x * reference_point[0].x + normal_of_plane.y * reference_point[0].y +
-              normal_of_plane.z * reference_point[0].z;  // rho
+    vote(0) = normal_of_plane.dot(reference_point[0]) / norm_of_normal;  // rho
     if (vote(0) < 0) {
       vote(0) = -vote(0);
-      normal_of_plane.x = -normal_of_plane.x;
-      normal_of_plane.y = -normal_of_plane.y;
-      normal_of_plane.z = -normal_of_plane.z;
+      normal_of_plane = -normal_of_plane;
     }
-    vote(1) = atan2(normal_of_plane.y, normal_of_plane.x);  // theta
-    vote(2) = atan2(normal_of_plane.z,
-                    sqrt(pow(normal_of_plane.x, 2) + pow(normal_of_plane.y, 2)));  // psi
+    vote(1) = atan2(normal_of_plane[1], normal_of_plane[0]);  // theta
+    vote(2) = atan2(normal_of_plane[3],
+                    sqrt(pow(normal_of_plane[0], 2) + pow(normal_of_plane[1], 2)));  // psi
 
     accumulator->vote(vote, reference_point_ids);
   }
