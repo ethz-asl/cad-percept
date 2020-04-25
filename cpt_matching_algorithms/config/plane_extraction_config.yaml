@@ -7,9 +7,9 @@ PCLMinInlier: 15
 # Settings of accumulator
 
 AccumulatorChoice: 2 # 1: array, 2: ball
-AccumulatorRhoResolution: 0.5
-AccumulatorThetaResolution: 0.3
-AccumulatorPsiResolution: 0.3
+AccumulatorRhoResolution: 0.1
+AccumulatorThetaResolution: 0.04
+AccumulatorPsiResolution: 0.04
 AccumulatorThreshold: 10
 AccumulatorKMaxSuppress: 14 # set to zero to deactivate
 
@@ -25,10 +25,10 @@ RHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should
 #Settings of iterative RHT
 
 # Settings of accumulator
-iterAccumulatorRhoResolution: 0.5
-iterAccumulatorThetaResolution: 0.3
-iterAccumulatorPsiResolution: 0.3
-iterAccumulatorKMaxSuppress: 14 # set to zero to deactivate
+iterAccumulatorRhoResolution: 0.1
+iterAccumulatorThetaResolution: 0.04
+iterAccumulatorPsiResolution: 0.04
+iterAccumulatorKMaxSuppress: 6 # set to zero to deactivate
 iterAccumulatorMinThreshold: 0
 
 # Settings of RHT

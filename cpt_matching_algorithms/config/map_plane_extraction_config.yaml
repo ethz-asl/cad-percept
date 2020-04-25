@@ -4,9 +4,9 @@ MapPlaneExtractionPointInMap: [27.2, -0.2, 2] # set generell part of normals acc
                                               # change rest manually in file 
 
 # Settings of CGAL Region Growing for Map plane extraction
-CGALRegionGrowMinNumInliers: 130
-CGALRegionGrowMaxDistToPlane: 0.01
-CGALRegionGrowMaxDistBetwPoint: 7
+CGALRegionGrowMinNumInliers: 60
+CGALRegionGrowMaxDistToPlane: 0.02
+CGALRegionGrowMaxDistBetwPoint: 8
 CGALRegionGrowMaxDiffNormalThreshold: 0.949
 
 CGALRGRegulActive: true

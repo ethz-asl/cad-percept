@@ -231,7 +231,6 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
     // Setup vote
     vote(0) = normal_of_plane.x * reference_point[0].x + normal_of_plane.y * reference_point[0].y +
               normal_of_plane.z * reference_point[0].z;  // rho
-    vote(0) = vote(0) / norm_of_normal;
     if (vote(0) < 0) {
       vote(0) = -vote(0);
       normal_of_plane.x = -normal_of_plane.x;
@@ -315,9 +314,9 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
   int accumulator_choice = nh_private.param<int>("AccumulatorChoice", 2);
-  double rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 0.5);
-  double theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 0.3);
-  double psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 0.3);
+  double rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 0.1);
+  double theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 0.04);
+  double psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 0.04);
   int min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 0);
   int k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 14);
   float slope_threshold = nh_private.param<float>("AccumulatorSlopeThreshold", 0);
@@ -379,16 +378,16 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
   plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
-  double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 0.5);
-  double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 0.2);
-  double psi_resolution = nh_private.param<double>("iterAccumulatorPsiResolution", 0.2);
+  double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 0.1);
+  double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 0.04);
+  double psi_resolution = nh_private.param<double>("iterAccumulatorPsiResolution", 0.04);
   int k_of_maxima_suppression = nh_private.param<int>("iterAccumulatorKMaxSuppress", 14);
   int min_vote_threshold = nh_private.param<int>("iterAccumulatorMinThreshold", 0);
 
   int iteration_per_plane = nh_private.param<int>("iterRHTIter", 10000);
   double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 3);
   double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.5);
-  int num_main_planes = nh_private.param<int>("iterRHTPlaneNumber", 8);
+  int num_main_planes = nh_private.param<int>("iterRHTPlaneNumber", 1);
   int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlaneperIter", 1);
 
   // Copy lidar frame to remove points
