@@ -51,6 +51,12 @@ class PlaneExtractor {
                              ros::Publisher &plane_pub, std::string tf_map_frame);
 
  private:
+  struct accumulatorBin {
+    Eigen::Vector3d bin_value;
+    int index;
+  };
+  class SphereTensor;
+  class BinSphereTensor;
   class HoughAccumulator;
   class ArrayAccumulator;
   class BallAccumulator;
