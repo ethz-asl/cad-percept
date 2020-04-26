@@ -108,11 +108,12 @@ void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::Point
   std::vector<Eigen::Vector3i> orthogonal_groups_in_scan;
   Eigen::Vector3f scan_plane_normal[3];
   Eigen::Vector3f cross_product;
-  for (int i = 0; i < (scan_planes.size() - 2); ++i) {
+  for (int i = 0; i < ((int)scan_planes.size() - 2); ++i) {
+    // std::cout << i << std::endl;
     scan_plane_normal[0] =
         Eigen::Vector3f(scan_planes.points[i].normal_x, scan_planes.points[i].normal_y,
                         scan_planes.points[i].normal_z);
-    for (int j = i + 1; j < (scan_planes.size() - 1); ++j) {
+    for (int j = i + 1; j < ((int)scan_planes.size() - 1); ++j) {
       scan_plane_normal[1] =
           Eigen::Vector3f(scan_planes.points[j].normal_x, scan_planes.points[j].normal_y,
                           scan_planes.points[j].normal_z);

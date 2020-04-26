@@ -190,6 +190,11 @@ void TestMatcher::match() {
       float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
       CloudFilter::filterVoxelCentroid(search_radius, lidar_scan_);
     }
+
+    if (lidar_scan_.size() == 0) {
+      std::cout << "Can not find any planes in scan, as scan is empty after filtering" << std::endl;
+      return;
+    }
     // Plane Extraction
     std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
     std::vector<Eigen::Vector3d> plane_normals;
@@ -301,12 +306,17 @@ void TestMatcher::evaluate() {
   float error = sqrt(pow(transform_TR_[0] - ground_truth_[0], 2) +
                      pow(transform_TR_[1] - ground_truth_[1], 2) +
                      pow(transform_TR_[2] - ground_truth_[2], 2));
+
   getError(sample_map_, lidar_scan_);
   std::cout << "error (euclidean distance of translation): " << error << std::endl;
 }
 
 // Get RMSE of two point clouds
 void TestMatcher::getError(PointCloud p1, PointCloud p2) {
+  if (p1.size() == 0 || p2.size() == 0) {
+    return;
+  }
+
   DP p1_dp = cpt_utils::pointCloudToDP(p1);
   DP p2_dp = cpt_utils::pointCloudToDP(p2);
 

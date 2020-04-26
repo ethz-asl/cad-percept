@@ -6,7 +6,7 @@ PCLMinInlier: 15
 
 # Settings of accumulator
 
-AccumulatorChoice: 1 # 1: array, 2: ball
+AccumulatorChoice: 2 # 1: array, 2: ball
 AccumulatorRhoResolution: 0.1
 AccumulatorThetaResolution: 0.04
 AccumulatorPsiResolution: 0.04
@@ -32,8 +32,8 @@ iterAccumulatorKMaxSuppress: 0 # set to zero to deactivate
 iterAccumulatorMinThreshold: 0
 
 # Settings of RHT
-iterRHTIter: 10000
-iterRHTTolDist: 2   # makes sure points are not too far apart
+iterRHTIter: 100000
+iterRHTTolDist: 3   # makes sure points are not too far apart
 iterRHTMinArea: 0.5
 iterRHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown
 iterRHTNumPlaneperIter: 1
