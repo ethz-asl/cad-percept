@@ -6,10 +6,10 @@ PCLMinInlier: 15
 
 # Settings of accumulator
 
-AccumulatorChoice: 2 # 1: array, 2: ball
+AccumulatorChoice: 1 # 1: array, 2: ball
 AccumulatorRhoResolution: 0.1
-AccumulatorThetaResolution: 0.04
-AccumulatorPsiResolution: 0.04
+AccumulatorThetaResolution: 0.3
+AccumulatorPsiResolution: 0.1
 AccumulatorThreshold: 10
 AccumulatorKMaxSuppress: 14 # set to zero to deactivate
 
