@@ -21,8 +21,8 @@ useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
 # Plane Extraction
-PlaneExtractor: rhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 
-                                   # iterRhtPlaneExtraction, cgalRegionGrowing
+PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 
+                                  # iterRhtPlaneExtraction, cgalRegionGrowing
 
 # Plane Matching
 PlaneMatch: PRRUS # useMatchSolution, IntersectionPatternMatcher

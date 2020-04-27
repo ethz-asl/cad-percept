@@ -16,7 +16,7 @@ AccumulatorKMaxSuppress: 14 # set to zero to deactivate
 
 # Settings of RHT
 
-RHTMaxIter: 10000
+RHTMaxIter: 100000
 RHTTolDist: 3    # makes sure points are not too far apart
 RHTMinArea: 0.5
 RHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown
@@ -25,6 +25,7 @@ RHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should
 #Settings of iterative RHT
 
 # Settings of accumulator
+iterAccumulatorChoice: 1 # 1: array, 2: ball
 iterAccumulatorRhoResolution: 0.1
 iterAccumulatorThetaResolution: 0.05
 iterAccumulatorPsiResolution: 0.05
@@ -32,7 +33,7 @@ iterAccumulatorKMaxSuppress: 0 # set to zero to deactivate
 iterAccumulatorMinThreshold: 0
 
 # Settings of RHT
-iterRHTIter: 100000
+iterRHTIter: 1000000
 iterRHTTolDist: 3   # makes sure points are not too far apart
 iterRHTMinArea: 0.5
 iterRHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown

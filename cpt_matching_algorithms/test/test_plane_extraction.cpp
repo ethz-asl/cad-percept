@@ -54,8 +54,8 @@ TEST(PlaneExtractionTest, pclPlaneExtraction) {
   std::cout << "pclPlaneExtraction found plane with normal: x " << plane_normals[0][0]
             << " y: " << plane_normals[0][1] << " z: " << plane_normals[0][2] << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_normals[0][0]) > 0.9 && std::abs(plane_normals[0][1]) < 0.2 &&
-              std::abs(plane_normals[0][2]) < 0.2);
+  EXPECT_TRUE(std::abs(plane_normals[0][0]) > 0.9 && std::abs(plane_normals[0][1]) < 0.1 &&
+              std::abs(plane_normals[0][2]) < 0.1);
 }
 
 TEST(PlaneExtractionTest, rhtPlaneExtraction) {
@@ -80,8 +80,8 @@ TEST(PlaneExtractionTest, rhtPlaneExtraction) {
   std::cout << "rhtPlaneExtraction found plane with normal: x " << plane_normals[0][0]
             << " y: " << plane_normals[0][1] << " z: " << plane_normals[0][2] << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_normals[0][0]) > 0.9 && std::abs(plane_normals[0][1]) < 0.3 &&
-              std::abs(plane_normals[0][2]) < 0.3);
+  EXPECT_TRUE(std::abs(plane_normals[0][0]) > 0.9 && std::abs(plane_normals[0][1]) < 0.1 &&
+              std::abs(plane_normals[0][2]) < 0.1);
 }
 
 TEST(PlaneExtractionTest, iterRhtPlaneExtraction) {
@@ -106,8 +106,8 @@ TEST(PlaneExtractionTest, iterRhtPlaneExtraction) {
   std::cout << "iterRhtPlaneExtraction found plane with normal: x " << plane_normals[0][0]
             << " y: " << plane_normals[0][1] << " z: " << plane_normals[0][2] << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_normals[0][0]) > 0.9 && std::abs(plane_normals[0][1]) < 0.2 &&
-              std::abs(plane_normals[0][2]) < 0.2);
+  EXPECT_TRUE(std::abs(plane_normals[0][0]) > 0.9 && std::abs(plane_normals[0][1]) < 0.1 &&
+              std::abs(plane_normals[0][2]) < 0.1);
 }
 
 TEST(PlaneExtractionTest, cgalRegionGrowing) {
@@ -132,6 +132,6 @@ TEST(PlaneExtractionTest, cgalRegionGrowing) {
   std::cout << "cgalRegionGrowing found plane with normal: x " << plane_normals[0][0]
             << " y: " << plane_normals[0][1] << " z: " << plane_normals[0][2] << std::endl;
 
-  EXPECT_TRUE(std::abs(plane_normals[0][0]) > 0.9 && std::abs(plane_normals[0][1]) < 0.2 &&
-              std::abs(plane_normals[0][2]) < 0.2);
+  EXPECT_TRUE(std::abs(plane_normals[0][0]) > 0.9 && std::abs(plane_normals[0][1]) < 0.1 &&
+              std::abs(plane_normals[0][2]) < 0.1);
 }
