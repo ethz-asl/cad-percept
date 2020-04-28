@@ -22,7 +22,7 @@ Voxelsearchradius: 0.1
 
 # Plane Extraction
 PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 
-                                  # iterRhtPlaneExtraction, cgalRegionGrowing
+                                   # iterRhtPlaneExtraction, cgalRegionGrowing
 
 # Plane Matching
 PlaneMatch: PRRUS # useMatchSolution, IntersectionPatternMatcher

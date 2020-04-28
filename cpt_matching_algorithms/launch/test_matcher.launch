@@ -42,7 +42,7 @@
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
     </node>
     
-    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="12.4 -1 1 0 0 0 1 map $(arg lidar_frame)  100"/> <!--13 -3.5 1 0 0 0.3428978 0.9393727-->
+    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="6 3 1 0 0 0 1 map $(arg lidar_frame)  100"/> <!--13 -3.5 1 0 0 0.3428978 0.9393727-->
 
     <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(arg lidar_scan)" />
 

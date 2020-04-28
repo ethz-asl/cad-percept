@@ -65,18 +65,20 @@ class PlaneExtractor::BinSphereTensor : public PlaneExtractor::SphereTensor {
     if (!getValue(bin_value, rtp_index_[0], rtp_index_[1], rtp_index_[2])) {
       std::cout << "getValueFromIndex: invalid index " << rtp_index_[0] << " " << rtp_index_[1]
                 << " " << rtp_index_[2] << std::endl;
-      std::cin.ignore();
+      // std::cin.ignore();
     }
     return bin_value.bin_value;
   };
 
-  int getIndexFromRTP(int rho_index, int theta_index, int psi_index) {
+  bool getIndexFromRTP(int &index, int rho_index, int theta_index, int psi_index) {
     if (!getValue(bin_value, rho_index, theta_index, psi_index)) {
-      std::cout << "getIndexFromRTP: invalid index " << rho_index << " " << theta_index << " "
-                << psi_index << std::endl;
-      std::cin.ignore();
+      std::cout << "getIndexFromIndex: invalid index " << rtp_index_[0] << " " << rtp_index_[1]
+                << " " << rtp_index_[2] << std::endl;
+      // std::cin.ignore();
+      return false;
     }
-    return bin_value.index;
+    index = bin_value.index;
+    return true;
   };
 
  private:
@@ -98,10 +100,12 @@ class PlaneExtractor::HoughAccumulator {
   };
 
   virtual Eigen::Vector3i getRPTIndexFromVector(Eigen::Vector3d &rtp) = 0;
+  virtual void getNeighborIndex(int neighbor_nr, int index, std::vector<int> &neighbor_index) = 0;
 
   int getBinIndexFromVector(Eigen::Vector3d rtp) {
     rtp_index = getRPTIndexFromVector(rtp);
-    return bin_values_->getIndexFromRTP(rtp_index[0], rtp_index[1], rtp_index[2]);
+    bin_values_->getIndexFromRTP(bin_index_, rtp_index[0], rtp_index[1], rtp_index[2]);
+    return bin_index_;
   };
 
   void findMaxima(int min_vote_threshold, std::vector<Eigen::Vector3d> &plane_coefficients,
@@ -117,8 +121,27 @@ class PlaneExtractor::HoughAccumulator {
     }
   };
 
+  void nonMaximumSuppression(int index, int k) {
+    neighbor_index_.clear();
+    getNeighborIndex(k, index, neighbor_index_);
+    std::cout << neighbor_index_.size() << std::endl;
+    for (auto neighor_id : neighbor_index_) {
+      if (bin_votes_[index] < bin_votes_[neighor_id]) {
+        // No local maxima
+        return;
+      }
+    }
+    for (auto neighbor_id : neighbor_index_) {
+      bin_votes_[index] += bin_votes_[neighbor_id];
+      bin_votes_[neighbor_id] = 0;
+      voter_ids_[index].insert(voter_ids_[index].end(), voter_ids_[neighbor_id].begin(),
+                               voter_ids_[neighbor_id].end());
+      voter_ids_[neighbor_id].clear();
+    }
+  };
+
   void findMaximumPlane(int num_main_planes, std::vector<Eigen::Vector3d> &plane_coefficients,
-                        std::vector<std::vector<int>> &get_voter_ids) {
+                        std::vector<std::vector<int>> &get_voter_ids, int k) {
     Eigen::Vector3d actuel_plane_coefficients;
     plane_coefficients.clear();
     get_voter_ids.clear();
@@ -126,6 +149,7 @@ class PlaneExtractor::HoughAccumulator {
     Eigen::Matrix<int, 1, Eigen::Dynamic> copy_bins = bin_votes_;
     for (int i = 0; i < num_main_planes; ++i) {
       copy_bins.maxCoeff(&maximum_idx_);
+      if (k != 0) nonMaximumSuppression(maximum_idx_, k);
       plane_coefficients.push_back(bin_values_->getValueFromIndex(maximum_idx_));
       get_voter_ids.push_back(voter_ids_[maximum_idx_]);
       copy_bins(1, maximum_idx_) = 0;
@@ -163,6 +187,7 @@ class PlaneExtractor::HoughAccumulator {
   double half_pi_ = M_PI / 2;
   double two_pi_ = 2 * M_PI;
 
+  std::vector<int> neighbor_index_;
   std::vector<std::vector<int>> voter_ids_;
   Eigen::Matrix<int, 1, Eigen::Dynamic> bin_votes_;
 };
@@ -217,6 +242,34 @@ class PlaneExtractor::ArrayAccumulator : public PlaneExtractor::HoughAccumulator
     rtp_index[1] = (int)((rtp[1] - bin_minima_[1]) / bin_size_[1]);
     rtp_index[2] = (int)((rtp[2] - bin_minima_[2]) / bin_size_[2]);
     return rtp_index;
+  };
+
+  virtual void getNeighborIndex(int neighbor_nr, int index, std::vector<int> &neighbor_index) {
+    int neighbor_id;
+    Eigen::Vector3i rtp_index = bin_values_->getRTPFromIndex(index);
+    std::cout << "main index: " << rtp_index << std::endl;
+    int psi_index;
+    int theta_index;
+    for (int d_rho = -neighbor_nr; d_rho < neighbor_nr; ++d_rho) {
+      if (!(0 <= rtp_index[0] + d_rho && rtp_index[1] + d_rho < bin_number_rho_)) continue;
+      for (int d_theta = -neighbor_nr; d_theta < neighbor_nr; ++d_theta) {
+        for (int d_psi = -neighbor_nr; d_psi < neighbor_nr; ++d_psi) {
+          if (d_rho == 0 && d_psi == 0 && d_theta == 0) continue;
+          psi_index = loop_mod(rtp_index[2] + d_psi, 2 * bin_number_psi_);
+          theta_index = d_theta + rtp_index[1];
+          if (psi_index >= bin_number_psi_) {
+            psi_index = 2 * bin_number_psi_ - psi_index;
+            theta_index = theta_index + bin_number_theta_ / 2;
+          }
+          theta_index = loop_mod(theta_index, bin_number_theta_);
+          if (bin_values_->getIndexFromRTP(neighbor_id, rtp_index[0] + d_rho, theta_index,
+                                           psi_index))
+            std::cout << rtp_index[0] + d_rho << " " << theta_index << " " << psi_index
+                      << std::endl;
+          neighbor_index.push_back(neighbor_id);
+        }
+      }
+    }
   };
 
  private:
@@ -288,6 +341,29 @@ class PlaneExtractor::BallAccumulator : public PlaneExtractor::HoughAccumulator 
     rtp_index[1] = (int)((rtp[2] - bin_minima_[2]) / bin_size_[2]);
     rtp_index[2] = (int)((rtp[1] - bin_minima_[1]) / bin_delta_theta_[rtp_index[1]]);
     return rtp_index;
+  };
+
+  virtual void getNeighborIndex(int neighbor_nr, int index, std::vector<int> &neighbor_index) {
+    int neighbor_id;
+    Eigen::Vector3i rtp_index = bin_values_->getRTPFromIndex(index);
+    int psi_index;
+    int theta_index;
+    for (int d_rho = -neighbor_nr; d_rho < neighbor_nr; ++d_rho) {
+      for (int d_theta = -neighbor_nr; d_theta < neighbor_nr; ++d_theta) {
+        for (int d_psi = -neighbor_nr; d_psi < neighbor_nr; ++d_psi) {
+          psi_index = loop_mod(rtp_index[1] + d_psi, 2 * bin_number_psi_);
+          theta_index = d_theta + rtp_index[2];
+          if (psi_index >= bin_number_psi_) {
+            psi_index = 2 * bin_number_psi_ - psi_index;
+            theta_index = theta_index + bin_number_theta_[psi_index] / 2;
+          }
+          theta_index = loop_mod(theta_index, bin_number_theta_[psi_index]);
+          if (bin_values_->getIndexFromRTP(neighbor_id, rtp_index[0] + d_rho, psi_index,
+                                           theta_index))
+            neighbor_index.push_back(neighbor_id);
+        }
+      }
+    }
   };
 
  private:
@@ -371,11 +447,11 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
 
   // Evaluate voting (select between thresholding or number of extracted planes)
   std::vector<Eigen::Vector3d> plane_coefficients;
-  // accumulator->nonMaximumSuppression(k_of_maxima_suppression);
   if (num_main_planes == 0) {
     accumulator->findMaxima(min_vote_threshold, plane_coefficients, inlier_ids);
   } else {
-    accumulator->findMaximumPlane(num_main_planes, plane_coefficients, inlier_ids);
+    accumulator->findMaximumPlane(num_main_planes, plane_coefficients, inlier_ids,
+                                  k_of_maxima_suppression);
   }
 
   // Convert plane coefficients to normal
