@@ -1,9 +1,7 @@
-inputQueueSize: 1
-tfMapFrame: /map
-
+# Sample density for map
 mapSamplingDensity: 20
 
-usetoyproblem: true
+usetoyproblem: false
 
 #Select Matcher
 Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
@@ -16,11 +14,18 @@ GoICPdownsample: "1000"
 # Settings for Plane Matcher
 
 # Filters
-useStructureFilter: false
+useStructureFilter: true
 StructureThreshold: 150
 
-useVoxelCentroidFilter: false
-Voxelsearchradius: 0.1
+useVoxelCentroidFilter: true
+Voxelsearchradius: 0.2
 
 # Plane Extraction
-PlaneExtractor: pclPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, iterRhtPlaneExtraction
+PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 
+                                   # iterRhtPlaneExtraction, cgalRegionGrowing
+
+# Plane Matching
+PlaneMatch: PRRUS # useMatchSolution, IntersectionPatternMatcher
+                  # PRRUS, LineSegmentRansac
+
+

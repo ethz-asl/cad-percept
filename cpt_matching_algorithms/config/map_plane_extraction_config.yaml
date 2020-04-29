@@ -1,0 +1,19 @@
+# Setting of map_plane_extraction
+mapSamplingDensity: 20
+MapPlaneExtractionPointInMap: [27.2, -0.2, 2] # set generell part of normals according to convention
+                                              # change rest manually in file 
+
+# Settings of CGAL Region Growing for Map plane extraction
+CGALRegionGrowMinNumInliers: 60 # min number of inliers of detected planes
+CGALRegionGrowMaxDistToPlane: 0.02 # max distance between points to plane
+CGALRegionGrowMaxDistBetwPoint: 8 # max distance between points to points along plane
+CGALRegionGrowMaxDiffNormalThreshold: 0.949 # max difference between normals of points of the same plane
+
+CGALRGRegulActive: true # activate regularization
+CGALRGRegulParall: true # activate regularization of parallel planes
+CGALRGRegulOrthog: true # activate regularization of orthogonal planes
+CGALRGRegulCoplanar: true # activate regularization of coplanar planes
+CGALRGRegulParallOrthTol: 10 # threshold for orthogonality and parallelity of planes 
+CGALRGRegulCoplanarTol: 0.2 # threshold for coplanarity
+
+
