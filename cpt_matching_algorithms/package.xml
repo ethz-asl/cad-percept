@@ -22,5 +22,6 @@
   <depend>libpointmatcher_ros</depend> 
   <depend>pcl_ros</depend>
   <depend>roscpp</depend>
+  <depend>yaml-cpp</depend>
   
 </package>

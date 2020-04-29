@@ -20,7 +20,7 @@ class HoughAccumulator {
   void vote(Eigen::Vector3d vote, int (&voter)[3]);
   // Find all planes with more votes than min_vote_threshold
   void findMaxima(int min_vote_threshold, std::vector<Eigen::Vector3d> &plane_coefficients,
-                  std::vector<std::vector<int>> &get_voter_ids);
+                  std::vector<std::vector<int>> &get_voter_ids, int k);
   // Find the num_main_planes planes with largest vote number, apply non-maximum-suppression on
   // maxima
   void findMaximumPlane(int num_main_planes, std::vector<Eigen::Vector3d> &plane_coefficients,

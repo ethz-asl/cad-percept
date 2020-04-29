@@ -43,7 +43,7 @@ class MapPlanes {
 
  private:
   pcl::PointCloud<pcl::PointNormal> plane_centroid_with_normals_;
-  Eigen::Matrix<float, 6, Eigen::Dynamic> plane_boundaries;
+  Eigen::Matrix<float, 6, Eigen::Dynamic> plane_boundaries_;
 };
 
 }  // namespace matching_algorithms

@@ -1,9 +1,8 @@
 #LiDAR settings
-accuracy_of_lidar: 0.0
-range_of_lidar: 25
-bin_elevation: [-15, -13, -11, -9, -7, -5, -3, -1, 15, 13, 11, 9, 7, 5, 3, 1]
-lidar_angular_resolution: 2
-lidar_offset: 1.5 
+accuracyOfLidar: 0.0 # variance of gaussian distributed noise model
+rangeOfLidar: 25 # range visible for lidar
+binElevation: [-15, -13, -11, -9, -7, -5, -3, -1, 15, 13, 11, 9, 7, 5, 3, 1] # elevation (psi) of single bins
+lidarAngularResolution: 2 # angular distance between bin vertical rays
 
 #ROS settings
-tfMapFrame: /map
+tfMapFrame: /map 

@@ -13,12 +13,12 @@ void HoughAccumulator::vote(Eigen::Vector3d vote, int (&voter)[3]) {
 
 void HoughAccumulator::findMaxima(int min_vote_threshold,
                                   std::vector<Eigen::Vector3d> &plane_coefficients,
-                                  std::vector<std::vector<int>> &get_voter_ids) {
-  Eigen::Vector3d actuel_plane_coefficients;
+                                  std::vector<std::vector<int>> &get_voter_ids, int k) {
   plane_coefficients.clear();
   get_voter_ids.clear();
   for (int i = 0; i < accumulator_size; ++i) {
     if (bin_votes_(1, i) >= min_vote_threshold) {
+      if (k != 0) nonMaximumSuppression(i, k);
       plane_coefficients.push_back(getValueFromIndex(i));
       get_voter_ids.push_back(voter_ids_[i]);
     }
@@ -28,10 +28,8 @@ void HoughAccumulator::findMaxima(int min_vote_threshold,
 void HoughAccumulator::findMaximumPlane(int num_main_planes,
                                         std::vector<Eigen::Vector3d> &plane_coefficients,
                                         std::vector<std::vector<int>> &get_voter_ids, int k) {
-  Eigen::Vector3d actuel_plane_coefficients;
   plane_coefficients.clear();
   get_voter_ids.clear();
-
   for (int i = 0; i < num_main_planes; ++i) {
     bin_votes_.maxCoeff(&maximum_idx_);
     if (k != 0) nonMaximumSuppression(maximum_idx_, k);
@@ -46,8 +44,6 @@ void HoughAccumulator::reset() {
   voter_ids_.clear();
   voter_ids_.resize(accumulator_size, std::vector<int>(0));
 }
-
-Eigen::Vector3i HoughAccumulator::getRTPFromIndex(int bin_index) { return index_to_rtp[bin_index]; }
 
 int HoughAccumulator::getBinIndexFromVector(Eigen::Vector3d rtp) {
   rtp_index = getRTPIndexFromVector(rtp);
@@ -64,6 +60,8 @@ bool HoughAccumulator::getIndexFromRTP(int &index, Eigen::Vector3i rtp_idx) {
   index = bin_value_.index;
   return true;
 }
+
+Eigen::Vector3i HoughAccumulator::getRTPFromIndex(int bin_index) { return index_to_rtp[bin_index]; }
 
 Eigen::Vector3d HoughAccumulator::getValueFromIndex(int index) {
   rtp_index = getRTPFromIndex(index);

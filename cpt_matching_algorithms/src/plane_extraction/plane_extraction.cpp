@@ -24,7 +24,6 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   double psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 0.04);
   int min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 0);
   int k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 14);
-  float slope_threshold = nh_private.param<float>("AccumulatorSlopeThreshold", 0);
 
   int max_iteration = nh_private.param<int>("RHTMaxIter", 100000);
   double tol_distance_between_points = nh_private.param<double>("RHTTolDist", 3);
@@ -33,22 +32,27 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
 
   PointXYZ origin(0, 0, 0);
   double max_distance_to_point = 0;
-  for (int i = 0; i < lidar_scan.size(); i++) {
-    if ((double)geometry::distance(origin, lidar_scan.points[i]) > max_distance_to_point)
-      max_distance_to_point = (double)geometry::distance(origin, lidar_scan.points[i]);
+  for (auto lidar_scan_point : lidar_scan) {
+    if ((double)geometry::distance(origin, lidar_scan_point) > max_distance_to_point)
+      max_distance_to_point = (double)geometry::distance(origin, lidar_scan_point);
   }
 
-  HoughAccumulator *accumulator;
-
   // Settings for accumulator discretization (rho, theta, psi)
+  HoughAccumulator *accumulator;
   Eigen::Vector3d min_coord(0, 0, -(double)M_PI / 2);
   Eigen::Vector3d max_coord(max_distance_to_point, (double)2 * M_PI, (double)M_PI / 2);
   Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-
-  if (accumulator_choice == 2) {
-    accumulator = new BallAccumulator(min_coord, bin_size, max_coord);
-  } else {
-    accumulator = new ArrayAccumulator(min_coord, bin_size, max_coord);
+  switch (accumulator_choice) {
+    case 1:
+      accumulator = new ArrayAccumulator(min_coord, bin_size, max_coord);
+      break;
+    case 2:
+      accumulator = new BallAccumulator(min_coord, bin_size, max_coord);
+      break;
+    default:
+      std::cout << "No valid accumulator to number " << accumulator_choice << ", return ..."
+                << std::endl;
+      return;
   }
 
   // Perform RHT
@@ -88,42 +92,51 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   int k_of_maxima_suppression = nh_private.param<int>("iterAccumulatorKMaxSuppress", 14);
   int min_vote_threshold = nh_private.param<int>("iterAccumulatorMinThreshold", 0);
 
-  int iteration_per_plane = nh_private.param<int>("iterRHTIter", 10000);
+  int number_of_iteration = nh_private.param<int>("iterRHTIter", 8);
+  int iteration_per_plane = nh_private.param<int>("iterRHTIterPerIter", 10000);
   double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 3);
   double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.5);
-  int num_main_planes = nh_private.param<int>("iterRHTPlaneNumber", 1);
-  int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlaneperIter", 1);
+  int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlanePerIter", 1);
 
   // Copy lidar frame to remove points
   PointCloud<PointXYZ>::Ptr copy_lidar_scan(new PointCloud<PointXYZ>());
   copyPointCloud(lidar_scan, *copy_lidar_scan);
 
-  // Ball Accumulator setup
   PointXYZ origin(0, 0, 0);
   double max_distance_to_point = 0;
-  for (int i = 0; i < lidar_scan.size(); i++) {
-    if ((double)geometry::distance(origin, copy_lidar_scan->points[i]) > max_distance_to_point)
-      max_distance_to_point = (double)geometry::distance(origin, copy_lidar_scan->points[i]);
+  for (auto lidar_scan_point : lidar_scan) {
+    if ((double)geometry::distance(origin, lidar_scan_point) > max_distance_to_point)
+      max_distance_to_point = (double)geometry::distance(origin, lidar_scan_point);
   }
 
-  Eigen::Vector3d min_coord(0, 0, -(double)M_PI / 2);  // rho theta psi
+  // Settings for accumulator discretization (rho, theta, psi)
+  HoughAccumulator *accumulator;
+  Eigen::Vector3d min_coord(0, 0, -(double)M_PI / 2);
   Eigen::Vector3d max_coord(max_distance_to_point, (double)2 * M_PI, (double)M_PI / 2);
   Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-  HoughAccumulator *accumulator;
-  if (accumulator_choice == 2) {
-    accumulator = new BallAccumulator(min_coord, bin_size, max_coord);
-  } else {
-    accumulator = new ArrayAccumulator(min_coord, bin_size, max_coord);
+  switch (accumulator_choice) {
+    case 1:
+      accumulator = new ArrayAccumulator(min_coord, bin_size, max_coord);
+      break;
+    case 2:
+      accumulator = new BallAccumulator(min_coord, bin_size, max_coord);
+      break;
+    default:
+      std::cout << "No valid accumulator to number " << accumulator_choice << ", return ..."
+                << std::endl;
+      return;
   }
 
+  // Setup to remove detected planes
   ExtractIndices<PointXYZ> indices_filter;
   std::vector<std::vector<int>> inlier_ids;
   std::vector<int> rm_indices;
 
+  // Part solution for single iterations
   std::vector<Eigen::Vector3d> iter_plane_normals;
   std::vector<PointCloud<PointXYZ>> iter_extracted_planes;
 
-  for (int iter = 0; iter < num_main_planes; ++iter) {
+  for (int iter = 0; iter < number_of_iteration; ++iter) {
     // Perform RHT
     rhtVote(iteration_per_plane, tol_distance_between_points, min_area_spanned, *copy_lidar_scan,
             accumulator);
@@ -132,8 +145,8 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
     inlier_ids = rhtEval(number_of_plane_per_iter, min_vote_threshold, k_of_maxima_suppression,
                          iter_plane_normals, iter_extracted_planes, *copy_lidar_scan, accumulator);
 
-    // Add part result to general result
-    for (int plane_nr = 0; plane_nr < number_of_plane_per_iter; ++plane_nr) {
+    // Add part solution to final solution
+    for (int plane_nr = 0; plane_nr < iter_plane_normals.size(); ++plane_nr) {
       plane_normals.push_back(iter_plane_normals[plane_nr]);
       extracted_planes.push_back(iter_extracted_planes[plane_nr]);
       rm_indices.insert(rm_indices.end(), inlier_ids[plane_nr].begin(), inlier_ids[plane_nr].end());
@@ -153,7 +166,6 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
     inlier_ids.clear();
     rm_indices.clear();
     accumulator->reset();
-    min_vote_threshold = 0;
   }
 
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
@@ -177,6 +189,9 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
 
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
+
+  // This code is from www.pointclouds.org/documentation/tutorials/planar_segmentation.php with some
+  // modifications
 
   plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
@@ -263,7 +278,7 @@ void PlaneExtractor::cgalRegionGrowing(
   ros::NodeHandle nh_private("~");
   plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
-  // Code is from cpt_deviation_analysis/deviations.cpp/Deviations::runShapeDetection with some
+  // This code is from cpt_deviation_analysis/deviations.cpp/Deviations::runShapeDetection with some
   // modifications
 
   // https://doc.cgal.org/4.13.1/Point_set_shape_detection_3/index.html#title7
@@ -381,7 +396,7 @@ void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted
 
   PointCloud<PointXYZRGB>::Ptr segmented_point_cloud(new PointCloud<PointXYZRGB>);
   PointCloud<PointXYZRGB>::Ptr colored_inlier_points(new PointCloud<PointXYZRGB>);
-
+  // Create segmented point cloud
   if (extracted_planes.size() == 0) {
     std::cout << "No planes to visualize" << std::endl;
     return;
@@ -400,6 +415,7 @@ void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted
       *segmented_point_cloud += *colored_inlier_points;
     }
   }
+  // Publish segmented point cloud
   sensor_msgs::PointCloud2 segmentation_mesg;
   segmented_point_cloud->header.frame_id = tf_map_frame;
   toROSMsg(*segmented_point_cloud, segmentation_mesg);
@@ -479,7 +495,8 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
   // Evaluate voting (select between thresholding or number of extracted planes)
   std::vector<Eigen::Vector3d> plane_coefficients;
   if (num_main_planes == 0) {
-    accumulator->findMaxima(min_vote_threshold, plane_coefficients, inlier_ids);
+    accumulator->findMaxima(min_vote_threshold, plane_coefficients, inlier_ids,
+                            k_of_maxima_suppression);
   } else {
     accumulator->findMaximumPlane(num_main_planes, plane_coefficients, inlier_ids,
                                   k_of_maxima_suppression);
@@ -497,14 +514,14 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
 
   // Extract inliers
   std::vector<int> rm_inlier_ids;
-  for (int plane_nr = 0; plane_nr < num_main_planes; ++plane_nr) {
+  for (int plane_nr = 0; plane_nr < inlier_ids.size(); ++plane_nr) {
     for (int i = 0; i < inlier_ids[plane_nr].size(); ++i) {
       // make sure each point is only included once
       if (!bit_point_cloud[inlier_ids[plane_nr][i]]) {
         used_inliers.push_back(lidar_scan.points[inlier_ids[plane_nr][i]]);
         bit_point_cloud[inlier_ids[plane_nr][i]] = true;
       } else {
-        // Add duplicates to remove list
+        // Add duplicates to removal list
         rm_inlier_ids.push_back(i);
       }
     }

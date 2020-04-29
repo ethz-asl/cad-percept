@@ -33,7 +33,7 @@ MapPlanes::MapPlanes(std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_i
   std::cout << "Loaded normals and centroids of planes, find boundaries of planes ..." << std::endl;
   // Find boundaries of plane (assume rectangular walls, only works if planes
   // have only normals in x, y or z yet)
-  plane_boundaries = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(
+  plane_boundaries_ = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(
       6, plane_centroid_with_normals_.size());
   std::vector<float> dim_x_of_plane;
   std::vector<float> dim_y_of_plane;
@@ -49,18 +49,18 @@ MapPlanes::MapPlanes(std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_i
       dim_y_of_plane.push_back(inlier_point.y);
       dim_z_of_plane.push_back(inlier_point.z);
     }
-    plane_boundaries(0, i) = *std::min_element(dim_x_of_plane.begin(),
-                                               dim_x_of_plane.end());  // x_min
-    plane_boundaries(1, i) = *std::max_element(dim_x_of_plane.begin(),
-                                               dim_x_of_plane.end());  // x_max
-    plane_boundaries(2, i) = *std::min_element(dim_y_of_plane.begin(),
-                                               dim_y_of_plane.end());  // y_min
-    plane_boundaries(3, i) = *std::max_element(dim_y_of_plane.begin(),
-                                               dim_y_of_plane.end());  // y_max
-    plane_boundaries(4, i) = *std::min_element(dim_z_of_plane.begin(),
-                                               dim_z_of_plane.end());  // z_min
-    plane_boundaries(5, i) = *std::max_element(dim_z_of_plane.begin(),
-                                               dim_z_of_plane.end());  // z_max
+    plane_boundaries_(0, i) = *std::min_element(dim_x_of_plane.begin(),
+                                                dim_x_of_plane.end());  // x_min
+    plane_boundaries_(1, i) = *std::max_element(dim_x_of_plane.begin(),
+                                                dim_x_of_plane.end());  // x_max
+    plane_boundaries_(2, i) = *std::min_element(dim_y_of_plane.begin(),
+                                                dim_y_of_plane.end());  // y_min
+    plane_boundaries_(3, i) = *std::max_element(dim_y_of_plane.begin(),
+                                                dim_y_of_plane.end());  // y_max
+    plane_boundaries_(4, i) = *std::min_element(dim_z_of_plane.begin(),
+                                                dim_z_of_plane.end());  // z_min
+    plane_boundaries_(5, i) = *std::max_element(dim_z_of_plane.begin(),
+                                                dim_z_of_plane.end());  // z_max
 
     i++;
   }
@@ -70,20 +70,20 @@ bool MapPlanes::isProjectionOfPointOnPlane(Eigen::Vector3f point, int map_plane_
   pcl::PointNormal plane = plane_centroid_with_normals_.points[map_plane_nr];
   float tol = 0.5;
   if (std::abs(plane.normal_x) > 0.8) {
-    return plane_boundaries(2, map_plane_nr) - tol < point[1] &&
-           point[1] < plane_boundaries(3, map_plane_nr) + tol &&
-           plane_boundaries(4, map_plane_nr) - tol < point[2] &&
-           point[2] < plane_boundaries(5, map_plane_nr) + tol;
+    return plane_boundaries_(2, map_plane_nr) - tol < point[1] &&
+           point[1] < plane_boundaries_(3, map_plane_nr) + tol &&
+           plane_boundaries_(4, map_plane_nr) - tol < point[2] &&
+           point[2] < plane_boundaries_(5, map_plane_nr) + tol;
   } else if (std::abs(plane.normal_y) > 0.8) {
-    return plane_boundaries(0, map_plane_nr) - tol < point[0] &&
-           point[0] < plane_boundaries(1, map_plane_nr) + tol &&
-           plane_boundaries(4, map_plane_nr) - tol < point[2] &&
-           point[2] < plane_boundaries(5, map_plane_nr) + tol;
+    return plane_boundaries_(0, map_plane_nr) - tol < point[0] &&
+           point[0] < plane_boundaries_(1, map_plane_nr) + tol &&
+           plane_boundaries_(4, map_plane_nr) - tol < point[2] &&
+           point[2] < plane_boundaries_(5, map_plane_nr) + tol;
   } else if (std::abs(plane.normal_z) > 0.8) {
-    return plane_boundaries(0, map_plane_nr) - tol < point[0] &&
-           point[0] < plane_boundaries(1, map_plane_nr) + tol &&
-           plane_boundaries(2, map_plane_nr) - tol < point[1] &&
-           point[1] < plane_boundaries(3, map_plane_nr) + tol;
+    return plane_boundaries_(0, map_plane_nr) - tol < point[0] &&
+           point[0] < plane_boundaries_(1, map_plane_nr) + tol &&
+           plane_boundaries_(2, map_plane_nr) - tol < point[1] &&
+           point[1] < plane_boundaries_(3, map_plane_nr) + tol;
   }
   return false;
 };
@@ -93,7 +93,7 @@ void MapPlanes::getMapPlaneInformations(
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &output_boundaries) {
   output_planes.clear();
   for (auto plane : plane_centroid_with_normals_) output_planes.push_back(plane);
-  output_boundaries = plane_boundaries;
+  output_boundaries = plane_boundaries_;
 };
 
 pcl::PointCloud<pcl::PointNormal> MapPlanes::getPlaneCentroidsAndNormals() {
@@ -110,12 +110,12 @@ void MapPlanes::dispAllPlanes() {
               << "z : " << plane.z << std::endl;
     std::cout << "normal x: " << plane.normal_x << " normal y: " << plane.normal_y
               << " normal z: " << plane.normal_z << std::endl;
-    std::cout << "boundaries: xmin: " << plane_boundaries(0, plane_nr)
-              << " boundaries: xmax: " << plane_boundaries(1, plane_nr) << std::endl;
-    std::cout << "boundaries: ymin: " << plane_boundaries(2, plane_nr)
-              << " boundaries: ymax: " << plane_boundaries(3, plane_nr) << std::endl;
-    std::cout << "boundaries: zmin: " << plane_boundaries(4, plane_nr)
-              << " boundaries: zmax: " << plane_boundaries(5, plane_nr) << std::endl;
+    std::cout << "boundaries: xmin: " << plane_boundaries_(0, plane_nr)
+              << " boundaries: xmax: " << plane_boundaries_(1, plane_nr) << std::endl;
+    std::cout << "boundaries: ymin: " << plane_boundaries_(2, plane_nr)
+              << " boundaries: ymax: " << plane_boundaries_(3, plane_nr) << std::endl;
+    std::cout << "boundaries: zmin: " << plane_boundaries_(4, plane_nr)
+              << " boundaries: zmax: " << plane_boundaries_(5, plane_nr) << std::endl;
     plane_nr++;
   }
 };
@@ -134,12 +134,12 @@ void MapPlanes::saveToYamlFile(std::string file_name) {
     node[actual_plane_name].push_back(plane_centroid_with_normals_.points[map_plane_nr].normal_x);
     node[actual_plane_name].push_back(plane_centroid_with_normals_.points[map_plane_nr].normal_y);
     node[actual_plane_name].push_back(plane_centroid_with_normals_.points[map_plane_nr].normal_z);
-    node[actual_plane_name].push_back(plane_boundaries(0, map_plane_nr));
-    node[actual_plane_name].push_back(plane_boundaries(1, map_plane_nr));
-    node[actual_plane_name].push_back(plane_boundaries(2, map_plane_nr));
-    node[actual_plane_name].push_back(plane_boundaries(3, map_plane_nr));
-    node[actual_plane_name].push_back(plane_boundaries(4, map_plane_nr));
-    node[actual_plane_name].push_back(plane_boundaries(5, map_plane_nr));
+    node[actual_plane_name].push_back(plane_boundaries_(0, map_plane_nr));
+    node[actual_plane_name].push_back(plane_boundaries_(1, map_plane_nr));
+    node[actual_plane_name].push_back(plane_boundaries_(2, map_plane_nr));
+    node[actual_plane_name].push_back(plane_boundaries_(3, map_plane_nr));
+    node[actual_plane_name].push_back(plane_boundaries_(4, map_plane_nr));
+    node[actual_plane_name].push_back(plane_boundaries_(5, map_plane_nr));
   }
   std::ofstream fout(file_name);
   fout << node;
@@ -148,7 +148,7 @@ void MapPlanes::saveToYamlFile(std::string file_name) {
 void MapPlanes::loadFromYamlFile(std::string file_name) {
   YAML::Node node = YAML::LoadFile(file_name);
   int map_size = node["size"].as<int>();
-  plane_boundaries = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(6, map_size);
+  plane_boundaries_ = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(6, map_size);
   std::string actual_plane_name;
   std::string plane_name = "map_plane_nr_";
   pcl::PointNormal map_plane;
@@ -161,12 +161,12 @@ void MapPlanes::loadFromYamlFile(std::string file_name) {
     map_plane.normal_y = node[actual_plane_name][4].as<float>();
     map_plane.normal_z = node[actual_plane_name][5].as<float>();
     plane_centroid_with_normals_.push_back(map_plane);
-    plane_boundaries(0, map_plane_nr) = node[actual_plane_name][6].as<float>();
-    plane_boundaries(1, map_plane_nr) = node[actual_plane_name][7].as<float>();
-    plane_boundaries(2, map_plane_nr) = node[actual_plane_name][8].as<float>();
-    plane_boundaries(3, map_plane_nr) = node[actual_plane_name][9].as<float>();
-    plane_boundaries(4, map_plane_nr) = node[actual_plane_name][10].as<float>();
-    plane_boundaries(5, map_plane_nr) = node[actual_plane_name][11].as<float>();
+    plane_boundaries_(0, map_plane_nr) = node[actual_plane_name][6].as<float>();
+    plane_boundaries_(1, map_plane_nr) = node[actual_plane_name][7].as<float>();
+    plane_boundaries_(2, map_plane_nr) = node[actual_plane_name][8].as<float>();
+    plane_boundaries_(3, map_plane_nr) = node[actual_plane_name][9].as<float>();
+    plane_boundaries_(4, map_plane_nr) = node[actual_plane_name][10].as<float>();
+    plane_boundaries_(5, map_plane_nr) = node[actual_plane_name][11].as<float>();
   }
 };
 }  // namespace matching_algorithms
