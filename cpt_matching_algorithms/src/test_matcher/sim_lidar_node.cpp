@@ -29,14 +29,13 @@ bool fix_lidar_scan;
 float range_of_lidar;
 std::vector<float> bin_elevation;
 float dtheta;
-float lidar_offset;
 float noise_variance;
 
 ros::Publisher scan_pub;
 std::string tf_lidar_frame;
 
 void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
-void simulate_lidar(const ros::TimerEvent &);
+void simulateLidar(const ros::TimerEvent &);
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "lidar_simulator");
@@ -49,11 +48,10 @@ int main(int argc, char **argv) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
   // Parameter from server
-  range_of_lidar = nh_private.param<float>("range_of_lidar", 20);
-  bin_elevation = nh_private.param<std::vector<float>>("bin_elevation", {0});
-  dtheta = nh_private.param<float>("lidar_angular_resolution", 1);
-  lidar_offset = nh_private.param<float>("lidar_offset", 1.5);
-  noise_variance = nh_private.param<float>("accuracy_of_lidar", 0.02);
+  range_of_lidar = nh_private.param<float>("rangeOfLidar", 20);
+  bin_elevation = nh_private.param<std::vector<float>>("binElevation", {0});
+  dtheta = nh_private.param<float>("lidarAngularResolution", 1);
+  noise_variance = nh_private.param<float>("accuracyOfLidar", 0.02);
 
   fix_lidar_scan = nh_private.param<bool>("FixLidarScans", true);
   tf_lidar_frame = nh_private.param<std::string>("tfLidarFrame", "marker_pose");
@@ -66,7 +64,7 @@ int main(int argc, char **argv) {
   scan_pub = nh.advertise<sensor_msgs::PointCloud2>("sim_rslidar_points", 1, true);
 
   // Create timer for simulation
-  ros::Timer simtimer = nh.createTimer(ros::Duration(0.01), simulate_lidar);
+  ros::Timer simtimer = nh.createTimer(ros::Duration(0.01), simulateLidar);
 
   ros::spin();
 
@@ -101,7 +99,7 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   }
 }
 
-void simulate_lidar(const ros::TimerEvent &) {
+void simulateLidar(const ros::TimerEvent &) {
   if (got_CAD) {
     // Get tf transformation from cad to lidar
     tf::StampedTransform transform;
