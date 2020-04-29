@@ -18,7 +18,7 @@ useStructureFilter: true
 StructureThreshold: 150
 
 useVoxelCentroidFilter: true
-Voxelsearchradius: 0.1
+Voxelsearchradius: 0.2
 
 # Plane Extraction
 PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 

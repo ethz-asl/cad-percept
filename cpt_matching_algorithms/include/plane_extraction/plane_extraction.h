@@ -25,6 +25,8 @@
 #include <CGAL/pca_estimate_normals.h>
 #include <CGAL/regularize_planes.h>
 
+#include "plane_extraction/rht_accumulator.h"
+
 namespace cad_percept {
 namespace matching_algorithms {
 
@@ -51,16 +53,6 @@ class PlaneExtractor {
                              ros::Publisher &plane_pub, std::string tf_map_frame);
 
  private:
-  struct accumulatorBin {
-    Eigen::Vector3d bin_value;
-    int index;
-  };
-  class SphereTensor;
-  class BinSphereTensor;
-  class HoughAccumulator;
-  class ArrayAccumulator;
-  class BallAccumulator;
-
   static void rhtVote(int max_iteration, double tol_distance_between_points,
                       double min_area_spanned, pcl::PointCloud<pcl::PointXYZ> lidar_scan,
                       HoughAccumulator *accumulator);
