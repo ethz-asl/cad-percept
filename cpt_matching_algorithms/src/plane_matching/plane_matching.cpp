@@ -225,6 +225,7 @@ void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::Point
       }
       min_error = error;
       std::cout << "error: " << min_error << std::endl;
+      std::cout << candidate_assignment << std::endl;
     }
     ++assignment_nr;
   }
@@ -236,6 +237,10 @@ void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assig
                                      Eigen::Quaternionf rotation,
                                      const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                      MapPlanes map_planes, float translation_penalty) {
+  if (assignment(0, 0) == 8 && assignment(0, 1) == 4 && assignment(0, 2) == 0 &&
+      assignment(1, 0) == 23 && assignment(1, 1) == 1 && assignment(1, 2) == 0) {
+    std::cout << "here" << std::endl;
+  }
   transl_error = 0;
   // Write rotation to resulting transformation
   actual_transformation[3] = rotation.w();
@@ -317,15 +322,28 @@ void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assig
     actual_translation_error.clear();
     if (scan_plane_nr == plane_assignment.back().first) {
       // Take reference if plane is in matching
-      actual_translation_error.push_back(
-          std::abs((Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z) -
-                    Eigen::Vector3f(map_planes_pc.points[plane_assignment.back().second].x,
-                                    map_planes_pc.points[plane_assignment.back().second].y,
-                                    map_planes_pc.points[plane_assignment.back().second].z))
-                       .dot(Eigen::Vector3f(
-                           map_planes_pc.points[plane_assignment.back().second].normal_x,
-                           map_planes_pc.points[plane_assignment.back().second].normal_y,
-                           map_planes_pc.points[plane_assignment.back().second].normal_z))));
+      // Only accept plane if it has the same normal
+      if (Eigen::Vector3f(map_planes_pc.points[plane_assignment.back().second].normal_x,
+                          map_planes_pc.points[plane_assignment.back().second].normal_y,
+                          map_planes_pc.points[plane_assignment.back().second].normal_z)
+              .dot(Eigen::Vector3f(scan_plane.normal_x, scan_plane.normal_y, scan_plane.normal_z)) >
+          0.8) {
+        // Only accept point as possible match if projection lies on this plane
+        if (map_planes.isProjectionOfPointOnPlane(
+                Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z),
+                plane_assignment.back().second)) {
+          // Add plane as (single) candidate to error calculation
+          actual_translation_error.push_back(
+              std::abs((Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z) -
+                        Eigen::Vector3f(map_planes_pc.points[plane_assignment.back().second].x,
+                                        map_planes_pc.points[plane_assignment.back().second].y,
+                                        map_planes_pc.points[plane_assignment.back().second].z))
+                           .dot(Eigen::Vector3f(
+                               map_planes_pc.points[plane_assignment.back().second].normal_x,
+                               map_planes_pc.points[plane_assignment.back().second].normal_y,
+                               map_planes_pc.points[plane_assignment.back().second].normal_z))));
+        }
+      }
       plane_assignment.pop_back();
     } else {  // search closest plane
       // Only accept plane if it has the same normal
@@ -336,7 +354,7 @@ void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assig
           map_plane_nr++;
           continue;
         }
-        // Only accept point as possible match if projection lies on this point
+        // Only accept point as possible match if projection lies on this plane
         if (!map_planes.isProjectionOfPointOnPlane(
                 Eigen::Vector3f(scan_plane.x, scan_plane.y, scan_plane.z), map_plane_nr)) {
           map_plane_nr++;
