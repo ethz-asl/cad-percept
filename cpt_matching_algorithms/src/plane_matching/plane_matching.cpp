@@ -237,10 +237,6 @@ void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assig
                                      Eigen::Quaternionf rotation,
                                      const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                      MapPlanes map_planes, float translation_penalty) {
-  if (assignment(0, 0) == 8 && assignment(0, 1) == 4 && assignment(0, 2) == 0 &&
-      assignment(1, 0) == 23 && assignment(1, 1) == 1 && assignment(1, 2) == 0) {
-    std::cout << "here" << std::endl;
-  }
   transl_error = 0;
   // Write rotation to resulting transformation
   actual_transformation[3] = rotation.w();
