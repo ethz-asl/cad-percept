@@ -60,9 +60,9 @@ class PlaneMatch::SortRelativeTriangle {
 
 void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
                        MapPlanes map_planes) {
-  std::cout << "////////////////////////////////////////////////" << std::endl;
-  std::cout << "////              PRRUS Started             ////" << std::endl;
-  std::cout << "////////////////////////////////////////////////" << std::endl;
+  // std::cout << "////////////////////////////////////////////////" << std::endl;
+  // std::cout << "////              PRRUS Started             ////" << std::endl;
+  // std::cout << "////////////////////////////////////////////////" << std::endl;
 
   ros::NodeHandle nh_private("~");
   float translation_penalty = nh_private.param<float>("LineSegmentRansacTranErrorPenalty", 20);
@@ -99,10 +99,11 @@ void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::Point
     std::cout
         << "Can not find transformation, as no group of orthogonal planes in map could be found"
         << std::endl;
-  } else {
-    std::cout << "Found " << orthogonal_groups_in_map.size()
-              << " groups of orthogonal planes in map" << std::endl;
   }
+  // else {
+  //   std::cout << "Found " << orthogonal_groups_in_map.size()
+  //             << " groups of orthogonal planes in map" << std::endl;
+  // }
 
   // Find groups of orthogonal planes in scan
   std::vector<Eigen::Vector3i> orthogonal_groups_in_scan;
@@ -141,10 +142,11 @@ void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::Point
     std::cout
         << "Can not find transformation, as no group of orthogonal planes in scan could be found"
         << std::endl;
-  } else {
-    std::cout << "Found " << orthogonal_groups_in_scan.size()
-              << " groups of orthogonal planes in scan" << std::endl;
   }
+  // else {
+  //   std::cout << "Found " << orthogonal_groups_in_scan.size()
+  //             << " groups of orthogonal planes in scan" << std::endl;
+  // }
 
   // Create assignments which are consistent considering rotation
   std::vector<Eigen::Matrix<int, 2, 3>> assignments;
@@ -206,9 +208,10 @@ void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::Point
   if (assignments.size() == 0) {
     std::cout << "Can not find transformation, as no consistent rotation could be found"
               << std::endl;
-  } else {
-    std::cout << "Found " << assignments.size() << " possible assignments" << std::endl;
   }
+  // else {
+  //   std::cout << "Found " << assignments.size() << " possible assignments" << std::endl;
+  // }
 
   // Apply cost function on left free assignments
   float min_error = -1;
@@ -224,12 +227,12 @@ void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::Point
         transformTR[i] = actual_transformation[i];
       }
       min_error = error;
-      std::cout << "error: " << min_error << std::endl;
-      std::cout << candidate_assignment << std::endl;
+      // std::cout << "error: " << min_error << std::endl;
+      // std::cout << candidate_assignment << std::endl;
     }
     ++assignment_nr;
   }
-  std::cout << "final error: " << min_error << std::endl;
+  // std::cout << "final error: " << min_error << std::endl;
 };
 
 void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assignment,

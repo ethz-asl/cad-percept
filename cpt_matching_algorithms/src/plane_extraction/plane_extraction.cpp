@@ -76,9 +76,9 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
                                             std::vector<Eigen::Vector3d> &plane_normals,
                                             PointCloud<PointXYZ> lidar_scan,
                                             std::string tf_map_frame, ros::Publisher &plane_pub) {
-  std::cout << "///////////////////////////////////////////////" << std::endl;
-  std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
-  std::cout << "///////////////////////////////////////////////" << std::endl;
+  // std::cout << "///////////////////////////////////////////////" << std::endl;
+  // std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
+  // std::cout << "///////////////////////////////////////////////" << std::endl;
 
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
@@ -171,12 +171,12 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
-  int color = 0;
-  for (auto plane_normal : plane_normals) {
-    std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
-              << " color: " << color % 8 << std::endl;
-    ++color;
-  }
+  // int color = 0;
+  // for (auto plane_normal : plane_normals) {
+  //   std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
+  //             << " color: " << color % 8 << std::endl;
+  //   ++color;
+  // }
 }
 
 void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
@@ -389,7 +389,7 @@ void PlaneExtractor::cgalRegionGrowing(
 // Helper functions
 void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted_planes,
                                     ros::Publisher &plane_pub, std::string tf_map_frame) {
-  std::cout << "Start Visualization" << std::endl;
+  // std::cout << "Start Visualization" << std::endl;
 
   int color[8][3] = {{0, 0, 0},     {255, 0, 0},   {0, 255, 0},   {0, 0, 255},
                      {255, 255, 0}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
@@ -401,8 +401,8 @@ void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted
     std::cout << "No planes to visualize" << std::endl;
     return;
   } else {
-    std::cout << "Found " << extracted_planes.size() << " planes, visualize plane inliers... "
-              << std::endl;
+    // std::cout << "Found " << extracted_planes.size() << " planes, visualize plane inliers... "
+    //           << std::endl;
     for (std::size_t i = 0; i < extracted_planes.size(); ++i) {
       colored_inlier_points->clear();
       copyPointCloud(extracted_planes[i], *colored_inlier_points);
@@ -420,7 +420,7 @@ void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted
   segmented_point_cloud->header.frame_id = tf_map_frame;
   toROSMsg(*segmented_point_cloud, segmentation_mesg);
   plane_pub.publish(segmentation_mesg);
-  std::cout << "Publish plane segmentation" << std::endl;
+  // std::cout << "Publish plane segmentation" << std::endl;
 }
 
 void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_points,
@@ -436,7 +436,7 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
 
   int pointcloud_size = lidar_scan.size();
 
-  std::cout << "Start voting" << std::endl;
+  // std::cout << "Start voting" << std::endl;
   for (int i = 0; i < max_iteration; ++i) {
     // Sample random points
     reference_point_ids[0] = (rand() % (pointcloud_size + 1));
@@ -480,7 +480,7 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
 
     accumulator->vote(vote, reference_point_ids);
   }
-  std::cout << "Voting finished" << std::endl;
+  // std::cout << "Voting finished" << std::endl;
 }
 
 std::vector<std::vector<int>> PlaneExtractor::rhtEval(

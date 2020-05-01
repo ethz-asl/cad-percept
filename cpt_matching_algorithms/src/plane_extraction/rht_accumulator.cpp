@@ -132,9 +132,9 @@ ArrayAccumulator::ArrayAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d b
   bin_number_theta_ = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
   bin_number_psi_ = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
 
-  std::cout << "Initialize array accumulator" << std::endl;
-  std::cout << "rho bins: " << bin_number_rho_ << " theta bins: " << bin_number_theta_
-            << " psi bins: " << bin_number_psi_ << std::endl;
+  // std::cout << "Initialize array accumulator" << std::endl;
+  // std::cout << "rho bins: " << bin_number_rho_ << " theta bins: " << bin_number_theta_
+  //           << " psi bins: " << bin_number_psi_ << std::endl;
 
   // Create tensor
   uint bin_index = 0;
@@ -214,9 +214,10 @@ BallAccumulator::BallAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin
   int bin_number_theta = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
   bin_number_psi_ = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
 
-  std::cout << "Initialize ball accumulator" << std::endl;
-  std::cout << "rho bins: " << bin_number_rho_ << " theta bins: varying (max: " << bin_number_theta
-            << ") psi bins: " << bin_number_psi_ << std::endl;
+  // std::cout << "Initialize ball accumulator" << std::endl;
+  // std::cout << "rho bins: " << bin_number_rho_ << " theta bins: varying (max: " <<
+  // bin_number_theta
+  //           << ") psi bins: " << bin_number_psi_ << std::endl;
 
   // Create tensor
   for (int d_psi = 0; d_psi < bin_number_psi_; ++d_psi) {

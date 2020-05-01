@@ -1,0 +1,26 @@
+# Lidar Settings
+rangeOfLidar: 20
+binElevation: [-15, -13, -11, -9, -7, -5, -3, -1, 15, 13, 11, 9, 7, 5, 3, 1]
+lidarAngularResolution: 2
+accuracyOfLidar: 0.0
+
+# Test Settings
+testIterations: 200
+
+# Settings for Plane Matcher
+
+# Filters
+useStructureFilter: false
+StructureThreshold: 150
+
+useVoxelCentroidFilter: true
+Voxelsearchradius: 0.2
+
+# Plane Extraction
+PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 
+                                   # iterRhtPlaneExtraction, cgalRegionGrowing
+
+# Plane Matching
+# PRRUS
+
+

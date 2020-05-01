@@ -40,7 +40,7 @@ void CloudFilter::filterStaticObject(int structure_threshold, PointCloud<PointXY
 }
 
 void CloudFilter::filterVoxelCentroid(float search_radius, PointCloud<PointXYZ>& lidar_scan) {
-  std::cout << "////    Voxel Centroid Filter   ////" << std::endl;
+  // std::cout << "////    Voxel Centroid Filter   ////" << std::endl;
   int prev_size = lidar_scan.size();
 
   PointCloud<PointXYZ>::Ptr lidar_scan_ptr(new PointCloud<PointXYZ>());
@@ -51,8 +51,8 @@ void CloudFilter::filterVoxelCentroid(float search_radius, PointCloud<PointXYZ>&
   voxel_filter.filter(*lidar_scan_ptr);
   lidar_scan = *lidar_scan_ptr;
 
-  std::cout << "Point Cloud size: " << lidar_scan.size()
-            << " Removed: " << prev_size - lidar_scan.size() << std::endl;
+  // std::cout << "Point Cloud size: " << lidar_scan.size()
+  //           << " Removed: " << prev_size - lidar_scan.size() << std::endl;
 }
 }  // namespace matching_algorithms
 }  // namespace cad_percept
