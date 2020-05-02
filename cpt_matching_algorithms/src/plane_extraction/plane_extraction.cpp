@@ -171,12 +171,12 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   visualizePlane(extracted_planes, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
-  // int color = 0;
-  // for (auto plane_normal : plane_normals) {
-  //   std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
-  //             << " color: " << color % 8 << std::endl;
-  //   ++color;
-  // }
+  int color = 0;
+  for (auto plane_normal : plane_normals) {
+    std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
+              << " color: " << color % 8 << std::endl;
+    ++color;
+  }
 }
 
 void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
