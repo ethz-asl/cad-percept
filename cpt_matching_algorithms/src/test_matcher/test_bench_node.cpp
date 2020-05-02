@@ -126,9 +126,18 @@ void runTestIterations() {
   std::chrono::duration<int, std::milli> duration;
 
   Eigen::Matrix4d sample_transform;
+  Eigen::Matrix4f res_transform;
+  Eigen::Vector3f translation;
+  Eigen::Quaternionf q;
 
   std::string test_result_file = nh_private.param<std::string>("test_results", "fail");
   std::ofstream actuel_file(test_result_file);
+
+  structure_threshold = nh_private.param<int>("StructureThreshold", 150);
+  search_radius = nh_private.param<float>("Voxelsearchradius", 0.01);
+
+  extractor = nh_private.param<std::string>("PlaneExtractor", "fail");
+  srand(time(0));
 
   for (int iter = 0; iter < test_iterations; iter++) {
     std::cout << "Start iteration " << iter << std::endl;
@@ -143,15 +152,15 @@ void runTestIterations() {
     // Simulate lidar at position
     simulateLidar(ctransformation, *reference_mesh);
 
+    std::cout << "Start time measurement" << std::endl;
+
     t_start = std::chrono::steady_clock::now();
     // Detect planes
     // Filtering / Preprocessing Point Cloud
     if (nh_private.param<bool>("useStructureFilter", false)) {
-      structure_threshold = nh_private.param<int>("StructureThreshold", 150);
       CloudFilter::filterStaticObject(structure_threshold, lidar_scan, static_structure_cloud);
     }
     if (nh_private.param<bool>("useVoxelCentroidFilter", false)) {
-      search_radius = nh_private.param<float>("Voxelsearchradius", 0.01);
       CloudFilter::filterVoxelCentroid(search_radius, lidar_scan);
     }
 
@@ -160,7 +169,6 @@ void runTestIterations() {
       break;
     }
     // Plane Extraction
-    extractor = nh_private.param<std::string>("PlaneExtractor", "fail");
     if (!extractor.compare("pclPlaneExtraction")) {
       PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
                                          tf_lidar_frame, plane_pub_);
@@ -224,9 +232,11 @@ void runTestIterations() {
                   << " " << -1 << std::endl;
     } else {
       // Transform LiDAR frame
-      Eigen::Matrix4f res_transform = Eigen::Matrix4f::Identity();
-      Eigen::Vector3f translation(transform_TR_[0], transform_TR_[1], transform_TR_[2]);
-      Eigen::Quaternionf q(transform_TR_[3], transform_TR_[4], transform_TR_[5], transform_TR_[6]);
+      res_transform = Eigen::Matrix4f::Identity();
+      Eigen::Vector3f translation =
+          Eigen::Vector3f(transform_TR_[0], transform_TR_[1], transform_TR_[2]);
+      q = Eigen::Quaternionf(transform_TR_[3], transform_TR_[4], transform_TR_[5],
+                             transform_TR_[6]);
       res_transform.block(0, 0, 3, 3) = q.matrix();
       res_transform.block(0, 3, 3, 1) = translation;
 
@@ -266,8 +276,6 @@ void runTestIterations() {
                   << " " << rotation_error << " " << duration.count() << std::endl;
     }
 
-    ros::spinOnce();
-
     // Preparation for next iteration
     extracted_planes.clear();
     plane_normals.clear();
@@ -280,11 +288,10 @@ void runTestIterations() {
     transform_TR_[5] = 0;
     transform_TR_[6] = 0;
   }
-
   actuel_file.close();
 }
 
-bool in_map_bit_map[61][15]{
+bool in_map_bit_map_garage[61][15]{
     //  -7 -6 -5 -4 -3 -2 -1  0  1  2  3  4  5  6  7
     {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},  //-23//////////////////////////
     {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},  //-22//////////////////////////
@@ -350,14 +357,13 @@ bool in_map_bit_map[61][15]{
 };
 
 void samplePose() {
-  srand(time(0));
   bool valid_position = false;
   int x_coord;
   int y_coord;
   while (!valid_position) {
     x_coord = std::rand() % 61;
     y_coord = std::rand() % 15;
-    if (in_map_bit_map[x_coord][y_coord]) {
+    if (in_map_bit_map_garage[x_coord][y_coord]) {
       valid_position = true;
     }
   }
@@ -365,8 +371,20 @@ void samplePose() {
   gt_translation[1] = y_coord - 7;
   gt_translation[2] = (double)(std::rand() % 30) * 0.1 + 0.5;
 
-  double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  // Uniform sampling
+  // double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  // double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+
+  // Gaussian sampling
+  // std::default_random_engine generator;
+  // std::normal_distribution<float> noise(0, M_PI / 4);
+  // double euler_x = noise(generator);
+  // double euler_y = noise(generator);
+  // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+
+  double euler_x = 0;
+  double euler_y = 0;
   double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
 
   gt_rotation = Eigen::AngleAxisd(euler_x, Eigen::Vector3d::UnitX()) *

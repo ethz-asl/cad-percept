@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
     <!-- declare arg to be passed in -->
-    <arg name="cad_file" default="$(find cpt_selective_icp)/resources/CLA_CAD_simplified_single_wall_no_ceiling_no_pillars.off" />
+    <arg name="cad_file" default="$(find cpt_matching_algorithms)/resources/lee_h/lee_h.off" />
     <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set/scan400.bag" /> 
     <arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
     <arg name="lidar_frame" value="marker_pose" />

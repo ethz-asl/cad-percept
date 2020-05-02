@@ -5,7 +5,7 @@ lidarAngularResolution: 2
 accuracyOfLidar: 0.0
 
 # Test Settings
-testIterations: 200
+testIterations: 10
 
 # Settings for Plane Matcher
 

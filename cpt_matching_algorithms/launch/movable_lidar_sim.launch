@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
 	<!-- declare arg to be passed in -->
-	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
+	<arg name="cad_file" default="$(find cpt_matching_algorithms)/resources/lee_h.off" />
 	<arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
     <arg name="SimMarkerLidar" value="true" />
     <arg name="lidar_frame" value="simulated_lidar_pose" />
