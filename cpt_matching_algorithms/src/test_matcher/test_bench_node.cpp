@@ -231,20 +231,21 @@ void runTestIterations() {
                   << " " << transform_TR_[5] << " " << transform_TR_[6] << " " << -1 << " " << -1
                   << " " << -1 << std::endl;
     } else {
-      // Transform LiDAR frame
-      res_transform = Eigen::Matrix4f::Identity();
-      Eigen::Vector3f translation =
-          Eigen::Vector3f(transform_TR_[0], transform_TR_[1], transform_TR_[2]);
-      q = Eigen::Quaternionf(transform_TR_[3], transform_TR_[4], transform_TR_[5],
-                             transform_TR_[6]);
-      res_transform.block(0, 0, 3, 3) = q.matrix();
-      res_transform.block(0, 3, 3, 1) = translation;
+      // // Transform LiDAR frame
+      // res_transform = Eigen::Matrix4f::Identity();
+      // Eigen::Vector3f translation =
+      //     Eigen::Vector3f(transform_TR_[0], transform_TR_[1], transform_TR_[2]);
+      // q = Eigen::Quaternionf(transform_TR_[3], transform_TR_[4], transform_TR_[5],
+      //                        transform_TR_[6]);
+      // res_transform.block(0, 0, 3, 3) = q.matrix();
+      // res_transform.block(0, 3, 3, 1) = translation;
 
-      pcl::transformPointCloud(lidar_scan, lidar_scan, res_transform);
+      // pcl::transformPointCloud(lidar_scan, lidar_scan, res_transform);
 
-      DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan);
-      scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame,
-                                                                          ros::Time::now()));
+      // DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan);
+      // scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame,
+      //                                                                     ros::Time::now()));
+      // ros::spinOnce();
 
       std::cout << "calculated position: x: " << transform_TR_[0] << " y: " << transform_TR_[1]
                 << " z: " << transform_TR_[2] << std::endl;
@@ -356,36 +357,46 @@ bool in_map_bit_map_garage[61][15]{
     {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0}   // 37//////////////////////////
 };
 
+bool in_map_bit_map_lee_h[12][13]{
+    //-9 -8 -7 -6 -5 -4 -3 -2 -1 0 1  2  3
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},  // -4/////////////////////////////////
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},  // -3/////////////////////////////////
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},  // -2/////////////////////////////////
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},  // -1/////////////////////////////////
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0},  //  0/////////////////////////////////
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0},  //  1/////////////////////////////////
+    {1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},  //  2/////////////////////////////////
+    {1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0},  //  3/////////////////////////////////
+    {1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0},  //  4/////////////////////////////////
+    {1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},  //  5/////////////////////////////////
+    {1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},  //  6/////////////////////////////////
+    {1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},  //  7/////////////////////////////////
+
+};
+
 void samplePose() {
   bool valid_position = false;
   int x_coord;
   int y_coord;
   while (!valid_position) {
-    x_coord = std::rand() % 61;
-    y_coord = std::rand() % 15;
-    if (in_map_bit_map_garage[x_coord][y_coord]) {
+    x_coord = std::rand() % 12;
+    y_coord = std::rand() % 13;
+    if (in_map_bit_map_lee_h[x_coord][y_coord]) {
       valid_position = true;
     }
   }
-  gt_translation[0] = x_coord - 23;
-  gt_translation[1] = y_coord - 7;
-  gt_translation[2] = (double)(std::rand() % 30) * 0.1 + 0.5;
+  gt_translation[0] = x_coord - 4;
+  gt_translation[1] = y_coord - 9;
+  gt_translation[2] = (double)(std::rand() % 20) * 0.1 + 0.5;
 
   // Uniform sampling
-  // double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  // double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-
-  // Gaussian sampling
-  // std::default_random_engine generator;
-  // std::normal_distribution<float> noise(0, M_PI / 4);
-  // double euler_x = noise(generator);
-  // double euler_y = noise(generator);
-  // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-
-  double euler_x = 0;
-  double euler_y = 0;
+  double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
   double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+
+  // double euler_x = 0;
+  // double euler_y = 0;
+  // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
 
   gt_rotation = Eigen::AngleAxisd(euler_x, Eigen::Vector3d::UnitX()) *
                 Eigen::AngleAxisd(euler_y, Eigen::Vector3d::UnitY()) *
