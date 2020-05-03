@@ -1,6 +1,8 @@
 #ifndef MAP_PLANES_H_
 #define MAP_PLANES_H_
 
+#include <cgal_conversions/eigen_conversions.h>
+#include <cgal_definitions/cgal_typedefs.h>
 #include <pcl/common/centroid.h>
 #include <pcl/common/projection_matrix.h>
 #include <pcl/point_types.h>

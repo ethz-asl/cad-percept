@@ -5,14 +5,13 @@
 #include <rosbag/view.h>
 #include <fstream>
 
-// The idea of this program is to create smaller bag files including one corresponding
-// frame and one ground thruth data, such that one has direct access to the single frames.
 int main(int argc, char **argv) {
   ros::init(argc, argv, "mapper");
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
 
   bool add_ground_truth = nh_private.param<bool>("add_ground_truth", "false");
+  int start_idx = nh_private.param<int>("start_idx", 0);
 
   rosbag::Bag bag;
   std::cout << "Data Reader started" << std::endl;
@@ -35,7 +34,7 @@ int main(int argc, char **argv) {
   std::string file_name;
   std::string file_type = ".bag";
   std::string scan_name = "/scan";
-  int scan_nr = 0;
+  int scan_nr = start_idx;
   bool gt_found = false;
   rosbag::Bag bag_write;
 

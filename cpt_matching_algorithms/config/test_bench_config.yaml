@@ -5,7 +5,7 @@ lidarAngularResolution: 2
 accuracyOfLidar: 0.0
 
 # Test Settings
-testIterations: 20
+testIterations: 10
 
 # Settings for Plane Matcher
 
@@ -14,7 +14,7 @@ useStructureFilter: false
 StructureThreshold: 150
 
 useVoxelCentroidFilter: true
-Voxelsearchradius: 0.1
+Voxelsearchradius: 0.2
 
 # Plane Extraction
 PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 

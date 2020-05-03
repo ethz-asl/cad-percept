@@ -225,7 +225,7 @@ void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::Point
       }
       min_error = error;
       std::cout << "error: " << min_error << std::endl;
-      // std::cout << candidate_assignment << std::endl;
+      std::cout << candidate_assignment << std::endl;
     }
     ++assignment_nr;
   }

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
     <!-- declare arg to be passed in -->
-    <arg name="cad_file" default="$(find cpt_matching_algorithms)/resources/lee_h/lee_h.off" />
-    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set/scan200.bag" /> 
+    <arg name="cad_file" default="$(find cpt_matching_algorithms)/resources/garage/garage.off" />
+    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set_garage/scan200.bag" /> 
     <arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
     <arg name="lidar_frame" value="marker_pose" />
     <arg name="create_new_map_file" value="false" />
@@ -42,7 +42,7 @@
         <param name="cadTopic" value="/mesh_publisher/mesh_out" />
     </node>
     
-    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="-2 2 1.9 0.156434 0 0 0.987688 map $(arg lidar_frame)  100"/> <!--13 -3.5 1 0 0 0.3428978 0.9393727-->
+    <node pkg="tf" type="static_transform_publisher" name="SimFixLidar" args="33 5 1.9 0 0 0.987688 0.156434 map $(arg lidar_frame)  100"/> <!--13 -3.5 1 0 0 0.3428978 0.9393727-->
 
     <node name="LiDAR_driver" pkg="rosbag" type="play" args="-l $(arg lidar_scan)" />
 

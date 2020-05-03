@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
 	<!-- declare arg to be passed in -->
-	<arg name="data_file" default="$(find cpt_matching_algorithms)/../../lidar_lee_h.bag" />
+	<arg name="data_file" default="$(find cpt_matching_algorithms)/../../smb_distortion_2020-02-19-16-23-44_projected.bag" />
 	<arg name="save_target" default="$(find cpt_matching_algorithms)/../../data_set" />
-	<arg name="topic_of_lidar_in_bag" default="/velodyne_points" />
+	<arg name="topic_of_lidar_in_bag" default="/static_points" />
 
     <node name="data_reader" pkg="cpt_matching_algorithms" type="data_reader" output="screen">
     	<param name="raw_data" value="$(arg data_file)" />
@@ -11,5 +11,6 @@
         <param name="point_topic" value="$(arg topic_of_lidar_in_bag)" />
         <param name="gt_topic" value="/leica/position" />
         <param name="add_ground_truth" value="false" />
+        <param name="start_idx" value="611" />
     </node>
 </launch>

@@ -69,21 +69,28 @@ MapPlanes::MapPlanes(std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_map_i
 bool MapPlanes::isProjectionOfPointOnPlane(Eigen::Vector3f point, int map_plane_nr) {
   pcl::PointNormal plane = plane_centroid_with_normals_.points[map_plane_nr];
   float tol = 0.5;
-  if (std::abs(plane.normal_x) > 0.8) {
-    return plane_boundaries_(2, map_plane_nr) - tol < point[1] &&
-           point[1] < plane_boundaries_(3, map_plane_nr) + tol &&
-           plane_boundaries_(4, map_plane_nr) - tol < point[2] &&
-           point[2] < plane_boundaries_(5, map_plane_nr) + tol;
-  } else if (std::abs(plane.normal_y) > 0.8) {
-    return plane_boundaries_(0, map_plane_nr) - tol < point[0] &&
-           point[0] < plane_boundaries_(1, map_plane_nr) + tol &&
-           plane_boundaries_(4, map_plane_nr) - tol < point[2] &&
-           point[2] < plane_boundaries_(5, map_plane_nr) + tol;
-  } else if (std::abs(plane.normal_z) > 0.8) {
-    return plane_boundaries_(0, map_plane_nr) - tol < point[0] &&
-           point[0] < plane_boundaries_(1, map_plane_nr) + tol &&
-           plane_boundaries_(2, map_plane_nr) - tol < point[1] &&
-           point[1] < plane_boundaries_(3, map_plane_nr) + tol;
+  cgal::Plane intersection_plane =
+      cgal::Plane(cgal::Point(plane.x, plane.y, plane.z),
+                  cgal::Vector(plane.normal_x, plane.normal_y, plane.normal_z));
+  cgal::Line normal_through_point =
+      cgal::Line(cgal::Point(point[0], point[1], point[2]),
+                 cgal::Vector(plane.normal_x, plane.normal_y, plane.normal_z));
+  cgal::Point intersection_point;
+  CGAL::Object result_intersection_point;
+
+  result_intersection_point = CGAL::intersection(intersection_plane, normal_through_point);
+  if (!CGAL::assign(intersection_point, result_intersection_point)) {
+    std::cout << "MapPlanes: Error, there should be an intersection points" << std::endl;
+    return false;
+  };
+
+  if (plane_boundaries_(0, map_plane_nr) - tol < intersection_point.x() &&
+      intersection_point.x() < plane_boundaries_(1, map_plane_nr) + tol &&
+      plane_boundaries_(2, map_plane_nr) - tol < intersection_point.y() &&
+      intersection_point.y() < plane_boundaries_(3, map_plane_nr) + tol &&
+      plane_boundaries_(4, map_plane_nr) - tol < intersection_point.z() &&
+      intersection_point.z() < plane_boundaries_(5, map_plane_nr) + tol) {
+    return true;
   }
   return false;
 };

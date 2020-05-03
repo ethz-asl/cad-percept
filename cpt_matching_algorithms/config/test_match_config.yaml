@@ -15,13 +15,13 @@ GoICPdownsample: "1000"
 
 # Filters
 useStructureFilter: false
-StructureThreshold: 30
+StructureThreshold: 150
 
 useVoxelCentroidFilter: true
 Voxelsearchradius: 0.1
 
 # Plane Extraction
-PlaneExtractor: cgalRegionGrowing # pclPlaneExtraction, rhtPlaneExtraction, 
+PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 
                                    # iterRhtPlaneExtraction, cgalRegionGrowing
 
 # Plane Matching
