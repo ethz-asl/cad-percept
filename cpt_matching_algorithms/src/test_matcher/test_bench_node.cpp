@@ -379,24 +379,24 @@ void samplePose() {
   int x_coord;
   int y_coord;
   while (!valid_position) {
-    x_coord = std::rand() % 61;
-    y_coord = std::rand() % 15;
-    if (in_map_bit_map_garage[x_coord][y_coord]) {
+    x_coord = std::rand() % 12;
+    y_coord = std::rand() % 13;
+    if (in_map_bit_map_lee_h[x_coord][y_coord]) {
       valid_position = true;
     }
   }
-  gt_translation[0] = x_coord - 23;
-  gt_translation[1] = y_coord - 7;
+  gt_translation[0] = x_coord - 4;
+  gt_translation[1] = y_coord - 9;
   gt_translation[2] = (double)(std::rand() % 20) * 0.1 + 0.5;
 
   // // Uniform sampling
-  // double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  // double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-
-  double euler_x = 0;
-  double euler_y = 0;
+  double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
   double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+
+  // double euler_x = 0;
+  // double euler_y = 0;
+  // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
 
   gt_rotation = Eigen::AngleAxisd(euler_x, Eigen::Vector3d::UnitX()) *
                 Eigen::AngleAxisd(euler_y, Eigen::Vector3d::UnitY()) *

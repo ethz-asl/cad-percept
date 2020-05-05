@@ -27,6 +27,7 @@ iterRHTIterPerIter: 1000000 # sample iterations per iteration
 iterRHTTolDist: 3   # makes sure points are not too far apart
 iterRHTMinArea: 0.5 # min area spanned by two vectors created by three reference points (makes sure points are not the same or collinear)
 iterRHTNumPlanePerIter: 1 # set to zero to use threshold per iteration
+iterRHTMinNumberInlier: 10 # minimum number of inliers of a plane, used as a break condition
 
 
 # Settings of PCL

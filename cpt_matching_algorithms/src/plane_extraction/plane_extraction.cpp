@@ -76,9 +76,9 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
                                             std::vector<Eigen::Vector3d> &plane_normals,
                                             PointCloud<PointXYZ> lidar_scan,
                                             std::string tf_map_frame, ros::Publisher &plane_pub) {
-  // std::cout << "///////////////////////////////////////////////" << std::endl;
-  // std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
-  // std::cout << "///////////////////////////////////////////////" << std::endl;
+  std::cout << "///////////////////////////////////////////////" << std::endl;
+  std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
+  std::cout << "///////////////////////////////////////////////" << std::endl;
 
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
@@ -97,6 +97,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 3);
   double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.5);
   int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlanePerIter", 1);
+  int min_number_of_inlier = nh_private.param<int>("iterRHTMinNumberInlier", 10);
 
   // Copy lidar frame to remove points
   PointCloud<PointXYZ>::Ptr copy_lidar_scan(new PointCloud<PointXYZ>());
@@ -135,8 +136,9 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   // Part solution for single iterations
   std::vector<Eigen::Vector3d> iter_plane_normals;
   std::vector<PointCloud<PointXYZ>> iter_extracted_planes;
+  bool inlier_over_threshold = true;
 
-  for (int iter = 0; iter < number_of_iteration; ++iter) {
+  for (int iter = 0; iter < number_of_iteration && inlier_over_threshold; ++iter) {
     // Perform RHT
     rhtVote(iteration_per_plane, tol_distance_between_points, min_area_spanned, *copy_lidar_scan,
             accumulator);
@@ -147,6 +149,10 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
     // Add part solution to final solution
     for (int plane_nr = 0; plane_nr < iter_plane_normals.size(); ++plane_nr) {
+      if (iter_extracted_planes[plane_nr].size() < min_number_of_inlier) {
+        inlier_over_threshold = false;
+        continue;
+      }
       plane_normals.push_back(iter_plane_normals[plane_nr]);
       extracted_planes.push_back(iter_extracted_planes[plane_nr]);
       rm_indices.insert(rm_indices.end(), inlier_ids[plane_nr].begin(), inlier_ids[plane_nr].end());
@@ -389,7 +395,7 @@ void PlaneExtractor::cgalRegionGrowing(
 // Helper functions
 void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted_planes,
                                     ros::Publisher &plane_pub, std::string tf_map_frame) {
-  // std::cout << "Start Visualization" << std::endl;
+  std::cout << "Start Visualization" << std::endl;
 
   int color[8][3] = {{0, 0, 0},     {255, 0, 0},   {0, 255, 0},   {0, 0, 255},
                      {255, 255, 0}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
@@ -401,8 +407,8 @@ void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted
     std::cout << "No planes to visualize" << std::endl;
     return;
   } else {
-    // std::cout << "Found " << extracted_planes.size() << " planes, visualize plane inliers... "
-    //           << std::endl;
+    std::cout << "Found " << extracted_planes.size() << " planes, visualize plane inliers... "
+              << std::endl;
     for (std::size_t i = 0; i < extracted_planes.size(); ++i) {
       colored_inlier_points->clear();
       copyPointCloud(extracted_planes[i], *colored_inlier_points);
@@ -420,7 +426,7 @@ void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted
   segmented_point_cloud->header.frame_id = tf_map_frame;
   toROSMsg(*segmented_point_cloud, segmentation_mesg);
   plane_pub.publish(segmentation_mesg);
-  // std::cout << "Publish plane segmentation" << std::endl;
+  std::cout << "Publish plane segmentation" << std::endl;
 }
 
 void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_points,
