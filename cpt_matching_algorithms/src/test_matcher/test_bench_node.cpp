@@ -129,6 +129,7 @@ void runTestIterations() {
   Eigen::Matrix4f res_transform;
   Eigen::Vector3f translation;
   Eigen::Quaternionf q;
+  float transform_error;
 
   std::string test_result_file = nh_private.param<std::string>("test_results", "fail");
   std::ofstream actuel_file(test_result_file);
@@ -138,6 +139,8 @@ void runTestIterations() {
 
   extractor = nh_private.param<std::string>("PlaneExtractor", "fail");
   srand(time(0));
+
+  std::vector<std::vector<float>> results;
 
   for (int iter = 0; iter < test_iterations; iter++) {
     std::cout << "Start iteration " << iter << std::endl;
@@ -213,8 +216,32 @@ void runTestIterations() {
     }
 
     // Match planes
-    PlaneMatch::PRRUS(transform_TR_, scan_planes, *map_planes);
+    results.clear();
+    transform_error = PlaneMatch::PRRUS(transform_TR_, scan_planes, *map_planes, results);
     t_end = std::chrono::steady_clock::now();
+
+    // for (auto result : results) {
+    //   translation_error =
+    //       (Eigen::Vector3d(result[0], result[1], result[2]) - gt_translation).norm();
+    //   rotation_error =
+    //       Eigen::AngleAxis<double>(
+    //           Eigen::Quaterniond(result[3], result[4], result[5], result[6]).toRotationMatrix() *
+    //           gt_rotation.inverse().toRotationMatrix())
+    //           .angle();
+    //   std::cout << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2] << "
+    //   "
+    //             << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y() << " "
+    //             << gt_rotation.z() << " " << result[0] << " " << result[1] << " " << result[2]
+    //             << " " << result[3] << " " << result[4] << " " << result[5] << " " << result[6]
+    //             << " " << translation_error << " " << rotation_error << " " << result[7]
+    //             << std::endl;
+    //   actuel_file << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2]
+    //               << " " << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y()
+    //               << " " << gt_rotation.z() << " " << result[0] << " " << result[1] << " "
+    //               << result[2] << " " << result[3] << " " << result[4] << " " << result[5] << " "
+    //               << result[6] << " " << translation_error << " " << rotation_error << " "
+    //               << result[7] << std::endl;
+    // }
 
     // Evaluate
     if (transform_TR_[0] == 0 && transform_TR_[1] == 0 && transform_TR_[2] == 0 &&
@@ -229,7 +256,7 @@ void runTestIterations() {
                   << " " << gt_rotation.z() << " " << transform_TR_[0] << " " << transform_TR_[1]
                   << " " << transform_TR_[2] << " " << transform_TR_[3] << " " << transform_TR_[4]
                   << " " << transform_TR_[5] << " " << transform_TR_[6] << " " << -1 << " " << -1
-                  << " " << -1 << std::endl;
+                  << " " << -1 << " " << -1 << std::endl;
     } else {
       // // Transform LiDAR frame
       // res_transform = Eigen::Matrix4f::Identity();
@@ -243,7 +270,8 @@ void runTestIterations() {
       // pcl::transformPointCloud(lidar_scan, lidar_scan, res_transform);
 
       // DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan);
-      // scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame,
+      // scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp,
+      // tf_map_frame,
       //                                                                     ros::Time::now()));
       // ros::spinOnce();
 
@@ -274,7 +302,8 @@ void runTestIterations() {
                   << " " << gt_rotation.z() << " " << transform_TR_[0] << " " << transform_TR_[1]
                   << " " << transform_TR_[2] << " " << transform_TR_[3] << " " << transform_TR_[4]
                   << " " << transform_TR_[5] << " " << transform_TR_[6] << " " << translation_error
-                  << " " << rotation_error << " " << duration.count() << std::endl;
+                  << " " << rotation_error << " " << duration.count() << " " << transform_error
+                  << std::endl;
     }
 
     // Preparation for next iteration
@@ -379,24 +408,24 @@ void samplePose() {
   int x_coord;
   int y_coord;
   while (!valid_position) {
-    x_coord = std::rand() % 12;
-    y_coord = std::rand() % 13;
-    if (in_map_bit_map_lee_h[x_coord][y_coord]) {
+    x_coord = std::rand() % 61;
+    y_coord = std::rand() % 15;
+    if (in_map_bit_map_garage[x_coord][y_coord]) {
       valid_position = true;
     }
   }
-  gt_translation[0] = x_coord - 4;
-  gt_translation[1] = y_coord - 9;
+  gt_translation[0] = x_coord - 23;
+  gt_translation[1] = y_coord - 7;
   gt_translation[2] = (double)(std::rand() % 20) * 0.1 + 0.5;
 
   // // Uniform sampling
-  double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-
-  // double euler_x = 0;
-  // double euler_y = 0;
+  // double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  // double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
   // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+
+  double euler_x = 0;
+  double euler_y = 0;
+  double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
 
   gt_rotation = Eigen::AngleAxisd(euler_x, Eigen::Vector3d::UnitX()) *
                 Eigen::AngleAxisd(euler_y, Eigen::Vector3d::UnitY()) *

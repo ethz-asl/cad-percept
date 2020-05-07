@@ -58,8 +58,9 @@ class PlaneMatch::SortRelativeTriangle {
   bool isline = false;
 };
 
-void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                       MapPlanes map_planes) {
+float PlaneMatch::PRRUS(float (&transformTR)[7],
+                        const pcl::PointCloud<pcl::PointNormal> scan_planes, MapPlanes map_planes,
+                        std::vector<std::vector<float>> &results) {
   std::cout << "////////////////////////////////////////////////" << std::endl;
   std::cout << "////              PRRUS Started             ////" << std::endl;
   std::cout << "////////////////////////////////////////////////" << std::endl;
@@ -215,21 +216,34 @@ void PlaneMatch::PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::Point
   float error = 0;
   float actual_transformation[7];
   int assignment_nr = 0;
+  std::vector<float> actual_result;
   for (auto candidate_assignment : assignments) {
     getTranslationError(candidate_assignment, actual_transformation, error,
                         rotations_of_assignments[assignment_nr], scan_planes, map_planes,
                         translation_penalty);
+    actual_result.clear();
+    actual_result.push_back(actual_transformation[0]);
+    actual_result.push_back(actual_transformation[1]);
+    actual_result.push_back(actual_transformation[2]);
+    actual_result.push_back(actual_transformation[3]);
+    actual_result.push_back(actual_transformation[4]);
+    actual_result.push_back(actual_transformation[5]);
+    actual_result.push_back(actual_transformation[6]);
+    actual_result.push_back(error);
+    std::cout << "add trans" << std::endl;
+    results.push_back(actual_result);
     if (error < min_error || min_error < 0) {
       for (int i = 0; i < 7; ++i) {
         transformTR[i] = actual_transformation[i];
       }
       min_error = error;
-      std::cout << "error: " << min_error << std::endl;
-      std::cout << candidate_assignment << std::endl;
+      // std::cout << "error: " << min_error << std::endl;
+      // std::cout << candidate_assignment << std::endl;
     }
     ++assignment_nr;
   }
-  std::cout << "final error: " << min_error << std::endl;
+  // std::cout << "final error: " << min_error << std::endl;
+  return min_error;
 };
 
 void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assignment,
@@ -237,10 +251,6 @@ void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assig
                                      Eigen::Quaternionf rotation,
                                      const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                      MapPlanes map_planes, float translation_penalty) {
-  if (assignment(0, 0) == 4 && assignment(0, 1) == 1 && assignment(0, 2) == 2 &&
-      assignment(1, 0) == 7 && assignment(1, 1) == 14 && assignment(1, 2) == 2) {
-    std::cout << "here3" << std::endl;
-  }
   transl_error = 0;
   // Write rotation to resulting transformation
   actual_transformation[3] = rotation.w();

@@ -42,8 +42,8 @@ class PlaneMatch {
   static void LineSegmentRansac(float (&transformTR)[7],
                                 const pcl::PointCloud<pcl::PointNormal> scan_planes,
                                 MapPlanes map_planes);
-  static void PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                    MapPlanes map_planes);
+  static float PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                     MapPlanes map_planes, std::vector<std::vector<float>> &results);
 
  private:
   class SortRelativeTriangle;
