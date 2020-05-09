@@ -105,10 +105,10 @@ void runTestIterations() {
   ros::NodeHandle nh_private("~");
   // Test iterations
   int test_iterations = nh_private.param<int>("testIterations", 1);
+  bool usetoyexample = nh_private.param<bool>("usetoyexample", true);
 
   int structure_threshold;
   float search_radius;
-  pcl::PointCloud<pcl::PointXYZI> static_structure_cloud;
 
   std::string extractor;
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
@@ -118,6 +118,7 @@ void runTestIterations() {
   pcl::PointNormal norm_point;
   pcl::PointXYZ plane_centroid;
   pcl::PointCloud<pcl::PointNormal> scan_planes;
+
   int plane_nr = 0;
   float translation_error = 0;
   float rotation_error = 0;
@@ -132,9 +133,15 @@ void runTestIterations() {
   float transform_error;
 
   std::string test_result_file = nh_private.param<std::string>("test_results", "fail");
-  std::ofstream actuel_file(test_result_file);
+  std::string data_set_folder = nh_private.param<std::string>("data_set_folder", "fail");
+  std::string lidar_scan_file;
+  int start_scan_nr = nh_private.param<int>("start_scan_nr", 0);
+  int end_scan_nr = nh_private.param<int>("end_scan_nr", 10);
+  int scan_nr = start_scan_nr;
+  std::vector<int> nan_indices;
 
   structure_threshold = nh_private.param<int>("StructureThreshold", 150);
+  pcl::PointCloud<pcl::PointXYZI> static_structure_cloud;
   search_radius = nh_private.param<float>("Voxelsearchradius", 0.01);
 
   extractor = nh_private.param<std::string>("PlaneExtractor", "fail");
@@ -142,18 +149,37 @@ void runTestIterations() {
 
   std::vector<std::vector<float>> results;
 
-  for (int iter = 0; iter < test_iterations; iter++) {
+  std::ofstream actuel_file(test_result_file);
+
+  for (int iter = 0;
+       (iter < test_iterations && usetoyexample) || ((scan_nr < end_scan_nr) && !usetoyexample);
+       iter++, scan_nr++) {
     std::cout << "Start iteration " << iter << std::endl;
-    // Sample pose in mesh
-    samplePose();
 
-    sample_transform = Eigen::Matrix4d::Identity();
-    sample_transform.block(0, 0, 3, 3) = gt_rotation.matrix();
-    sample_transform.block(0, 3, 3, 1) = gt_translation;
-    cgal::eigenTransformationToCgalTransformation(sample_transform, &ctransformation);
+    if (usetoyexample) {
+      // Sample pose in mesh
+      samplePose();
 
-    // Simulate lidar at position
-    simulateLidar(ctransformation, *reference_mesh);
+      sample_transform = Eigen::Matrix4d::Identity();
+      sample_transform.block(0, 0, 3, 3) = gt_rotation.matrix();
+      sample_transform.block(0, 3, 3, 1) = gt_translation;
+      cgal::eigenTransformationToCgalTransformation(sample_transform, &ctransformation);
+
+      // Simulate lidar at position
+      simulateLidar(ctransformation, *reference_mesh);
+    } else {
+      // Load real data
+      std::cout << "Load real data" << std::endl;
+      std::fstream gt_file(data_set_folder + "/ground_truth_" + std::to_string(scan_nr) + ".txt");
+      gt_file >> gt_translation[0] >> gt_translation[1] >> gt_translation[2];
+      std::cout << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2]
+                << std::endl;
+      gt_file.close();
+      lidar_scan_file = data_set_folder + "/scan_" + std::to_string(scan_nr) + ".pcd";
+      pcl::io::loadPCDFile<pcl::PointXYZI>(lidar_scan_file, static_structure_cloud);
+      pcl::removeNaNFromPointCloud(static_structure_cloud, static_structure_cloud, nan_indices);
+      pcl::copyPointCloud(static_structure_cloud, lidar_scan);
+    }
 
     std::cout << "Start time measurement" << std::endl;
 
@@ -251,12 +277,20 @@ void runTestIterations() {
       std::cout << "ground truth position: x: " << gt_translation[0] << " y: " << gt_translation[1]
                 << " z: " << gt_translation[2] << std::endl;
 
+      // actuel_file << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2]
+      //             << " " << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y()
+      //             << " " << gt_rotation.z() << " " << transform_TR_[0] << " " << transform_TR_[1]
+      //             << " " << transform_TR_[2] << " " << transform_TR_[3] << " " <<
+      //             transform_TR_[4]
+      //             << " " << transform_TR_[5] << " " << transform_TR_[6] << " " << -1 << " " << -1
+      //             << " " << -1 << " " << -1 << std::endl;
+
       actuel_file << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2]
-                  << " " << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y()
-                  << " " << gt_rotation.z() << " " << transform_TR_[0] << " " << transform_TR_[1]
-                  << " " << transform_TR_[2] << " " << transform_TR_[3] << " " << transform_TR_[4]
-                  << " " << transform_TR_[5] << " " << transform_TR_[6] << " " << -1 << " " << -1
-                  << " " << -1 << " " << -1 << std::endl;
+                  << " " << transform_TR_[0] << " " << transform_TR_[1] << " " << transform_TR_[2]
+                  << " " << transform_TR_[3] << " " << transform_TR_[4] << " " << transform_TR_[5]
+                  << " " << transform_TR_[6] << " " << -1 << " " << -1 << " "
+                  << " " << -1 << std::endl;
+
     } else {
       // // Transform LiDAR frame
       // res_transform = Eigen::Matrix4f::Identity();
@@ -297,13 +331,21 @@ void runTestIterations() {
       std::cout << "translation error: " << translation_error << std::endl;
       std::cout << "rotation error: " << rotation_error << std::endl;
       std::cout << "time needed: " << duration.count() << " milliseconds" << std::endl;
+      // actuel_file << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2]
+      //             << " " << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y()
+      //             << " " << gt_rotation.z() << " " << transform_TR_[0] << " " << transform_TR_[1]
+      //             << " " << transform_TR_[2] << " " << transform_TR_[3] << " " <<
+      //             transform_TR_[4]
+      //             << " " << transform_TR_[5] << " " << transform_TR_[6] << " " <<
+      //             translation_error
+      //             << " " << rotation_error << " " << duration.count() << " " << transform_error
+      //             << std::endl;
+
       actuel_file << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2]
-                  << " " << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y()
-                  << " " << gt_rotation.z() << " " << transform_TR_[0] << " " << transform_TR_[1]
-                  << " " << transform_TR_[2] << " " << transform_TR_[3] << " " << transform_TR_[4]
-                  << " " << transform_TR_[5] << " " << transform_TR_[6] << " " << translation_error
-                  << " " << rotation_error << " " << duration.count() << " " << transform_error
-                  << std::endl;
+                  << " " << transform_TR_[0] << " " << transform_TR_[1] << " " << transform_TR_[2]
+                  << " " << transform_TR_[3] << " " << transform_TR_[4] << " " << transform_TR_[5]
+                  << " " << transform_TR_[6] << " " << translation_error << " " << duration.count()
+                  << " " << transform_error << std::endl;
     }
 
     // Preparation for next iteration

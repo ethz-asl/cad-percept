@@ -2,7 +2,7 @@
 <launch>
     <!-- declare arg to be passed in -->
     <arg name="cad_file" default="$(find cpt_matching_algorithms)/resources/garage/garage.off" />
-    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set_lee_h/scan200.bag" /> 
+    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set_garage/scan310.bag" /> 
     <arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
     <arg name="lidar_frame" value="marker_pose" />
     <arg name="create_new_map_file" value="false" />

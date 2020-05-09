@@ -221,17 +221,17 @@ float PlaneMatch::PRRUS(float (&transformTR)[7],
     getTranslationError(candidate_assignment, actual_transformation, error,
                         rotations_of_assignments[assignment_nr], scan_planes, map_planes,
                         translation_penalty);
-    actual_result.clear();
-    actual_result.push_back(actual_transformation[0]);
-    actual_result.push_back(actual_transformation[1]);
-    actual_result.push_back(actual_transformation[2]);
-    actual_result.push_back(actual_transformation[3]);
-    actual_result.push_back(actual_transformation[4]);
-    actual_result.push_back(actual_transformation[5]);
-    actual_result.push_back(actual_transformation[6]);
-    actual_result.push_back(error);
-    std::cout << "add trans" << std::endl;
-    results.push_back(actual_result);
+    // actual_result.clear();
+    // actual_result.push_back(actual_transformation[0]);
+    // actual_result.push_back(actual_transformation[1]);
+    // actual_result.push_back(actual_transformation[2]);
+    // actual_result.push_back(actual_transformation[3]);
+    // actual_result.push_back(actual_transformation[4]);
+    // actual_result.push_back(actual_transformation[5]);
+    // actual_result.push_back(actual_transformation[6]);
+    // actual_result.push_back(error);
+    // std::cout << "add trans" << std::endl;
+    // results.push_back(actual_result);
     if (error < min_error || min_error < 0) {
       for (int i = 0; i < 7; ++i) {
         transformTR[i] = actual_transformation[i];

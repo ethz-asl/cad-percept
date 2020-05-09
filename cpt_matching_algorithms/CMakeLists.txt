@@ -30,6 +30,8 @@ cs_add_executable(test_matcher_node
 cs_add_executable(data_reader
     src/data_creator/data_reader.cpp
     )
+cs_add_executable(data_to_pcl_reader
+    src/data_creator/data_to_pcl_reader.cpp)
 cs_add_executable(sim_lidar_node
     src/test_matcher/sim_lidar_node.cpp
     )

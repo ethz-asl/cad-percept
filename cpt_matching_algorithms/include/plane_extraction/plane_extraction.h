@@ -20,7 +20,6 @@
 #include <pcl/segmentation/sac_segmentation.h>
 
 #include <pcl/common/geometry.h>
-#include <pcl/kdtree/kdtree_flann.h>
 
 #include <CGAL/pca_estimate_normals.h>
 #include <CGAL/regularize_planes.h>
