@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+
+    <node name="test_plane_extraction"  pkg="cpt_matching_algorithms" type="test_plane_extraction_node" output="screen" launch-prefix="tmux split-window -h">
+      <param name="PlaneExtractor" value="iterRhtPlaneExtraction" />
+      <param name="numTestIterations" value="300" />
+      <param name="search_radius" value="0.1" />
+      <param name="useVoxelCentroidFilter" value="true" />
+      <param name="test_results" value="$(find cpt_matching_algorithms)/config/test_results.txt" />
+
+      <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml"/>
+    </node>
+
+    <!--<node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz/rviz_test_matcher.yaml" />-->
+
+</launch>

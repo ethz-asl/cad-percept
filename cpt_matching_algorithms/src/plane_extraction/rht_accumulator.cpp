@@ -55,6 +55,7 @@ bool HoughAccumulator::getIndexFromRTP(int &index, Eigen::Vector3i rtp_idx) {
   if (!getValue(bin_value_, rtp_idx)) {
     std::cout << "getIndexFromIndex: invalid index " << rtp_idx[0] << " " << rtp_idx[1] << " "
               << rtp_idx[2] << std::endl;
+    std::cin.ignore();
     return false;
   }
   index = bin_value_.index;
@@ -68,6 +69,7 @@ Eigen::Vector3d HoughAccumulator::getValueFromIndex(int index) {
   if (!getValue(bin_value_, rtp_index)) {
     std::cout << "getValueFromIndex: invalid index " << rtp_index[0] << " " << rtp_index[1] << " "
               << rtp_index[2] << std::endl;
+    std::cin.ignore();
   }
   return bin_value_.bin_value;
 }

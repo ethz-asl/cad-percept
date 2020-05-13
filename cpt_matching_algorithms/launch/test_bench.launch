@@ -26,6 +26,6 @@
         <param name="frame_name" value="marker"/>
     </node>
 
-    <!--<node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz/rviz_test_matcher.yaml" />-->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz/rviz_test_matcher.yaml" />
 
 </launch>

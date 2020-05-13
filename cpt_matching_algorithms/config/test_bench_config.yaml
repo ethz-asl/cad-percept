@@ -1,4 +1,4 @@
-usetoyexample: false
+usetoyexample: true
 
 # Lidar Settings
 rangeOfLidar: 25
@@ -7,14 +7,14 @@ lidarAngularResolution: 2
 accuracyOfLidar: 0.0
 
 # Test Settings
-testIterations: 10
-start_scan_nr: 650
-end_scan_nr: 660
+testIterations: 50
+start_scan_nr: 0
+end_scan_nr: 610
 
 # Settings for Plane Matcher
 
 # Filters
-useStructureFilter: false
+useStructureFilter: true
 StructureThreshold: 150
 
 useVoxelCentroidFilter: true

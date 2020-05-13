@@ -70,6 +70,8 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
               << " color: " << color % 8 << std::endl;
     ++color;
   }
+
+  delete accumulator;
 }
 
 void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
@@ -140,6 +142,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
   for (int iter = 0; iter < number_of_iteration && inlier_over_threshold; ++iter) {
     // Perform RHT
+
     rhtVote(iteration_per_plane, tol_distance_between_points, min_area_spanned, *copy_lidar_scan,
             accumulator);
 
@@ -183,6 +186,8 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
               << " color: " << color % 8 << std::endl;
     ++color;
   }
+
+  delete accumulator;
 }
 
 void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
@@ -426,7 +431,6 @@ void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted
   segmented_point_cloud->header.frame_id = tf_map_frame;
   toROSMsg(*segmented_point_cloud, segmentation_mesg);
   plane_pub.publish(segmentation_mesg);
-  std::cout << "Publish plane segmentation" << std::endl;
 }
 
 void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_points,
@@ -445,9 +449,9 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
   // std::cout << "Start voting" << std::endl;
   for (int i = 0; i < max_iteration; ++i) {
     // Sample random points
-    reference_point_ids[0] = (rand() % (pointcloud_size + 1));
-    reference_point_ids[1] = (rand() % (pointcloud_size + 1));
-    reference_point_ids[2] = (rand() % (pointcloud_size + 1));
+    reference_point_ids[0] = (rand() % lidar_scan.size());
+    reference_point_ids[1] = (rand() % lidar_scan.size());
+    reference_point_ids[2] = (rand() % lidar_scan.size());
     sampled_point[0] = lidar_scan.points[reference_point_ids[0]];
     sampled_point[1] = lidar_scan.points[reference_point_ids[1]];
     sampled_point[2] = lidar_scan.points[reference_point_ids[2]];
@@ -486,7 +490,6 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
 
     accumulator->vote(vote, reference_point_ids);
   }
-  // std::cout << "Voting finished" << std::endl;
 }
 
 std::vector<std::vector<int>> PlaneExtractor::rhtEval(

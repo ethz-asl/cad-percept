@@ -41,10 +41,14 @@ cs_add_executable(map_plane_extractor_node
 cs_add_executable(test_bench_node
     src/test_matcher/test_bench_node.cpp
     )
+cs_add_executable(test_plane_extraction_node
+    src/test_matcher/test_plane_extraction.cpp
+    )
 
 target_link_libraries(test_matcher_node test_matcher  yaml-cpp)
 target_link_libraries(map_plane_extractor_node test_matcher yaml-cpp)
 target_link_libraries(test_bench_node test_matcher yaml-cpp)
+target_link_libraries(test_plane_extraction_node test_matcher yaml-cpp)
 
 
 #############
