@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Launch file for Selective ICP with rviz
+-->
+
+<launch>
+
+    <arg name="load_description" default="true"/>
+
+    <!--node pkg="cpt_deviation_analysis" type="create-tmux.bash" name="tmuxer" output="screen"/-->
+    <!-- LAUNCH DRIVERS -->
+    <node pkg="tf"
+          type="static_transform_publisher"
+          name="laser"
+          args="0 0 0 0 0 0 1  /lidar /rslidar  100"
+          launch-prefix="tmux new-session -d -s selectiveicp "
+          />
+    <include file="$(find ethzasl_icp_mapper)/launch/supermegabot/supermegabot_robosense_drivers_only.launch"
+	     />
+    <!-- Launch the VIsensor -->
+    <include file="$(find visensor_node)/launch/dense.launch" />
+
+
+    <!-- Launch the state estimator -->
+    <rosparam command="load" ns="smb_state_estimator" file="$(find smb_state_estimator)/config/publishers.yaml"/>
+    <rosparam command="load" ns="smb_state_estimator" file="$(find smb_state_estimator)/config/subscribers.yaml"/>
+    <rosparam command="load" ns="smb_state_estimator" file="$(find smb_state_estimator)/config/services.yaml"/>
+
+    <group if="$(arg load_description)">
+        <include file="$(find smb_description)/launch/load.launch">
+            <arg name="simulation"         value="false"/>
+        </include>
+    </group>
+
+    <node name="smb_state_estimator"
+          pkg="smb_state_estimator"
+          type="smb_state_estimator_node"
+          output="screen"
+          launch-prefix="tmux split-window -t selectiveicp:0.0 ">
+        <param name="logger_prefix"                value="/state_estimator"/>
+        <param name="time_step"                    value="0.0025"/>
+        <param name="simulation"                   value="false"/>
+        <param name="standalone"                   value="true"/>
+        <param name="sync_slave_name"              value="smb_sync"/>
+        <param name="sync_master_name"             value="smb_controller_sync"/>
+        <param name="connect_imu"                value="false"/>
+        <rosparam command="load" file="$(find smb_state_estimator)/config/parameters.yaml"/>
+    </node>
+
+    <!-- Launch the sensor fusion node -->
+    <node name="smb_confusor"
+          pkg="smb_confusor"
+          type="smb_confusor"
+          output="screen"
+          launch-prefix="tmux split-window -h -t selectiveicp:0.1 "/>
+
+    <!-- Launch ICP -->
+    <node name="mapper"
+          type="cpt_selective_icp_node"
+          launch-prefix="tmux split-window -h -t selectiveicp:0.0 "
+          pkg="cpt_selective_icp"
+          output="screen" >
+        <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
+        <param name="scanTopic" value="/rslidar_points" />
+        <param name="cadTopic" value="/mesh_publisher/mesh_out" />
+        <param name="icpConfig"
+               value="$(find cpt_selective_icp)/config/full_icp.yaml" />
+        <param name="selectiveIcpConfig"
+               value="$(find cpt_selective_icp)/config/selective_icp.yaml" />
+        <param name="inputFiltersConfig"
+               value="$(find cpt_selective_icp)/config/input_filters.yaml" />
+        <param name="mapPostFiltersConfig"
+               value="$(find cpt_selective_icp)/config/map_post_filter.yaml" />
+        <param name="mapPreFiltersConfig"
+               value="$(find cpt_selective_icp)/config/map_pre_filter.yaml" />
+        <param name="path"
+               value="$(find cpt_selective_icp)" />
+    </node>
+
+    <node pkg="cpt_deviation_analysis" type="attach-tmux.bash" name="attach" />
+</launch>
