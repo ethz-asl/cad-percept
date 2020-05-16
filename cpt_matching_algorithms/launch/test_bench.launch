@@ -18,6 +18,7 @@
     </node>
 
     <node pkg="rosservice" type="rosservice" name="cad_trigger" args="call /mesh_publisher/publish {}" launch-prefix="bash -c 'sleep 2; $0 $@' "/>
+    <node pkg="tf" type="static_transform_publisher" name="lidar_positioning" args="0 0 0 0 0 0 1  marker $(arg lidar_frame) 100"/>
     <node pkg="tf" type="static_transform_publisher" name="mesh_positioning" args="0 0 0 0 0 0 1  marker map 100"/>
 
     <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">

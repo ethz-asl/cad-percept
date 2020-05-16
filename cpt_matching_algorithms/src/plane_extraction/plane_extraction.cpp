@@ -78,9 +78,9 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
                                             std::vector<Eigen::Vector3d> &plane_normals,
                                             PointCloud<PointXYZ> lidar_scan,
                                             std::string tf_map_frame, ros::Publisher &plane_pub) {
-  std::cout << "///////////////////////////////////////////////" << std::endl;
-  std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
-  std::cout << "///////////////////////////////////////////////" << std::endl;
+  // std::cout << "///////////////////////////////////////////////" << std::endl;
+  // std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
+  // std::cout << "///////////////////////////////////////////////" << std::endl;
 
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
@@ -181,11 +181,11 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
   // Give out information about extracted planes
   int color = 0;
-  for (auto plane_normal : plane_normals) {
-    std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
-              << " color: " << color % 8 << std::endl;
-    ++color;
-  }
+  // for (auto plane_normal : plane_normals) {
+  //   std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
+  //             << " color: " << color % 8 << std::endl;
+  //   ++color;
+  // }
 
   delete accumulator;
 }
@@ -400,7 +400,7 @@ void PlaneExtractor::cgalRegionGrowing(
 // Helper functions
 void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted_planes,
                                     ros::Publisher &plane_pub, std::string tf_map_frame) {
-  std::cout << "Start Visualization" << std::endl;
+  // std::cout << "Start Visualization" << std::endl;
 
   int color[8][3] = {{0, 0, 0},     {255, 0, 0},   {0, 255, 0},   {0, 0, 255},
                      {255, 255, 0}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
@@ -409,11 +409,11 @@ void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted
   PointCloud<PointXYZRGB>::Ptr colored_inlier_points(new PointCloud<PointXYZRGB>);
   // Create segmented point cloud
   if (extracted_planes.size() == 0) {
-    std::cout << "No planes to visualize" << std::endl;
+    // std::cout << "No planes to visualize" << std::endl;
     return;
   } else {
-    std::cout << "Found " << extracted_planes.size() << " planes, visualize plane inliers... "
-              << std::endl;
+    // std::cout << "Found " << extracted_planes.size() << " planes, visualize plane inliers... "
+    //           << std::endl;
     for (std::size_t i = 0; i < extracted_planes.size(); ++i) {
       colored_inlier_points->clear();
       copyPointCloud(extracted_planes[i], *colored_inlier_points);

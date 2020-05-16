@@ -1,13 +1,13 @@
 usetoyexample: true
 
 # Lidar Settings
-rangeOfLidar: 25
+rangeOfLidar: 30
 binElevation: [-15, -13, -11, -9, -7, -5, -3, -1, 15, 13, 11, 9, 7, 5, 3, 1]
 lidarAngularResolution: 2
 accuracyOfLidar: 0.0
 
 # Test Settings
-testIterations: 50
+testIterations: 100
 start_scan_nr: 0
 end_scan_nr: 610
 
@@ -18,7 +18,7 @@ useStructureFilter: true
 StructureThreshold: 150
 
 useVoxelCentroidFilter: true
-Voxelsearchradius: 0.2
+Voxelsearchradius: 0.1
 
 # Plane Extraction
 PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 

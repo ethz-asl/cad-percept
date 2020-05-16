@@ -69,7 +69,7 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   if (!map_ready) {
     ros::NodeHandle nh_private("~");
 
-    std::cout << "Processing CAD mesh" << std::endl;
+    // std::cout << "Processing CAD mesh" << std::endl;
     std::string frame_id = cad_mesh_in.header.frame_id;
     cad_percept::cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh);
 
@@ -92,9 +92,9 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     // load data from file
     map_planes = new MapPlanes();
     map_planes->loadFromYamlFile(file_name);
-    map_planes->dispAllPlanes();
+    // map_planes->dispAllPlanes();
 
-    std::cout << "CAD ready" << std::endl;
+    // std::cout << "CAD ready" << std::endl;
     map_ready = true;
 
     runTestIterations();
@@ -154,7 +154,7 @@ void runTestIterations() {
   for (int iter = 0;
        (iter < test_iterations && usetoyexample) || ((scan_nr < end_scan_nr) && !usetoyexample);
        iter++, scan_nr++) {
-    std::cout << "Start iteration " << iter << std::endl;
+    // std::cout << "Start iteration " << iter << std::endl;
 
     if (usetoyexample) {
       // Sample pose in mesh
@@ -169,7 +169,7 @@ void runTestIterations() {
       simulateLidar(ctransformation, *reference_mesh);
     } else {
       // Load real data
-      std::cout << "Load real data" << std::endl;
+      // std::cout << "Load real data" << std::endl;
       std::fstream gt_file(data_set_folder + "/ground_truth_" + std::to_string(scan_nr) + ".txt");
       gt_file >> gt_translation[0] >> gt_translation[1] >> gt_translation[2];
       std::cout << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2]
@@ -181,7 +181,7 @@ void runTestIterations() {
       pcl::copyPointCloud(static_structure_cloud, lidar_scan);
     }
 
-    std::cout << "Start time measurement" << std::endl;
+    // std::cout << "Start time measurement" << std::endl;
 
     t_start = std::chrono::steady_clock::now();
     // Detect planes
@@ -273,9 +273,16 @@ void runTestIterations() {
     if (transform_TR_[0] == 0 && transform_TR_[1] == 0 && transform_TR_[2] == 0 &&
         transform_TR_[3] == 0 && transform_TR_[4] == 0 && transform_TR_[5] == 0 &&
         transform_TR_[6] == 0) {
-      std::cout << "Could not find orthogonal planes" << std::endl;
-      std::cout << "ground truth position: x: " << gt_translation[0] << " y: " << gt_translation[1]
-                << " z: " << gt_translation[2] << std::endl;
+      std::cout << std::endl;
+      std::cout << "Could not find a set of orthogonal planes" << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      // std::cout << "Could not find orthogonal planes" << std::endl;
+      // std::cout << "ground truth position: x: " << gt_translation[0] << " y: " <<
+      // gt_translation[1]
+      //           << " z: " << gt_translation[2] << std::endl;
 
       actuel_file << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2]
                   << " " << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y()
@@ -304,26 +311,31 @@ void runTestIterations() {
       res_transform.block(0, 0, 3, 3) = q.matrix();
       res_transform.block(0, 3, 3, 1) = translation;
 
-      pcl::transformPointCloud(lidar_scan, lidar_scan, res_transform);
-
-      DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan);
-      scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame,
-                                                                          ros::Time::now()));
+      // Transform inliers of the plane
+      int i = 0;
+      for (auto extracted_plane : extracted_planes) {
+        extracted_planes[i].clear();
+        pcl::transformPointCloud(extracted_plane, extracted_planes[i], res_transform);
+        i++;
+      }
+      PlaneExtractor::visualizePlane(extracted_planes, scan_pub, tf_map_frame);
       ros::spinOnce();
 
+      std::cout << std::endl;
       std::cout << "calculated position: x: " << transform_TR_[0] << " y: " << transform_TR_[1]
                 << " z: " << transform_TR_[2] << std::endl;
       std::cout << "ground truth position: x: " << gt_translation[0] << " y: " << gt_translation[1]
                 << " z: " << gt_translation[2] << std::endl;
       std::cout << "calculated orientation: qw: " << transform_TR_[3] << " qx: " << transform_TR_[4]
                 << " qy: " << transform_TR_[5] << " qz: " << transform_TR_[6] << std::endl;
-      // std::cout << "ground truth orientation: qw: " << gt_rotation.w() << " qx: " <<
-      // gt_rotation.x()
-      //           << " qy: " << gt_rotation.y() << " qz: " << gt_rotation.z() << std::endl;
+      std::cout << "ground truth orientation: qw: " << gt_rotation.w() << " qx: " << gt_rotation.x()
+                << " qy: " << gt_rotation.y() << " qz: " << gt_rotation.z() << std::endl;
 
       translation_error =
           (Eigen::Vector3d(transform_TR_[0], transform_TR_[1], transform_TR_[2]) - gt_translation)
               .norm();
+      std::cout << "translation error " << translation_error << std::endl;
+
       rotation_error =
           Eigen::AngleAxis<double>(Eigen::Quaterniond(transform_TR_[3], transform_TR_[4],
                                                       transform_TR_[5], transform_TR_[6])
@@ -331,9 +343,9 @@ void runTestIterations() {
                                    gt_rotation.inverse().toRotationMatrix())
               .angle();
       duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
-      std::cout << "translation error: " << translation_error << std::endl;
+      // std::cout << "translation error: " << translation_error << std::endl;
       // std::cout << "rotation error: " << rotation_error << std::endl;
-      std::cout << "time needed: " << duration.count() << " milliseconds" << std::endl;
+      // std::cout << "time needed: " << duration.count() << " milliseconds" << std::endl;
 
       actuel_file << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2]
                   << " " << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y()
@@ -453,7 +465,7 @@ void samplePose() {
   while (!valid_position) {
     x_coord = std::rand() % 61;
     y_coord = std::rand() % 15;
-    if (in_map_bit_map_lee_h[x_coord][y_coord]) {
+    if (in_map_bit_map_garage[x_coord][y_coord]) {
       valid_position = true;
     }
   }
