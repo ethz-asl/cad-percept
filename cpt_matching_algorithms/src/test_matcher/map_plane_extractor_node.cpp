@@ -6,7 +6,7 @@
 #include <ros/ros.h>
 
 #include "plane_extraction/plane_extraction.h"
-#include "test_matcher/map_plane_extractor.h"
+#include "test_matcher/bounded_planes.h"
 
 void extractPlanesFromCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
 
@@ -73,7 +73,7 @@ void extractPlanesFromCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     cad_percept::matching_algorithms::PlaneExtractor::cgalRegionGrowing(
         extracted_map_inliers, plane_normals, sample_map, tf_map_frame, plane_pub);
 
-    cad_percept::matching_algorithms::MapPlanes map_planes(
+    cad_percept::matching_algorithms::BoundedPlanes map_planes(
         extracted_map_inliers, plane_normals,
         Eigen::Vector3f(point_in_map[0], point_in_map[1], point_in_map[2]));
     map_planes.dispAllPlanes();

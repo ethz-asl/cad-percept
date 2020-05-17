@@ -25,6 +25,7 @@ TestMatcher::TestMatcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
   // Get Publisher
   scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1, true);
+  plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 }
 
 // Get CAD and sample points
@@ -59,7 +60,7 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     std::string file_name = nh_private_.param<std::string>("map_plane_file", "fail");
 
     // load data from file
-    map_planes_ = new MapPlanes();
+    map_planes_ = new BoundedPlanes();
     map_planes_->loadFromYamlFile(file_name);
     map_planes_->dispAllPlanes();
 
@@ -204,7 +205,8 @@ void TestMatcher::match() {
                                          tf_lidar_frame_, plane_pub_);
     } else if (!extractor.compare("rhtPlaneExtraction")) {
       PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                         tf_lidar_frame_, plane_pub_);
+                                         tf_lidar_frame_, plane_pub_,
+                                         PlaneExtractor::loadRhtConfigFromServer());
     } else if (!extractor.compare("iterRhtPlaneExtraction")) {
       PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
                                              tf_lidar_frame_, plane_pub_);

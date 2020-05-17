@@ -8,7 +8,7 @@
 
 #include "plane_extraction/plane_extraction.h"
 #include "plane_matching/plane_matching.h"
-#include "test_matcher/map_plane_extractor.h"
+#include "test_matcher/bounded_planes.h"
 
 using namespace cad_percept;
 using namespace matching_algorithms;
@@ -23,6 +23,7 @@ float range_of_lidar;
 float dtheta;
 
 ros::Publisher scan_pub;
+ros::Publisher plane_pub;
 ros::Subscriber map_sub;
 cad_percept::cgal::MeshModel::Ptr reference_mesh;
 bool map_ready = false;
@@ -34,7 +35,7 @@ Eigen::Quaterniond gt_rotation;
 float transform_TR_[7] = {0, 0, 0, 0, 0, 0, 0};
 cad_percept::cgal::Transformation ctransformation;
 
-MapPlanes *map_planes;
+BoundedPlanes *map_planes;
 
 void samplePose();
 void simulateLidar(cad_percept::cgal::Transformation ctransformation,
@@ -56,6 +57,7 @@ int main(int argc, char **argv) {
 
   map_sub = nh.subscribe("/mesh_publisher/mesh_out", 1, &getCAD);
   scan_pub = nh.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1);
+  plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
   std::cout << "Tab Enter to start tests" << std::endl;
   std::cin.ignore();
 
@@ -90,7 +92,7 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     std::string file_name = nh_private.param<std::string>("map_plane_file", "fail");
 
     // load data from file
-    map_planes = new MapPlanes();
+    map_planes = new BoundedPlanes();
     map_planes->loadFromYamlFile(file_name);
     // map_planes->dispAllPlanes();
 
@@ -113,7 +115,6 @@ void runTestIterations() {
   std::string extractor;
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
   std::vector<Eigen::Vector3d> plane_normals;
-  ros::Publisher plane_pub_;
 
   pcl::PointNormal norm_point;
   pcl::PointXYZ plane_centroid;
@@ -200,17 +201,18 @@ void runTestIterations() {
     // Plane Extraction
     if (!extractor.compare("pclPlaneExtraction")) {
       PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                         tf_lidar_frame, plane_pub_);
+                                         tf_lidar_frame, plane_pub);
     } else if (!extractor.compare("rhtPlaneExtraction")) {
       PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                         tf_lidar_frame, plane_pub_);
+                                         tf_lidar_frame, plane_pub,
+                                         PlaneExtractor::loadRhtConfigFromServer());
     } else if (!extractor.compare("iterRhtPlaneExtraction")) {
       PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                             tf_lidar_frame, plane_pub_);
+                                             tf_lidar_frame, plane_pub);
 
     } else if (!extractor.compare("cgalRegionGrowing")) {
       PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan, tf_lidar_frame,
-                                        plane_pub_);
+                                        plane_pub);
     } else {
       std::cout << "Error: Could not find given plane extractor" << std::endl;
       break;

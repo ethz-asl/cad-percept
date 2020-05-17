@@ -133,7 +133,8 @@ int main(int argc, char** argv) {
                                            tf_lidar_frame, plane_pub_);
       } else if (!extractor.compare("rhtPlaneExtraction")) {
         PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                           tf_lidar_frame, plane_pub_);
+                                           tf_lidar_frame, plane_pub_,
+                                           PlaneExtractor::loadRhtConfigFromServer());
       } else if (!extractor.compare("iterRhtPlaneExtraction")) {
         PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
                                                tf_lidar_frame, plane_pub_);

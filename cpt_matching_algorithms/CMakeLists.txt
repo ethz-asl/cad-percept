@@ -13,7 +13,7 @@ cs_add_library(test_matcher
      src/test_matcher/test_matcher.cpp
      src/test_matcher/matcher/template_matcher.cpp
      src/test_matcher/matcher/go_icp_matcher.cpp
-     src/test_matcher/map_plane_extractor.cpp
+     src/test_matcher/bounded_planes.cpp
      src/cloud_filter/cloud_filter.cpp
      src/plane_extraction/plane_extraction.cpp          
      src/plane_extraction/rht_accumulator.cpp

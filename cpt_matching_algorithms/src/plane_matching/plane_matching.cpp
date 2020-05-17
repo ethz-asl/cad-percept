@@ -59,8 +59,8 @@ class PlaneMatch::SortRelativeTriangle {
 };
 
 float PlaneMatch::PRRUS(float (&transformTR)[7],
-                        const pcl::PointCloud<pcl::PointNormal> scan_planes, MapPlanes map_planes,
-                        std::vector<std::vector<float>> &results) {
+                        const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                        BoundedPlanes map_planes, std::vector<std::vector<float>> &results) {
   // std::cout << "////////////////////////////////////////////////" << std::endl;
   // std::cout << "////              PRRUS Started             ////" << std::endl;
   // std::cout << "////////////////////////////////////////////////" << std::endl;
@@ -250,7 +250,7 @@ void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assig
                                      float (&actual_transformation)[7], float &transl_error,
                                      Eigen::Quaternionf rotation,
                                      const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                     MapPlanes map_planes, float translation_penalty) {
+                                     BoundedPlanes map_planes, float translation_penalty) {
   transl_error = 0;
   // Write rotation to resulting transformation
   actual_transformation[3] = rotation.w();
@@ -390,7 +390,7 @@ void PlaneMatch::getTranslationError(Eigen::Matrix<int, 2, Eigen::Dynamic> assig
 
 void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
                                             const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                            MapPlanes map_planes) {
+                                            BoundedPlanes map_planes) {
   std::cout << "////////////////////////////////////////////////" << std::endl;
   std::cout << "////  Intersection Pattern Matcher Started  ////" << std::endl;
   std::cout << "////////////////////////////////////////////////" << std::endl;
@@ -432,7 +432,7 @@ void PlaneMatch::IntersectionPatternMatcher(float (&transformTR)[7],
   pcl::ExtractIndices<pcl::PointXYZ> indices_filter;
   pcl::PointCloud<pcl::PointXYZ>::Ptr filter_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   int point_index = 0;
-  for (int i = 0; i < map_planes.getMapPlaneNumber(); i++) {
+  for (int i = 0; i < map_planes.getPlaneNumber(); i++) {
     point_index = 0;
     rm_index.clear();
     filter_cloud->clear();
@@ -673,8 +673,7 @@ void PlaneMatch::getIntersectionCornerTriangle(
 }
 
 void PlaneMatch::findTriangleCorrespondences(
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &score,
-    std::vector<std::vector<SortRelativeTriangle>> triangles_in_scan_planes,
+    Eigen::MatrixXf &score, std::vector<std::vector<SortRelativeTriangle>> triangles_in_scan_planes,
     std::vector<std::vector<SortRelativeTriangle>> triangles_in_map_planes) {
   ros::NodeHandle nh_private("~");
   float deviation_tri_offset = nh_private.param<float>("IntersectionPatternTriangleDevOffset", 1);
@@ -840,7 +839,7 @@ void PlaneMatch::filterIntersectionPoints(
 
 void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
                                    const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                   MapPlanes map_planes) {
+                                   BoundedPlanes map_planes) {
   std::cout << "////////////////////////////////////////////////" << std::endl;
   std::cout << "////       Line Segment RANSAC Started      ////" << std::endl;
   std::cout << "////////////////////////////////////////////////" << std::endl;
@@ -1053,7 +1052,7 @@ void PlaneMatch::LineSegmentRansac(float (&transformTR)[7],
 void PlaneMatch::getAssignmentError(Eigen::Matrix<int, 2, Eigen::Dynamic> assignment,
                                     float &transform_error, float (&transform)[7],
                                     const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                    MapPlanes map_planes) {
+                                    BoundedPlanes map_planes) {
   ros::NodeHandle nh_private("~");
 
   float rotation_consistency_threshold =
@@ -1191,7 +1190,7 @@ void PlaneMatch::getAssignmentError(Eigen::Matrix<int, 2, Eigen::Dynamic> assign
   reduced_scan_planes.clear();
   reduced_map_planes.clear();
   std::vector<int> map_planes_index;
-  for (int i = 0; i < map_planes.getMapPlaneNumber(); ++i) {
+  for (int i = 0; i < map_planes.getPlaneNumber(); ++i) {
     if (i == map_planes_nr[0] || i == map_planes_nr[1] || i == map_planes_nr[2] ||
         i == map_planes_nr[3])
       continue;
@@ -1247,7 +1246,7 @@ void PlaneMatch::getAssignmentError(Eigen::Matrix<int, 2, Eigen::Dynamic> assign
 
 void PlaneMatch::getSegmentedLines(std::vector<SegmentedLine> &segmented_lines,
                                    const pcl::PointCloud<pcl::PointNormal> planes, bool ismap,
-                                   MapPlanes map_planes) {
+                                   BoundedPlanes map_planes) {
   ros::NodeHandle nh_private("~");
   float parallel_threshold = nh_private.param<float>("SegmentedLineParallelThreshold", 0.9);
   float max_distance = nh_private.param<float>("SegmentedLineDistanceThreshold", 100);
@@ -1349,9 +1348,9 @@ void PlaneMatch::getSegmentedLines(std::vector<SegmentedLine> &segmented_lines,
   }
 }
 
-void PlaneMatch::getMatchProbLines(
-    std::vector<SegmentedLine> map_lines, std::vector<SegmentedLine> scan_lines,
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> &match_score) {
+void PlaneMatch::getMatchProbLines(std::vector<SegmentedLine> map_lines,
+                                   std::vector<SegmentedLine> scan_lines,
+                                   Eigen::MatrixXf &match_score) {
   ros::NodeHandle nh_private("~");
   float deviation_grade = nh_private.param<float>("SegmentedLineDeviationGrade", 0.5);
 
@@ -1389,7 +1388,7 @@ void PlaneMatch::getMatchProbLines(
 
 void PlaneMatch::loadExampleSol(float (&transformTR)[7],
                                 const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                                MapPlanes map_planes) {
+                                BoundedPlanes map_planes) {
   std::vector<int> plane_assignment(scan_planes.size(), 0);
   // // Real data
   // // Solution to example
