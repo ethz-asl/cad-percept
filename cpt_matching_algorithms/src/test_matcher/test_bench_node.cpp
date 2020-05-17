@@ -89,12 +89,11 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     cgal::tfTransformationToCGALTransformation(transform, ctransformation);
     reference_mesh->transform(ctransformation);
 
-    std::string file_name = nh_private.param<std::string>("map_plane_file", "fail");
+    std::string cache_folder = nh_private.param<std::string>("cache_folder", "fail");
 
     // load data from file
-    map_planes = new BoundedPlanes();
-    map_planes->loadFromYamlFile(file_name);
-    // map_planes->dispAllPlanes();
+    map_planes = new BoundedPlanes(*reference_mesh, cache_folder);
+    map_planes->dispAllPlanes();
 
     // std::cout << "CAD ready" << std::endl;
     map_ready = true;

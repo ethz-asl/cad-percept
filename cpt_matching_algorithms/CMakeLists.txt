@@ -35,9 +35,6 @@ cs_add_executable(data_to_pcl_reader
 cs_add_executable(sim_lidar_node
     src/test_matcher/sim_lidar_node.cpp
     )
-cs_add_executable(map_plane_extractor_node
-    src/test_matcher/map_plane_extractor_node.cpp
-    )
 cs_add_executable(test_bench_node
     src/test_matcher/test_bench_node.cpp
     )
@@ -46,7 +43,6 @@ cs_add_executable(test_plane_extraction_node
     )
 
 target_link_libraries(test_matcher_node test_matcher  yaml-cpp)
-target_link_libraries(map_plane_extractor_node test_matcher yaml-cpp)
 target_link_libraries(test_bench_node test_matcher yaml-cpp)
 target_link_libraries(test_plane_extraction_node test_matcher yaml-cpp)
 
