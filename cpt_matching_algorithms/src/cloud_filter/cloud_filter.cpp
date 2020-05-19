@@ -7,13 +7,13 @@ using namespace pcl;
 
 void CloudFilter::filterStaticObject(int structure_threshold, PointCloud<PointXYZ>& lidar_scan,
                                      const PointCloud<PointXYZI> static_structure) {
-  // std::cout << "////  Static Object Filter  ////" << std::endl;
+  std::cout << "////  Static Object Filter  ////" << std::endl;
 
   ExtractIndices<pcl::PointXYZ> indices_filter;
 
   if (lidar_scan.size() != static_structure.size()) {
-    // std::cout << "Error: The sizes of the two point cloud do not match" << std::endl;
-    // std::cout << "Skip Static Object Filter" << std::endl;
+    std::cout << "Error: The sizes of the two point cloud do not match" << std::endl;
+    std::cout << "Skip Static Object Filter" << std::endl;
     return;
   }
 
@@ -33,15 +33,14 @@ void CloudFilter::filterStaticObject(int structure_threshold, PointCloud<PointXY
   indices_filter.filter(*lidar_scan_ptr);
   lidar_scan = *lidar_scan_ptr;
 
-  // std::cout << "Lidar frame filtered by Static Object Filter with threshold " <<
-  // structure_threshold
-  //           << std::endl;
-  // std::cout << "Point Cloud size: " << lidar_scan.size()
-  //           << " Removed: " << static_structure.size() - lidar_scan.size() << std::endl;
+  std::cout << "Lidar frame filtered by Static Object Filter with threshold " << structure_threshold
+            << std::endl;
+  std::cout << "Point Cloud size: " << lidar_scan.size()
+            << " Removed: " << static_structure.size() - lidar_scan.size() << std::endl;
 }
 
 void CloudFilter::filterVoxelCentroid(float search_radius, PointCloud<PointXYZ>& lidar_scan) {
-  // std::cout << "////    Voxel Centroid Filter   ////" << std::endl;
+  std::cout << "////    Voxel Centroid Filter   ////" << std::endl;
   int prev_size = lidar_scan.size();
 
   PointCloud<PointXYZ>::Ptr lidar_scan_ptr(new PointCloud<PointXYZ>());
@@ -52,8 +51,8 @@ void CloudFilter::filterVoxelCentroid(float search_radius, PointCloud<PointXYZ>&
   voxel_filter.filter(*lidar_scan_ptr);
   lidar_scan = *lidar_scan_ptr;
 
-  // std::cout << "Point Cloud size: " << lidar_scan.size()
-  //           << " Removed: " << prev_size - lidar_scan.size() << std::endl;
+  std::cout << "Point Cloud size: " << lidar_scan.size()
+            << " Removed: " << prev_size - lidar_scan.size() << std::endl;
 }
 }  // namespace matching_algorithms
 }  // namespace cad_percept
