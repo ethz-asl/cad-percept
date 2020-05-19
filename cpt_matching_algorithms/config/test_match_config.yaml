@@ -25,7 +25,7 @@ PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction,
                                    # iterRhtPlaneExtraction, cgalRegionGrowing
 
 # Plane Matching
-PlaneMatch: fail # useMatchSolution, IntersectionPatternMatcher
+PlaneMatch: PRRUS # useMatchSolution, IntersectionPatternMatcher
                   # PRRUS, LineSegmentRansac
 
 

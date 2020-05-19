@@ -6,6 +6,7 @@
 #include <cgal_definitions/mesh_model.h>
 #include <pcl/common/centroid.h>
 #include <pcl/common/projection_matrix.h>
+#include <pcl/filters/extract_indices.h>
 #include <pcl/point_types.h>
 #include <ros/ros.h>
 #include <yaml-cpp/yaml.h>
@@ -22,7 +23,7 @@ class BoundedPlanes {
   // Get point cloud with centroids and normals, get matrix containing room
   // boundaries
   void getPlaneInformations(pcl::PointCloud<pcl::PointNormal> &planes_out,
-                            std::vector<std::vector<float>> &boundaries_out);
+                            std::map<std::string, std::vector<float>> &boundaries_out);
 
   // Get plane normals and centroids
   pcl::PointCloud<pcl::PointNormal> getPlaneCentroidsAndNormals();
@@ -44,8 +45,7 @@ class BoundedPlanes {
 
  private:
   pcl::PointCloud<pcl::PointNormal> plane_centroid_with_normals_;
-  std::vector<std::vector<float>> plane_boundaries_ =
-      std::vector<std::vector<float>>(6, std::vector<float>(0));
+  std::map<std::string, std::vector<float>> plane_boundaries_;
 };
 
 }  // namespace matching_algorithms
