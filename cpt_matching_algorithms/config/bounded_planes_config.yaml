@@ -1,0 +1,11 @@
+# Setting of bounded_planes
+diffRotBetweenPlanes: 0.2 # maximal error between two plane normals of the same planes
+diffTranslBetweenPlanesAlongNormal: 0.3 # maximal translation error along normal of the same planes
+diffTranslBetweenPlanesAlongPlane: 8 # maximal translation error along plane of the same planes
+minArea: 4 # minimum area of a detected plane
+eps: 0.5 # eps of findAllCoplanarFacets function
+
+
+
+
+

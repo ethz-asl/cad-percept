@@ -75,7 +75,7 @@ TEST(PlaneExtractionTest, rhtPlaneExtraction) {
   ros::Publisher plane_pub_;
 
   PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, pointcloud, tf_map_frame,
-                                     plane_pub_);
+                                     plane_pub_, PlaneExtractor::loadRhtConfigFromServer());
 
   std::cout << "rhtPlaneExtraction found plane with normal: x " << plane_normals[0][0]
             << " y: " << plane_normals[0][1] << " z: " << plane_normals[0][2] << std::endl;
