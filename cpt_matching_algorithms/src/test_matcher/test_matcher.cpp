@@ -25,6 +25,7 @@ TestMatcher::TestMatcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
   // Get Publisher
   scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1, true);
+  plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 }
 
 // Get CAD and sample points
@@ -56,11 +57,10 @@ void TestMatcher::getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh_->getMesh(), n_points, 0.0,
                                                 &sample_map_);
 
-    std::string file_name = nh_private_.param<std::string>("map_plane_file", "fail");
+    std::string cache_folder = nh_private_.param<std::string>("cache_folder", "fail");
 
     // load data from file
-    map_planes_ = new MapPlanes();
-    map_planes_->loadFromYamlFile(file_name);
+    map_planes_ = new BoundedPlanes(*reference_mesh_, cache_folder);
     map_planes_->dispAllPlanes();
 
     std::cout << "CAD ready" << std::endl;
@@ -204,7 +204,8 @@ void TestMatcher::match() {
                                          tf_lidar_frame_, plane_pub_);
     } else if (!extractor.compare("rhtPlaneExtraction")) {
       PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                         tf_lidar_frame_, plane_pub_);
+                                         tf_lidar_frame_, plane_pub_,
+                                         PlaneExtractor::loadRhtConfigFromServer());
     } else if (!extractor.compare("iterRhtPlaneExtraction")) {
       PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
                                              tf_lidar_frame_, plane_pub_);
@@ -243,21 +244,6 @@ void TestMatcher::match() {
       scan_planes_.push_back(norm_point);
       plane_nr++;
     }
-
-    // std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
-    // // Plane Matching (Get T_map,lidar)
-    // if (!plane_matcher.compare("IntersectionPatternMatcher")) {
-    //   PlaneMatch::IntersectionPatternMatcher(transform_TR_, scan_planes_, *map_planes_);
-    // } else if (!plane_matcher.compare("useMatchSolution")) {
-    //   PlaneMatch::loadExampleSol(transform_TR_, scan_planes_, *map_planes_);
-    // } else if (!plane_matcher.compare("LineSegmentRansac")) {
-    //   PlaneMatch::LineSegmentRansac(transform_TR_, scan_planes_, *map_planes_);
-    // } else if (!plane_matcher.compare("PRRUS")) {
-    //   PlaneMatch::PRRUS(transform_TR_, scan_planes_, *map_planes_);
-    // } else {
-    //   std::cout << "Error: Could not find given plane matcher" << std::endl;
-    //   return;
-    // }
   } else {
     std::cout << "Error: Could not find given matcher" << std::endl;
     return;

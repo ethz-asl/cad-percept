@@ -3,7 +3,7 @@
 namespace cad_percept {
 namespace matching_algorithms {
 
-void HoughAccumulator::vote(Eigen::Vector3d vote, int (&voter)[3]) {
+void HoughAccumulator::vote(Eigen::Vector3d vote, const int (&voter)[3]) {
   bin_index_ = getBinIndexFromVector(vote);
   bin_votes_[bin_index_] += 1;
   voter_ids_[bin_index_].push_back(voter[0]);
@@ -12,29 +12,29 @@ void HoughAccumulator::vote(Eigen::Vector3d vote, int (&voter)[3]) {
 }
 
 void HoughAccumulator::findMaxima(int min_vote_threshold,
-                                  std::vector<Eigen::Vector3d> &plane_coefficients,
-                                  std::vector<std::vector<int>> &get_voter_ids, int k) {
-  plane_coefficients.clear();
-  get_voter_ids.clear();
+                                  std::vector<Eigen::Vector3d> &plane_coefficients_out,
+                                  std::vector<std::vector<int>> &voter_ids_out, int k) {
+  plane_coefficients_out.clear();
+  voter_ids_out.clear();
   for (int i = 0; i < accumulator_size; ++i) {
     if (bin_votes_(1, i) >= min_vote_threshold) {
       if (k != 0) nonMaximumSuppression(i, k);
-      plane_coefficients.push_back(getValueFromIndex(i));
-      get_voter_ids.push_back(voter_ids_[i]);
+      plane_coefficients_out.push_back(getValueFromIndex(i));
+      voter_ids_out.push_back(voter_ids_[i]);
     }
   }
 }
 
 void HoughAccumulator::findMaximumPlane(int num_main_planes,
-                                        std::vector<Eigen::Vector3d> &plane_coefficients,
-                                        std::vector<std::vector<int>> &get_voter_ids, int k) {
-  plane_coefficients.clear();
-  get_voter_ids.clear();
+                                        std::vector<Eigen::Vector3d> &plane_coefficients_out,
+                                        std::vector<std::vector<int>> &voter_ids_out, int k) {
+  plane_coefficients_out.clear();
+  voter_ids_out.clear();
   for (int i = 0; i < num_main_planes; ++i) {
     bin_votes_.maxCoeff(&maximum_idx_);
     if (k != 0) nonMaximumSuppression(maximum_idx_, k);
-    plane_coefficients.push_back(getValueFromIndex(maximum_idx_));
-    get_voter_ids.push_back(voter_ids_[maximum_idx_]);
+    plane_coefficients_out.push_back(getValueFromIndex(maximum_idx_));
+    voter_ids_out.push_back(voter_ids_[maximum_idx_]);
     bin_votes_(1, maximum_idx_) = 0;
   }
 }
@@ -45,19 +45,20 @@ void HoughAccumulator::reset() {
   voter_ids_.resize(accumulator_size, std::vector<int>(0));
 }
 
-int HoughAccumulator::getBinIndexFromVector(Eigen::Vector3d rtp) {
+int HoughAccumulator::getBinIndexFromVector(Eigen::Vector3d &rtp) {
   rtp_index = getRTPIndexFromVector(rtp);
   getIndexFromRTP(bin_index_, rtp_index);
   return bin_index_;
 }
 
-bool HoughAccumulator::getIndexFromRTP(int &index, Eigen::Vector3i rtp_idx) {
+bool HoughAccumulator::getIndexFromRTP(int &index_out, Eigen::Vector3i rtp_idx) {
   if (!getValue(bin_value_, rtp_idx)) {
     std::cout << "getIndexFromIndex: invalid index " << rtp_idx[0] << " " << rtp_idx[1] << " "
               << rtp_idx[2] << std::endl;
+    std::cin.ignore();
     return false;
   }
-  index = bin_value_.index;
+  index_out = bin_value_.index;
   return true;
 }
 
@@ -68,11 +69,12 @@ Eigen::Vector3d HoughAccumulator::getValueFromIndex(int index) {
   if (!getValue(bin_value_, rtp_index)) {
     std::cout << "getValueFromIndex: invalid index " << rtp_index[0] << " " << rtp_index[1] << " "
               << rtp_index[2] << std::endl;
+    std::cin.ignore();
   }
   return bin_value_.bin_value;
 }
 
-bool HoughAccumulator::checkIndex(Eigen::Vector3i idx) {
+bool HoughAccumulator::checkIndex(const Eigen::Vector3i &idx) {
   if (!(0 <= idx[0] && idx[0] < bin_values.size())) {
     std::cout << "first index not valid" << std::endl;
     return false;
@@ -122,8 +124,9 @@ void HoughAccumulator::nonMaximumSuppression(int index, int k) {
   }
 }
 
-ArrayAccumulator::ArrayAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size,
-                                   Eigen::Vector3d bin_maxima) {
+ArrayAccumulator::ArrayAccumulator(const Eigen::Vector3d &bin_minima,
+                                   const Eigen::Vector3d &bin_size,
+                                   const Eigen::Vector3d &bin_maxima) {
   bin_minima_ = bin_minima;
   bin_size_ = bin_size;
   bin_maxima_ = bin_maxima;
@@ -168,16 +171,8 @@ Eigen::Vector3i ArrayAccumulator::getRTPIndexFromVector(Eigen::Vector3d &rtp) {
   return rtp_index;
 }
 
-bool ArrayAccumulator::getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx) {
-  if (!checkIndex(rtp_idx)) {
-    return false;
-  }
-  output = bin_values[rtp_idx[0]][rtp_idx[1]][rtp_idx[2]];
-  return true;
-}
-
 void ArrayAccumulator::getNeighborIndex(int neighbor_nr, int index,
-                                        std::vector<int> &neighbor_index) {
+                                        std::vector<int> &neighbor_index_out) {
   rtp_index = getRTPFromIndex(index);
   for (int d_rho = -neighbor_nr; d_rho < neighbor_nr; ++d_rho) {
     // Skip if rho does not lay in range
@@ -198,14 +193,22 @@ void ArrayAccumulator::getNeighborIndex(int neighbor_nr, int index,
           continue;
         if (getIndexFromRTP(neighbor_id,
                             Eigen::Vector3i(rtp_index[0] + d_rho, theta_index, psi_index)))
-          neighbor_index.push_back(neighbor_id);
+          neighbor_index_out.push_back(neighbor_id);
       }
     }
   }
 }
 
-BallAccumulator::BallAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size,
-                                 Eigen::Vector3d bin_maxima) {
+bool ArrayAccumulator::getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx) {
+  if (!checkIndex(rtp_idx)) {
+    return false;
+  }
+  output = bin_values[rtp_idx[0]][rtp_idx[1]][rtp_idx[2]];
+  return true;
+}
+
+BallAccumulator::BallAccumulator(const Eigen::Vector3d &bin_minima, const Eigen::Vector3d &bin_size,
+                                 const Eigen::Vector3d &bin_maxima) {
   bin_minima_ = bin_minima;
   bin_size_ = bin_size;
   bin_maxima_ = bin_maxima;
@@ -259,20 +262,8 @@ Eigen::Vector3i BallAccumulator::getRTPIndexFromVector(Eigen::Vector3d &rtp) {
   return rtp_index;
 }
 
-bool BallAccumulator::getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx) {
-  // Change theta and psi value due to construction
-  temp_ = rtp_idx[2];
-  rtp_idx[2] = rtp_idx[1];
-  rtp_idx[1] = temp_;
-  if (!checkIndex(rtp_idx)) {
-    return false;
-  }
-  output = bin_values[rtp_idx[0]][rtp_idx[1]][rtp_idx[2]];
-  return true;
-}
-
 void BallAccumulator::getNeighborIndex(int neighbor_nr, int index,
-                                       std::vector<int> &neighbor_index) {
+                                       std::vector<int> &neighbor_index_out) {
   rtp_index = getRTPFromIndex(index);
   for (int d_rho = -neighbor_nr; d_rho < neighbor_nr; ++d_rho) {
     // Skip if rho does not lay in range
@@ -296,11 +287,23 @@ void BallAccumulator::getNeighborIndex(int neighbor_nr, int index,
           continue;
         if (getIndexFromRTP(neighbor_id,
                             Eigen::Vector3i(rtp_index[0] + d_rho, theta_index, psi_index))) {
-          neighbor_index.push_back(neighbor_id);
+          neighbor_index_out.push_back(neighbor_id);
         }
       }
     }
   }
+}
+
+bool BallAccumulator::getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx) {
+  // Change theta and psi value due to construction
+  temp_switch_index_ = rtp_idx[2];
+  rtp_idx[2] = rtp_idx[1];
+  rtp_idx[1] = temp_switch_index_;
+  if (!checkIndex(rtp_idx)) {
+    return false;
+  }
+  output = bin_values[rtp_idx[0]][rtp_idx[1]][rtp_idx[2]];
+  return true;
 }
 }  // namespace matching_algorithms
 }  // namespace cad_percept

@@ -17,14 +17,14 @@ class HoughAccumulator {
  public:
   HoughAccumulator(){};
   // Adds one vote to the bin corresponding to vote, indexes in voter are added to inliers
-  void vote(Eigen::Vector3d vote, int (&voter)[3]);
+  void vote(Eigen::Vector3d vote, const int (&voter)[3]);
   // Find all planes with more votes than min_vote_threshold
-  void findMaxima(int min_vote_threshold, std::vector<Eigen::Vector3d> &plane_coefficients,
-                  std::vector<std::vector<int>> &get_voter_ids, int k);
+  void findMaxima(int min_vote_threshold, std::vector<Eigen::Vector3d> &plane_coefficients_out,
+                  std::vector<std::vector<int>> &voter_ids_out, int k);
   // Find the num_main_planes planes with largest vote number, apply non-maximum-suppression on
   // maxima
-  void findMaximumPlane(int num_main_planes, std::vector<Eigen::Vector3d> &plane_coefficients,
-                        std::vector<std::vector<int>> &get_voter_ids, int k);
+  void findMaximumPlane(int num_main_planes, std::vector<Eigen::Vector3d> &plane_coefficients_out,
+                        std::vector<std::vector<int>> &voter_ids_out, int k);
   // Set all votes back to zero, empty all inliers of each bin
   void reset();
 
@@ -39,9 +39,9 @@ class HoughAccumulator {
   std::vector<std::vector<std::vector<accumulatorBin>>> bin_values;
 
   // Returns index value according to continuous value
-  int getBinIndexFromVector(Eigen::Vector3d rtp);
+  int getBinIndexFromVector(Eigen::Vector3d &rtp);
   // Returns index according to RTP
-  bool getIndexFromRTP(int &index, Eigen::Vector3i rtp_idx);
+  bool getIndexFromRTP(int &index_out, Eigen::Vector3i rtp_idx);
   // Returns RTP index according to index
   Eigen::Vector3i getRTPFromIndex(int bin_index);
   // Returns continuous rho, theta and psi values of bin with index index
@@ -49,13 +49,14 @@ class HoughAccumulator {
   // Returns discretized values of continuous rho, theta and psi values in rtp
   virtual Eigen::Vector3i getRTPIndexFromVector(Eigen::Vector3d &rtp) = 0;
   // Returns list of indexes corresponding to neighbors
-  virtual void getNeighborIndex(int neighbor_nr, int index, std::vector<int> &neighbor_index) = 0;
+  virtual void getNeighborIndex(int neighbor_nr, int index,
+                                std::vector<int> &neighbor_index_out) = 0;
   // Returns value in bin value list with rtp index, returns false id rtp index is invalid
   virtual bool getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx) = 0;
 
   // Helper functions
   // Returns true if index is valid
-  bool checkIndex(Eigen::Vector3i idx);
+  bool checkIndex(const Eigen::Vector3i &idx);
   // Normalize rho, theta and psi
   void normalizeRTP(Eigen::Vector3d &rtp);
   // Returns modulo value in a loop manner
@@ -79,14 +80,14 @@ class HoughAccumulator {
 
 class ArrayAccumulator : public HoughAccumulator {
  public:
-  ArrayAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size,
-                   Eigen::Vector3d bin_maxima);
+  ArrayAccumulator(const Eigen::Vector3d &bin_minima, const Eigen::Vector3d &bin_size,
+                   const Eigen::Vector3d &bin_maxima);
   // Implementation of getRTPIndexFromVector of array accumulator
   virtual Eigen::Vector3i getRTPIndexFromVector(Eigen::Vector3d &rtp);
-  // Implementation of getValue of array accumulator
-  virtual bool getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx);
   // Implementation of getNeighborIndex of array accumulator
   virtual void getNeighborIndex(int neighbor_nr, int index, std::vector<int> &neighbor_index);
+  // Implementation of getValue of array accumulator
+  virtual bool getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx);
 
  private:
   Eigen::Vector3d bin_minima_;
@@ -99,16 +100,17 @@ class ArrayAccumulator : public HoughAccumulator {
 
 class BallAccumulator : public HoughAccumulator {
  public:
-  BallAccumulator(Eigen::Vector3d bin_minima, Eigen::Vector3d bin_size, Eigen::Vector3d bin_maxima);
+  BallAccumulator(const Eigen::Vector3d &bin_minima, const Eigen::Vector3d &bin_size,
+                  const Eigen::Vector3d &bin_maxima);
   // Implementation of getRTPIndexFromVector of array accumulator
   virtual Eigen::Vector3i getRTPIndexFromVector(Eigen::Vector3d &rtp);
-  // Implementation of getValue of array accumulator
-  virtual bool getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx);
   // Implementation of getNeighborIndex of array accumulator
   virtual void getNeighborIndex(int neighbor_nr, int index, std::vector<int> &neighbor_index);
+  // Implementation of getValue of array accumulator
+  virtual bool getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx);
 
  private:
-  int temp_;
+  int temp_switch_index_;
 
   Eigen::Vector3d bin_minima_;
   Eigen::Vector3d bin_size_;

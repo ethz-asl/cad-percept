@@ -5,30 +5,33 @@ namespace matching_algorithms {
 
 using namespace pcl;
 
-void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                        std::vector<Eigen::Vector3d> &plane_normals,
-                                        PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
-                                        ros::Publisher &plane_pub) {
+PlaneExtractor::rhtConfig PlaneExtractor::loadRhtConfigFromServer() {
+  ros::NodeHandle nh_private("~");
+
+  rhtConfig config;
+  config.accumulator_choice = nh_private.param<int>("AccumulatorChoice", 2);
+  config.rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 0.1);
+  config.theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 0.04);
+  config.psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 0.04);
+  config.min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 0);
+  config.k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 14);
+
+  config.max_iteration = nh_private.param<int>("RHTMaxIter", 100000);
+  config.tol_distance_between_points = nh_private.param<double>("RHTTolDist", 3);
+  config.min_area_spanned = nh_private.param<double>("RHTMinArea", 0.5);
+  config.num_main_planes = nh_private.param<int>("RHTPlaneNumber", 1);
+
+  return config;
+};
+
+void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes_out,
+                                        std::vector<Eigen::Vector3d> &plane_normals_out,
+                                        const PointCloud<PointXYZ> &lidar_scan,
+                                        const std::string &tf_map_frame, ros::Publisher &plane_pub,
+                                        const rhtConfig &config) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         RHT Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
-
-  ros::NodeHandle nh;
-  ros::NodeHandle nh_private("~");
-
-  plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
-
-  int accumulator_choice = nh_private.param<int>("AccumulatorChoice", 2);
-  double rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 0.1);
-  double theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 0.04);
-  double psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 0.04);
-  int min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 0);
-  int k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 14);
-
-  int max_iteration = nh_private.param<int>("RHTMaxIter", 100000);
-  double tol_distance_between_points = nh_private.param<double>("RHTTolDist", 3);
-  double min_area_spanned = nh_private.param<double>("RHTMinArea", 0.5);
-  int num_main_planes = nh_private.param<int>("RHTPlaneNumber", 1);
 
   PointXYZ origin(0, 0, 0);
   double max_distance_to_point = 0;
@@ -41,8 +44,8 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   HoughAccumulator *accumulator;
   Eigen::Vector3d min_coord(0, 0, -(double)M_PI / 2);
   Eigen::Vector3d max_coord(max_distance_to_point, (double)2 * M_PI, (double)M_PI / 2);
-  Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
-  switch (accumulator_choice) {
+  Eigen::Vector3d bin_size(config.rho_resolution, config.theta_resolution, config.psi_resolution);
+  switch (config.accumulator_choice) {
     case 1:
       accumulator = new ArrayAccumulator(min_coord, bin_size, max_coord);
       break;
@@ -50,32 +53,36 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
       accumulator = new BallAccumulator(min_coord, bin_size, max_coord);
       break;
     default:
-      std::cout << "No valid accumulator to number " << accumulator_choice << ", return ..."
+      std::cout << "No valid accumulator to number " << config.accumulator_choice << ", return ..."
                 << std::endl;
       return;
   }
 
   // Perform RHT
-  rhtVote(max_iteration, tol_distance_between_points, min_area_spanned, lidar_scan, accumulator);
+  rhtVote(config.max_iteration, config.tol_distance_between_points, config.min_area_spanned,
+          lidar_scan, accumulator);
   // Evaluation
-  rhtEval(num_main_planes, min_vote_threshold, k_of_maxima_suppression, plane_normals,
-          extracted_planes, lidar_scan, accumulator);
+  rhtEval(config.num_main_planes, config.min_vote_threshold, config.k_of_maxima_suppression,
+          plane_normals_out, extracted_planes_out, lidar_scan, accumulator);
 
-  visualizePlane(extracted_planes, plane_pub, tf_map_frame);
+  visualizePlane(extracted_planes_out, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
   int color = 0;
-  for (auto plane_normal : plane_normals) {
+  for (auto plane_normal : plane_normals_out) {
     std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
               << " color: " << color % 8 << std::endl;
     ++color;
   }
+
+  delete accumulator;
 }
 
-void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                            std::vector<Eigen::Vector3d> &plane_normals,
-                                            PointCloud<PointXYZ> lidar_scan,
-                                            std::string tf_map_frame, ros::Publisher &plane_pub) {
+void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes_out,
+                                            std::vector<Eigen::Vector3d> &plane_normals_out,
+                                            const PointCloud<PointXYZ> &lidar_scan,
+                                            const std::string &tf_map_frame,
+                                            ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -97,6 +104,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 3);
   double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.5);
   int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlanePerIter", 1);
+  int min_number_of_inlier = nh_private.param<int>("iterRHTMinNumberInlier", 10);
 
   // Copy lidar frame to remove points
   PointCloud<PointXYZ>::Ptr copy_lidar_scan(new PointCloud<PointXYZ>());
@@ -133,22 +141,28 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   std::vector<int> rm_indices;
 
   // Part solution for single iterations
-  std::vector<Eigen::Vector3d> iter_plane_normals;
-  std::vector<PointCloud<PointXYZ>> iter_extracted_planes;
+  std::vector<Eigen::Vector3d> iter_plane_normals_out;
+  std::vector<PointCloud<PointXYZ>> iter_extracted_planes_out;
+  bool inlier_over_threshold = true;
 
-  for (int iter = 0; iter < number_of_iteration; ++iter) {
+  for (int iter = 0; iter < number_of_iteration && inlier_over_threshold; ++iter) {
     // Perform RHT
     rhtVote(iteration_per_plane, tol_distance_between_points, min_area_spanned, *copy_lidar_scan,
             accumulator);
 
     // Evaluation
-    inlier_ids = rhtEval(number_of_plane_per_iter, min_vote_threshold, k_of_maxima_suppression,
-                         iter_plane_normals, iter_extracted_planes, *copy_lidar_scan, accumulator);
+    inlier_ids =
+        rhtEval(number_of_plane_per_iter, min_vote_threshold, k_of_maxima_suppression,
+                iter_plane_normals_out, iter_extracted_planes_out, *copy_lidar_scan, accumulator);
 
     // Add part solution to final solution
-    for (int plane_nr = 0; plane_nr < iter_plane_normals.size(); ++plane_nr) {
-      plane_normals.push_back(iter_plane_normals[plane_nr]);
-      extracted_planes.push_back(iter_extracted_planes[plane_nr]);
+    for (int plane_nr = 0; plane_nr < iter_plane_normals_out.size(); ++plane_nr) {
+      if (iter_extracted_planes_out[plane_nr].size() < min_number_of_inlier) {
+        inlier_over_threshold = false;
+        continue;
+      }
+      plane_normals_out.push_back(iter_plane_normals_out[plane_nr]);
+      extracted_planes_out.push_back(iter_extracted_planes_out[plane_nr]);
       rm_indices.insert(rm_indices.end(), inlier_ids[plane_nr].begin(), inlier_ids[plane_nr].end());
     }
 
@@ -162,26 +176,29 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
     if (copy_lidar_scan->size() == 0) break;
 
     // Reset for next iteration
-    iter_extracted_planes.clear();
+    iter_extracted_planes_out.clear();
     inlier_ids.clear();
     rm_indices.clear();
     accumulator->reset();
   }
 
-  visualizePlane(extracted_planes, plane_pub, tf_map_frame);
+  visualizePlane(extracted_planes_out, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
   int color = 0;
-  for (auto plane_normal : plane_normals) {
+  for (auto plane_normal : plane_normals_out) {
     std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
               << " color: " << color % 8 << std::endl;
     ++color;
   }
+
+  delete accumulator;
 }
 
-void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                        std::vector<Eigen::Vector3d> &plane_normals,
-                                        PointCloud<PointXYZ> lidar_scan, std::string tf_map_frame,
+void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes_out,
+                                        std::vector<Eigen::Vector3d> &plane_normals_out,
+                                        const PointCloud<PointXYZ> &lidar_scan,
+                                        const std::string &tf_map_frame,
                                         ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "      PCL RANSAC Plane Extraction started      " << std::endl;
@@ -234,32 +251,32 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
 
     // Add to return data
     if (extracted_inlier_points->size() > min_number_of_inlier) {
-      extracted_planes.push_back(*extracted_inlier_points);
+      extracted_planes_out.push_back(*extracted_inlier_points);
 
       // Read plane coefficients
       actuel_plane_normal[0] = coefficients->values[0];
       actuel_plane_normal[1] = coefficients->values[1];
       actuel_plane_normal[2] = coefficients->values[2];
 
-      plane_normals.push_back(actuel_plane_normal);
+      plane_normals_out.push_back(actuel_plane_normal);
 
-      std::cout << "Plane found (nr. " << extracted_planes.size() << ")" << std::endl;
+      std::cout << "Plane found (nr. " << extracted_planes_out.size() << ")" << std::endl;
 
       indices_filter.setInputCloud(copy_lidar_scan);
       indices_filter.setIndices(inliers);
       indices_filter.setNegative(true);
       indices_filter.filter(*copy_lidar_scan);
     }
-  } while (extracted_planes.size() < max_number_of_plane &&
+  } while (extracted_planes_out.size() < max_number_of_plane &&
            extracted_inlier_points->size() > min_number_of_inlier &&
            copy_lidar_scan->size() > min_number_of_inlier);
 
   // Visualize plane
-  visualizePlane(extracted_planes, plane_pub, tf_map_frame);
+  visualizePlane(extracted_planes_out, plane_pub, tf_map_frame);
 
   // Give out information about extracted planes
   int color = 0;
-  for (auto plane_normal : plane_normals) {
+  for (auto plane_normal : plane_normals_out) {
     std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
               << " color: " << color % 8 << std::endl;
     ++color;
@@ -267,9 +284,9 @@ void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
 }
 
 void PlaneExtractor::cgalRegionGrowing(
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
-    std::vector<Eigen::Vector3d> &plane_normals, PointCloud<pcl::PointXYZ> lidar_scan,
-    std::string tf_map_frame, ros::Publisher &plane_pub) {
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
+    std::vector<Eigen::Vector3d> &plane_normals_out, const PointCloud<pcl::PointXYZ> &lidar_scan,
+    const std::string &tf_map_frame, ros::Publisher &plane_pub) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         CGAL Region Growing started           " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -356,7 +373,7 @@ void PlaneExtractor::cgalRegionGrowing(
     cgal::ShapePlane *plane = dynamic_cast<cgal::ShapePlane *>(shapeIt->get());
     cgal::ShapeKernel::Vector_3 normal = plane->plane_normal();
 
-    plane_normals.push_back(Eigen::Vector3d(normal.x(), normal.y(), normal.z()));
+    plane_normals_out.push_back(Eigen::Vector3d(normal.x(), normal.y(), normal.z()));
 
     // Iterates through point indices assigned to each detected shape
     std::vector<std::size_t>::const_iterator index_it =
@@ -372,25 +389,23 @@ void PlaneExtractor::cgalRegionGrowing(
       // Proceeds with next point
       index_it++;
     }
-    extracted_planes.push_back(actual_plane_inlier);
+    extracted_planes_out.push_back(actual_plane_inlier);
     shapeIt++;
   }
 
   // Give out information about extracted planes
   int color = 0;
-  for (auto plane_normal : plane_normals) {
+  for (auto plane_normal : plane_normals_out) {
     std::cout << plane_normal[0] << " " << plane_normal[1] << " " << plane_normal[2]
               << " color: " << color % 8 << std::endl;
     ++color;
   }
-  visualizePlane(extracted_planes, plane_pub, tf_map_frame);
+  visualizePlane(extracted_planes_out, plane_pub, tf_map_frame);
 };
 
 // Helper functions
-void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted_planes,
-                                    ros::Publisher &plane_pub, std::string tf_map_frame) {
-  std::cout << "Start Visualization" << std::endl;
-
+void PlaneExtractor::visualizePlane(const std::vector<PointCloud<PointXYZ>> &extracted_planes,
+                                    ros::Publisher &plane_pub, const std::string &tf_map_frame) {
   int color[8][3] = {{0, 0, 0},     {255, 0, 0},   {0, 255, 0},   {0, 0, 255},
                      {255, 255, 0}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
 
@@ -420,11 +435,10 @@ void PlaneExtractor::visualizePlane(std::vector<PointCloud<PointXYZ>> &extracted
   segmented_point_cloud->header.frame_id = tf_map_frame;
   toROSMsg(*segmented_point_cloud, segmentation_mesg);
   plane_pub.publish(segmentation_mesg);
-  std::cout << "Publish plane segmentation" << std::endl;
 }
 
 void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_points,
-                             double min_area_spanned, PointCloud<PointXYZ> lidar_scan,
+                             double min_area_spanned, const PointCloud<PointXYZ> &lidar_scan,
                              HoughAccumulator *accumulator) {
   // Setup needed variables
   int reference_point_ids[3];
@@ -439,9 +453,9 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
   std::cout << "Start voting" << std::endl;
   for (int i = 0; i < max_iteration; ++i) {
     // Sample random points
-    reference_point_ids[0] = (rand() % (pointcloud_size + 1));
-    reference_point_ids[1] = (rand() % (pointcloud_size + 1));
-    reference_point_ids[2] = (rand() % (pointcloud_size + 1));
+    reference_point_ids[0] = (rand() % lidar_scan.size());
+    reference_point_ids[1] = (rand() % lidar_scan.size());
+    reference_point_ids[2] = (rand() % lidar_scan.size());
     sampled_point[0] = lidar_scan.points[reference_point_ids[0]];
     sampled_point[1] = lidar_scan.points[reference_point_ids[1]];
     sampled_point[2] = lidar_scan.points[reference_point_ids[2]];
@@ -480,13 +494,12 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
 
     accumulator->vote(vote, reference_point_ids);
   }
-  std::cout << "Voting finished" << std::endl;
 }
 
 std::vector<std::vector<int>> PlaneExtractor::rhtEval(
     int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
-    std::vector<Eigen::Vector3d> &plane_normals,
-    std::vector<PointCloud<PointXYZ>> &extracted_planes, PointCloud<PointXYZ> lidar_scan,
+    std::vector<Eigen::Vector3d> &plane_normals_out,
+    std::vector<PointCloud<PointXYZ>> &extracted_planes_out, const PointCloud<PointXYZ> &lidar_scan,
     HoughAccumulator *accumulator) {
   std::vector<std::vector<int>> inlier_ids;
   PointCloud<PointXYZ> used_inliers;
@@ -503,13 +516,13 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
   }
 
   // Convert plane coefficients to normal
-  plane_normals.clear();
+  plane_normals_out.clear();
   Eigen::Vector3d actual_normal;
   for (auto plane_coefficient : plane_coefficients) {
     actual_normal[0] = cos(plane_coefficient[1]) * cos(plane_coefficient[2]);
     actual_normal[1] = sin(plane_coefficient[1]) * cos(plane_coefficient[2]);
     actual_normal[2] = sin(plane_coefficient[2]);
-    plane_normals.push_back(actual_normal);
+    plane_normals_out.push_back(actual_normal);
   }
 
   // Extract inliers
@@ -529,7 +542,7 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
     for (auto rm_ids = rm_inlier_ids.rbegin(); rm_ids != rm_inlier_ids.rend(); ++rm_ids) {
       inlier_ids[plane_nr].erase(inlier_ids[plane_nr].begin() + *rm_ids);
     }
-    extracted_planes.push_back(used_inliers);
+    extracted_planes_out.push_back(used_inliers);
     used_inliers.clear();
     rm_inlier_ids.clear();
   }
