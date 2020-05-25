@@ -8,6 +8,8 @@
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/test_bench_config.yaml"/>
         <param name="cache_folder" value="$(find cpt_matching_algorithms)/cache/" />
 
+        <param name="goicp_folder" value="$(find go_icp_catkin)"/>
+
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml"/>
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_matching_config.yaml" />
 

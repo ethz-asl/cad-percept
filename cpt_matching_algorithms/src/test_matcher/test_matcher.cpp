@@ -172,6 +172,8 @@ void TestMatcher::match() {
   /*//////////////////////////////////////
                  Matching
   ///////////////////////////////////////*/
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+  std::vector<Eigen::Vector3d> plane_normals;
 
   // Selection of mapper
   std::string matcher = nh_private_.param<std::string>("Matcher", "fail");
@@ -196,8 +198,6 @@ void TestMatcher::match() {
       return;
     }
     // Plane Extraction
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-    std::vector<Eigen::Vector3d> plane_normals;
     std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
     if (!extractor.compare("pclPlaneExtraction")) {
       PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
@@ -266,25 +266,32 @@ void TestMatcher::match() {
   }
 
   /*//////////////////////////////////////
-                Transformation
+      Transformation & Visualization
   ///////////////////////////////////////*/
-
-  // Transform LiDAR frame
   Eigen::Matrix4f res_transform = Eigen::Matrix4f::Identity();
   Eigen::Vector3f translation(transform_TR_[0], transform_TR_[1], transform_TR_[2]);
   Eigen::Quaternionf q(transform_TR_[3], transform_TR_[4], transform_TR_[5], transform_TR_[6]);
   res_transform.block(0, 0, 3, 3) = q.matrix();
   res_transform.block(0, 3, 3, 1) = translation;
 
-  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform);
+  // Transform LiDAR frame
+  if (extracted_planes.size() == 0) {
+    pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform);
 
-  /*//////////////////////////////////////
-                Visualization
-  ///////////////////////////////////////*/
+    DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
+    scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_,
+                                                                         ros::Time::now()));
+  } else {
+    // Transform inliers of the planes
+    int i = 0;
+    for (auto extracted_plane : extracted_planes) {
+      extracted_planes[i].clear();
+      pcl::transformPointCloud(extracted_plane, extracted_planes[i], res_transform);
+      i++;
+    }
+    PlaneExtractor::visualizePlane(extracted_planes, scan_pub_, tf_map_frame_);
+  }
 
-  DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
-  scan_pub_.publish(
-      PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_, ros::Time::now()));
   ready_for_eval_ = true;
 }
 

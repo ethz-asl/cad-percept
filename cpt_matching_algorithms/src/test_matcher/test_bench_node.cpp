@@ -15,6 +15,7 @@ using namespace matching_algorithms;
 
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 pcl::PointCloud<pcl::PointXYZ> lidar_scan;
 std::vector<float> bin_elevation;
@@ -36,12 +37,14 @@ float transform_TR_[7] = {0, 0, 0, 0, 0, 0, 0};
 cad_percept::cgal::Transformation ctransformation;
 
 BoundedPlanes *map_planes;
+PointCloud sampled_map;
 
 void samplePose();
 void simulateLidar(cad_percept::cgal::Transformation ctransformation,
                    cad_percept::cgal::MeshModel mesh);
 void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
 void runTestIterations();
+void goicpMatch(PointCloud lidar_scan_, PointCloud sample_map_, float (&transform_TR_)[7]);
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "test_bench");
@@ -94,6 +97,12 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     // load data from file
     map_planes = new BoundedPlanes(*reference_mesh, cache_folder);
     map_planes->dispAllPlanes();
+
+    sampled_map.clear();
+    float sample_density_ = 20;
+    int n_points = reference_mesh->getArea() * sample_density_;
+    cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh->getMesh(), n_points, 0.0,
+                                                &sampled_map);
 
     // std::cout << "CAD ready" << std::endl;
     map_ready = true;
@@ -184,67 +193,73 @@ void runTestIterations() {
     // std::cout << "Start time measurement" << std::endl;
 
     t_start = std::chrono::steady_clock::now();
-    // Detect planes
-    // Filtering / Preprocessing Point Cloud
-    if (nh_private.param<bool>("useStructureFilter", false)) {
-      CloudFilter::filterStaticObject(structure_threshold, lidar_scan, static_structure_cloud);
-    }
-    if (nh_private.param<bool>("useVoxelCentroidFilter", false)) {
-      CloudFilter::filterVoxelCentroid(search_radius, lidar_scan);
-    }
 
-    if (lidar_scan.size() == 0) {
-      std::cout << "Can not find any planes in scan, as scan is empty after filtering" << std::endl;
-      break;
-    }
-    // Plane Extraction
-    if (!extractor.compare("pclPlaneExtraction")) {
-      PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                         tf_lidar_frame, plane_pub);
-    } else if (!extractor.compare("rhtPlaneExtraction")) {
-      PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                         tf_lidar_frame, plane_pub,
-                                         PlaneExtractor::loadRhtConfigFromServer());
-    } else if (!extractor.compare("iterRhtPlaneExtraction")) {
-      PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                             tf_lidar_frame, plane_pub);
+    // // Detect planes
+    // // Filtering / Preprocessing Point Cloud
+    // if (nh_private.param<bool>("useStructureFilter", false)) {
+    //   CloudFilter::filterStaticObject(structure_threshold, lidar_scan, static_structure_cloud);
+    // }
+    // if (nh_private.param<bool>("useVoxelCentroidFilter", false)) {
+    //   CloudFilter::filterVoxelCentroid(search_radius, lidar_scan);
+    // }
 
-    } else if (!extractor.compare("cgalRegionGrowing")) {
-      PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan, tf_lidar_frame,
-                                        plane_pub);
-    } else {
-      std::cout << "Error: Could not find given plane extractor" << std::endl;
-      break;
-    }
+    // if (lidar_scan.size() == 0) {
+    //   std::cout << "Can not find any planes in scan, as scan is empty after filtering" <<
+    //   std::endl; break;
+    // }
+    // // Plane Extraction
+    // if (!extractor.compare("pclPlaneExtraction")) {
+    //   PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
+    //                                      tf_lidar_frame, plane_pub);
+    // } else if (!extractor.compare("rhtPlaneExtraction")) {
+    //   PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
+    //                                      tf_lidar_frame, plane_pub,
+    //                                      PlaneExtractor::loadRhtConfigFromServer());
+    // } else if (!extractor.compare("iterRhtPlaneExtraction")) {
+    //   PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
+    //                                          tf_lidar_frame, plane_pub);
 
-    // Convert planes to PointNormal PointCloud
-    plane_nr = 0;
-    for (auto plane_normal : plane_normals) {
-      pcl::computeCentroid(extracted_planes[plane_nr], plane_centroid);
-      norm_point.x = plane_centroid.x;
-      norm_point.y = plane_centroid.y;
-      norm_point.z = plane_centroid.z;
+    // } else if (!extractor.compare("cgalRegionGrowing")) {
+    //   PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan,
+    //   tf_lidar_frame,
+    //                                     plane_pub);
+    // } else {
+    //   std::cout << "Error: Could not find given plane extractor" << std::endl;
+    //   break;
+    // }
 
-      norm_point.normal_x = plane_normal[0];
-      norm_point.normal_y = plane_normal[1];
-      norm_point.normal_z = plane_normal[2];
+    // // Convert planes to PointNormal PointCloud
+    // plane_nr = 0;
+    // for (auto plane_normal : plane_normals) {
+    //   pcl::computeCentroid(extracted_planes[plane_nr], plane_centroid);
+    //   norm_point.x = plane_centroid.x;
+    //   norm_point.y = plane_centroid.y;
+    //   norm_point.z = plane_centroid.z;
 
-      // Correct normals considering normal direction convention for matching
-      if (norm_point.x * norm_point.normal_x + norm_point.y * norm_point.normal_y +
-              norm_point.z * norm_point.normal_z <
-          0) {
-        norm_point.normal_x = -norm_point.normal_x;
-        norm_point.normal_y = -norm_point.normal_y;
-        norm_point.normal_z = -norm_point.normal_z;
-      }
+    //   norm_point.normal_x = plane_normal[0];
+    //   norm_point.normal_y = plane_normal[1];
+    //   norm_point.normal_z = plane_normal[2];
 
-      scan_planes.push_back(norm_point);
-      plane_nr++;
-    }
+    //   // Correct normals considering normal direction convention for matching
+    //   if (norm_point.x * norm_point.normal_x + norm_point.y * norm_point.normal_y +
+    //           norm_point.z * norm_point.normal_z <
+    //       0) {
+    //     norm_point.normal_x = -norm_point.normal_x;
+    //     norm_point.normal_y = -norm_point.normal_y;
+    //     norm_point.normal_z = -norm_point.normal_z;
+    //   }
 
-    // Match planes
-    results.clear();
-    transform_error = PlaneMatch::PRRUS(transform_TR_, scan_planes, *map_planes, results);
+    //   scan_planes.push_back(norm_point);
+    //   plane_nr++;
+    // }
+
+    // // Match planes
+    // results.clear();
+    // transform_error = PlaneMatch::PRRUS(transform_TR_, scan_planes, *map_planes, results);
+
+    goicpMatch(lidar_scan, sampled_map, transform_TR_);
+
+    transform_error = 0;
     t_end = std::chrono::steady_clock::now();
 
     // for (auto result : results) {
@@ -314,12 +329,16 @@ void runTestIterations() {
 
       // Transform inliers of the plane
       int i = 0;
-      for (auto extracted_plane : extracted_planes) {
-        extracted_planes[i].clear();
-        pcl::transformPointCloud(extracted_plane, extracted_planes[i], res_transform);
-        i++;
+      if (extracted_planes.size() != 0) {
+        for (auto extracted_plane : extracted_planes) {
+          extracted_planes[i].clear();
+          pcl::transformPointCloud(extracted_plane, extracted_planes[i], res_transform);
+          i++;
+        }
+        PlaneExtractor::visualizePlane(extracted_planes, scan_pub, tf_map_frame);
+      } else {
+        pcl::transformPointCloud(lidar_scan, lidar_scan, res_transform);
       }
-      PlaneExtractor::visualizePlane(extracted_planes, scan_pub, tf_map_frame);
       ros::spinOnce();
 
       std::cout << std::endl;
@@ -472,16 +491,16 @@ void samplePose() {
   }
   gt_translation[0] = x_coord - 23;
   gt_translation[1] = y_coord - 7;
-  gt_translation[2] = (double)(std::rand() % 20) * 0.1 + 0.5;
+  gt_translation[2] = (double)(std::rand() % 10) * 0.1 + 0.5;
 
   // Uniform sampling
-  double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-
-  // double euler_x = 0;
-  // double euler_y = 0;
+  // double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  // double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
   // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+
+  double euler_x = 0;
+  double euler_y = 0;
+  double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
 
   gt_rotation = Eigen::AngleAxisd(euler_x, Eigen::Vector3d::UnitX()) *
                 Eigen::AngleAxisd(euler_y, Eigen::Vector3d::UnitY()) *
@@ -537,4 +556,133 @@ void simulateLidar(cad_percept::cgal::Transformation ctransformation,
       lidar_scan.push_back(i);
     }
   }
+}
+
+void goicpMatch(PointCloud lidar_scan_, PointCloud sample_map_, float (&transform_TR_)[7]) {
+  std::cout << "///////////////////////////////////////////////" << std::endl;
+  std::cout << "             Go-ICP matcher started            " << std::endl;
+  std::cout << "///////////////////////////////////////////////" << std::endl;
+  ros::NodeHandle nh_private_("~");
+
+  std::string downsample_points = nh_private_.param<std::string>("GoICPdownsample", "1000");
+  std::string goicp_location = nh_private_.param<std::string>("goicp_folder", "fail");
+
+  PointCloud go_icp_lidar = lidar_scan_;
+  PointCloud go_icp_map = sample_map_;
+
+  // Find translation for centralization
+  pcl::PointXYZ transl_lidar;
+  pcl::computeCentroid(go_icp_lidar, transl_lidar);
+
+  pcl::PointXYZ transl_map;
+  pcl::computeCentroid(go_icp_map, transl_map);
+
+  // Centralize point clouds
+  Eigen::Matrix4d transform_lidar = Eigen::Matrix4d::Identity();
+  Eigen::Vector3d translation_lidar(transl_lidar.x, transl_lidar.y, transl_lidar.z);
+  transform_lidar.block(0, 3, 3, 1) = translation_lidar;
+  pcl::transformPointCloud(go_icp_lidar, go_icp_lidar, transform_lidar);
+
+  Eigen::Matrix4d transform_map = Eigen::Matrix4d::Identity();
+  Eigen::Vector3d translation_map(transl_map.x, transl_map.y, transl_map.z);
+  transform_map.block(0, 3, 3, 1) = translation_map;
+  pcl::transformPointCloud(go_icp_map, go_icp_map, transform_map);
+
+  // Find point, which is furthest away from centroid for scaling
+  float max_dist_lidar = 0;
+  for (auto point : go_icp_lidar.points) {
+    if (sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2)) >= max_dist_lidar) {
+      max_dist_lidar = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
+    }
+  }
+
+  float max_dist_map = 0;
+  for (auto point : go_icp_map.points) {
+    if (sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2)) >= max_dist_map) {
+      max_dist_lidar = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
+    }
+  }
+  float max_dist = std::max(max_dist_map, max_dist_lidar);
+
+  // Scale point cloud to [-1,1]³
+  Eigen::Matrix4d trans_scale_lidar = Eigen::Matrix4d::Identity();
+  trans_scale_lidar(0, 0) = trans_scale_lidar(0, 0) / max_dist;
+  trans_scale_lidar(1, 1) = trans_scale_lidar(1, 1) / max_dist;
+  trans_scale_lidar(2, 2) = trans_scale_lidar(2, 2) / max_dist;
+  pcl::transformPointCloud(go_icp_lidar, go_icp_lidar, trans_scale_lidar);
+
+  Eigen::Matrix4d trans_scale_map = Eigen::Matrix4d::Identity();
+  trans_scale_map(0, 0) = trans_scale_map(0, 0) / max_dist;
+  trans_scale_map(1, 1) = trans_scale_map(1, 1) / max_dist;
+  trans_scale_map(2, 2) = trans_scale_map(2, 2) / max_dist;
+  pcl::transformPointCloud(go_icp_map, go_icp_map, trans_scale_map);
+
+  // Create txt files of point clouds, required for Go-ICP
+  chdir(goicp_location.c_str());
+  std::ofstream map_file("map.txt");
+  map_file << go_icp_map.width << std::endl;
+  for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
+    map_file << i->x << " " << i->y << " " << i->z << std::endl;
+  }
+  std::cout << "Map.txt created" << std::endl;
+  map_file.close();
+
+  std::ofstream lidar_file("lidar_scan.txt");
+  lidar_file << go_icp_lidar.width << std::endl;
+  for (PointCloud::iterator i = go_icp_lidar.points.begin(); i < go_icp_lidar.points.end(); i++) {
+    lidar_file << i->x << " " << i->y << " " << i->z << std::endl;
+  }
+  std::cout << "lidar_scan.txt created" << std::endl;
+  lidar_file.close();
+
+  std::cout << "Start Go-ICP" << std::endl;
+  std::string command =
+      "./GoICP map.txt lidar_scan.txt " + downsample_points + " config.txt output.txt";
+  system(command.c_str());
+  std::cout << "Go-ICP finished" << std::endl;
+
+  // Read results
+  float time_needed;
+  Eigen::Matrix4d go_icp_trans = Eigen::Matrix4d::Identity();
+
+  std::ifstream output("output.txt");
+  if (output.is_open()) {
+    std::vector<float> values;
+    std::copy(std::istream_iterator<float>(output), std::istream_iterator<float>(),
+              std::back_inserter(values));
+
+    time_needed = values[0];
+    go_icp_trans(0, 0) = values[1];
+    go_icp_trans(0, 1) = values[2];
+    go_icp_trans(0, 2) = values[3];
+    go_icp_trans(1, 0) = values[4];
+    go_icp_trans(1, 1) = values[5];
+    go_icp_trans(1, 2) = values[6];
+    go_icp_trans(2, 0) = values[7];
+    go_icp_trans(2, 1) = values[8];
+    go_icp_trans(2, 2) = values[9];
+    go_icp_trans(0, 3) = values[10];
+    go_icp_trans(1, 3) = values[11];
+    go_icp_trans(2, 3) = values[12];
+
+    std::cout << "Go-ICP needed " << time_needed << " seconds." << std::endl;
+  } else {
+    std::cout << "Could not read output file" << std::endl;
+  }
+
+  // Get matrix of unscaled matrix
+  Eigen::Matrix4d final_transf = go_icp_trans;
+
+  Eigen::Matrix3d final_rot = final_transf.block(0, 0, 3, 3);
+  Eigen::Quaterniond final_q(final_rot);
+
+  // Revert scaling and translation
+  transform_TR_[0] = final_transf(0, 3) * max_dist - transl_lidar.x + transl_map.x;
+  transform_TR_[1] = final_transf(1, 3) * max_dist - transl_lidar.y + transl_map.y;
+  transform_TR_[2] = final_transf(2, 3) * max_dist - transl_lidar.z + transl_map.z;
+
+  transform_TR_[3] = final_q.w();
+  transform_TR_[4] = final_q.x();
+  transform_TR_[5] = final_q.y();
+  transform_TR_[6] = final_q.z();
 }
