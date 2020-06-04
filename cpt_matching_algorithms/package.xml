@@ -12,6 +12,7 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <test_depend>rosunit</test_depend>
+  <test_depend>rostest</test_depend>
 
   <depend>cgal_conversions</depend>
   <depend>cgal_definitions</depend>
@@ -21,5 +22,6 @@
   <depend>libpointmatcher_ros</depend> 
   <depend>pcl_ros</depend>
   <depend>roscpp</depend>
+  <depend>yaml-cpp</depend>
   
 </package>

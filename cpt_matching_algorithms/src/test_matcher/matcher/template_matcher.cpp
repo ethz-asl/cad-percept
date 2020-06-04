@@ -9,6 +9,7 @@ void TestMatcher::templateMatch() {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "This is only a template matcher. It returns a translation in z direction."
             << std::endl;
+
   transform_TR_[2] = -5.0;
 }
 
