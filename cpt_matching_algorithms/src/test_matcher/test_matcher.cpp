@@ -169,6 +169,8 @@ void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2 &lidar_scan_p2) {
 void TestMatcher::match() {
   std::cout << "Received LiDAR and CAD as point cloud" << std::endl;
 
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+
   /*//////////////////////////////////////
                  Matching
   ///////////////////////////////////////*/
@@ -196,7 +198,6 @@ void TestMatcher::match() {
       return;
     }
     // Plane Extraction
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
     std::vector<Eigen::Vector3d> plane_normals;
     std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
     if (!extractor.compare("pclPlaneExtraction")) {
@@ -240,9 +241,16 @@ void TestMatcher::match() {
         norm_point.normal_y = -norm_point.normal_y;
         norm_point.normal_z = -norm_point.normal_z;
       }
-
       scan_planes_.push_back(norm_point);
       plane_nr++;
+    }
+    // Plane Matching (Get T_map,lidar)
+    std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
+    if (!plane_matcher.compare("PRRUS")) {
+      PlaneMatch::PRRUS(transform_TR_, scan_planes_, *map_planes_);
+    } else {
+      std::cout << "Error: Could not find given plane matcher" << std::endl;
+      return;
     }
   } else {
     std::cout << "Error: Could not find given matcher" << std::endl;
@@ -266,9 +274,24 @@ void TestMatcher::match() {
                 Visualization
   ///////////////////////////////////////*/
 
-  DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
-  scan_pub_.publish(
-      PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_, ros::Time::now()));
+  // Transform LiDAR frame
+  if (extracted_planes.size() == 0) {
+    pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform);
+
+    DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
+    scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_,
+                                                                         ros::Time::now()));
+  } else {
+    // Transform inliers of the planes
+    int i = 0;
+    for (auto extracted_plane : extracted_planes) {
+      extracted_planes[i].clear();
+      pcl::transformPointCloud(extracted_plane, extracted_planes[i], res_transform);
+      i++;
+    }
+    PlaneExtractor::visualizePlane(extracted_planes, scan_pub_, tf_map_frame_);
+  }
+
   ready_for_eval_ = true;
 }
 
