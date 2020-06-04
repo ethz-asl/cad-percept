@@ -247,7 +247,7 @@ void TestMatcher::match() {
     // Plane Matching (Get T_map,lidar)
     std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
     if (!plane_matcher.compare("PRRUS")) {
-      PlaneMatch::PRRUS(transform_TR_, scan_planes_, *map_planes_);
+      PlaneMatch::prrus(transform_TR_, scan_planes_, *map_planes_);
     } else {
       std::cout << "Error: Could not find given plane matcher" << std::endl;
       return;

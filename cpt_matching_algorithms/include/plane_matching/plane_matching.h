@@ -15,7 +15,7 @@ namespace matching_algorithms {
 class PlaneMatch {
  public:
   // Apply PRRUS matching on the found scan planes and the map planes, returns T_map,lidar
-  static float PRRUS(float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
+  static float prrus(float (&transformTR)[7], const pcl::PointCloud<pcl::PointNormal> scan_planes,
                      BoundedPlanes map_planes);
 
  private:
