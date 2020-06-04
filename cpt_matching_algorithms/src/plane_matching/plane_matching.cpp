@@ -5,7 +5,7 @@ using namespace cad_percept::cgal;
 namespace cad_percept {
 namespace matching_algorithms {
 
-float PlaneMatch::PRRUS(float (&transformTR)[7],
+float PlaneMatch::prrus(float (&transformTR)[7],
                         const pcl::PointCloud<pcl::PointNormal> scan_planes,
                         BoundedPlanes map_planes) {
   std::cout << "////////////////////////////////////////////////" << std::endl;
