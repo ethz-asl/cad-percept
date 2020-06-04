@@ -16,6 +16,7 @@
 
 #include "cloud_filter/cloud_filter.h"
 #include "plane_extraction/plane_extraction.h"
+#include "plane_matching/plane_matching.h"
 #include "test_matcher/bounded_planes.h"
 
 namespace cad_percept {
