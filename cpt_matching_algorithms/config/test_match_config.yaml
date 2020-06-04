@@ -1,5 +1,5 @@
 # Sample density for map
-mapSamplingDensity: 20
+mapSamplingDensity: 10
 
 usetoyproblem: true
 
