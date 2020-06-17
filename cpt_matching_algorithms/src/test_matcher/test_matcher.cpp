@@ -165,11 +165,16 @@ void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2 &lidar_scan_p2) {
   }
 }
 
+std::chrono::duration<int, std::milli> duration;
 // Match clouds and evaluate
 void TestMatcher::match() {
   std::cout << "Received LiDAR and CAD as point cloud" << std::endl;
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+
+  // Remove this part
+  std::chrono::steady_clock::time_point t_start;
+  std::chrono::steady_clock::time_point t_end;
 
   /*//////////////////////////////////////
                  Matching
@@ -208,8 +213,11 @@ void TestMatcher::match() {
                                          tf_lidar_frame_, plane_pub_,
                                          PlaneExtractor::loadRhtConfigFromServer());
     } else if (!extractor.compare("iterRhtPlaneExtraction")) {
+      t_start = std::chrono::steady_clock::now();
       PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
                                              tf_lidar_frame_, plane_pub_);
+      t_end = std::chrono::steady_clock::now();
+      duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
 
     } else if (!extractor.compare("cgalRegionGrowing")) {
       PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan_,
@@ -318,6 +326,8 @@ void TestMatcher::evaluate() {
 
   getError(sample_map_, lidar_scan_);
   std::cout << "error (euclidean distance of translation): " << error << std::endl;
+
+  std::cout << duration.count() << std::endl;
 }
 
 // Get RMSE of two point clouds

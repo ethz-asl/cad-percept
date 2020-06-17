@@ -19,6 +19,9 @@
 #include "plane_matching/plane_matching.h"
 #include "test_matcher/bounded_planes.h"
 
+// Remove this part again
+#include <chrono>
+
 namespace cad_percept {
 namespace matching_algorithms {
 
