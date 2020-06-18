@@ -13,13 +13,13 @@ PlaneExtractor::rhtConfig PlaneExtractor::loadRhtConfigFromServer() {
   config.rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 0.1);
   config.theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 0.04);
   config.psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 0.04);
-  config.min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 0);
-  config.k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 14);
+  config.min_vote_threshold = nh_private.param<int>("AccumulatorThreshold", 30);
+  config.k_of_maxima_suppression = nh_private.param<int>("AccumulatorKMaxSuppress", 5);
 
   config.max_iteration = nh_private.param<int>("RHTMaxIter", 100000);
   config.tol_distance_between_points = nh_private.param<double>("RHTTolDist", 3);
   config.min_area_spanned = nh_private.param<double>("RHTMinArea", 0.5);
-  config.num_main_planes = nh_private.param<int>("RHTPlaneNumber", 1);
+  config.num_main_planes = nh_private.param<int>("RHTPlaneNumber", 0);
 
   return config;
 };
@@ -96,8 +96,8 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 0.1);
   double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 0.04);
   double psi_resolution = nh_private.param<double>("iterAccumulatorPsiResolution", 0.04);
-  int k_of_maxima_suppression = nh_private.param<int>("iterAccumulatorKMaxSuppress", 14);
-  int min_vote_threshold = nh_private.param<int>("iterAccumulatorMinThreshold", 0);
+  int k_of_maxima_suppression = nh_private.param<int>("iterAccumulatorKMaxSuppress", 5);
+  int min_vote_threshold = nh_private.param<int>("iterAccumulatorMinThreshold", 30);
 
   int number_of_iteration = nh_private.param<int>("iterRHTIter", 8);
   int iteration_per_plane = nh_private.param<int>("iterRHTIterPerIter", 10000);
