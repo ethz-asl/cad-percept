@@ -157,6 +157,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
     // Add part solution to final solution
     for (int plane_nr = 0; plane_nr < iter_plane_normals_out.size(); ++plane_nr) {
+      std::cout << "size " << iter_extracted_planes_out[plane_nr].size() << std::endl;
       if (iter_extracted_planes_out[plane_nr].size() < min_number_of_inlier) {
         inlier_over_threshold = false;
         continue;
