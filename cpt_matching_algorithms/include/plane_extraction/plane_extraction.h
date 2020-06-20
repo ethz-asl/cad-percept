@@ -26,9 +26,6 @@
 
 #include "plane_extraction/rht_accumulator.h"
 
-// Remove this part again
-#include <chrono>
-
 namespace cad_percept {
 namespace matching_algorithms {
 
@@ -81,7 +78,7 @@ class PlaneExtractor {
   // Runs max_iteration voting iterations
   static void rhtVote(int max_iteration, double tol_distance_between_points,
                       double min_area_spanned, const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
-                      HoughAccumulator *accumulator);
+                      std::vector<int> removed_pc_to_pc, HoughAccumulator *accumulator);
   // Returns detected planes considering voting in accumulator and applies Non-maxima Suppression
   static std::vector<std::vector<int>> rhtEval(
       int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,
