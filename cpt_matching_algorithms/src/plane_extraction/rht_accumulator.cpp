@@ -47,14 +47,14 @@ void HoughAccumulator::reset() {
 
 void HoughAccumulator::normalizeRTP(Eigen::Vector3d &rtp_input) {
   // Correction for psi
-  rtp_input[2] = loop_mod(rtp_input[2] + half_pi_, two_pi_);
+  rtp_input[2] = loop_mod(rtp_input[2] + half_pi, two_pi);
   if (rtp_input[2] >= M_PI) {
     // if psi lies on the other side rotate theta and correct psi
-    rtp_input[2] = two_pi_ - rtp_input[2];
+    rtp_input[2] = two_pi - rtp_input[2];
     rtp_input[1] = rtp_input[1] + M_PI;
   }
-  rtp_input[1] = loop_mod(rtp_input[1], two_pi_);
-  rtp_input[2] = rtp_input[2] - half_pi_;
+  rtp_input[1] = loop_mod(rtp_input[1], two_pi);
+  rtp_input[2] = rtp_input[2] - half_pi;
 }
 
 double HoughAccumulator::loop_mod(double x, double y) {
@@ -79,21 +79,16 @@ void HoughAccumulator::nonMaximumSuppression(int index, int k) {
   }
 }
 
-ArrayAccumulator::ArrayAccumulator(const Eigen::Vector3d &bin_minima,
-                                   const Eigen::Vector3d &bin_size,
-                                   const Eigen::Vector3d &bin_maxima) {
-  bin_minima_ = bin_minima;
-  bin_size_ = bin_size;
-  bin_maxima_ = bin_maxima;
-
-  bin_number_rho_ = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
-  bin_number_theta_ = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
-  bin_number_psi_ = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+ArrayAccumulator::ArrayAccumulator(const double max_range_scan, const Eigen::Vector3d &bin_size) {
+  bin_number_rho_ = (int)(max_range_scan / bin_size[0] + 1);
+  bin_number_theta_ = (int)(two_pi / bin_size[1] + 1);
+  bin_number_psi_ = (int)(M_PI / bin_size[2] + 1);
 
   std::cout << "Initialize array accumulator" << std::endl;
   std::cout << "rho bins: " << bin_number_rho_ << " theta bins: " << bin_number_theta_
             << " psi bins: " << bin_number_psi_ << std::endl;
 
+  rho_max = max_range_scan;
   accumulator_size = bin_number_rho_ * bin_number_theta_ * bin_number_psi_;
 
   this->reset();
@@ -101,19 +96,18 @@ ArrayAccumulator::ArrayAccumulator(const Eigen::Vector3d &bin_minima,
 
 int ArrayAccumulator::getBinIndexFromVector(Eigen::Vector3d &rtp_input) {
   normalizeRTP(rtp_input);
-  rho_index = rtp_input[0] / bin_maxima_[0] * bin_number_rho_;
-  theta_index =
-      (rtp_input[1] - bin_minima_[1]) / (bin_maxima_[1] - bin_minima_[1]) * bin_number_theta_;
-  psi_index = (rtp_input[2] - bin_minima_[2]) / (bin_maxima_[2] - bin_minima_[2]) * bin_number_psi_;
+  rho_index = rtp_input[0] / rho_max * bin_number_rho_;
+  theta_index = rtp_input[1] / two_pi * bin_number_theta_;
+  psi_index = (rtp_input[2] + half_pi) / M_PI * bin_number_psi_;
   return rho_index * bin_number_theta_ * bin_number_psi_ + theta_index * bin_number_psi_ +
          psi_index;
 }
 
 Eigen::Vector3d ArrayAccumulator::getBinValueFromIndex(int index) {
   rtp_index = getRTPIndexFromBinIndex(index);
-  rtp = Eigen::Vector3d((double)rtp_index[0] / bin_number_rho_ * bin_maxima_[0],
-                        (double)rtp_index[1] / bin_number_theta_ * 2 * M_PI,
-                        (double)rtp_index[2] / bin_number_psi_ * M_PI - M_PI / 2);
+  rtp = Eigen::Vector3d((double)rtp_index[0] / bin_number_rho_ * rho_max,
+                        (double)rtp_index[1] / bin_number_theta_ * two_pi,
+                        (double)rtp_index[2] / bin_number_psi_ * M_PI - half_pi);
   return rtp;
 }
 
@@ -162,27 +156,23 @@ void ArrayAccumulator::getNeighborIndex(int neighbor_nr, int index,
   }
 }
 
-BallAccumulator::BallAccumulator(const Eigen::Vector3d &bin_minima, const Eigen::Vector3d &bin_size,
-                                 const Eigen::Vector3d &bin_maxima) {
-  bin_minima_ = bin_minima;
-  bin_size_ = bin_size;
-  bin_maxima_ = bin_maxima;
-
-  bin_number_rho_ = (int)((bin_maxima[0] - bin_minima[0]) / bin_size[0] + 1);
-  int bin_number_theta = (int)((bin_maxima[1] - bin_minima[1]) / bin_size[1] + 1);
-  bin_number_psi_ = (int)((bin_maxima[2] - bin_minima[2]) / bin_size[2] + 1);
+BallAccumulator::BallAccumulator(const double max_range_scan, const Eigen::Vector3d &bin_size) {
+  bin_number_rho_ = (int)(max_range_scan / bin_size[0] + 1);
+  int bin_number_theta = (int)(two_pi / bin_size[1] + 1);
+  bin_number_psi_ = (int)(M_PI / bin_size[2] + 1);
 
   std::cout << "Initialize ball accumulator" << std::endl;
 
   for (int d_psi = 0; d_psi < bin_number_psi_; ++d_psi) {
     bin_number_theta_.push_back(
-        (int)(std::max(1.0, bin_number_theta * std::cos(d_psi * bin_size[2] + bin_minima[2]))));
+        (int)(std::max(1.0, bin_number_theta * std::cos(d_psi * bin_size[2] - half_pi))));
     bin_tot_number_theta_psi_ += bin_number_theta_.back();
   }
 
   std::cout << "rho bins: " << bin_number_rho_ << " theta bins: variable (max: " << bin_number_theta
             << ") psi bins: " << bin_number_psi_ << std::endl;
 
+  rho_max = max_range_scan;
   accumulator_size = bin_number_rho_ * bin_tot_number_theta_psi_;
 
   this->reset();
@@ -190,10 +180,9 @@ BallAccumulator::BallAccumulator(const Eigen::Vector3d &bin_minima, const Eigen:
 
 int BallAccumulator::getBinIndexFromVector(Eigen::Vector3d &rtp_input) {
   normalizeRTP(rtp_input);
-  rho_index = rtp_input[0] / bin_maxima_[0] * bin_number_rho_;
-  psi_index = (rtp_input[2] - bin_minima_[2]) / (bin_maxima_[2] - bin_minima_[2]) * bin_number_psi_;
-  theta_index = (rtp_input[1] - bin_minima_[1]) / (bin_maxima_[1] - bin_minima_[1]) *
-                bin_number_theta_[psi_index];
+  rho_index = rtp_input[0] / rho_max * bin_number_rho_;
+  psi_index = (rtp_input[2] + half_pi) / M_PI * bin_number_psi_;
+  theta_index = rtp_input[1] / two_pi * bin_number_theta_[psi_index];
   return rho_index * bin_tot_number_theta_psi_ +
          std::accumulate(bin_number_theta_.begin(), bin_number_theta_.begin() + psi_index, 0) +
          theta_index;
@@ -201,9 +190,9 @@ int BallAccumulator::getBinIndexFromVector(Eigen::Vector3d &rtp_input) {
 
 Eigen::Vector3d BallAccumulator::getBinValueFromIndex(int index) {
   rtp_index = getRTPIndexFromBinIndex(index);
-  rtp = Eigen::Vector3d((double)rtp_index[0] / bin_number_rho_ * bin_maxima_[0],
-                        (double)rtp_index[1] / bin_number_theta_[rtp_index[2]] * 2 * M_PI,
-                        (double)rtp_index[2] / bin_number_psi_ * M_PI - M_PI / 2);
+  rtp = Eigen::Vector3d((double)rtp_index[0] / bin_number_rho_ * rho_max,
+                        (double)rtp_index[1] / bin_number_theta_[rtp_index[2]] * two_pi,
+                        (double)rtp_index[2] / bin_number_psi_ * M_PI - half_pi);
   return rtp;
 }
 

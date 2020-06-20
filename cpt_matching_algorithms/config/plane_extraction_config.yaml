@@ -15,7 +15,7 @@ RHTPlaneNumber: 0 # number of principal planes, set to zero if all planes should
 
 #Settings of iterative RHT
 
-iterAccumulatorChoice: 1 # accumulator choice (1: array, 2: ball)
+iterAccumulatorChoice: 2 # accumulator choice (1: array, 2: ball)
 iterAccumulatorRhoResolution: 0.05 # resolution of rho in discretization of accumulator
 iterAccumulatorThetaResolution: 0.02 # resolution of theta in discretization of accumulator
 iterAccumulatorPsiResolution: 0.02 # resolution of psi in discretization of accumulator
