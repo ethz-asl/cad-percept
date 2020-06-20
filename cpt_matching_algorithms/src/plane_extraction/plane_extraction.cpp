@@ -9,7 +9,7 @@ PlaneExtractor::rhtConfig PlaneExtractor::loadRhtConfigFromServer() {
   ros::NodeHandle nh_private("~");
 
   rhtConfig config;
-  config.accumulator_choice = nh_private.param<int>("AccumulatorChoice", 2);
+  config.accumulator_choice = nh_private.param<int>("AccumulatorChoice", 1);
   config.rho_resolution = nh_private.param<double>("AccumulatorRhoResolution", 0.1);
   config.theta_resolution = nh_private.param<double>("AccumulatorThetaResolution", 0.04);
   config.psi_resolution = nh_private.param<double>("AccumulatorPsiResolution", 0.04);
@@ -42,15 +42,13 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
 
   // Settings for accumulator discretization (rho, theta, psi)
   HoughAccumulator *accumulator;
-  Eigen::Vector3d min_coord(0, 0, -(double)M_PI / 2);
-  Eigen::Vector3d max_coord(max_distance_to_point, (double)2 * M_PI, (double)M_PI / 2);
   Eigen::Vector3d bin_size(config.rho_resolution, config.theta_resolution, config.psi_resolution);
   switch (config.accumulator_choice) {
     case 1:
-      accumulator = new ArrayAccumulator(min_coord, bin_size, max_coord);
+      accumulator = new ArrayAccumulator(max_distance_to_point, bin_size);
       break;
     case 2:
-      accumulator = new BallAccumulator(min_coord, bin_size, max_coord);
+      accumulator = new BallAccumulator(max_distance_to_point, bin_size);
       break;
     default:
       std::cout << "No valid accumulator to number " << config.accumulator_choice << ", return ..."
@@ -92,7 +90,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
   plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
-  int accumulator_choice = nh_private.param<int>("iterAccumulatorChoice", 2);
+  int accumulator_choice = nh_private.param<int>("iterAccumulatorChoice", 1);
   double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 0.1);
   double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 0.04);
   double psi_resolution = nh_private.param<double>("iterAccumulatorPsiResolution", 0.04);
@@ -119,15 +117,13 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
   // Settings for accumulator discretization (rho, theta, psi)
   HoughAccumulator *accumulator;
-  Eigen::Vector3d min_coord(0, 0, -(double)M_PI / 2);
-  Eigen::Vector3d max_coord(max_distance_to_point, (double)2 * M_PI, (double)M_PI / 2);
   Eigen::Vector3d bin_size(rho_resolution, theta_resolution, psi_resolution);
   switch (accumulator_choice) {
     case 1:
-      accumulator = new ArrayAccumulator(min_coord, bin_size, max_coord);
+      accumulator = new ArrayAccumulator(max_distance_to_point, bin_size);
       break;
     case 2:
-      accumulator = new BallAccumulator(min_coord, bin_size, max_coord);
+      accumulator = new BallAccumulator(max_distance_to_point, bin_size);
       break;
     default:
       std::cout << "No valid accumulator to number " << accumulator_choice << ", return ..."

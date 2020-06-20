@@ -34,20 +34,20 @@ class HoughAccumulator {
   int bin_index;
 
   uint accumulator_size;
+  double half_pi = M_PI / 2;
+  double two_pi = 2 * M_PI;
+  double rho_max;
 
   // Returns index value according to continuous value
   virtual int getBinIndexFromVector(Eigen::Vector3d &rtp_input) = 0;
-  // Implementation of getRTPIndexFromVector of array accumulator
+  // Returns value of bin (rho, theta, psi) with bin index index
   virtual Eigen::Vector3d getBinValueFromIndex(int index) = 0;
-  // Implementation of getNeighborIndex of array accumulator
+  // Return discretized rho, theta and psi value corresponding to bin index index
   virtual Eigen::Vector3i getRTPIndexFromBinIndex(int index) = 0;
 
-  // virtual Eigen::Vector3i getRTPIndexFromVector(Eigen::Vector3d &rtp) = 0;
   // Returns list of indexes corresponding to neighbors
   virtual void getNeighborIndex(int neighbor_nr, int index,
                                 std::vector<int> &neighbor_index_out) = 0;
-  // // Returns index value according to continuous value
-  // virtual int getBinIndexFromVector(Eigen::Vector3d &rtp) = 0;
 
   // Helper functions
   // Normalize rho, theta and psi
@@ -58,8 +58,6 @@ class HoughAccumulator {
  private:
   int bin_index_;
   int maximum_idx_;
-  double half_pi_ = M_PI / 2;
-  double two_pi_ = 2 * M_PI;
 
   std::vector<int> neighbor_index_;
   std::vector<std::vector<int>> voter_ids_;
@@ -72,8 +70,7 @@ class HoughAccumulator {
 
 class ArrayAccumulator : public HoughAccumulator {
  public:
-  ArrayAccumulator(const Eigen::Vector3d &bin_minima, const Eigen::Vector3d &bin_size,
-                   const Eigen::Vector3d &bin_maxima);
+  ArrayAccumulator(const double max_range_scan, const Eigen::Vector3d &bin_size);
   // Implementation of getBinIndexFromVector of array accumulator
   virtual int getBinIndexFromVector(Eigen::Vector3d &rtp_input);
   // Implementation of getRTPIndexFromVector of array accumulator
@@ -86,9 +83,6 @@ class ArrayAccumulator : public HoughAccumulator {
  private:
   bool getBinIndexFromRTPIndex(int &index, Eigen::Vector3i rtp_input);
 
-  Eigen::Vector3d bin_minima_;
-  Eigen::Vector3d bin_size_;
-  Eigen::Vector3d bin_maxima_;
   int bin_number_rho_;
   int bin_number_theta_;
   int bin_number_psi_;
@@ -96,8 +90,7 @@ class ArrayAccumulator : public HoughAccumulator {
 
 class BallAccumulator : public HoughAccumulator {
  public:
-  BallAccumulator(const Eigen::Vector3d &bin_minima, const Eigen::Vector3d &bin_size,
-                  const Eigen::Vector3d &bin_maxima);
+  BallAccumulator(const double max_range_scan, const Eigen::Vector3d &bin_size);
   // Implementation of getBinIndexFromVector of array accumulator
   virtual int getBinIndexFromVector(Eigen::Vector3d &rtp_input);
   // Implementation of getRTPIndexFromVector of array accumulator
@@ -110,39 +103,11 @@ class BallAccumulator : public HoughAccumulator {
  private:
   bool getBinIndexFromRTPIndex(int &index, Eigen::Vector3i rtp_input);
 
-  Eigen::Vector3d bin_minima_;
-  Eigen::Vector3d bin_size_;
-  Eigen::Vector3d bin_maxima_;
   int bin_number_rho_;
   int bin_tot_number_theta_psi_;
   std::vector<int> bin_number_theta_;
   int bin_number_psi_;
 };
-
-// class BallAccumulator : public HoughAccumulator {
-//  public:
-//   BallAccumulator(const Eigen::Vector3d &bin_minima, const Eigen::Vector3d &bin_size,
-//                   const Eigen::Vector3d &bin_maxima);
-//   // Implementation of getRTPIndexFromVector of array accumulator
-//   virtual Eigen::Vector3i getRTPIndexFromVector(Eigen::Vector3d &rtp);
-//   // Implementation of getNeighborIndex of array accumulator
-//   virtual void getNeighborIndex(int neighbor_nr, int index, std::vector<int> &neighbor_index);
-//   // Implementation of getValue of array accumulator
-//   virtual bool getValue(accumulatorBin &output, Eigen::Vector3i rtp_idx);
-//   // Implementation of getBinIndexFromVector of ball accumulator
-//   virtual int getBinIndexFromVector(Eigen::Vector3d &rtp);
-
-//  private:
-//   int temp_switch_index_;
-
-//   Eigen::Vector3d bin_minima_;
-//   Eigen::Vector3d bin_size_;
-//   Eigen::Vector3d bin_maxima_;
-//   int bin_number_rho_;
-//   std::vector<int> bin_number_theta_;
-//   std::vector<double> bin_delta_theta_;
-//   int bin_number_psi_;
-// };
 
 }  // namespace matching_algorithms
 }  // namespace cad_percept
