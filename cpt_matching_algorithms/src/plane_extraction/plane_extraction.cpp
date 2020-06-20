@@ -57,8 +57,10 @@ void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extra
   }
 
   // Perform RHT
+  std::vector<int> removed_pc_to_pc(lidar_scan.size());
+  std::iota(std::begin(removed_pc_to_pc), std::end(removed_pc_to_pc), 0);
   rhtVote(config.max_iteration, config.tol_distance_between_points, config.min_area_spanned,
-          lidar_scan, accumulator);
+          lidar_scan, removed_pc_to_pc, accumulator);
   // Evaluation
   rhtEval(config.num_main_planes, config.min_vote_threshold, config.k_of_maxima_suppression,
           plane_normals_out, extracted_planes_out, lidar_scan, accumulator);
@@ -132,7 +134,8 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   }
 
   // Setup to remove detected planes
-  ExtractIndices<PointXYZ> indices_filter;
+  std::vector<int> removed_pc_to_pc(lidar_scan.size());
+  std::iota(std::begin(removed_pc_to_pc), std::end(removed_pc_to_pc), 0);
   std::vector<std::vector<int>> inlier_ids;
   std::vector<int> rm_indices;
 
@@ -143,17 +146,16 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
   for (int iter = 0; iter < number_of_iteration && inlier_over_threshold; ++iter) {
     // Perform RHT
-    rhtVote(iteration_per_plane, tol_distance_between_points, min_area_spanned, *copy_lidar_scan,
-            accumulator);
+    rhtVote(iteration_per_plane, tol_distance_between_points, min_area_spanned, lidar_scan,
+            removed_pc_to_pc, accumulator);
 
     // Evaluation
     inlier_ids =
         rhtEval(number_of_plane_per_iter, min_vote_threshold, k_of_maxima_suppression,
-                iter_plane_normals_out, iter_extracted_planes_out, *copy_lidar_scan, accumulator);
+                iter_plane_normals_out, iter_extracted_planes_out, lidar_scan, accumulator);
 
     // Add part solution to final solution
     for (int plane_nr = 0; plane_nr < iter_plane_normals_out.size(); ++plane_nr) {
-      std::cout << "size " << iter_extracted_planes_out[plane_nr].size() << std::endl;
       if (iter_extracted_planes_out[plane_nr].size() < min_number_of_inlier) {
         inlier_over_threshold = false;
         continue;
@@ -164,20 +166,16 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
     }
 
     // Filter out found planes
-    boost::shared_ptr<std::vector<int>> inliers_ptr =
-        boost::make_shared<std::vector<int>>(rm_indices);
-    indices_filter.setInputCloud(copy_lidar_scan);
-    indices_filter.setIndices(inliers_ptr);
-    indices_filter.setNegative(true);
-    indices_filter.filter(*copy_lidar_scan);
-    if (copy_lidar_scan->size() == 0) break;
+    for (auto indice : rm_indices) {
+      removed_pc_to_pc.erase(std::remove(removed_pc_to_pc.begin(), removed_pc_to_pc.end(), indice),
+                             removed_pc_to_pc.end());
+    }
+    if (removed_pc_to_pc.size() <= 3) break;
 
     // Reset for next iteration
     iter_extracted_planes_out.clear();
     inlier_ids.clear();
     rm_indices.clear();
-
-    accumulator->reset();
   }
 
   visualizePlane(extracted_planes_out, plane_pub, tf_map_frame);
@@ -436,7 +434,7 @@ void PlaneExtractor::visualizePlane(const std::vector<PointCloud<PointXYZ>> &ext
 
 void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_points,
                              double min_area_spanned, const PointCloud<PointXYZ> &lidar_scan,
-                             HoughAccumulator *accumulator) {
+                             std::vector<int> removed_pc_to_pc, HoughAccumulator *accumulator) {
   // Setup needed variables
   int reference_point_ids[3];
   PointXYZ sampled_point[3];
@@ -447,12 +445,11 @@ void PlaneExtractor::rhtVote(int max_iteration, double tol_distance_between_poin
 
   int pointcloud_size = lidar_scan.size();
 
-  std::cout << "Start voting" << std::endl;
   for (int i = 0; i < max_iteration; ++i) {
     // Sample random points
-    reference_point_ids[0] = (rand() % lidar_scan.size());
-    reference_point_ids[1] = (rand() % lidar_scan.size());
-    reference_point_ids[2] = (rand() % lidar_scan.size());
+    reference_point_ids[0] = removed_pc_to_pc[rand() % removed_pc_to_pc.size()];
+    reference_point_ids[1] = removed_pc_to_pc[rand() % removed_pc_to_pc.size()];
+    reference_point_ids[2] = removed_pc_to_pc[rand() % removed_pc_to_pc.size()];
     sampled_point[0] = lidar_scan.points[reference_point_ids[0]];
     sampled_point[1] = lidar_scan.points[reference_point_ids[1]];
     sampled_point[2] = lidar_scan.points[reference_point_ids[2]];
@@ -500,7 +497,6 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
     HoughAccumulator *accumulator) {
   std::vector<std::vector<int>> inlier_ids;
   PointCloud<PointXYZ> used_inliers;
-  bool bit_point_cloud[lidar_scan.size()] = {false};
 
   // Evaluate voting (select between thresholding or number of extracted planes)
   std::vector<Eigen::Vector3d> plane_coefficients;
@@ -524,6 +520,7 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
   }
 
   // Extract inliers
+  bool bit_point_cloud[lidar_scan.size()] = {false};
   std::vector<int> rm_inlier_ids;
   for (int plane_nr = 0; plane_nr < inlier_ids.size(); ++plane_nr) {
     for (int i = 0; i < inlier_ids[plane_nr].size(); ++i) {
