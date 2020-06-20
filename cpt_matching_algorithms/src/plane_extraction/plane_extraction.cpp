@@ -176,6 +176,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
     iter_extracted_planes_out.clear();
     inlier_ids.clear();
     rm_indices.clear();
+
     accumulator->reset();
   }
 
@@ -188,7 +189,6 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
               << " color: " << color % 8 << std::endl;
     ++color;
   }
-
   delete accumulator;
 }
 
@@ -504,6 +504,7 @@ std::vector<std::vector<int>> PlaneExtractor::rhtEval(
 
   // Evaluate voting (select between thresholding or number of extracted planes)
   std::vector<Eigen::Vector3d> plane_coefficients;
+
   if (num_main_planes == 0) {
     accumulator->findMaxima(min_vote_threshold, plane_coefficients, inlier_ids,
                             k_of_maxima_suppression);

@@ -175,6 +175,7 @@ void TestMatcher::match() {
   // Remove this part
   std::chrono::steady_clock::time_point t_start;
   std::chrono::steady_clock::time_point t_end;
+  t_start = std::chrono::steady_clock::now();
 
   /*//////////////////////////////////////
                  Matching
@@ -213,12 +214,8 @@ void TestMatcher::match() {
                                          tf_lidar_frame_, plane_pub_,
                                          PlaneExtractor::loadRhtConfigFromServer());
     } else if (!extractor.compare("iterRhtPlaneExtraction")) {
-      t_start = std::chrono::steady_clock::now();
       PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
                                              tf_lidar_frame_, plane_pub_);
-      t_end = std::chrono::steady_clock::now();
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
-
     } else if (!extractor.compare("cgalRegionGrowing")) {
       PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan_,
                                         tf_lidar_frame_, plane_pub_);
@@ -264,6 +261,8 @@ void TestMatcher::match() {
     std::cout << "Error: Could not find given matcher" << std::endl;
     return;
   }
+  t_end = std::chrono::steady_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
 
   /*//////////////////////////////////////
                 Transformation

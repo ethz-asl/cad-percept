@@ -26,6 +26,9 @@
 
 #include "plane_extraction/rht_accumulator.h"
 
+// Remove this part again
+#include <chrono>
+
 namespace cad_percept {
 namespace matching_algorithms {
 
