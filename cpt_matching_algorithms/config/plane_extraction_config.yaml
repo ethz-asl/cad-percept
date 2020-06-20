@@ -1,16 +1,16 @@
 # Settings of RHT
 
-AccumulatorChoice: 1 # accumulator choice (1: array, 2: ball)
-AccumulatorRhoResolution: 0.1 # resolution of rho in discretization of accumulator
-AccumulatorThetaResolution: 0.1 # resolution of theta in discretization of accumulator
-AccumulatorPsiResolution: 0.1 # resolution of psi in discretization of accumulator
+AccumulatorChoice: 2 # accumulator choice (1: array, 2: ball)
+AccumulatorRhoResolution: 0.05 # resolution of rho in discretization of accumulator
+AccumulatorThetaResolution: 0.02 # resolution of theta in discretization of accumulator
+AccumulatorPsiResolution: 0.02 # resolution of psi in discretization of accumulator
 AccumulatorThreshold: 30 # Threshold for votes such that plane gets detected
 AccumulatorKMaxSuppress: 5 # neighborhood (max norm) of Non-maxima Suppression, set to zero to deactivate
 
 RHTMaxIter: 1000000 # sample iterations
 RHTTolDist: 3    # makes sure points are not too far apart
 RHTMinArea: 0.5 # min area spanned by two vectors created by three reference points (makes sure points are not the same or collinear)
-RHTPlaneNumber: 0 # number of principal planes, set to zero if all planes should be shown
+RHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should be shown
 
 
 #Settings of iterative RHT
@@ -19,7 +19,7 @@ iterAccumulatorChoice: 2 # accumulator choice (1: array, 2: ball)
 iterAccumulatorRhoResolution: 0.05 # resolution of rho in discretization of accumulator
 iterAccumulatorThetaResolution: 0.02 # resolution of theta in discretization of accumulator
 iterAccumulatorPsiResolution: 0.02 # resolution of psi in discretization of accumulator
-iterAccumulatorKMaxSuppress: 5 # neighborhood (max norm) of Non-maxima Suppression, set to zero to deactivate
+iterAccumulatorKMaxSuppress: 0 # neighborhood (max norm) of Non-maxima Suppression, set to zero to deactivate
 iterAccumulatorMinThreshold: 30 # Threshold for votes such that plane gets detected
 
 iterRHTIter: 8 # number of rht iterations

@@ -36,6 +36,7 @@ void HoughAccumulator::findMaximumPlane(int num_main_planes,
     plane_coefficients_out.push_back(getBinValueFromIndex(maximum_idx_));
     voter_ids_out.push_back(voter_ids_[maximum_idx_]);
     bin_votes_(1, maximum_idx_) = 0;
+    voter_ids_[maximum_idx_].clear();
   }
 }
 
