@@ -144,13 +144,9 @@ void ArrayAccumulator::getNeighborIndex(int neighbor_nr, int index,
           theta_index = theta_index + bin_number_theta_ / 2;
         }
         theta_index = loop_mod(theta_index, bin_number_theta_);
-        // Skip if index ends up at same index
-        if (rtp_index[0] == rtp_index[0] + d_rho && rtp_index[1] == theta_index &&
-            rtp_index[2] == psi_index) {
-          continue;
-        }
         if (getBinIndexFromRTPIndex(
                 neighbor_id, Eigen::Vector3i(rtp_index[0] + d_rho, theta_index, psi_index))) {
+          if (index == neighbor_id) continue;  // Skip if index ends up at same index
           neighbor_index_out.push_back(neighbor_id);
         }
       }
@@ -165,6 +161,7 @@ BallAccumulator::BallAccumulator(const double max_range_scan, const Eigen::Vecto
 
   std::cout << "Initialize ball accumulator" << std::endl;
 
+  bin_tot_number_theta_psi_ = 0;
   for (int d_psi = 0; d_psi < bin_number_psi_; ++d_psi) {
     bin_number_theta_.push_back(
         (int)(std::max(1.0, bin_number_theta * std::cos(d_psi * bin_size[2] - half_pi))));
@@ -240,15 +237,9 @@ void BallAccumulator::getNeighborIndex(int neighbor_nr, int index,
         theta_index = (int)((double)theta_index / (double)bin_number_theta_[rtp_index[2]] *
                             (double)bin_number_theta_[psi_index]);
         theta_index = loop_mod(theta_index, bin_number_theta_[psi_index]);
-        // Skip if index ends up at same index
-        if (rtp_index[0] == rtp_index[0] + d_rho && rtp_index[1] == theta_index &&
-            rtp_index[2] == psi_index) {
-          getBinIndexFromRTPIndex(neighbor_id,
-                                  Eigen::Vector3i(rtp_index[0] + d_rho, theta_index, psi_index));
-          continue;
-        }
         if (getBinIndexFromRTPIndex(
                 neighbor_id, Eigen::Vector3i(rtp_index[0] + d_rho, theta_index, psi_index))) {
+          if (index == neighbor_id) continue;  // Skip if index ends up at same index
           neighbor_index_out.push_back(neighbor_id);
         }
       }
