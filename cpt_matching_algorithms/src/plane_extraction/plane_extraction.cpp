@@ -92,7 +92,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
   plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
 
-  int accumulator_choice = nh_private.param<int>("iterAccumulatorChoice", 1);
+  int accumulator_choice = nh_private.param<int>("iterAccumulatorChoice", 2);
   double rho_resolution = nh_private.param<double>("iterAccumulatorRhoResolution", 0.1);
   double theta_resolution = nh_private.param<double>("iterAccumulatorThetaResolution", 0.04);
   double psi_resolution = nh_private.param<double>("iterAccumulatorPsiResolution", 0.04);
@@ -100,7 +100,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   int min_vote_threshold = nh_private.param<int>("iterAccumulatorMinThreshold", 30);
 
   int number_of_iteration = nh_private.param<int>("iterRHTIter", 8);
-  int iteration_per_plane = nh_private.param<int>("iterRHTIterPerIter", 10000);
+  int iteration_per_plane = nh_private.param<int>("iterRHTIterPerIter", 1000000);
   double tol_distance_between_points = nh_private.param<double>("iterRHTTolDist", 3);
   double min_area_spanned = nh_private.param<double>("iterRHTMinArea", 0.5);
   int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlanePerIter", 1);
@@ -153,7 +153,6 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
     inlier_ids =
         rhtEval(number_of_plane_per_iter, min_vote_threshold, k_of_maxima_suppression,
                 iter_plane_normals_out, iter_extracted_planes_out, lidar_scan, accumulator);
-
     // Add part solution to final solution
     for (int plane_nr = 0; plane_nr < iter_plane_normals_out.size(); ++plane_nr) {
       if (iter_extracted_planes_out[plane_nr].size() < min_number_of_inlier) {
