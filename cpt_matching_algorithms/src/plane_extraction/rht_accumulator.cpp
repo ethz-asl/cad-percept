@@ -114,7 +114,8 @@ Eigen::Vector3d ArrayAccumulator::getBinValueFromIndex(int index) {
 
 Eigen::Vector3i ArrayAccumulator::getRTPIndexFromBinIndex(int index) {
   rho_index = (int)((double)index / (bin_number_theta_ * bin_number_psi_));
-  theta_index = (int)(index % (rho_index * bin_number_theta_ * bin_number_psi_) / bin_number_psi_);
+  index = index - rho_index * bin_number_theta_ * bin_number_psi_;
+  theta_index = (int)(index / bin_number_psi_);
   psi_index = index % bin_number_psi_;
   rtp_index = Eigen::Vector3i(rho_index, theta_index, psi_index);
   return rtp_index;

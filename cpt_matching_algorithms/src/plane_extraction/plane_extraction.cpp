@@ -165,7 +165,7 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
       rm_indices.insert(rm_indices.end(), inlier_ids[plane_nr].begin(), inlier_ids[plane_nr].end());
     }
 
-    // Filter out found planes
+    // Filter out inliers of found planes
     for (auto indice : rm_indices) {
       removed_pc_to_pc.erase(std::remove(removed_pc_to_pc.begin(), removed_pc_to_pc.end(), indice),
                              removed_pc_to_pc.end());
