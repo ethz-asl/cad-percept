@@ -26,6 +26,7 @@ TestMatcher::TestMatcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   // Get Publisher
   scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1, true);
   plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+  sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sampled_map", 1, true);
 }
 
 // Get CAD and sample points
@@ -177,6 +178,40 @@ void TestMatcher::match() {
   std::chrono::steady_clock::time_point t_end;
   t_start = std::chrono::steady_clock::now();
 
+  // Read demo examples
+  lidar_scan_.clear();
+  sample_map_.clear();
+  std::string goicp_location = nh_private_.param<std::string>("goicp_folder", "fail");
+  chdir(goicp_location.c_str());
+  pcl::PointXYZ demo_points;
+  std::ifstream demo_files;
+  int number_demo_points;
+  demo_files.open("model_bunny.txt");
+  demo_files >> number_demo_points;
+  for (int point = 0; point < number_demo_points; ++point) {
+    demo_files >> demo_points.x;
+    demo_files >> demo_points.y;
+    demo_files >> demo_points.z;
+    lidar_scan_.push_back(demo_points);
+  }
+  Eigen::Matrix4f transform_demo = Eigen::Matrix4f::Identity();
+  Eigen::Matrix3f rotation_demo = (Eigen::AngleAxisf(0, Eigen::Vector3f::UnitX()) *
+                                   Eigen::AngleAxisf(0, Eigen::Vector3f::UnitY()) *
+                                   Eigen::AngleAxisf(M_PI / 2, Eigen::Vector3f::UnitZ()))
+                                      .matrix();
+  transform_demo.block(0, 0, 3, 3) = rotation_demo;
+  pcl::transformPointCloud(lidar_scan_, lidar_scan_, transform_demo);
+  demo_files.close();
+  demo_files.open("model_bunny.txt");
+  demo_files >> number_demo_points;
+  for (int point = 0; point < number_demo_points; ++point) {
+    demo_files >> demo_points.x;
+    demo_files >> demo_points.y;
+    demo_files >> demo_points.z;
+    sample_map_.push_back(demo_points);
+  }
+  demo_files.close();
+
   /*//////////////////////////////////////
                  Matching
   ///////////////////////////////////////*/
@@ -288,6 +323,10 @@ void TestMatcher::match() {
     DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
     scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_,
                                                                          ros::Time::now()));
+
+    DP ref_dp_scan = cpt_utils::pointCloudToDP(sample_map_);
+    sample_map_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(
+        ref_dp_scan, tf_map_frame_, ros::Time::now()));
   } else {
     // Transform inliers of the planes
     int i = 0;

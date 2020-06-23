@@ -106,10 +106,6 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
   int number_of_plane_per_iter = nh_private.param<int>("iterRHTNumPlanePerIter", 1);
   int min_number_of_inlier = nh_private.param<int>("iterRHTMinNumberInlier", 10);
 
-  // Copy lidar frame to remove points
-  PointCloud<PointXYZ>::Ptr copy_lidar_scan(new PointCloud<PointXYZ>());
-  copyPointCloud(lidar_scan, *copy_lidar_scan);
-
   PointXYZ origin(0, 0, 0);
   double max_distance_to_point = 0;
   for (auto lidar_scan_point : lidar_scan) {
