@@ -17,72 +17,73 @@ void TestMatcher::goicpMatch() {
   PointCloud go_icp_lidar = lidar_scan_;
   PointCloud go_icp_map = sample_map_;
 
-  // Find translation for centralization
-  pcl::PointXYZ transl_lidar;
-  pcl::computeCentroid(go_icp_lidar, transl_lidar);
+  // // Find translation for centralization
+  // pcl::PointXYZ transl_lidar;
+  // pcl::computeCentroid(go_icp_lidar, transl_lidar);
 
-  pcl::PointXYZ transl_map;
-  pcl::computeCentroid(go_icp_map, transl_map);
+  // pcl::PointXYZ transl_map;
+  // pcl::computeCentroid(go_icp_map, transl_map);
 
-  // Centralize point clouds
-  Eigen::Matrix4d transform_lidar = Eigen::Matrix4d::Identity();
-  Eigen::Vector3d translation_lidar(-transl_lidar.x, -transl_lidar.y, -transl_lidar.z);
-  transform_lidar.block(0, 3, 3, 1) = translation_lidar;
-  pcl::transformPointCloud(go_icp_lidar, go_icp_lidar, transform_lidar);
+  // // Centralize point clouds
+  // Eigen::Matrix4d transform_lidar = Eigen::Matrix4d::Identity();
+  // Eigen::Vector3d translation_lidar(-transl_lidar.x, -transl_lidar.y, -transl_lidar.z);
+  // transform_lidar.block(0, 3, 3, 1) = translation_lidar;
+  // pcl::transformPointCloud(go_icp_lidar, go_icp_lidar, transform_lidar);
 
-  Eigen::Matrix4d transform_map = Eigen::Matrix4d::Identity();
-  Eigen::Vector3d translation_map(-transl_map.x, -transl_map.y, -transl_map.z);
-  transform_map.block(0, 3, 3, 1) = translation_map;
-  pcl::transformPointCloud(go_icp_map, go_icp_map, transform_map);
+  // Eigen::Matrix4d transform_map = Eigen::Matrix4d::Identity();
+  // Eigen::Vector3d translation_map(-transl_map.x, -transl_map.y, -transl_map.z);
+  // transform_map.block(0, 3, 3, 1) = translation_map;
+  // pcl::transformPointCloud(go_icp_map, go_icp_map, transform_map);
 
-  // Find point, which is furthest away from centroid for scaling
-  float max_dist_lidar = 0;
-  for (auto point : go_icp_lidar.points) {
-    if (sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2)) >= max_dist_lidar) {
-      max_dist_lidar = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
-    }
-  }
+  // // Find point, which is furthest away from centroid for scaling
+  // float max_dist_lidar = 0;
+  // for (auto point : go_icp_lidar.points) {
+  //   if (sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2)) >= max_dist_lidar) {
+  //     max_dist_lidar = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
+  //   }
+  // }
 
-  float max_dist_map = 0;
-  for (auto point : go_icp_map.points) {
-    if (sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2)) >= max_dist_map) {
-      max_dist_map = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
-    }
-  }
-  float max_dist = std::max(max_dist_map, max_dist_lidar);
+  // float max_dist_map = 0;
+  // for (auto point : go_icp_map.points) {
+  //   if (sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2)) >= max_dist_map) {
+  //     max_dist_map = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
+  //   }
+  // }
+  // float max_dist = std::max(max_dist_map, max_dist_lidar);
 
-  // Scale point cloud to [-1,1]³
-  Eigen::Matrix4d trans_scale_lidar = Eigen::Matrix4d::Identity();
-  trans_scale_lidar(0, 0) = trans_scale_lidar(0, 0) / max_dist;
-  trans_scale_lidar(1, 1) = trans_scale_lidar(1, 1) / max_dist;
-  trans_scale_lidar(2, 2) = trans_scale_lidar(2, 2) / max_dist;
-  pcl::transformPointCloud(go_icp_lidar, go_icp_lidar, trans_scale_lidar);
+  // // Scale point cloud to [-1,1]³
+  // Eigen::Matrix4d trans_scale_lidar = Eigen::Matrix4d::Identity();
+  // trans_scale_lidar(0, 0) = trans_scale_lidar(0, 0) / max_dist;
+  // trans_scale_lidar(1, 1) = trans_scale_lidar(1, 1) / max_dist;
+  // trans_scale_lidar(2, 2) = trans_scale_lidar(2, 2) / max_dist;
+  // pcl::transformPointCloud(go_icp_lidar, go_icp_lidar, trans_scale_lidar);
 
-  Eigen::Matrix4d trans_scale_map = Eigen::Matrix4d::Identity();
-  trans_scale_map(0, 0) = trans_scale_map(0, 0) / max_dist;
-  trans_scale_map(1, 1) = trans_scale_map(1, 1) / max_dist;
-  trans_scale_map(2, 2) = trans_scale_map(2, 2) / max_dist;
-  pcl::transformPointCloud(go_icp_map, go_icp_map, trans_scale_map);
+  // Eigen::Matrix4d trans_scale_map = Eigen::Matrix4d::Identity();
+  // trans_scale_map(0, 0) = trans_scale_map(0, 0) / max_dist;
+  // trans_scale_map(1, 1) = trans_scale_map(1, 1) / max_dist;
+  // trans_scale_map(2, 2) = trans_scale_map(2, 2) / max_dist;
+  // pcl::transformPointCloud(go_icp_map, go_icp_map, trans_scale_map);
 
-  // Sample randomly from scan cloud
-  pcl::PointCloud<pcl::PointXYZ> sampled_scan;
-  int sample_index;
-  bool already_sampled[go_icp_lidar.size()] = {false};
-  for (int i = 0; i < std::stoi(downsample_points); ++i) {
-    sample_index = std::rand() % go_icp_lidar.size();
-    if (!already_sampled[sample_index]) {
-      sampled_scan.push_back(go_icp_lidar.points[sample_index]);
-      already_sampled[sample_index] = true;
-    } else {
-      --i;
-    }
-  }
-  pcl::copyPointCloud(sampled_scan, go_icp_lidar);
+  // // Sample randomly from scan cloud
+  // pcl::PointCloud<pcl::PointXYZ> sampled_scan;
+  // int sample_index;
+  // bool already_sampled[go_icp_lidar.size()] = {false};
+  // for (int i = 0; i < std::stoi(downsample_points); ++i) {
+  //   sample_index = std::rand() % go_icp_lidar.size();
+  //   if (!already_sampled[sample_index]) {
+  //     sampled_scan.push_back(go_icp_lidar.points[sample_index]);
+  //     already_sampled[sample_index] = true;
+  //   } else {
+  //     --i;
+  //   }
+  // }
+  // pcl::copyPointCloud(sampled_scan, go_icp_lidar);
 
   // Create txt files of point clouds, required for Go-ICP
   chdir(goicp_location.c_str());
+
   std::ofstream map_file("map.txt");
-  map_file << go_icp_map.width << std::endl;
+  map_file << go_icp_map.size() << std::endl;
   for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
     map_file << i->x << " " << i->y << " " << i->z << std::endl;
   }
@@ -90,7 +91,7 @@ void TestMatcher::goicpMatch() {
   map_file.close();
 
   std::ofstream lidar_file("lidar_scan.txt");
-  lidar_file << go_icp_lidar.width << std::endl;
+  lidar_file << go_icp_lidar.size() << std::endl;
   for (PointCloud::iterator i = go_icp_lidar.points.begin(); i < go_icp_lidar.points.end(); i++) {
     lidar_file << i->x << " " << i->y << " " << i->z << std::endl;
   }
@@ -138,14 +139,20 @@ void TestMatcher::goicpMatch() {
   Eigen::Matrix3d final_rot = final_transf.block(0, 0, 3, 3);
   Eigen::Quaterniond final_q(final_rot);
 
-  // Rotate transl_lidar in map frame
-  Eigen::Vector3d rotated_transl_lidar =
-      final_q * Eigen::Vector3d(transl_lidar.x, transl_lidar.y, transl_lidar.z);
+  std::cout << final_transf << std::endl;
 
-  // Revert scaling and translation
-  transform_TR_[0] = final_transf(0, 3) * max_dist + rotated_transl_lidar[0] - transl_map.x;
-  transform_TR_[1] = final_transf(1, 3) * max_dist + rotated_transl_lidar[1] - transl_map.y;
-  transform_TR_[2] = final_transf(2, 3) * max_dist + rotated_transl_lidar[2] - transl_map.z;
+  transform_TR_[0] = final_transf(0, 3);
+  transform_TR_[1] = final_transf(1, 3);
+  transform_TR_[2] = final_transf(2, 3);
+
+  // // Rotate transl_lidar in map frame
+  // Eigen::Vector3d rotated_transl_lidar =
+  //     final_q * Eigen::Vector3d(transl_lidar.x, transl_lidar.y, transl_lidar.z);
+
+  // // Revert scaling and translation
+  // transform_TR_[0] = final_transf(0, 3) * max_dist + rotated_transl_lidar[0] - transl_map.x;
+  // transform_TR_[1] = final_transf(1, 3) * max_dist + rotated_transl_lidar[1] - transl_map.y;
+  // transform_TR_[2] = final_transf(2, 3) * max_dist + rotated_transl_lidar[2] - transl_map.z;
 
   transform_TR_[3] = final_q.w();
   transform_TR_[4] = final_q.x();
