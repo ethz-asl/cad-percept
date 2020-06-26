@@ -186,7 +186,7 @@ void TestMatcher::match() {
   pcl::PointXYZ demo_points;
   std::ifstream demo_files;
   int number_demo_points;
-  demo_files.open("model_bunny.txt");
+  demo_files.open("data_bunny.txt");
   demo_files >> number_demo_points;
   for (int point = 0; point < number_demo_points; ++point) {
     demo_files >> demo_points.x;
@@ -196,11 +196,13 @@ void TestMatcher::match() {
   }
   Eigen::Matrix4f transform_demo = Eigen::Matrix4f::Identity();
   Eigen::Matrix3f rotation_demo = (Eigen::AngleAxisf(0, Eigen::Vector3f::UnitX()) *
-                                   Eigen::AngleAxisf(0, Eigen::Vector3f::UnitY()) *
-                                   Eigen::AngleAxisf(M_PI / 2, Eigen::Vector3f::UnitZ()))
+                                   Eigen::AngleAxisf(M_PI / 2, Eigen::Vector3f::UnitY()) *
+                                   Eigen::AngleAxisf(M_PI * 4 / 7, Eigen::Vector3f::UnitZ()))
                                       .matrix();
+  Eigen::Vector3f translation_demo = Eigen::Vector3f(0, 0, 0);
   transform_demo.block(0, 0, 3, 3) = rotation_demo;
-  pcl::transformPointCloud(lidar_scan_, lidar_scan_, transform_demo);
+  transform_demo.block(0, 3, 3, 1) = translation_demo;
+  // pcl::transformPointCloud(lidar_scan_, lidar_scan_, transform_demo);
   demo_files.close();
   demo_files.open("model_bunny.txt");
   demo_files >> number_demo_points;
@@ -318,12 +320,9 @@ void TestMatcher::match() {
 
   // Transform LiDAR frame
   if (extracted_planes.size() == 0) {
-    pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform);
-
     DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
     scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_,
                                                                          ros::Time::now()));
-
     DP ref_dp_scan = cpt_utils::pointCloudToDP(sample_map_);
     sample_map_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(
         ref_dp_scan, tf_map_frame_, ros::Time::now()));
