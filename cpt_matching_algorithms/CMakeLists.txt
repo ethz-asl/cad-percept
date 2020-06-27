@@ -17,6 +17,7 @@ cs_add_library(test_matcher
      src/cloud_filter/cloud_filter.cpp
      src/plane_extraction/plane_extraction.cpp          
      src/plane_extraction/rht_accumulator.cpp
+    src/plane_matching/plane_matching.cpp
 	)
 
 
