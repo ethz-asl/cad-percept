@@ -195,14 +195,16 @@ void TestMatcher::match() {
     lidar_scan_.push_back(demo_points);
   }
   Eigen::Matrix4f transform_demo = Eigen::Matrix4f::Identity();
-  Eigen::Matrix3f rotation_demo = (Eigen::AngleAxisf(0, Eigen::Vector3f::UnitX()) *
-                                   Eigen::AngleAxisf(M_PI / 2, Eigen::Vector3f::UnitY()) *
-                                   Eigen::AngleAxisf(M_PI * 4 / 7, Eigen::Vector3f::UnitZ()))
+  Eigen::Matrix3f rotation_demo = (Eigen::AngleAxisf(M_PI * 2 / 3, Eigen::Vector3f::UnitX()) *
+                                   Eigen::AngleAxisf(M_PI * 5 / 7, Eigen::Vector3f::UnitY()) *
+                                   Eigen::AngleAxisf(M_PI * 2 / 7, Eigen::Vector3f::UnitZ()))
                                       .matrix();
-  Eigen::Vector3f translation_demo = Eigen::Vector3f(0, 0, 0);
+  Eigen::Vector3f translation_demo = Eigen::Vector3f(-4, -3, 2);
+  float scale = 4;
   transform_demo.block(0, 0, 3, 3) = rotation_demo;
   transform_demo.block(0, 3, 3, 1) = translation_demo;
-  // pcl::transformPointCloud(lidar_scan_, lidar_scan_, transform_demo);
+  transform_demo.block(0, 0, 4, 3) = scale * transform_demo.block(0, 0, 3, 4);
+  pcl::transformPointCloud(lidar_scan_, lidar_scan_, transform_demo);
   demo_files.close();
   demo_files.open("model_bunny.txt");
   demo_files >> number_demo_points;
@@ -213,6 +215,15 @@ void TestMatcher::match() {
     sample_map_.push_back(demo_points);
   }
   demo_files.close();
+  translation_demo = Eigen::Vector3f(3, 2, 3);
+  rotation_demo = (Eigen::AngleAxisf(M_PI * 0 / 3, Eigen::Vector3f::UnitX()) *
+                   Eigen::AngleAxisf(M_PI * 0 / 7, Eigen::Vector3f::UnitY()) *
+                   Eigen::AngleAxisf(M_PI * 5 / 7, Eigen::Vector3f::UnitZ()))
+                      .matrix();
+  transform_demo.block(0, 0, 3, 3) = rotation_demo;
+  transform_demo.block(0, 3, 3, 1) = translation_demo;
+  transform_demo.block(0, 0, 4, 3) = scale * transform_demo.block(0, 0, 3, 4);
+  pcl::transformPointCloud(sample_map_, sample_map_, transform_demo);
 
   /*//////////////////////////////////////
                  Matching

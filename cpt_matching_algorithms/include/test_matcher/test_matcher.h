@@ -13,6 +13,7 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <random>
 
 #include "cloud_filter/cloud_filter.h"
 #include "plane_extraction/plane_extraction.h"
