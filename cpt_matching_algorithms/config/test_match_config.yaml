@@ -1,7 +1,7 @@
 # Sample density for map
 mapSamplingDensity: 20
 
-usetoyproblem: false
+usetoyproblem: true
 
 #Select Matcher
 Matcher: GoICP # template, GoICP, PlaneMatcher
