@@ -142,13 +142,9 @@ void TestMatcher::goicpMatch() {
       final_q * Eigen::Vector3d(transl_lidar.x, transl_lidar.y, transl_lidar.z);
 
   // Revert scaling and translation
-  std::cout << max_dist << std::endl;
   transform_TR_[0] = final_transf(0, 3) * max_dist - rotated_transl_lidar[0] + transl_map.x;
   transform_TR_[1] = final_transf(1, 3) * max_dist - rotated_transl_lidar[1] + transl_map.y;
   transform_TR_[2] = final_transf(2, 3) * max_dist - rotated_transl_lidar[2] + transl_map.z;
-  // transform_TR_[0] = final_transf(0, 3) * max_dist + rotated_transl_lidar[0] - transl_map.x;
-  // transform_TR_[1] = final_transf(1, 3) * max_dist + rotated_transl_lidar[1] - transl_map.y;
-  // transform_TR_[2] = final_transf(2, 3) * max_dist + rotated_transl_lidar[2] - transl_map.z;
 
   transform_TR_[3] = final_q.w();
   transform_TR_[4] = final_q.x();
