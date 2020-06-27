@@ -7,10 +7,9 @@ void TestMatcher::templateMatch() {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "            Template matcher started           " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
-  std::cout << "This is only a template matcher. It returns a translation in z direction."
-            << std::endl;
+  std::cout << "This is only a template matcher. It returns the Identity." << std::endl;
 
-  transform_TR_[2] = -5.0;
+  res_transform_ = Eigen::Matrix4d::Identity();
 }
 
 }  // namespace matching_algorithms

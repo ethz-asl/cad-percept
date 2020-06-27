@@ -66,16 +66,12 @@ void TestMatcher::goicpMatch() {
 
   // Sample randomly from scan cloud
   pcl::PointCloud<pcl::PointXYZ> sampled_scan;
-  int sample_index;
-  bool already_sampled[go_icp_lidar.size()] = {false};
+  std::vector<int> random_range(go_icp_lidar.size());
+  std::iota(random_range.begin(), random_range.end(), 0);
+  std::shuffle(random_range.begin(), random_range.end(), std::mt19937{std::random_device{}()});
+
   for (int i = 0; i < std::stoi(downsample_points); ++i) {
-    sample_index = std::rand() % go_icp_lidar.size();
-    if (!already_sampled[sample_index]) {
-      sampled_scan.push_back(go_icp_lidar.points[sample_index]);
-      already_sampled[sample_index] = true;
-    } else {
-      --i;
-    }
+    sampled_scan.push_back(go_icp_lidar.points[random_range[i]]);
   }
   pcl::copyPointCloud(sampled_scan, go_icp_lidar);
 
@@ -132,25 +128,10 @@ void TestMatcher::goicpMatch() {
     std::cout << "Could not read output file" << std::endl;
   }
 
-  // Get matrix of unscaled matrix
-  Eigen::Matrix4d final_transf = go_icp_trans.inverse();
-
-  Eigen::Matrix3d final_rot = final_transf.block(0, 0, 3, 3);
-  Eigen::Quaterniond final_q(final_rot);
-
-  // Rotate transl_lidar in map frame
-  Eigen::Vector3d rotated_transl_lidar =
-      final_q * Eigen::Vector3d(transl_lidar.x, transl_lidar.y, transl_lidar.z);
-
-  // Revert scaling and translation
-  transform_TR_[0] = final_transf(0, 3) * max_dist + rotated_transl_lidar[0] - transl_map.x;
-  transform_TR_[1] = final_transf(1, 3) * max_dist + rotated_transl_lidar[1] - transl_map.y;
-  transform_TR_[2] = final_transf(2, 3) * max_dist + rotated_transl_lidar[2] - transl_map.z;
-
-  transform_TR_[3] = final_q.w();
-  transform_TR_[4] = final_q.x();
-  transform_TR_[5] = final_q.y();
-  transform_TR_[6] = final_q.z();
+  res_transform_ = go_icp_trans;
+  res_transform_.block(0, 3, 3, 1) =
+      max_dist * res_transform_.block(0, 3, 3, 1) +
+      (Eigen::Matrix3d)res_transform_.block(0, 0, 3, 3) * translation_lidar - translation_map;
 }
 
 }  // namespace matching_algorithms
