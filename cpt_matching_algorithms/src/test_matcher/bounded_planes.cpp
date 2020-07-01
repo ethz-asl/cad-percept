@@ -186,7 +186,7 @@ BoundedPlanes::BoundedPlanes(cad_percept::cgal::MeshModel &reference_mesh,
   }
 }
 
-bool BoundedPlanes::isProjectionOfPointOnPlane(Eigen::Vector3f point, int plane_nr) {
+bool BoundedPlanes::isProjectionOfPointOnPlane(Eigen::Vector3d point, int plane_nr) {
   pcl::PointNormal plane = plane_centroid_with_normals_.points[plane_nr];
   float tol = 0.5;
   cgal::Plane intersection_plane =

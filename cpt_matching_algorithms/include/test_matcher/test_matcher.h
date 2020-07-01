@@ -4,6 +4,7 @@
 #include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_conversions/tf_conversions.h>
+#include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/pc_processing.h>
@@ -62,6 +63,7 @@ class TestMatcher {
 
   // Evaluation / Ground Truth data
   float transform_TR_[7] = {0, 0, 0, 0, 0, 0, 0};  // x y z qw qx qy qz
+  Eigen::Matrix4d res_transform_;
   Eigen::Vector3d ground_truth_;
   Eigen::Quaterniond gt_quat_;
 
