@@ -1,21 +1,21 @@
-#include "test_matcher/test_matcher.h"
-
-#include <pcl/filters/voxel_grid.h>
-#include <ros/package.h>
+#include "test_matcher/go_icp_matcher.h"
 
 namespace cad_percept {
 namespace matching_algorithms {
 
-void TestMatcher::goicpMatch() {
+void GoIcp::goIcpMatch(Eigen::Matrix4d &res_transform,
+                       const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
+                       const pcl::PointCloud<pcl::PointXYZ> &sampled_map) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "             Go-ICP matcher started            " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
-  std::string downsample_points = nh_private_.param<std::string>("GoICPdownsample", "1000");
-  std::string goicp_location = nh_private_.param<std::string>("goicp_folder", "fail");
+  ros::NodeHandle nh_private("~");
+  std::string downsample_points = nh_private.param<std::string>("GoICPdownsample", "1000");
+  std::string goicp_location = nh_private.param<std::string>("goicp_folder", "fail");
 
-  PointCloud go_icp_lidar = lidar_scan_;
-  PointCloud go_icp_map = sample_map_;
+  pcl::PointCloud<pcl::PointXYZ> go_icp_lidar = lidar_scan;
+  pcl::PointCloud<pcl::PointXYZ> go_icp_map = sampled_map;
 
   // Find translation for centralization
   pcl::PointXYZ transl_lidar;
@@ -80,16 +80,16 @@ void TestMatcher::goicpMatch() {
 
   std::ofstream map_file("map.txt");
   map_file << go_icp_map.size() << std::endl;
-  for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
-    map_file << i->x << " " << i->y << " " << i->z << std::endl;
+  for (auto point : go_icp_map) {
+    map_file << point.x << " " << point.y << " " << point.z << std::endl;
   }
   std::cout << "Map.txt created" << std::endl;
   map_file.close();
 
   std::ofstream lidar_file("lidar_scan.txt");
   lidar_file << go_icp_lidar.size() << std::endl;
-  for (PointCloud::iterator i = go_icp_lidar.points.begin(); i < go_icp_lidar.points.end(); i++) {
-    lidar_file << i->x << " " << i->y << " " << i->z << std::endl;
+  for (auto point : go_icp_lidar.points) {
+    lidar_file << point.x << " " << point.y << " " << point.z << std::endl;
   }
   std::cout << "lidar_scan.txt created" << std::endl;
   lidar_file.close();
@@ -129,10 +129,10 @@ void TestMatcher::goicpMatch() {
     std::cout << "Could not read output file" << std::endl;
   }
 
-  res_transform_ = go_icp_trans;
-  res_transform_.block(0, 3, 3, 1) =
-      max_dist * res_transform_.block(0, 3, 3, 1) +
-      (Eigen::Matrix3d)res_transform_.block(0, 0, 3, 3) * translation_lidar - translation_map;
+  res_transform = go_icp_trans;
+  res_transform.block(0, 3, 3, 1) =
+      max_dist * res_transform.block(0, 3, 3, 1) +
+      (Eigen::Matrix3d)res_transform.block(0, 0, 3, 3) * translation_lidar - translation_map;
 }
 
 }  // namespace matching_algorithms

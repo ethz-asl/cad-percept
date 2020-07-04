@@ -20,6 +20,7 @@
 #include "plane_extraction/plane_extraction.h"
 #include "plane_matching/plane_matching.h"
 #include "test_matcher/bounded_planes.h"
+#include "test_matcher/go_icp_matcher.h"
 
 // Remove this part again
 #include <chrono>
@@ -115,12 +116,6 @@ class TestMatcher {
    * Calcualte RMSE (root mean square error) of two point clouds
    */
   void getError(PointCloud p1, PointCloud p2);
-
-  /**
-   * Declare matchers
-   */
-  void templateMatch();
-  void goicpMatch();
 };
 
 }  // namespace matching_algorithms

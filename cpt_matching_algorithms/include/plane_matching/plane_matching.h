@@ -35,8 +35,9 @@ class PlaneMatch {
   static prrusConfig loadPrrusConfigFromServer();
 
   // Apply PRRUS matching on the found scan planes and the map planes, returns T_map,lidar
-  static float prrus(Transformation &transform, const pcl::PointCloud<pcl::PointNormal> scan_planes,
-                     BoundedPlanes map_planes, const prrusConfig &config);
+  static float prrus(Transformation &transform,
+                     const pcl::PointCloud<pcl::PointNormal> &scan_planes, BoundedPlanes map_planes,
+                     const prrusConfig &config);
 
  private:
   // Find orthogonal sets of planes in planes and add them to orthogonal_groups, if add_permutation

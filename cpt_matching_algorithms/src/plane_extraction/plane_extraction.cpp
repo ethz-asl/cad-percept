@@ -27,7 +27,7 @@ PlaneExtractor::rhtConfig PlaneExtractor::loadRhtConfigFromServer() {
 void PlaneExtractor::rhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes_out,
                                         std::vector<Eigen::Vector3d> &plane_normals_out,
                                         const PointCloud<PointXYZ> &lidar_scan,
-                                        const std::string &tf_map_frame, const rhtConfig &config) {
+                                        const rhtConfig &config) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         RHT Plane Extraction started          " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -99,7 +99,6 @@ PlaneExtractor::iterRhtConfig PlaneExtractor::loadIterRhtConfigFromServer() {
 void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes_out,
                                             std::vector<Eigen::Vector3d> &plane_normals_out,
                                             const PointCloud<PointXYZ> &lidar_scan,
-                                            const std::string &tf_map_frame,
                                             const iterRhtConfig &config) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "    Iterative RHT Plane Extraction started     " << std::endl;
@@ -196,7 +195,6 @@ PlaneExtractor::pclRansacConfig PlaneExtractor::loadPclRansacConfigFromServer() 
 void PlaneExtractor::pclPlaneExtraction(std::vector<PointCloud<PointXYZ>> &extracted_planes_out,
                                         std::vector<Eigen::Vector3d> &plane_normals_out,
                                         const PointCloud<PointXYZ> &lidar_scan,
-                                        const std::string &tf_map_frame,
                                         const pclRansacConfig &config) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "      PCL RANSAC Plane Extraction started      " << std::endl;
@@ -291,7 +289,7 @@ PlaneExtractor::cgalRgConfig PlaneExtractor::loadCgalRgConfigFromServer() {
 void PlaneExtractor::cgalRegionGrowing(
     std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
     std::vector<Eigen::Vector3d> &plane_normals_out, const PointCloud<pcl::PointXYZ> &lidar_scan,
-    const std::string &tf_map_frame, const cgalRgConfig &config) {
+    const cgalRgConfig &config) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "         CGAL Region Growing started           " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;

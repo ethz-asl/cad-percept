@@ -7,9 +7,11 @@
 #include <chrono>
 #include <random>
 
+#include "cloud_filter/cloud_filter.h"
 #include "plane_extraction/plane_extraction.h"
 #include "plane_matching/plane_matching.h"
 #include "test_matcher/bounded_planes.h"
+#include "test_matcher/go_icp_matcher.h"
 
 using namespace cad_percept;
 using namespace matching_algorithms;
@@ -18,6 +20,7 @@ typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
+// Variables for LiDAR (simulation)
 pcl::PointCloud<pcl::PointXYZ> lidar_scan;
 std::vector<float> bin_elevation;
 float noise_variance;
@@ -34,7 +37,8 @@ std::string tf_lidar_frame = "marker_pose";
 
 Eigen::Vector3d gt_translation;
 Eigen::Quaterniond gt_rotation;
-float transform_TR_[7] = {0, 0, 0, 0, 0, 0, 0};
+float transform_TR[7] = {0, 0, 0, 0, 0, 0, 0};
+cad_percept::cgal::Transformation cgal_res_transform;
 cad_percept::cgal::Transformation ctransformation;
 
 BoundedPlanes *map_planes;
@@ -45,15 +49,15 @@ void simulateLidar(cad_percept::cgal::Transformation ctransformation,
                    cad_percept::cgal::MeshModel mesh);
 void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
 void runTestIterations();
-void goicpMatch(PointCloud lidar_scan_, PointCloud sample_map_, float (&transform_TR_)[7]);
 
 int main(int argc, char **argv) {
-  ros::init(argc, argv, "test_bench");
+  ros::init(argc, argv, "evaluation_runner");
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
 
   std::cout << "/// Started test bench ///" << std::endl;
 
+  // Settings for LiDAR simulation
   range_of_lidar = nh_private.param<float>("rangeOfLidar", 20);
   bin_elevation = nh_private.param<std::vector<float>>("binElevation", {0});
   dtheta = nh_private.param<float>("lidarAngularResolution", 1);
@@ -62,7 +66,7 @@ int main(int argc, char **argv) {
   map_sub = nh.subscribe("/mesh_publisher/mesh_out", 1, &getCAD);
   scan_pub = nh.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1);
   plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
-  std::cout << "Tab Enter to start tests" << std::endl;
+  std::cout << "Wait for setup... Tab Enter to start tests" << std::endl;
   std::cin.ignore();
 
   ros::spin();
@@ -117,30 +121,7 @@ void runTestIterations() {
   int test_iterations = nh_private.param<int>("testIterations", 1);
   bool usetoyexample = nh_private.param<bool>("usetoyexample", true);
 
-  int structure_threshold;
-  float search_radius;
-
-  std::string extractor;
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
-  std::vector<Eigen::Vector3d> plane_normals;
-
-  pcl::PointNormal norm_point;
-  pcl::PointXYZ plane_centroid;
-  pcl::PointCloud<pcl::PointNormal> scan_planes;
-
-  int plane_nr = 0;
-  float translation_error = 0;
-  float rotation_error = 0;
-  std::chrono::steady_clock::time_point t_start;
-  std::chrono::steady_clock::time_point t_end;
-  std::chrono::duration<int, std::milli> duration;
-
-  Eigen::Matrix4d sample_transform;
-  Eigen::Matrix4f res_transform;
-  Eigen::Vector3f translation;
-  Eigen::Quaternionf q;
-  float transform_error;
-
+  // Variables for real data
   std::string test_result_file = nh_private.param<std::string>("test_results", "fail");
   std::string data_set_folder = nh_private.param<std::string>("data_set_folder", "fail");
   std::string lidar_scan_file;
@@ -149,17 +130,45 @@ void runTestIterations() {
   int scan_nr = start_scan_nr;
   std::vector<int> nan_indices;
 
-  structure_threshold = nh_private.param<int>("StructureThreshold", 150);
+  // Variables for filter
+  int structure_threshold = nh_private.param<int>("StructureThreshold", 150);
   pcl::PointCloud<pcl::PointXYZI> static_structure_cloud;
-  search_radius = nh_private.param<float>("Voxelsearchradius", 0.01);
+  float search_radius = nh_private.param<float>("Voxelsearchradius", 0.01);
 
-  extractor = nh_private.param<std::string>("PlaneExtractor", "fail");
+  int matcher = nh_private.param<int>("Matcher", 0);
   srand(time(0));
 
-  std::vector<std::vector<float>> results;
+  // Variables for plane extraction and matching
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+  std::vector<Eigen::Vector3d> plane_normals;
+  pcl::PointNormal norm_point;
+  pcl::PointXYZ plane_centroid;
+  pcl::PointCloud<pcl::PointNormal> scan_planes;
+
+  // Configs & variables for plane extraction and matching
+  PlaneExtractor::rhtConfig rht_config = PlaneExtractor::loadRhtConfigFromServer();
+  PlaneExtractor::iterRhtConfig iter_rht_config = PlaneExtractor::loadIterRhtConfigFromServer();
+  PlaneExtractor::pclRansacConfig pcl_ransac_config =
+      PlaneExtractor::loadPclRansacConfigFromServer();
+  PlaneExtractor::cgalRgConfig cgal_rg_config = PlaneExtractor::loadCgalRgConfigFromServer();
+  PlaneMatch::prrusConfig prrus_config = PlaneMatch::loadPrrusConfigFromServer();
+
+  // Variables for evaluation
+  int plane_nr = 0;
+  float translation_error = 0;
+  float rotation_error = 0;
+  std::chrono::steady_clock::time_point t_start;
+  std::chrono::steady_clock::time_point t_end;
+  std::chrono::duration<int, std::milli> duration;
+
+  Eigen::Matrix4d sample_transform;
+  Eigen::Matrix4d res_transform;
+  Eigen::Quaterniond q;
+  float transform_error;
 
   std::ofstream actuel_file(test_result_file);
 
+  // Start evaluation iterations
   for (int iter = 0;
        (iter < test_iterations && usetoyexample) || ((scan_nr < end_scan_nr) && !usetoyexample);
        iter++, scan_nr++) {
@@ -191,15 +200,15 @@ void runTestIterations() {
     // std::cout << "Start time measurement" << std::endl;
 
     t_start = std::chrono::steady_clock::now();
-    if (GOICP) {
-      goicpMatch(lidar_scan, sampled_map, transform_TR_);
-    } else if (PlaneMatch) {
+    if (matcher == 0) {
+      GoIcp::goIcpMatch(res_transform, lidar_scan, sampled_map);
+    } else if (0 < matcher && matcher < 5) {
       // Detect planes
       // Filtering / Preprocessing Point Cloud
-      if (nh_private.param<bool>("useStructureFilter", false)) {
+      if (!usetoyexample) {
         CloudFilter::filterStaticObject(structure_threshold, lidar_scan, static_structure_cloud);
       }
-      if (nh_private.param<bool>("useVoxelCentroidFilter", false)) {
+      if (!usetoyexample) {
         CloudFilter::filterVoxelCentroid(search_radius, lidar_scan);
       }
 
@@ -209,20 +218,17 @@ void runTestIterations() {
         break;
       }
       // Plane Extraction
-      if (!extractor.compare("pclPlaneExtraction")) {
-        PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                           tf_lidar_frame, plane_pub);
-      } else if (!extractor.compare("rhtPlaneExtraction")) {
-        PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                           tf_lidar_frame, plane_pub,
-                                           PlaneExtractor::loadRhtConfigFromServer());
-      } else if (!extractor.compare("iterRhtPlaneExtraction")) {
+      if (matcher == 1) {
+        PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan, rht_config);
+      } else if (matcher == 2) {
         PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
-                                               tf_lidar_frame, plane_pub);
-
-      } else if (!extractor.compare("cgalRegionGrowing")) {
+                                               iter_rht_config);
+      } else if (matcher == 3) {
+        PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan,
+                                           pcl_ransac_config);
+      } else if (matcher == 4) {
         PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan,
-                                          tf_lidar_frame, plane_pub);
+                                          cgal_rg_config);
       } else {
         std::cout << "Error: Could not find given plane extractor" << std::endl;
         break;
@@ -254,24 +260,16 @@ void runTestIterations() {
       }
 
       // Match planes
-      transform_error = PlaneMatch::PRRUS(transform_TR_, scan_planes, *map_planes, results);
+      transform_error =
+          PlaneMatch::prrus(cgal_res_transform, scan_planes, *map_planes, prrus_config);
+      cgal::cgalTransformationToEigenTransformation(cgal_res_transform, &res_transform);
     } else {
       std::cout << "No valid matcher" << std::endl;
       break;
     }
-
-    transform_error = 0;
     t_end = std::chrono::steady_clock::now();
 
     // Evaluate
-    // // Transform LiDAR frame
-    res_transform = Eigen::Matrix4f::Identity();
-    Eigen::Vector3f translation =
-        Eigen::Vector3f(transform_TR_[0], transform_TR_[1], transform_TR_[2]);
-    q = Eigen::Quaternionf(transform_TR_[3], transform_TR_[4], transform_TR_[5], transform_TR_[6]);
-    res_transform.block(0, 0, 3, 3) = q.matrix();
-    res_transform.block(0, 3, 3, 1) = translation;
-
     // Transform inliers of the plane
     int i = 0;
     if (extracted_planes.size() != 0) {
@@ -286,26 +284,37 @@ void runTestIterations() {
     }
     ros::spinOnce();
 
+    transform_TR[0] = res_transform(0, 3);
+    transform_TR[1] = res_transform(1, 3);
+    transform_TR[2] = res_transform(2, 3);
+    q = Eigen::Quaterniond((Eigen::Matrix3d)res_transform.block(0, 0, 3, 3));
+    transform_TR[3] = q.w();
+    transform_TR[4] = q.x();
+    transform_TR[5] = q.y();
+    transform_TR[6] = q.z();
+
     std::cout << std::endl;
-    std::cout << "calculated position: x: " << transform_TR_[0] << " y: " << transform_TR_[1]
-              << " z: " << transform_TR_[2] << std::endl;
+    std::cout << "calculated position: x: " << transform_TR[0] << " y: " << transform_TR[1]
+              << " z: " << transform_TR[2] << std::endl;
     std::cout << "ground truth position: x: " << gt_translation[0] << " y: " << gt_translation[1]
               << " z: " << gt_translation[2] << std::endl;
-    std::cout << "calculated orientation: qw: " << transform_TR_[3] << " qx: " << transform_TR_[4]
-              << " qy: " << transform_TR_[5] << " qz: " << transform_TR_[6] << std::endl;
+    std::cout << "calculated orientation: qw: " << transform_TR[3] << " qx: " << transform_TR[4]
+              << " qy: " << transform_TR[5] << " qz: " << transform_TR[6] << std::endl;
     std::cout << "ground truth orientation: qw: " << gt_rotation.w() << " qx: " << gt_rotation.x()
               << " qy: " << gt_rotation.y() << " qz: " << gt_rotation.z() << std::endl;
 
     translation_error =
-        (Eigen::Vector3d(transform_TR_[0], transform_TR_[1], transform_TR_[2]) - gt_translation)
+        (Eigen::Vector3d(transform_TR[0], transform_TR[1], transform_TR[2]) - gt_translation)
             .norm();
-    std::cout << "translation error " << translation_error << std::endl;
-
-    rotation_error = Eigen::AngleAxis<double>(Eigen::Quaterniond(transform_TR_[3], transform_TR_[4],
-                                                                 transform_TR_[5], transform_TR_[6])
+    rotation_error = Eigen::AngleAxis<double>(Eigen::Quaterniond(transform_TR[3], transform_TR[4],
+                                                                 transform_TR[5], transform_TR[6])
                                                   .toRotationMatrix() *
                                               gt_rotation.inverse().toRotationMatrix())
                          .angle();
+    if (!usetoyexample) {
+      rotation_error = 0;
+    }
+
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
     std::cout << "translation error: " << translation_error << std::endl;
     std::cout << "rotation error: " << rotation_error << std::endl;
@@ -313,22 +322,15 @@ void runTestIterations() {
 
     actuel_file << gt_translation[0] << " " << gt_translation[1] << " " << gt_translation[2] << " "
                 << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y() << " "
-                << gt_rotation.z() << " " << transform_TR_[0] << " " << transform_TR_[1] << " "
-                << transform_TR_[2] << " " << transform_TR_[3] << " " << transform_TR_[4] << " "
-                << transform_TR_[5] << " " << transform_TR_[6] << " " << translation_error << " "
-                << rotation_error << " " << duration.count() << std::endl;
+                << gt_rotation.z() << " " << transform_TR[0] << " " << transform_TR[1] << " "
+                << transform_TR[2] << " " << transform_TR[3] << " " << transform_TR[4] << " "
+                << transform_TR[5] << " " << transform_TR[6] << " " << translation_error << " "
+                << rotation_error << " " << duration.count() << transform_error << std::endl;
 
     // Preparation for next iteration
     extracted_planes.clear();
     plane_normals.clear();
     scan_planes.clear();
-    transform_TR_[0] = 0;
-    transform_TR_[1] = 0;
-    transform_TR_[2] = 0;
-    transform_TR_[3] = 0;
-    transform_TR_[4] = 0;
-    transform_TR_[5] = 0;
-    transform_TR_[6] = 0;
   }
   actuel_file.close();
 }
