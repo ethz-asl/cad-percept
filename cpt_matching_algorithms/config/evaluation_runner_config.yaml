@@ -7,17 +7,14 @@ lidarAngularResolution: 2
 accuracyOfLidar: 0.0
 
 # Test Settings
-testIterations: 20
+testIterations: 10
 start_scan_nr: 0
-end_scan_nr: 610
+end_scan_nr: 10
 
 # Settings for Plane Matcher
 
 # Filters
-useStructureFilter: true
 StructureThreshold: 150
-
-useVoxelCentroidFilter: true
 Voxelsearchradius: 0.2
 
 # Plane Extraction
@@ -29,5 +26,8 @@ Matcher: 2 # 0: GoICP
 
 # Plane Matching
 # PRRUS
+
+# Refinement
+applyICP: true
 
 

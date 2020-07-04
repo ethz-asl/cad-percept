@@ -64,12 +64,12 @@ Visualization Manager:
       Backface Culling: false
       Class: cgal_visualizations/TriangleMeshDisplay
       Edge Color: 186; 189; 182
-      Enabled: false
+      Enabled: true
       Name: TriangleMeshDisplay
       Surface Color: 255; 255; 255
       Topic: /mesh_publisher/mesh_out
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
