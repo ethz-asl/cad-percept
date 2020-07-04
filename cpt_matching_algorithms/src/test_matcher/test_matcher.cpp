@@ -25,7 +25,6 @@ TestMatcher::TestMatcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
   // Get Publisher
   scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1, true);
-  plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
   sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sample_map", 1, true);
 }
 
@@ -178,53 +177,6 @@ void TestMatcher::match() {
   std::chrono::steady_clock::time_point t_end;
   t_start = std::chrono::steady_clock::now();
 
-  // // Read demo examples
-  // lidar_scan_.clear();
-  // sample_map_.clear();
-  // std::string goicp_location = nh_private_.param<std::string>("goicp_folder", "fail");
-  // chdir(goicp_location.c_str());
-  // pcl::PointXYZ demo_points;
-  // std::ifstream demo_files;
-  // int number_demo_points;
-  // demo_files.open("data_bunny.txt");
-  // demo_files >> number_demo_points;
-  // for (int point = 0; point < number_demo_points; ++point) {
-  //   demo_files >> demo_points.x;
-  //   demo_files >> demo_points.y;
-  //   demo_files >> demo_points.z;
-  //   lidar_scan_.push_back(demo_points);
-  // }
-  // Eigen::Matrix4f transform_demo = Eigen::Matrix4f::Identity();
-  // Eigen::Matrix3f rotation_demo = (Eigen::AngleAxisf(M_PI * 2 / 3, Eigen::Vector3f::UnitX()) *
-  //                                  Eigen::AngleAxisf(M_PI * 5 / 7, Eigen::Vector3f::UnitY()) *
-  //                                  Eigen::AngleAxisf(M_PI * 2 / 7, Eigen::Vector3f::UnitZ()))
-  //                                     .matrix();
-  // Eigen::Vector3f translation_demo = Eigen::Vector3f(-4, -3, 2);
-  // float scale = 4;
-  // transform_demo.block(0, 0, 3, 3) = rotation_demo;
-  // transform_demo.block(0, 3, 3, 1) = translation_demo;
-  // transform_demo.block(0, 0, 4, 3) = scale * transform_demo.block(0, 0, 3, 4);
-  // pcl::transformPointCloud(lidar_scan_, lidar_scan_, transform_demo);
-  // demo_files.close();
-  // demo_files.open("model_bunny.txt");
-  // demo_files >> number_demo_points;
-  // for (int point = 0; point < number_demo_points; ++point) {
-  //   demo_files >> demo_points.x;
-  //   demo_files >> demo_points.y;
-  //   demo_files >> demo_points.z;
-  //   sample_map_.push_back(demo_points);
-  // }
-  // demo_files.close();
-  // translation_demo = Eigen::Vector3f(3, 2, 3);
-  // rotation_demo = (Eigen::AngleAxisf(M_PI * 0 / 3, Eigen::Vector3f::UnitX()) *
-  //                  Eigen::AngleAxisf(M_PI * 0 / 7, Eigen::Vector3f::UnitY()) *
-  //                  Eigen::AngleAxisf(M_PI * 5 / 7, Eigen::Vector3f::UnitZ()))
-  //                     .matrix();
-  // transform_demo.block(0, 0, 3, 3) = rotation_demo;
-  // transform_demo.block(0, 3, 3, 1) = translation_demo;
-  // transform_demo.block(0, 0, 4, 3) = scale * transform_demo.block(0, 0, 3, 4);
-  // pcl::transformPointCloud(sample_map_, sample_map_, transform_demo);
-
   /*//////////////////////////////////////
                  Matching
   ///////////////////////////////////////*/
@@ -257,17 +209,20 @@ void TestMatcher::match() {
     std::vector<Eigen::Vector3d> plane_normals;
     if (!extractor.compare("pclPlaneExtraction")) {
       PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                         tf_lidar_frame_, plane_pub_);
+                                         tf_lidar_frame_,
+                                         PlaneExtractor::loadPclRansacConfigFromServer());
     } else if (!extractor.compare("rhtPlaneExtraction")) {
       PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                         tf_lidar_frame_, plane_pub_,
+                                         tf_lidar_frame_,
                                          PlaneExtractor::loadRhtConfigFromServer());
     } else if (!extractor.compare("iterRhtPlaneExtraction")) {
       PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                             tf_lidar_frame_, plane_pub_);
+                                             tf_lidar_frame_,
+                                             PlaneExtractor::loadIterRhtConfigFromServer());
     } else if (!extractor.compare("cgalRegionGrowing")) {
       PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan_,
-                                        tf_lidar_frame_, plane_pub_);
+                                        tf_lidar_frame_,
+                                        PlaneExtractor::loadCgalRgConfigFromServer());
     } else {
       std::cout << "Error: Could not find given plane extractor" << std::endl;
       return;

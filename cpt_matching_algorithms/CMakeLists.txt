@@ -17,7 +17,8 @@ cs_add_library(test_matcher
      src/cloud_filter/cloud_filter.cpp
      src/plane_extraction/plane_extraction.cpp          
      src/plane_extraction/rht_accumulator.cpp
-    src/plane_matching/plane_matching.cpp
+     src/plane_matching/plane_matching.cpp
+#     src/test_matcher/evaluation_runner.cpp
 	)
 
 
@@ -30,11 +31,18 @@ cs_add_executable(test_matcher_node
 cs_add_executable(data_reader
     src/data_creator/data_reader.cpp
     )
+cs_add_executable(data_to_pcl_reader
+    src/data_creator/data_to_pcl_reader.cpp
+    )
 cs_add_executable(sim_lidar_node
     src/test_matcher/sim_lidar_node.cpp
     )
+#cs_add_executable(evaluation_runner_node
+#    src/test_matcher/evaluation_runner.cpp
+#    )
 
 target_link_libraries(test_matcher_node test_matcher  yaml-cpp)
+#target_link_libraries(evaluation_runner_node test_matcher yaml-cpp)
 
 
 #############
