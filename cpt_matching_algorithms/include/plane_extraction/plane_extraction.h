@@ -51,25 +51,67 @@ class PlaneExtractor {
   static void rhtPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
                                  std::vector<Eigen::Vector3d> &plane_normals_out,
                                  const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
-                                 const std::string &tf_map_frame, ros::Publisher &plane_pub,
-                                 const rhtConfig &config);
+                                 const std::string &tf_map_frame, const rhtConfig &config);
+
+  // Loads Config for iterative RHT from Server
+  struct iterRhtConfig {
+    int accumulator_choice;
+    double rho_resolution;
+    double theta_resolution;
+    double psi_resolution;
+    int k_of_maxima_suppression;
+    int min_vote_thresh;
+
+    int num_rht_iter;
+    int num_vote_iter;
+    double dist_thresh;
+    double min_area;
+    int num_plane_per_iter;
+    int min_num_inlier;
+  };
+  static iterRhtConfig loadIterRhtConfigFromServer();
   // Returns normal and inliers of planes in point cloud lidar_scan using RHT with removing
   // detected planes
   static void iterRhtPlaneExtraction(
       std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
       std::vector<Eigen::Vector3d> &plane_normals_out,
       const pcl::PointCloud<pcl::PointXYZ> &lidar_scan, const std::string &tf_map_frame,
-      ros::Publisher &plane_pub);
+      const iterRhtConfig &config);
+
+  // Loads Config for PCL RANSAC from Server
+  struct pclRansacConfig {
+    double dist_thresh;
+    int max_num_plane;
+    int min_num_inlier;
+  };
+  static pclRansacConfig loadPclRansacConfigFromServer();
   // Returns normal and inliers of planes in point cloud lidar_scan using pcl RANSAC plane detection
   static void pclPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
                                  std::vector<Eigen::Vector3d> &plane_normals_out,
                                  const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
-                                 const std::string &tf_map_frame, ros::Publisher &plane_pub);
+                                 const std::string &tf_map_frame, const pclRansacConfig &config);
+
+  // Loads Config for CGAL RG from Server
+  struct cgalRgConfig {
+    int min_num_inliers;
+    float max_dist_to_plane;
+    float max_dist_betw_point;
+    float diff_normal_tresh;
+
+    bool regul_activated;
+    bool regul_paral;
+    bool regul_orth;
+    bool regul_coplanar;
+    float regul_paral_orth_thresh;
+    float regul_coplanar_thresh;
+  };
+  static cgalRgConfig loadCgalRgConfigFromServer();
   // Returns normal and inliers of planes in point cloud lidar_scan using CGAL Region Growing
   static void cgalRegionGrowing(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
                                 std::vector<Eigen::Vector3d> &plane_normals_out,
                                 const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
-                                const std::string &tf_map_frame, ros::Publisher &plane_pub);
+                                const std::string &tf_map_frame, const cgalRgConfig &config);
+
   // Publishes RGB point clouds representing segmentation of detected planes
   static void visualizePlane(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,
                              ros::Publisher &plane_pub, const std::string &tf_map_frame);
@@ -79,6 +121,7 @@ class PlaneExtractor {
   static void rhtVote(int max_iteration, double tol_distance_between_points,
                       double min_area_spanned, const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
                       std::vector<int> removed_pc_to_pc, HoughAccumulator *accumulator);
+
   // Returns detected planes considering voting in accumulator and applies Non-maxima Suppression
   static std::vector<std::vector<int>> rhtEval(
       int num_main_planes, int min_vote_threshold, int k_of_maxima_suppression,

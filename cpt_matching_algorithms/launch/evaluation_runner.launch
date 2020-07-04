@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+    <!-- declare arg to be passed in -->
+    <arg name="cad_file" default="$(find cpt_matching_algorithms)/resources/garage/garage.off" />
+    <arg name="lidar_frame" value="marker_pose" />
+
+   <node name="evaluation_runner"  pkg="cpt_matching_algorithms" type="test_bench_node" output="screen" launch-prefix="tmux split-window -h">
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/evaluation_runner_config.yaml"/>
+        <param name="cache_folder" value="$(find cpt_matching_algorithms)/cache/" />
+
+        <param name="goicp_folder" value="$(find go_icp_catkin)"/>
+
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml"/>
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_matching_config.yaml" />
+
+        <param name="test_results" value="$(find cpt_matching_algorithms)/config/test_results.txt" />
+        <param name="data_set_folder" value="$(find cpt_matching_algorithms)/../../data_set" />
+        <param name="tfLidarFrame" value="$(arg lidar_frame)" />
+        <param name="tfMapFrame" value="/map" />
+    </node>
+
+    <node pkg="rosservice" type="rosservice" name="cad_trigger" args="call /mesh_publisher/publish {}" launch-prefix="bash -c 'sleep 2; $0 $@' "/>
+    <node pkg="tf" type="static_transform_publisher" name="lidar_positioning" args="0 0 0 0 0 0 1  marker $(arg lidar_frame) 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="mesh_positioning" args="0 0 0 0 0 0 1  marker map 100"/>
+
+    <node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node">
+        <param name="publish_on_start" value="false"/>  <!-- if set to true, mesh is published two times -->
+        <param name="default_filename" value="$(arg cad_file)"/>
+        <param name="frame_name" value="marker"/>
+    </node>
+
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz/rviz_test_matcher.yaml" />
+
+</launch>
