@@ -269,17 +269,21 @@ void TestMatcher::match() {
                 Transformation
   ///////////////////////////////////////*/
 
-  // Transform LiDAR frame
-  transform_TR_[0] = res_transform_(0, 3);
-  transform_TR_[1] = res_transform_(1, 3);
-  transform_TR_[2] = res_transform_(2, 3);
-  Eigen::Quaterniond q((Eigen::Matrix3d)res_transform_.block(0, 0, 3, 3));
-  transform_TR_[3] = q.w();
-  transform_TR_[4] = q.x();
-  transform_TR_[5] = q.y();
-  transform_TR_[6] = q.z();
-
+  // Transform LiDAR frame (and apply ICP for refinement)
   pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform_);
+
+  DP ref_dp_scan = cpt_utils::pointCloudToDP(lidar_scan_);
+  DP ref_dp_map = cpt_utils::pointCloudToDP(sample_map_);
+
+  // Refine with ICP
+  if (nh_private_.param<bool>("applyICP", false)) {
+    std::cout << "Refine with ICP" << std::endl;
+    // Get transformation
+    PM::ICP icp;
+    icp.setDefault();
+    // Add refinement to final transformation
+    res_transform_ = icp(ref_dp_scan, ref_dp_map).cast<double>() * res_transform_;
+  }
 
   /*//////////////////////////////////////
                 Visualization
@@ -287,12 +291,10 @@ void TestMatcher::match() {
 
   // Transform LiDAR frame
   if (extracted_planes.size() == 0) {
-    DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
-    scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_,
+    scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_scan, tf_map_frame_,
                                                                          ros::Time::now()));
-    DP ref_dp_scan = cpt_utils::pointCloudToDP(sample_map_);
     sample_map_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(
-        ref_dp_scan, tf_map_frame_, ros::Time::now()));
+        ref_dp_map, tf_map_frame_, ros::Time::now()));
   } else {
     // Transform inliers of the planes
     int i = 0;
@@ -311,6 +313,15 @@ void TestMatcher::evaluate() {
   /*//////////////////////////////////////
                 Evaluation
   ///////////////////////////////////////*/
+
+  transform_TR_[0] = res_transform_(0, 3);
+  transform_TR_[1] = res_transform_(1, 3);
+  transform_TR_[2] = res_transform_(2, 3);
+  Eigen::Quaterniond q((Eigen::Matrix3d)res_transform_.block(0, 0, 3, 3));
+  transform_TR_[3] = q.w();
+  transform_TR_[4] = q.x();
+  transform_TR_[5] = q.y();
+  transform_TR_[6] = q.z();
 
   std::cout << "calculated position: x: " << transform_TR_[0] << " y: " << transform_TR_[1]
             << " z: " << transform_TR_[2] << std::endl;

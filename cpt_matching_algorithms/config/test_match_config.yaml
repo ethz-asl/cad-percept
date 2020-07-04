@@ -4,7 +4,7 @@ mapSamplingDensity: 20
 usetoyproblem: true
 
 #Select Matcher
-Matcher: GoICP # GoICP, PlaneMatcher
+Matcher: PlaneMatcher # GoICP, PlaneMatcher
 
 #Settings for GoICP
 
@@ -27,5 +27,8 @@ PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction,
 # Plane Matching
 PlaneMatch: PRRUS # useMatchSolution, IntersectionPatternMatcher
                   # PRRUS, LineSegmentRansac
+
+# Refinement
+applyICP: true
 
 
