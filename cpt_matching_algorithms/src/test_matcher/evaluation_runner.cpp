@@ -43,6 +43,8 @@ cad_percept::cgal::Transformation ctransformation;
 
 BoundedPlanes *map_planes;
 PointCloud sampled_map;
+DP ref_dp_map;
+DP ref_dp_scan;
 
 void samplePose();
 void simulateLidar(cad_percept::cgal::Transformation ctransformation,
@@ -108,6 +110,7 @@ void getCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     int n_points = reference_mesh->getArea() * sample_density_;
     cad_percept::cpt_utils::sample_pc_from_mesh(reference_mesh->getMesh(), n_points, 0.0,
                                                 &sampled_map);
+    ref_dp_map = cpt_utils::pointCloudToDP(sampled_map);
 
     map_ready = true;
 
@@ -136,6 +139,9 @@ void runTestIterations() {
   float search_radius = nh_private.param<float>("Voxelsearchradius", 0.01);
 
   int matcher = nh_private.param<int>("Matcher", 0);
+  bool apply_icp = nh_private.param<bool>("applyICP", false);
+  PM::ICP icp;
+  icp.setDefault();
   srand(time(0));
 
   // Variables for plane extraction and matching
@@ -202,6 +208,7 @@ void runTestIterations() {
     t_start = std::chrono::steady_clock::now();
     if (matcher == 0) {
       GoIcp::goIcpMatch(res_transform, lidar_scan, sampled_map);
+      transform_error = 0;
     } else if (0 < matcher && matcher < 5) {
       // Detect planes
       // Filtering / Preprocessing Point Cloud
@@ -267,6 +274,16 @@ void runTestIterations() {
       std::cout << "No valid matcher" << std::endl;
       break;
     }
+
+    // Apply ICP
+    // Refine with ICP
+    if (apply_icp) {
+      pcl::transformPointCloud(lidar_scan, lidar_scan, res_transform);
+      ref_dp_scan = cpt_utils::pointCloudToDP(lidar_scan);
+      // Add refinement to final transformation
+      res_transform = icp(ref_dp_scan, ref_dp_map).cast<double>() * res_transform;
+    }
+
     t_end = std::chrono::steady_clock::now();
 
     // Evaluate
@@ -293,7 +310,6 @@ void runTestIterations() {
     transform_TR[5] = q.y();
     transform_TR[6] = q.z();
 
-    std::cout << std::endl;
     std::cout << "calculated position: x: " << transform_TR[0] << " y: " << transform_TR[1]
               << " z: " << transform_TR[2] << std::endl;
     std::cout << "ground truth position: x: " << gt_translation[0] << " y: " << gt_translation[1]
@@ -325,9 +341,10 @@ void runTestIterations() {
                 << gt_rotation.z() << " " << transform_TR[0] << " " << transform_TR[1] << " "
                 << transform_TR[2] << " " << transform_TR[3] << " " << transform_TR[4] << " "
                 << transform_TR[5] << " " << transform_TR[6] << " " << translation_error << " "
-                << rotation_error << " " << duration.count() << transform_error << std::endl;
+                << rotation_error << " " << duration.count() << " " << transform_error << std::endl;
 
     // Preparation for next iteration
+    std::cout << std::endl;
     extracted_planes.clear();
     plane_normals.clear();
     scan_planes.clear();
