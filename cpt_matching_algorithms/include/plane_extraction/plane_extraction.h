@@ -51,7 +51,7 @@ class PlaneExtractor {
   static void rhtPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
                                  std::vector<Eigen::Vector3d> &plane_normals_out,
                                  const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
-                                 const std::string &tf_map_frame, const rhtConfig &config);
+                                 const rhtConfig &config);
 
   // Loads Config for iterative RHT from Server
   struct iterRhtConfig {
@@ -75,8 +75,7 @@ class PlaneExtractor {
   static void iterRhtPlaneExtraction(
       std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
       std::vector<Eigen::Vector3d> &plane_normals_out,
-      const pcl::PointCloud<pcl::PointXYZ> &lidar_scan, const std::string &tf_map_frame,
-      const iterRhtConfig &config);
+      const pcl::PointCloud<pcl::PointXYZ> &lidar_scan, const iterRhtConfig &config);
 
   // Loads Config for PCL RANSAC from Server
   struct pclRansacConfig {
@@ -89,7 +88,7 @@ class PlaneExtractor {
   static void pclPlaneExtraction(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
                                  std::vector<Eigen::Vector3d> &plane_normals_out,
                                  const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
-                                 const std::string &tf_map_frame, const pclRansacConfig &config);
+                                 const pclRansacConfig &config);
 
   // Loads Config for CGAL RG from Server
   struct cgalRgConfig {
@@ -110,7 +109,7 @@ class PlaneExtractor {
   static void cgalRegionGrowing(std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes_out,
                                 std::vector<Eigen::Vector3d> &plane_normals_out,
                                 const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
-                                const std::string &tf_map_frame, const cgalRgConfig &config);
+                                const cgalRgConfig &config);
 
   // Publishes RGB point clouds representing segmentation of detected planes
   static void visualizePlane(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &extracted_planes,

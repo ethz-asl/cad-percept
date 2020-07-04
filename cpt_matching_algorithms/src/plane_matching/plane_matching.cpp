@@ -15,7 +15,7 @@ PlaneMatch::prrusConfig PlaneMatch::loadPrrusConfigFromServer() {
 }
 
 float PlaneMatch::prrus(Transformation &transform,
-                        const pcl::PointCloud<pcl::PointNormal> scan_planes,
+                        const pcl::PointCloud<pcl::PointNormal> &scan_planes,
                         BoundedPlanes map_planes, const prrusConfig &config) {
   std::cout << "////////////////////////////////////////////////" << std::endl;
   std::cout << "////              PRRUS Started             ////" << std::endl;

@@ -186,10 +186,8 @@ void TestMatcher::match() {
   std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
   std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
 
-  if (!matcher.compare("template")) {
-    templateMatch();
-  } else if (!matcher.compare("GoICP")) {
-    goicpMatch();
+  if (!matcher.compare("GoICP")) {
+    GoIcp::goIcpMatch(res_transform_, lidar_scan_, sample_map_);
   } else if (!matcher.compare("PlaneMatcher")) {
     // Filtering / Preprocessing Point Cloud
     if (nh_private_.param<bool>("useStructureFilter", false)) {
@@ -209,19 +207,15 @@ void TestMatcher::match() {
     std::vector<Eigen::Vector3d> plane_normals;
     if (!extractor.compare("pclPlaneExtraction")) {
       PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                         tf_lidar_frame_,
                                          PlaneExtractor::loadPclRansacConfigFromServer());
     } else if (!extractor.compare("rhtPlaneExtraction")) {
       PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                         tf_lidar_frame_,
                                          PlaneExtractor::loadRhtConfigFromServer());
     } else if (!extractor.compare("iterRhtPlaneExtraction")) {
       PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                             tf_lidar_frame_,
                                              PlaneExtractor::loadIterRhtConfigFromServer());
     } else if (!extractor.compare("cgalRegionGrowing")) {
       PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan_,
-                                        tf_lidar_frame_,
                                         PlaneExtractor::loadCgalRgConfigFromServer());
     } else {
       std::cout << "Error: Could not find given plane extractor" << std::endl;

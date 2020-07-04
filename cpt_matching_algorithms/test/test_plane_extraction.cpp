@@ -46,9 +46,8 @@ TEST(PlaneExtractionTest, pclPlaneExtraction) {
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
   std::vector<Eigen::Vector3d> plane_normals;
-  std::string tf_map_frame = "map";
 
-  PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, pointcloud, tf_map_frame,
+  PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, pointcloud,
                                      PlaneExtractor::loadPclRansacConfigFromServer());
   std::cout << "pclPlaneExtraction found plane with normal: x " << plane_normals[0][0]
             << " y: " << plane_normals[0][1] << " z: " << plane_normals[0][2] << std::endl;
@@ -70,9 +69,8 @@ TEST(PlaneExtractionTest, rhtPlaneExtraction) {
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
   std::vector<Eigen::Vector3d> plane_normals;
-  std::string tf_map_frame = "map";
 
-  PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, pointcloud, tf_map_frame,
+  PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, pointcloud,
                                      PlaneExtractor::loadRhtConfigFromServer());
 
   std::cout << "rhtPlaneExtraction found plane with normal: x " << plane_normals[0][0]
@@ -95,9 +93,8 @@ TEST(PlaneExtractionTest, iterRhtPlaneExtraction) {
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
   std::vector<Eigen::Vector3d> plane_normals;
-  std::string tf_map_frame = "map";
 
-  PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, pointcloud, tf_map_frame,
+  PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, pointcloud,
                                          PlaneExtractor::loadIterRhtConfigFromServer());
 
   std::cout << "iterRhtPlaneExtraction found plane with normal: x " << plane_normals[0][0]
@@ -120,9 +117,8 @@ TEST(PlaneExtractionTest, cgalRegionGrowing) {
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
   std::vector<Eigen::Vector3d> plane_normals;
-  std::string tf_map_frame = "map";
 
-  PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, pointcloud, tf_map_frame,
+  PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, pointcloud,
                                     PlaneExtractor::loadCgalRgConfigFromServer());
 
   std::cout << "cgalRegionGrowing found plane with normal: x " << plane_normals[0][0]
