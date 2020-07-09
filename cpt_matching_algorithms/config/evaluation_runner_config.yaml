@@ -1,0 +1,33 @@
+usetoyexample: false
+
+# Lidar Settings
+rangeOfLidar: 25
+binElevation: [-15, -13, -11, -9, -7, -5, -3, -1, 15, 13, 11, 9, 7, 5, 3, 1]
+lidarAngularResolution: 2
+accuracyOfLidar: 0.0
+
+# Test Settings
+testIterations: 10
+start_scan_nr: 0
+end_scan_nr: 978
+
+# Settings for Plane Matcher
+
+# Filters
+StructureThreshold: 150
+Voxelsearchradius: 0.2
+
+# Plane Extraction
+Matcher: 2 # 0: GoICP
+           # 1: PlaneMatcher with RHT
+           # 2: PlaneMatcher with iter RHT
+           # 3: PlaneMatcher with PCL RANSAC
+           # 4: PlaneMatcher with Cgal RG
+
+# Plane Matching
+# PRRUS
+
+# Refinement
+applyICP: true
+
+

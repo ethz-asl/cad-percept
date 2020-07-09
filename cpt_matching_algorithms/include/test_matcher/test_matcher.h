@@ -4,6 +4,7 @@
 #include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_conversions/tf_conversions.h>
+#include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/pc_processing.h>
@@ -13,10 +14,16 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <random>
 
 #include "cloud_filter/cloud_filter.h"
 #include "plane_extraction/plane_extraction.h"
+#include "plane_matching/plane_matching.h"
 #include "test_matcher/bounded_planes.h"
+#include "test_matcher/go_icp_matcher.h"
+
+// Remove this part again
+#include <chrono>
 
 namespace cad_percept {
 namespace matching_algorithms {
@@ -57,6 +64,8 @@ class TestMatcher {
 
   // Evaluation / Ground Truth data
   float transform_TR_[7] = {0, 0, 0, 0, 0, 0, 0};  // x y z qw qx qy qz
+  float prrus_error_ = 0;
+  Eigen::Matrix4d res_transform_;
   Eigen::Vector3d ground_truth_;
   Eigen::Quaterniond gt_quat_;
 
@@ -108,12 +117,6 @@ class TestMatcher {
    * Calcualte RMSE (root mean square error) of two point clouds
    */
   void getError(PointCloud p1, PointCloud p2);
-
-  /**
-   * Declare matchers
-   */
-  void templateMatch();
-  void goicpMatch();
 };
 
 }  // namespace matching_algorithms

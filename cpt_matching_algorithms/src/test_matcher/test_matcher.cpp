@@ -25,7 +25,7 @@ TestMatcher::TestMatcher(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
   // Get Publisher
   scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1, true);
-  plane_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+  sample_map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("sample_map", 1, true);
 }
 
 // Get CAD and sample points
@@ -165,9 +165,17 @@ void TestMatcher::getSimLidar(const sensor_msgs::PointCloud2 &lidar_scan_p2) {
   }
 }
 
+std::chrono::duration<int, std::milli> duration;
 // Match clouds and evaluate
 void TestMatcher::match() {
   std::cout << "Received LiDAR and CAD as point cloud" << std::endl;
+
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
+
+  // Remove this part
+  std::chrono::steady_clock::time_point t_start;
+  std::chrono::steady_clock::time_point t_end;
+  t_start = std::chrono::steady_clock::now();
 
   /*//////////////////////////////////////
                  Matching
@@ -175,11 +183,11 @@ void TestMatcher::match() {
 
   // Selection of mapper
   std::string matcher = nh_private_.param<std::string>("Matcher", "fail");
+  std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
+  std::string plane_matcher = nh_private_.param<std::string>("PlaneMatch", "fail");
 
-  if (!matcher.compare("template")) {
-    templateMatch();
-  } else if (!matcher.compare("GoICP")) {
-    goicpMatch();
+  if (!matcher.compare("GoICP")) {
+    GoIcp::goIcpMatch(res_transform_, lidar_scan_, sample_map_);
   } else if (!matcher.compare("PlaneMatcher")) {
     // Filtering / Preprocessing Point Cloud
     if (nh_private_.param<bool>("useStructureFilter", false)) {
@@ -196,23 +204,19 @@ void TestMatcher::match() {
       return;
     }
     // Plane Extraction
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
     std::vector<Eigen::Vector3d> plane_normals;
-    std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
     if (!extractor.compare("pclPlaneExtraction")) {
       PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                         tf_lidar_frame_, plane_pub_);
+                                         PlaneExtractor::loadPclRansacConfigFromServer());
     } else if (!extractor.compare("rhtPlaneExtraction")) {
       PlaneExtractor::rhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                         tf_lidar_frame_, plane_pub_,
                                          PlaneExtractor::loadRhtConfigFromServer());
     } else if (!extractor.compare("iterRhtPlaneExtraction")) {
       PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, lidar_scan_,
-                                             tf_lidar_frame_, plane_pub_);
-
+                                             PlaneExtractor::loadIterRhtConfigFromServer());
     } else if (!extractor.compare("cgalRegionGrowing")) {
       PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, lidar_scan_,
-                                        tf_lidar_frame_, plane_pub_);
+                                        PlaneExtractor::loadCgalRgConfigFromServer());
     } else {
       std::cout << "Error: Could not find given plane extractor" << std::endl;
       return;
@@ -240,35 +244,69 @@ void TestMatcher::match() {
         norm_point.normal_y = -norm_point.normal_y;
         norm_point.normal_z = -norm_point.normal_z;
       }
-
       scan_planes_.push_back(norm_point);
       plane_nr++;
+    }
+    // Plane Matching (Get T_map,lidar)
+    if (!plane_matcher.compare("PRRUS")) {
+      cgal::Transformation cgal_transform;
+      prrus_error_ = PlaneMatch::prrus(cgal_transform, scan_planes_, *map_planes_,
+                                       PlaneMatch::loadPrrusConfigFromServer());
+      cgal::cgalTransformationToEigenTransformation(cgal_transform, &res_transform_);
+
+    } else {
+      std::cout << "Error: Could not find given plane matcher" << std::endl;
+      return;
     }
   } else {
     std::cout << "Error: Could not find given matcher" << std::endl;
     return;
   }
+  t_end = std::chrono::steady_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
 
   /*//////////////////////////////////////
                 Transformation
   ///////////////////////////////////////*/
 
-  // Transform LiDAR frame
-  Eigen::Matrix4f res_transform = Eigen::Matrix4f::Identity();
-  Eigen::Vector3f translation(transform_TR_[0], transform_TR_[1], transform_TR_[2]);
-  Eigen::Quaternionf q(transform_TR_[3], transform_TR_[4], transform_TR_[5], transform_TR_[6]);
-  res_transform.block(0, 0, 3, 3) = q.matrix();
-  res_transform.block(0, 3, 3, 1) = translation;
+  // Transform LiDAR frame (and apply ICP for refinement)
+  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform_);
 
-  pcl::transformPointCloud(lidar_scan_, lidar_scan_, res_transform);
+  DP ref_dp_scan = cpt_utils::pointCloudToDP(lidar_scan_);
+  DP ref_dp_map = cpt_utils::pointCloudToDP(sample_map_);
+
+  // Refine with ICP (skip if prrus was used and failed)
+  if (nh_private_.param<bool>("applyICP", false) &&
+      ((!plane_matcher.compare("PRRUS") && prrus_error_ != -1) || plane_matcher.compare("PRRUS"))) {
+    std::cout << "Refine with ICP" << std::endl;
+    // Get transformation
+    PM::ICP icp;
+    icp.setDefault();
+    // Add refinement to final transformation
+    res_transform_ = icp(ref_dp_scan, ref_dp_map).cast<double>() * res_transform_;
+  }
 
   /*//////////////////////////////////////
                 Visualization
   ///////////////////////////////////////*/
 
-  DP ref_dp = cpt_utils::pointCloudToDP(lidar_scan_);
-  scan_pub_.publish(
-      PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp, tf_map_frame_, ros::Time::now()));
+  // Transform LiDAR frame
+  if (extracted_planes.size() == 0) {
+    scan_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_scan, tf_map_frame_,
+                                                                         ros::Time::now()));
+    sample_map_pub_.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(
+        ref_dp_map, tf_map_frame_, ros::Time::now()));
+  } else {
+    // Transform inliers of the planes
+    int i = 0;
+    for (auto extracted_plane : extracted_planes) {
+      extracted_planes[i].clear();
+      pcl::transformPointCloud(extracted_plane, extracted_planes[i], res_transform_);
+      i++;
+    }
+    PlaneExtractor::visualizePlane(extracted_planes, scan_pub_, tf_map_frame_);
+  }
+
   ready_for_eval_ = true;
 }
 
@@ -276,6 +314,15 @@ void TestMatcher::evaluate() {
   /*//////////////////////////////////////
                 Evaluation
   ///////////////////////////////////////*/
+
+  transform_TR_[0] = res_transform_(0, 3);
+  transform_TR_[1] = res_transform_(1, 3);
+  transform_TR_[2] = res_transform_(2, 3);
+  Eigen::Quaterniond q((Eigen::Matrix3d)res_transform_.block(0, 0, 3, 3));
+  transform_TR_[3] = q.w();
+  transform_TR_[4] = q.x();
+  transform_TR_[5] = q.y();
+  transform_TR_[6] = q.z();
 
   std::cout << "calculated position: x: " << transform_TR_[0] << " y: " << transform_TR_[1]
             << " z: " << transform_TR_[2] << std::endl;
@@ -295,6 +342,8 @@ void TestMatcher::evaluate() {
 
   getError(sample_map_, lidar_scan_);
   std::cout << "error (euclidean distance of translation): " << error << std::endl;
+
+  std::cout << duration.count() << std::endl;
 }
 
 // Get RMSE of two point clouds

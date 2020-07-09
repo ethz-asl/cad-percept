@@ -1,21 +1,21 @@
-#include "test_matcher/test_matcher.h"
-
-#include <pcl/filters/voxel_grid.h>
-#include <ros/package.h>
+#include "test_matcher/go_icp_matcher.h"
 
 namespace cad_percept {
 namespace matching_algorithms {
 
-void TestMatcher::goicpMatch() {
+void GoIcp::goIcpMatch(Eigen::Matrix4d &res_transform,
+                       const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
+                       const pcl::PointCloud<pcl::PointXYZ> &sampled_map) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "             Go-ICP matcher started            " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
 
-  std::string downsample_points = nh_private_.param<std::string>("GoICPdownsample", "1000");
-  std::string goicp_location = nh_private_.param<std::string>("goicp_folder", "fail");
+  ros::NodeHandle nh_private("~");
+  std::string downsample_points = nh_private.param<std::string>("GoICPdownsample", "1000");
+  std::string goicp_location = nh_private.param<std::string>("goicp_folder", "fail");
 
-  PointCloud go_icp_lidar = lidar_scan_;
-  PointCloud go_icp_map = sample_map_;
+  pcl::PointCloud<pcl::PointXYZ> go_icp_lidar = lidar_scan;
+  pcl::PointCloud<pcl::PointXYZ> go_icp_map = sampled_map;
 
   // Find translation for centralization
   pcl::PointXYZ transl_lidar;
@@ -26,12 +26,12 @@ void TestMatcher::goicpMatch() {
 
   // Centralize point clouds
   Eigen::Matrix4d transform_lidar = Eigen::Matrix4d::Identity();
-  Eigen::Vector3d translation_lidar(transl_lidar.x, transl_lidar.y, transl_lidar.z);
+  Eigen::Vector3d translation_lidar(-transl_lidar.x, -transl_lidar.y, -transl_lidar.z);
   transform_lidar.block(0, 3, 3, 1) = translation_lidar;
   pcl::transformPointCloud(go_icp_lidar, go_icp_lidar, transform_lidar);
 
   Eigen::Matrix4d transform_map = Eigen::Matrix4d::Identity();
-  Eigen::Vector3d translation_map(transl_map.x, transl_map.y, transl_map.z);
+  Eigen::Vector3d translation_map(-transl_map.x, -transl_map.y, -transl_map.z);
   transform_map.block(0, 3, 3, 1) = translation_map;
   pcl::transformPointCloud(go_icp_map, go_icp_map, transform_map);
 
@@ -46,7 +46,7 @@ void TestMatcher::goicpMatch() {
   float max_dist_map = 0;
   for (auto point : go_icp_map.points) {
     if (sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2)) >= max_dist_map) {
-      max_dist_lidar = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
+      max_dist_map = sqrt(pow(point.x, 2) + pow(point.y, 2) + pow(point.z, 2));
     }
   }
   float max_dist = std::max(max_dist_map, max_dist_lidar);
@@ -64,20 +64,32 @@ void TestMatcher::goicpMatch() {
   trans_scale_map(2, 2) = trans_scale_map(2, 2) / max_dist;
   pcl::transformPointCloud(go_icp_map, go_icp_map, trans_scale_map);
 
+  // Sample randomly from scan cloud
+  pcl::PointCloud<pcl::PointXYZ> sampled_scan;
+  std::vector<int> random_range(go_icp_lidar.size());
+  std::iota(random_range.begin(), random_range.end(), 0);
+  std::shuffle(random_range.begin(), random_range.end(), std::mt19937{std::random_device{}()});
+
+  for (int i = 0; i < std::stoi(downsample_points); ++i) {
+    sampled_scan.push_back(go_icp_lidar.points[random_range[i]]);
+  }
+  pcl::copyPointCloud(sampled_scan, go_icp_lidar);
+
   // Create txt files of point clouds, required for Go-ICP
   chdir(goicp_location.c_str());
+
   std::ofstream map_file("map.txt");
-  map_file << go_icp_map.width << std::endl;
-  for (PointCloud::iterator i = go_icp_map.points.begin(); i < go_icp_map.points.end(); i++) {
-    map_file << i->x << " " << i->y << " " << i->z << std::endl;
+  map_file << go_icp_map.size() << std::endl;
+  for (auto point : go_icp_map) {
+    map_file << point.x << " " << point.y << " " << point.z << std::endl;
   }
   std::cout << "Map.txt created" << std::endl;
   map_file.close();
 
   std::ofstream lidar_file("lidar_scan.txt");
-  lidar_file << go_icp_lidar.width << std::endl;
-  for (PointCloud::iterator i = go_icp_lidar.points.begin(); i < go_icp_lidar.points.end(); i++) {
-    lidar_file << i->x << " " << i->y << " " << i->z << std::endl;
+  lidar_file << go_icp_lidar.size() << std::endl;
+  for (auto point : go_icp_lidar.points) {
+    lidar_file << point.x << " " << point.y << " " << point.z << std::endl;
   }
   std::cout << "lidar_scan.txt created" << std::endl;
   lidar_file.close();
@@ -117,21 +129,10 @@ void TestMatcher::goicpMatch() {
     std::cout << "Could not read output file" << std::endl;
   }
 
-  // Get matrix of unscaled matrix
-  Eigen::Matrix4d final_transf = go_icp_trans;
-
-  Eigen::Matrix3d final_rot = final_transf.block(0, 0, 3, 3);
-  Eigen::Quaterniond final_q(final_rot);
-
-  // Revert scaling and translation
-  transform_TR_[0] = final_transf(0, 3) * max_dist - transl_lidar.x + transl_map.x;
-  transform_TR_[1] = final_transf(1, 3) * max_dist - transl_lidar.y + transl_map.y;
-  transform_TR_[2] = final_transf(2, 3) * max_dist - transl_lidar.z + transl_map.z;
-
-  transform_TR_[3] = final_q.w();
-  transform_TR_[4] = final_q.x();
-  transform_TR_[5] = final_q.y();
-  transform_TR_[6] = final_q.z();
+  res_transform = go_icp_trans;
+  res_transform.block(0, 3, 3, 1) =
+      max_dist * res_transform.block(0, 3, 3, 1) +
+      (Eigen::Matrix3d)res_transform.block(0, 0, 3, 3) * translation_lidar - translation_map;
 }
 
 }  // namespace matching_algorithms

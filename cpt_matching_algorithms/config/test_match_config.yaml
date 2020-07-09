@@ -1,10 +1,10 @@
 # Sample density for map
 mapSamplingDensity: 20
 
-usetoyproblem: true
+usetoyproblem: false
 
 #Select Matcher
-Matcher: PlaneMatcher # template, GoICP, PlaneMatcher
+Matcher: PlaneMatcher # GoICP, PlaneMatcher
 
 #Settings for GoICP
 
@@ -18,7 +18,7 @@ useStructureFilter: true
 StructureThreshold: 150
 
 useVoxelCentroidFilter: true
-Voxelsearchradius: 0.2
+Voxelsearchradius: 0.1
 
 # Plane Extraction
 PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction, 
@@ -27,5 +27,8 @@ PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction,
 # Plane Matching
 PlaneMatch: PRRUS # useMatchSolution, IntersectionPatternMatcher
                   # PRRUS, LineSegmentRansac
+
+# Refinement
+applyICP: true
 
 
