@@ -250,8 +250,8 @@ void TestMatcher::match() {
     // Plane Matching (Get T_map,lidar)
     if (!plane_matcher.compare("PRRUS")) {
       cgal::Transformation cgal_transform;
-      PlaneMatch::prrus(cgal_transform, scan_planes_, *map_planes_,
-                        PlaneMatch::loadPrrusConfigFromServer());
+      prrus_error_ = PlaneMatch::prrus(cgal_transform, scan_planes_, *map_planes_,
+                                       PlaneMatch::loadPrrusConfigFromServer());
       cgal::cgalTransformationToEigenTransformation(cgal_transform, &res_transform_);
 
     } else {
@@ -275,8 +275,9 @@ void TestMatcher::match() {
   DP ref_dp_scan = cpt_utils::pointCloudToDP(lidar_scan_);
   DP ref_dp_map = cpt_utils::pointCloudToDP(sample_map_);
 
-  // Refine with ICP
-  if (nh_private_.param<bool>("applyICP", false)) {
+  // Refine with ICP (skip if prrus was used and failed)
+  if (nh_private_.param<bool>("applyICP", false) &&
+      ((!plane_matcher.compare("PRRUS") && prrus_error_ != -1) || plane_matcher.compare("PRRUS"))) {
     std::cout << "Refine with ICP" << std::endl;
     // Get transformation
     PM::ICP icp;

@@ -30,6 +30,7 @@ float PlaneMatch::prrus(Transformation &transform,
     std::cout
         << "Can not find transformation, as no group of orthogonal planes in map could be found"
         << std::endl;
+    return -1;
   } else {
     std::cout << "Found " << orthogonal_groups_in_map.size()
               << " groups of orthogonal planes in map" << std::endl;
@@ -42,6 +43,7 @@ float PlaneMatch::prrus(Transformation &transform,
     std::cout
         << "Can not find transformation, as no group of orthogonal planes in scan could be found"
         << std::endl;
+    return -1;
   } else {
     std::cout << "Found " << orthogonal_groups_in_scan.size()
               << " groups of orthogonal planes in scan" << std::endl;
@@ -55,6 +57,7 @@ float PlaneMatch::prrus(Transformation &transform,
   if (assignments.size() == 0) {
     std::cout << "Can not find transformation, as no consistent rotation could be found"
               << std::endl;
+    return -1;
   } else {
     std::cout << "Found " << assignments.size() << " possible assignments" << std::endl;
   }

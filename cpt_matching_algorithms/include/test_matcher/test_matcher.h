@@ -64,6 +64,7 @@ class TestMatcher {
 
   // Evaluation / Ground Truth data
   float transform_TR_[7] = {0, 0, 0, 0, 0, 0, 0};  // x y z qw qx qy qz
+  float prrus_error_ = 0;
   Eigen::Matrix4d res_transform_;
   Eigen::Vector3d ground_truth_;
   Eigen::Quaterniond gt_quat_;
