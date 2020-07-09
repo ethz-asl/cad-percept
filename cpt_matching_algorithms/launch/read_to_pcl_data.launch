@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
 	<!-- declare arg to be passed in -->
-	<arg name="data_file" default="$(find cpt_matching_algorithms)/../../smb_no_distortion_2020-02-19-15-56-40_projected.bag" />
-	<arg name="save_target" default="$(find cpt_matching_algorithms)/../../data_set" />
+	<arg name="data_file" default="$(find cpt_matching_algorithms)/../../smb_long_trajectory_2020-02-19-16-17-00_projected.bag" />
+	<arg name="save_target" default="$(find cpt_matching_algorithms)/../../data_set_garage" />
 	<arg name="topic_of_lidar_in_bag" default="/static_points" />
 
     <node name="data_to_pcl_reader" pkg="cpt_matching_algorithms" type="data_to_pcl_reader" output="screen">
