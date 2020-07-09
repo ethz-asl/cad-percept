@@ -283,7 +283,6 @@ void runTestIterations() {
       // Add refinement to final transformation
       res_transform = icp(ref_dp_scan, ref_dp_map).cast<double>() * res_transform;
     }
-
     t_end = std::chrono::steady_clock::now();
 
     // Evaluate
