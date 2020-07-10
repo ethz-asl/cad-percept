@@ -74,7 +74,6 @@ class Mapper {
   ros::Time last_point_cloud_time_;
   uint32_t last_point_cloud_seq_;
 
-  //bool cad_trigger;
   bool selective_icp_trigger;
   bool full_icp_trigger;
   bool ref_mesh_ready;
@@ -90,7 +89,6 @@ class Mapper {
 
   // Subscribers
   ros::Subscriber cloud_sub_;
-  //ros::Subscriber cad_sub_;
 
   // Publishers
   ros::Publisher ref_mesh_pub_;
@@ -105,6 +103,7 @@ class Mapper {
   ros::Publisher map_pub_;
 
   // Services
+  ros::ServiceServer load_map_with_offset_srv_;
   ros::ServiceServer load_published_map_srv_;
   ros::ServiceServer get_closest_facet_srv_;
   ros::ServiceServer set_ref_srv_;

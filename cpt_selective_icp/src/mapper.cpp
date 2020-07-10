@@ -20,6 +20,8 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 
   load_published_map_srv_ =
       nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
+  load_map_with_offset_srv_ =
+      nh_private_.advertiseService("load_published_map", &Mapper::loadMapWithOffset, this);
   set_ref_srv_ = nh_.advertiseService("set_ref", &Mapper::setReferenceFacets, this);
   set_full_icp_srv_ = nh_.advertiseService("full_icp", &Mapper::setFullICP, this);
   set_selective_icp_srv_ = nh_.advertiseService("selective_icp", &Mapper::setSelectiveICP, this);
@@ -59,7 +61,6 @@ bool Mapper::loadMapWithOffset(cpt_selective_icp::LoadMap::Request &req,
 }
 
 bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
-  // Since CAD is published all the time, we need a trigger when to load it
   boost::shared_ptr<cgal_msgs::TriangleMeshStamped const> mesh_msg;
   mesh_msg = ros::topic::waitForMessage<cgal_msgs::TriangleMeshStamped>(parameters_.cad_topic, nh_);
   geometry_msgs::Transform zero_offset;
@@ -101,7 +102,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in,
   tf::StampedTransform transform;
   tf_listener_.lookupTransform(parameters_.tf_map_frame, mesh_frame_id_, ros::Time(0),
                                transform);  // from origin of cad model to map
-  // Transform with requested offset correct frame.
+  // Transform with requested offset.
   Eigen::Vector3d offset_translation;
   Eigen::Quaterniond offset_rotation;
 
