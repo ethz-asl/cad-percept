@@ -26,6 +26,7 @@
 #include <boost/thread.hpp>
 #include <unordered_set>
 #include "cpt_selective_icp/BuildingTask.h"
+#include "cpt_selective_icp/LoadMap.h"
 #include "cpt_selective_icp/References.h"
 #include "cpt_selective_icp/mapper_parameters.h"
 
@@ -73,7 +74,7 @@ class Mapper {
   ros::Time last_point_cloud_time_;
   uint32_t last_point_cloud_seq_;
 
-  bool cad_trigger;
+  //bool cad_trigger;
   bool selective_icp_trigger;
   bool full_icp_trigger;
   bool ref_mesh_ready;
@@ -89,7 +90,7 @@ class Mapper {
 
   // Subscribers
   ros::Subscriber cloud_sub_;
-  ros::Subscriber cad_sub_;
+  //ros::Subscriber cad_sub_;
 
   // Publishers
   ros::Publisher ref_mesh_pub_;
@@ -119,7 +120,7 @@ class Mapper {
   /**
    * Mesh model callback
    */
-  void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in);
+  void gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in, const geometry_msgs::Transform& offset);
 
   /**
    * Get some sort of residual error, but only for points associated to our references.
@@ -180,9 +181,14 @@ class Mapper {
                                  PointCloud *pointcloud);
 
   /**
-   * Set a trigger to load a newly published mesh as map.
+   * Load a newly published mesh as map.
    */
   bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
+
+  /**
+   * Load a newly published mesh as map with offset.
+   */
+  bool loadMapWithOffset(cpt_selective_icp::LoadMap::Request &req, cpt_selective_icp::LoadMap::Response &res);
 
   /**
    * Load parameters for libpointmatcher from .yaml.

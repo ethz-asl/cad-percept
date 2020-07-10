@@ -1,5 +1,7 @@
 #include "cpt_selective_icp/mapper.h"
 
+#include <eigen_conversions/eigen_msg.h>
+
 namespace cad_percept {
 namespace selective_icp {
 
@@ -10,14 +12,11 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       odom_received_(0),
       T_scanner_to_map_(PM::TransformationParameters::Identity(4, 4)),
       transformation_(PM::get().REG(Transformation).create("RigidTransformation")),
-      cad_trigger(false),
       selective_icp_trigger(false),
       ref_mesh_ready(false),
       projection_count(0) {
   cloud_sub_ =
       nh_.subscribe(parameters_.scan_topic, parameters_.input_queue_size, &Mapper::gotCloud, this);
-  cad_sub_ =
-      nh_.subscribe(parameters_.cad_topic, parameters_.input_queue_size, &Mapper::gotCAD, this);
 
   load_published_map_srv_ =
       nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
@@ -46,71 +45,98 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
 }
 
 // TODO (Hermann, Abel) do we need this still?
-bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
+bool Mapper::loadMapWithOffset(cpt_selective_icp::LoadMap::Request &req,
+                               cpt_selective_icp::LoadMap::Response &res) {
   // Since CAD is published all the time, we need a trigger when to load it
-  cad_trigger = true;
+  boost::shared_ptr<cgal_msgs::TriangleMeshStamped const> mesh_msg;
+  mesh_msg = ros::topic::waitForMessage<cgal_msgs::TriangleMeshStamped>(parameters_.cad_topic, nh_);
+  if (mesh_msg != NULL) {
+    gotCAD(*mesh_msg, req.transform);
+  } else {
+    return false;
+  }
   return true;
 }
 
-void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
-  if (cad_trigger) {
-    std::cout << "Processing CAD mesh" << std::endl;
-    mesh_frame_id_ = cad_mesh_in.header.frame_id;  // should be "marker2"
-    cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh_);
-
-    // Make some checks:
-    cgal::Polyhedron P = reference_mesh_->getMesh();
-    if (P.is_valid()) {
-      std::cout << "P is valid" << std::endl;
-    } else {
-      std::cerr << "P is not valid" << std::endl;
-    }
-    if (P.is_pure_triangle()) {
-      std::cout << "P is pure triangle" << std::endl;
-    } else {
-      std::cerr << "P is not pure triangle" << std::endl;
-    }
-    if (P.is_closed()) {
-      std::cout << "P is closed" << std::endl;
-    } else {
-      std::cerr << "P is not closed => no consistent full directions" << std::endl;
-    }
-
-    tf::StampedTransform transform;
-    tf_listener_.lookupTransform(parameters_.tf_map_frame, mesh_frame_id_, ros::Time(0),
-                                 transform);  // from origin of cad model to map
-    Eigen::Matrix3d rotation;
-    tf::matrixTFToEigen(transform.getBasis(), rotation);
-    Eigen::Vector3d translation;
-    tf::vectorTFToEigen(transform.getOrigin(), translation);
-    Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
-    transformation.block(0, 0, 3, 3) = rotation;
-    transformation.block(0, 3, 3, 1) = translation;
-    cgal::Transformation ctransformation;
-    cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
-    reference_mesh_->transform(ctransformation);
-
-    // save the transform map -> mesh origin (inverse) for later reference
-    Eigen::Affine3d eigenTr;
-    tf::transformTFToEigen(transform.inverse(), eigenTr);
-    T_map_to_meshorigin_ = eigenTr.matrix().cast<float>();
-
-    ref_mesh_ready = true;
-
-    // first extract whole pointcloud
-    std::unordered_set<std::string> references;  // empty
-    PointCloud pointcloud;
-    sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
-
-    ref_dp = cpt_utils::pointCloudToDP(pointcloud);
-    processCloud(&ref_dp, ros::Time(0));
-
-    // set the map
-    icp_.clearMap();
-    icp_.setMap(ref_dp);
-
-    cad_trigger = false;
+bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
+  // Since CAD is published all the time, we need a trigger when to load it
+  boost::shared_ptr<cgal_msgs::TriangleMeshStamped const> mesh_msg;
+  mesh_msg = ros::topic::waitForMessage<cgal_msgs::TriangleMeshStamped>(parameters_.cad_topic, nh_);
+  geometry_msgs::Transform zero_offset;
+  zero_offset.translation.x = zero_offset.translation.y = zero_offset.translation.z = 0;
+  zero_offset.rotation.x = zero_offset.rotation.y = zero_offset.rotation.z = 0;
+  zero_offset.rotation.w = 1;
+  if (mesh_msg != NULL) {
+    gotCAD(*mesh_msg, zero_offset);
+  } else {
+    return false;
   }
+  return true;
+}
+
+void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in,
+                    const geometry_msgs::Transform &offset) {
+  std::cout << "Processing CAD mesh" << std::endl;
+  mesh_frame_id_ = cad_mesh_in.header.frame_id;  // should be "marker2"
+  cgal::msgToMeshModel(cad_mesh_in.mesh, &reference_mesh_);
+
+  // Make some checks:
+  cgal::Polyhedron P = reference_mesh_->getMesh();
+  if (P.is_valid()) {
+    std::cout << "P is valid" << std::endl;
+  } else {
+    std::cerr << "P is not valid" << std::endl;
+  }
+  if (P.is_pure_triangle()) {
+    std::cout << "P is pure triangle" << std::endl;
+  } else {
+    std::cerr << "P is not pure triangle" << std::endl;
+  }
+  if (P.is_closed()) {
+    std::cout << "P is closed" << std::endl;
+  } else {
+    std::cerr << "P is not closed => no consistent full directions" << std::endl;
+  }
+
+  tf::StampedTransform transform;
+  tf_listener_.lookupTransform(parameters_.tf_map_frame, mesh_frame_id_, ros::Time(0),
+                               transform);  // from origin of cad model to map
+  // Transform with requested offset correct frame.
+  Eigen::Vector3d offset_translation;
+  Eigen::Quaterniond offset_rotation;
+
+  Eigen::Affine3d offset_eigen;
+  Eigen::Affine3d transform_eigen;
+  tf::transformMsgToEigen(offset, offset_eigen);
+  tf::transformTFToEigen(transform, transform_eigen);
+
+  transform_eigen = transform_eigen * offset_eigen;
+
+  Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
+  transformation.block(0, 0, 3, 3) = transform_eigen.matrix().topLeftCorner<3, 3>();
+  transformation.block(0, 3, 3, 1) = transform_eigen.translation();
+  cgal::Transformation ctransformation;
+  cgal::eigenTransformationToCgalTransformation(transformation, &ctransformation);
+  reference_mesh_->transform(ctransformation);
+
+  // save the transform map -> mesh origin (inverse) for later reference
+  Eigen::Affine3d eigenTr;
+  tf::transformTFToEigen(transform.inverse(), eigenTr);
+  T_map_to_meshorigin_ = eigenTr.matrix().cast<float>();
+
+  ref_mesh_ready = true;
+
+  // first extract whole pointcloud
+  std::unordered_set<std::string> references;  // empty
+  PointCloud pointcloud;
+  sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
+
+  ref_dp = cpt_utils::pointCloudToDP(pointcloud);
+  processCloud(&ref_dp, ros::Time(0));
+
+  // set the map
+  icp_.clearMap();
+  icp_.setMap(ref_dp);
 }
 
 // TODO (Hermann) Rename to 'gotScan'?
