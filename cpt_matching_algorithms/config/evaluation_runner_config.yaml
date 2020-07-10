@@ -9,16 +9,16 @@ accuracyOfLidar: 0.0
 # Test Settings
 testIterations: 10
 start_scan_nr: 0
-end_scan_nr: 978
+end_scan_nr: 955
 
 # Settings for Plane Matcher
 
 # Filters
-StructureThreshold: 150
+StructureThreshold: -1
 Voxelsearchradius: 0.2
 
 # Plane Extraction
-Matcher: 0 # 0: GoICP
+Matcher: 2 # 0: GoICP
            # 1: PlaneMatcher with RHT
            # 2: PlaneMatcher with iter RHT
            # 3: PlaneMatcher with PCL RANSAC
