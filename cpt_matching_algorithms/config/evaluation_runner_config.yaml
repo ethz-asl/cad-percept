@@ -15,10 +15,10 @@ end_scan_nr: 955
 
 # Filters
 StructureThreshold: -1
-Voxelsearchradius: 0.2
+Voxelsearchradius: 0.1
 
 # Plane Extraction
-Matcher: 2 # 0: GoICP
+Matcher: 4 # 0: GoICP
            # 1: PlaneMatcher with RHT
            # 2: PlaneMatcher with iter RHT
            # 3: PlaneMatcher with PCL RANSAC
