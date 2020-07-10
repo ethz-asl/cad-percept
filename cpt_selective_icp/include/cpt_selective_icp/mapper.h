@@ -7,6 +7,7 @@
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_msgs/ColoredMesh.h>
 #include <cgal_msgs/ReferenceTask.h>
+#include <cgal_msgs/Transformation.h>
 #include <cgal_msgs/TriangleMesh.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/pc_processing.h>
@@ -187,7 +188,7 @@ class Mapper {
   /**
    * Load a newly published mesh as map with offset.
    */
-  bool loadMapWithOffset(cpt_selective_icp::LoadMap::Request &req, cpt_selective_icp::LoadMap::Response &res);
+  bool loadMapWithOffset(cgal_msgs::Transformation::Request &req, cgal_msgs::Transformation::Response &res);
 
   /**
    * Load parameters for libpointmatcher from .yaml.
