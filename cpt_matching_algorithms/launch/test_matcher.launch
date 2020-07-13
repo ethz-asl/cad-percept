@@ -2,7 +2,7 @@
 <launch>
     <!-- declare arg to be passed in -->
     <arg name="cad_file" default="$(find cpt_matching_algorithms)/resources/arche/arche.json" />
-    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set_garage_bag/scan240.bag" /> 
+    <arg name="lidar_scan" default="$(find cpt_matching_algorithms)/../../data_set_arche_13_30_10_single/scan900.bag" /> 
     <arg name="lidar_settings" default="$(find cpt_matching_algorithms)/config/sim_lidar_config.yaml" />
     <arg name="lidar_frame" value="marker_pose" />
 

@@ -116,7 +116,7 @@ void TestMatcher::getGroundTruth(const geometry_msgs::PointStamped &gt_in) {
     // Transform gt into map frame
     ground_truth_[0] = -gt_in.point.x;
     ground_truth_[1] = -gt_in.point.y;
-    ground_truth_[2] = gt_in.point.z;
+    ground_truth_[2] = -gt_in.point.z;
     std::cout << "Got ground truth data" << std::endl;
     ground_truth_ready_ = true;
 

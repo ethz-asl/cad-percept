@@ -1,7 +1,7 @@
 # Sample density for map
 mapSamplingDensity: 20
 
-usetoyproblem: true
+usetoyproblem: false
 
 #Select Matcher
 Matcher: PlaneMatcher # GoICP, PlaneMatcher
@@ -15,7 +15,7 @@ GoICPdownsample: "1000"
 
 # Filters
 useStructureFilter: true
-StructureThreshold: 150
+StructureThreshold: 0
 
 useVoxelCentroidFilter: true
 Voxelsearchradius: 0.2
