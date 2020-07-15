@@ -140,8 +140,8 @@ void PlaneExtractor::iterRhtPlaneExtraction(std::vector<PointCloud<PointXYZ>> &e
 
   for (int iter = 0; iter < config.num_rht_iter && inlier_over_threshold; ++iter) {
     // Perform RHT
-    rhtVote(config.num_vote_iter, config.dist_thresh, config.min_area, lidar_scan, removed_pc_to_pc,
-            accumulator);
+    rhtVote((float)(removed_pc_to_pc.size() / lidar_scan.size()) * config.num_vote_iter,
+            config.dist_thresh, config.min_area, lidar_scan, removed_pc_to_pc, accumulator);
 
     // Evaluation
     inlier_ids =
