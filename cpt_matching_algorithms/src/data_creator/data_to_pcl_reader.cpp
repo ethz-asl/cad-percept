@@ -66,8 +66,9 @@ int main(int argc, char **argv) {
 
         file_name = save_folder + "/ground_truth_" + std::to_string(scan_nr) + ".txt";
         std::ofstream ground_truth_file(file_name);
-        ground_truth_file << -(*ground_truth).point.x << " " << -(*ground_truth).point.y << " "
-                          << (*ground_truth).point.z << std::endl;
+        ground_truth_file << -(*ground_truth).point.y + 10.585 << " "
+                          << (*ground_truth).point.x + 7.615 << " " << (*ground_truth).point.z
+                          << std::endl;
         ground_truth_file.close();
 
         std::cout << "Created scan nr. " << std::to_string(scan_nr) << std::endl;

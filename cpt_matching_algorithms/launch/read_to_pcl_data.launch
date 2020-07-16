@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
 	<!-- declare arg to be passed in -->
-	<arg name="data_file" default="$(find cpt_matching_algorithms)/../../smb_2020-07-01-13-30-10_frame_turned_down.bag" />
-	<arg name="save_target" default="$(find cpt_matching_algorithms)/../../data_set_arche_13_30_10" />
+	<arg name="data_file" default="$(find cpt_matching_algorithms)/../../arche_18_22_12.bag" />
+	<arg name="save_target" default="$(find cpt_matching_algorithms)/../../data_set_arche_18_22_12" />
 	<arg name="topic_of_lidar_in_bag" default="/rslidar_points" />
 
     <node name="data_to_pcl_reader" pkg="cpt_matching_algorithms" type="data_to_pcl_reader" output="screen">

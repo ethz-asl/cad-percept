@@ -7,14 +7,14 @@ lidarAngularResolution: 2
 accuracyOfLidar: 0.0
 
 # Test Settings
-testIterations: 10
-start_scan_nr: 0
-end_scan_nr: 978
+testIterations: 0
+start_scan_nr: 290
+end_scan_nr: 300
 
 # Settings for Plane Matcher
 
 # Filters
-StructureThreshold: 150
+StructureThreshold: -1
 Voxelsearchradius: 0.2
 
 # Plane Extraction
