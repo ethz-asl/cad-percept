@@ -29,7 +29,7 @@ class BoundedPlanes {
   pcl::PointCloud<pcl::PointNormal> getPlaneCentroidsAndNormals();
 
   // Get info if point projection lies on plane
-  bool isProjectionOfPointOnPlane(Eigen::Vector3d point, int map_plane_nr);
+  bool isProjectionOfPointOnPlane(Eigen::Vector3d point, int map_plane_nr, float tol);
 
   // Get number of planes
   int getPlaneNumber();

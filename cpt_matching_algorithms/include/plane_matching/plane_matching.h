@@ -31,6 +31,7 @@ class PlaneMatch {
   // Loads Config for RHT from Server
   struct prrusConfig {
     float translation_penalty;
+    float tol;
   };
   static prrusConfig loadPrrusConfigFromServer();
 
@@ -58,7 +59,7 @@ class PlaneMatch {
                                   Transformation &transform, float &transl_error,
                                   Eigen::Quaterniond rotation,
                                   const pcl::PointCloud<pcl::PointNormal> &scan_planes,
-                                  BoundedPlanes map_planes, float translation_penalty);
+                                  BoundedPlanes map_planes, float translation_penalty, float tol);
   // Helper functions
   static Eigen::Vector3d PointToEigenVector(pcl::PointNormal point);
   static Eigen::Vector3d NormalToEigenVector(pcl::PointNormal point);
