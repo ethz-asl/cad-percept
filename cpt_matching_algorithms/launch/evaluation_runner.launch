@@ -14,7 +14,7 @@
         <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_matching_config.yaml" />
 
         <param name="test_results" value="$(find cpt_matching_algorithms)/config/test_results.txt" />
-        <param name="data_set_folder" value="$(find cpt_matching_algorithms)/../data_sets_icra/data_set_arche_13_30_10" />
+        <param name="data_set_folder" value="$(find cpt_matching_algorithms)/../data_sets_icra/data_set_arche_18_22_12" />
         <param name="tfLidarFrame" value="$(arg lidar_frame)" />
         <param name="tfMapFrame" value="/map" />
     </node>

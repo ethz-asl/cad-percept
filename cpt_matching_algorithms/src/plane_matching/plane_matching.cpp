@@ -9,7 +9,8 @@ PlaneMatch::prrusConfig PlaneMatch::loadPrrusConfigFromServer() {
   ros::NodeHandle nh_private("~");
 
   prrusConfig config;
-  config.translation_penalty = nh_private.param<float>("LineSegmentRansacTranErrorPenalty", 20);
+  config.translation_penalty = nh_private.param<float>("PRRUSTranErrorPenalty", 20);
+  config.tol_to_plane = nh_private.param<float>("PRRUSTolToPlane", 0.5);
 
   return config;
 }
@@ -71,7 +72,7 @@ float PlaneMatch::prrus(Transformation &transform,
   for (auto candidate_assignment : assignments) {
     getTranslationError(candidate_assignment, actual_transformation, actual_error,
                         rotations_of_assignments[assignment_nr], scan_planes, map_planes,
-                        config.translation_penalty);
+                        config.translation_penalty, config.tol_to_plane);
     if (actual_error < min_error) {
       transform = actual_transformation;
       min_error = actual_error;
@@ -178,7 +179,8 @@ void PlaneMatch::getTranslationError(std::vector<std::pair<size_t, size_t>> plan
                                      Transformation &transform, float &transl_error,
                                      Eigen::Quaterniond rotation,
                                      const pcl::PointCloud<pcl::PointNormal> &scan_planes,
-                                     BoundedPlanes map_planes, float translation_penalty) {
+                                     BoundedPlanes map_planes, float translation_penalty,
+                                     float tol_to_plane) {
   transl_error = 0;
 
   // Get all map planes
@@ -223,7 +225,7 @@ void PlaneMatch::getTranslationError(std::vector<std::pair<size_t, size_t>> plan
       // Take reference if plane is in matching
       // Only accept point as possible match if projection lies on this plane
       if (map_planes.isProjectionOfPointOnPlane(PointToEigenVector(scan_plane),
-                                                plane_assignment.back().second)) {
+                                                plane_assignment.back().second, tol_to_plane)) {
         // Add plane as (single) candidate to error calculation
         actual_translation_error.push_back(std::abs(
             (PointToEigenVector(scan_plane) -
@@ -239,7 +241,8 @@ void PlaneMatch::getTranslationError(std::vector<std::pair<size_t, size_t>> plan
           continue;
         }
         // Only accept point as possible match if projection lies on this plane
-        if (!map_planes.isProjectionOfPointOnPlane(PointToEigenVector(scan_plane), map_plane_nr)) {
+        if (!map_planes.isProjectionOfPointOnPlane(PointToEigenVector(scan_plane), map_plane_nr,
+                                                   tol_to_plane)) {
           map_plane_nr++;
           continue;
         }

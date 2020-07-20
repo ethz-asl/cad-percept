@@ -9,7 +9,7 @@ accuracyOfLidar: 0.0
 # Test Settings
 testIterations: 10
 start_scan_nr: 0
-end_scan_nr: 955
+end_scan_nr: 741
 
 # Settings for Plane Matcher
 

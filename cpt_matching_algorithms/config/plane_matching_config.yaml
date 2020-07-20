@@ -1,5 +1,6 @@
 # PRRUS
-LineSegmentRansacTranErrorPenalty: 20
+PRRUSTranErrorPenalty: 20
+PRRUSTolToPlane: 0.1
 
 
 
