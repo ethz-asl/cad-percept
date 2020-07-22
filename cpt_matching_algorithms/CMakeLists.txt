@@ -17,8 +17,25 @@ cs_add_library(test_matcher
      src/plane_extraction/plane_extraction.cpp          
      src/plane_extraction/rht_accumulator.cpp
      src/plane_matching/plane_matching.cpp
-     src/test_matcher/evaluation_runner.cpp
 	)
+cs_add_library(evaluation_runner_lib
+     src/test_matcher/matcher/go_icp_matcher.cpp
+     src/test_matcher/bounded_planes.cpp
+     src/cloud_filter/cloud_filter.cpp
+     src/plane_extraction/plane_extraction.cpp          
+     src/plane_extraction/rht_accumulator.cpp
+     src/plane_matching/plane_matching.cpp
+     src/test_matcher/evaluation_runner.cpp
+     )
+cs_add_library(evaluation_goicp_lib
+     src/test_matcher/matcher/go_icp_matcher.cpp
+     src/test_matcher/bounded_planes.cpp
+     src/cloud_filter/cloud_filter.cpp
+     src/plane_extraction/plane_extraction.cpp          
+     src/plane_extraction/rht_accumulator.cpp
+     src/plane_matching/plane_matching.cpp
+     src/test_matcher/evaluation_go_icp.cpp
+     )     
 
 
 #############
@@ -39,10 +56,13 @@ cs_add_executable(sim_lidar_node
 cs_add_executable(evaluation_runner_node
     src/test_matcher/evaluation_runner.cpp
     )
+cs_add_executable(evaluation_go_icp_node
+    src/test_matcher/evaluation_go_icp.cpp
+    )
 
 target_link_libraries(test_matcher_node test_matcher  yaml-cpp)
-target_link_libraries(evaluation_runner_node test_matcher yaml-cpp)
-
+target_link_libraries(evaluation_runner_node evaluation_runner_lib yaml-cpp)
+target_link_libraries(evaluation_go_icp_node evaluation_goicp_lib yaml-cpp)
 
 #############
 ## Testing ##

@@ -1,0 +1,7 @@
+useEvalGoICP: false
+makeGoICPTest: true
+maxTestIter: 2
+GoICPdownsample: "1000"
+
+
+

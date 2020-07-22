@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+   <node name="evaluation_go_icp"  pkg="cpt_matching_algorithms" type="evaluation_go_icp_node" output="screen" launch-prefix="tmux split-window -h">
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/evaluation_go_icp_config.yaml"/>
+
+        <param name="goicp_folder" value="$(find go_icp_catkin)"/>
+        <param name="cache_folder" value="$(find cpt_matching_algorithms)/cache/" />
+        <param name="construct_file" value="$(find cpt_matching_algorithms)/resources/construct.off" />
+
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_extraction_config.yaml"/>
+        <rosparam command="load" file="$(find cpt_matching_algorithms)/config/plane_matching_config.yaml" />
+
+        <param name="test_results" value="$(find cpt_matching_algorithms)/config/test_results.txt" />
+    </node>
+
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cpt_matching_algorithms)/config/rviz/rviz_go_icp_eval.yaml" />
+
+</launch>
