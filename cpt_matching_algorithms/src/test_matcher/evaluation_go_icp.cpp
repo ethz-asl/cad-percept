@@ -9,6 +9,9 @@
 using namespace cad_percept;
 using namespace matching_algorithms;
 
+typedef PointMatcher<float> PM;
+typedef PM::DataPoints DP;
+
 int main(int argc, char** argv) {
   ros::init(argc, argv, "matcher_test");
   ros::NodeHandle nh;
@@ -47,9 +50,13 @@ int main(int argc, char** argv) {
 
   std::ofstream actuel_file(test_result_file);
 
+  std::cout << "Press enter as soon everything is ready" << std::endl;
+  std::cin.ignore();
+
   // Make a short test using the demo
   // Read demo examples
   if (useGoICP && makeGoICPTest) {
+    std::cout << "Start test of GoICP with provided demo" << std::endl;
     pcl::PointCloud<pcl::PointXYZ> data_bunny;
     pcl::PointCloud<pcl::PointXYZ> model_bunny;
 
@@ -89,19 +96,22 @@ int main(int argc, char** argv) {
 
     // Transform
     pcl::transformPointCloud(data_bunny, data_bunny, res_transform);
-    std::cout << res_transform << std::endl;
 
-    model_bunny.header.frame_id = "map";
-    data_bunny.header.frame_id = "map";
-    scan_pub.publish(data_bunny.makeShared());
-    map_pub.publish(model_bunny.makeShared());
+    DP ref_dp_map_bunny = cpt_utils::pointCloudToDP(model_bunny);
+    map_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_map_bunny, "map",
+                                                                       ros::Time::now()));
+    DP ref_dp_scan_bunny = cpt_utils::pointCloudToDP(data_bunny);
+    scan_pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_scan_bunny, "map",
+                                                                        ros::Time::now()));
 
     ros::spinOnce();
     std::cout << "Demo processed, press enter to continue..." << std::endl;
     std::cin.ignore();
   }
 
-  map_pub.publish(map_point_cloud.makeShared());
+  DP ref_dp_map = cpt_utils::pointCloudToDP(map_point_cloud);
+  map_pub.publish(
+      PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_map, "map", ros::Time::now()));
 
   // Evaluation
   pcl::PointCloud<pcl::PointXYZ> transformed_scan;
@@ -127,11 +137,11 @@ int main(int argc, char** argv) {
   pcl::PointCloud<pcl::PointNormal> scan_planes;
 
   for (int i = 0; i < max_test_iterations; i++) {
-    gt_transform(0, 3) = 0;
-    gt_transform(1, 3) = 0;
+    gt_transform(0, 3) = (double)(std::rand() % 500) * 0.1 - 25;
+    gt_transform(1, 3) = (double)(std::rand() % 500) * 0.1 - 25;
     // Sample along z-axis (x, y fixed to largest vertical axis inside construct), rotation
     // uniform
-    gt_transform(2, 3) = (double)(std::rand() % 10) * 0.1 + 0.5;
+    gt_transform(2, 3) = (double)(std::rand() % 500) * 0.1 - 25;
     // Uniform sampling
     gt_transform.block(0, 0, 3, 3) = (Eigen::Matrix3d)(
         Eigen::AngleAxisd((std::rand() % 30) * M_PI / 15 - M_PI / 2, Eigen::Vector3d::UnitX()) *
@@ -146,7 +156,9 @@ int main(int argc, char** argv) {
       t_end = std::chrono::steady_clock::now();
 
       pcl::transformPointCloud(transformed_scan, transformed_scan, res_transform);
-      scan_pub.publish(transformed_scan.makeShared());
+      DP ref_dp_scan = cpt_utils::pointCloudToDP(transformed_scan);
+      scan_pub.publish(
+          PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_scan, "map", ros::Time::now()));
     } else {  // use PRRUS
       t_start = std::chrono::steady_clock::now();
 
@@ -189,6 +201,7 @@ int main(int argc, char** argv) {
         i++;
       }
       PlaneExtractor::visualizePlane(extracted_planes, scan_pub, "map");
+      std::cin.ignore();
       extracted_planes.clear();
       plane_normals.clear();
       scan_planes.clear();
@@ -196,6 +209,7 @@ int main(int argc, char** argv) {
     ros::spinOnce();
 
     // Write to testresults
+    res_transform = res_transform.inverse();
     gt_translation = Eigen::Vector3d(gt_transform(0, 3), gt_transform(1, 3), gt_transform(2, 3));
     gt_rotation = Eigen::Quaterniond((Eigen::Matrix3d)gt_transform.block(0, 0, 3, 3));
     transform_TR(0, 0) = res_transform(0, 3);

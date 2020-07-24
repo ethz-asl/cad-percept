@@ -22,7 +22,7 @@ iterAccumulatorPsiResolution: 0.02 # resolution of psi in discretization of accu
 iterAccumulatorKMaxSuppress: 5 # neighborhood (max norm) of Non-maxima Suppression, set to zero to deactivate
 iterAccumulatorMinThreshold: 30 # Threshold for votes such that plane gets detected
 
-iterRHTIter: 8 # number of rht iterations
+iterRHTIter: 12 # number of rht iterations
 iterRHTIterPerIter: 1000000 # sample iterations per iteration
 iterRHTTolDist: 2   # makes sure points are not too far apart
 iterRHTMinArea: 0.5 # min area spanned by two vectors created by three reference points (makes sure points are not the same or collinear)
