@@ -1,5 +1,5 @@
-useEvalGoICP: false
-makeGoICPTest: false
+useEvalGoICP: true
+makeGoICPTest: true
 maxTestIter: 100
 GoICPdownsample: "1000"
 
