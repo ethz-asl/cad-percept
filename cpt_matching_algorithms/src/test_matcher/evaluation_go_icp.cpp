@@ -201,7 +201,6 @@ int main(int argc, char** argv) {
         i++;
       }
       PlaneExtractor::visualizePlane(extracted_planes, scan_pub, "map");
-      std::cin.ignore();
       extracted_planes.clear();
       plane_normals.clear();
       scan_planes.clear();
