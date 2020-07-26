@@ -25,12 +25,15 @@ int main(int argc, char** argv) {
   bool makeGoICPTest = nh_private.param<bool>("makeGoICPTest", true);
   std::string goicp_location = nh_private.param<std::string>("goicp_folder", "fail");
   int max_test_iterations = nh_private.param<int>("maxTestIter", 1);
+  float noise_variance = nh_private.param<float>("noiseVariance", 0);
   std::string test_result_file = nh_private.param<std::string>("test_results", "fail");
   std::string cache_folder = nh_private.param<std::string>("cache_folder", "fail");
   std::string path_to_construct = nh_private.param<std::string>("construct_file", "fail");
 
   Eigen::Matrix4d res_transform;
   Eigen::Matrix4d gt_transform;
+  std::default_random_engine generator;
+  std::normal_distribution<float> distribution(0.0, std::sqrt(noise_variance));
   ros::Publisher scan_pub = nh.advertise<sensor_msgs::PointCloud2>("scan", 1);
   ros::Publisher map_pub = nh.advertise<sensor_msgs::PointCloud2>("map", 1);
 
@@ -64,7 +67,7 @@ int main(int argc, char** argv) {
     pcl::PointXYZ demo_points;
     std::ifstream demo_files;
     int number_demo_points;
-    demo_files.open("model_bunny.txt");
+    demo_files.open("data_bunny.txt");
     demo_files >> number_demo_points;
     for (int point = 0; point < number_demo_points; ++point) {
       demo_files >> demo_points.x;
@@ -149,6 +152,13 @@ int main(int argc, char** argv) {
         Eigen::AngleAxisd((std::rand() % 30) * M_PI / 15 - M_PI / 2, Eigen::Vector3d::UnitZ()));
 
     pcl::transformPointCloud(scan_point_cloud, transformed_scan, gt_transform);
+
+    // Add noise
+    for (int i = 0; i < transformed_scan.size(); ++i) {
+      transformed_scan[i].x = transformed_scan[i].x + distribution(generator);
+      transformed_scan[i].y = transformed_scan[i].y + distribution(generator);
+      transformed_scan[i].z = transformed_scan[i].z + distribution(generator);
+    }
 
     if (useGoICP) {
       t_start = std::chrono::steady_clock::now();

@@ -1,7 +1,8 @@
-useEvalGoICP: true
-makeGoICPTest: true
-maxTestIter: 100
-GoICPdownsample: "1000"
+useEvalGoICP: false
+makeGoICPTest: false
+maxTestIter: 2
+noiseVariance: 0.001
+GoICPdownsample: "1000" # demo (data_bunny -> model_bunny) if this value is set to 900 or below
 
 
 

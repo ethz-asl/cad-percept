@@ -4,7 +4,7 @@ AccumulatorChoice: 2 # accumulator choice (1: array, 2: ball)
 AccumulatorRhoResolution: 0.05 # resolution of rho in discretization of accumulator
 AccumulatorThetaResolution: 0.02 # resolution of theta in discretization of accumulator
 AccumulatorPsiResolution: 0.02 # resolution of psi in discretization of accumulator
-AccumulatorThreshold: 30 # Threshold for votes such that plane gets detected
+AccumulatorThreshold: 10 # Threshold for votes such that plane gets detected
 AccumulatorKMaxSuppress: 5 # neighborhood (max norm) of Non-maxima Suppression, set to zero to deactivate
 
 RHTMaxIter: 1000000 # sample iterations
