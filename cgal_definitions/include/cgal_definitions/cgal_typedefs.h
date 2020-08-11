@@ -53,20 +53,6 @@ typedef CGAL::Aff_transformation_3<Kernel> Transformation;
 typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef std::shared_ptr<Polyhedron> PolyhedronPtr;
 
-// Shape detection typedefs
-typedef CGAL::Exact_predicates_inexact_constructions_kernel ShapeKernel;
-typedef ShapeKernel::FT FT;
-typedef std::pair<ShapeKernel::Point_3, ShapeKernel::Vector_3> Point_with_normal;
-typedef std::vector<Point_with_normal> Pwn_vector;
-typedef CGAL::First_of_pair_property_map<Point_with_normal> Point_map;
-typedef CGAL::Second_of_pair_property_map<Point_with_normal> Normal_map;
-typedef CGAL::Shape_detection_3::Shape_detection_traits<ShapeKernel, Pwn_vector, Point_map,
-                                                        Normal_map>
-    Traits;
-typedef CGAL::Shape_detection_3::Efficient_RANSAC<Traits> Efficient_RANSAC;
-typedef CGAL::Shape_detection_3::Region_growing<Traits> Region_growing;
-typedef CGAL::Shape_detection_3::Plane<Traits> ShapePlane;
-
 // datastructures
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
