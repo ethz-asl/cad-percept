@@ -6,14 +6,9 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Grid1
-        - /TriangleMeshDisplay1
         - /PointCloud21
         - /PointCloud22
-        - /Axes1
-        - /Axes2
         - /PointCloud23
-        - /PointCloud24
       Splitter Ratio: 0.5
     Tree Height: 848
   - Class: rviz/Selection
@@ -42,34 +37,6 @@ Toolbars:
 Visualization Manager:
   Class: ""
   Displays:
-    - Alpha: 0.5
-      Cell Size: 1
-      Class: rviz/Grid
-      Color: 160; 160; 164
-      Enabled: true
-      Line Style:
-        Line Width: 0.029999999329447746
-        Value: Lines
-      Name: Grid
-      Normal Cell Count: 0
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Plane: XY
-      Plane Cell Count: 10
-      Reference Frame: <Fixed Frame>
-      Value: true
-    - Alpha: 0.800000011920929
-      Backface Culling: false
-      Class: cgal_visualizations/TriangleMeshDisplay
-      Edge Color: 186; 189; 182
-      Enabled: true
-      Name: TriangleMeshDisplay
-      Surface Color: 255; 255; 255
-      Topic: /mesh_publisher/mesh_out
-      Unreliable: false
-      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -79,7 +46,7 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 239; 41; 41
+      Color: 252; 233; 79
       Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
@@ -93,9 +60,9 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.10000000149011612
+      Size (m): 0.02500000037252903
       Style: Spheres
-      Topic: /matched_point_cloud
+      Topic: /pub1
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -123,53 +90,9 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.10000000149011612
+      Size (m): 0.029999999329447746
       Style: Flat Squares
-      Topic: /sampled_map
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Class: rviz/Axes
-      Enabled: false
-      Length: 1
-      Name: Axes
-      Radius: 0.10000000149011612
-      Reference Frame: marker_pose
-      Value: false
-    - Class: rviz/Axes
-      Enabled: false
-      Length: 1
-      Name: Axes
-      Radius: 0.10000000149011612
-      Reference Frame: <Fixed Frame>
-      Value: false
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: RGB8
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: PointCloud2
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.10000000149011612
-      Style: Flat Squares
-      Topic: /extracted_planes
+      Topic: /pub2
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -197,9 +120,9 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.5
+      Size (m): 0.03999999910593033
       Style: Flat Squares
-      Topic: /test_extracted
+      Topic: /pub3
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -232,25 +155,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 122.34253692626953
+      Distance: 77.54055786132812
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 9.066710472106934
-        Y: 12.950167655944824
-        Z: -39.34779357910156
+        X: 23.801380157470703
+        Y: 8.365074157714844
+        Z: -31.900096893310547
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.1897965669631958
+      Pitch: 0.8947968482971191
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.157259941101074
+      Yaw: 3.4722533226013184
     Saved: ~
 Window Geometry:
   Displays:

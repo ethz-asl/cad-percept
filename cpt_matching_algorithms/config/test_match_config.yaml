@@ -15,7 +15,7 @@ GoICPdownsample: "1000"
 
 # Filters
 useStructureFilter: true
-StructureThreshold: 0
+StructureThreshold: 150
 
 useVoxelCentroidFilter: true
 Voxelsearchradius: 0.2
