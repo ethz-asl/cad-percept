@@ -13,17 +13,21 @@ Eigen::Matrix3d MeshManifoldInterface::J(const Eigen::Vector3d x) const {
   return faces.second.getJacobianWrt(faces.first);
 }
 
-void MeshManifoldInterface::convertPosition(const Eigen::Vector3d &q,
-                                            const Eigen::Vector3d &q_dot,
-                                            Eigen::Vector3d *x,
-                                            Eigen::Vector3d *x_dot) const {
-
-  *x = mapping_.point3DtoUVH(q);
-  *x_dot = J(*x) * q_dot;
+MeshManifoldInterface::StateX MeshManifoldInterface::convertToX(const StateQ &state_q) const {
+  StateX uvh_state;
+  uvh_state.pos_ = mapping_.point3DtoUVH(state_q.pos_);
+  uvh_state.vel_ = J(uvh_state.pos_) * state_q.vel_;
+  return uvh_state;
 }
 
-Eigen::Matrix3d MeshManifoldInterface::J(const Eigen::Vector3d &x, const Eigen::Vector3d &x_dot) const {
-  return J(x);
+MeshManifoldInterface::StateQ MeshManifoldInterface::convertToQ(const StateX &state_x) const {
+  std::cout << "WARNING: MeshManifoldInterface::convertToQ not implemented" << std::endl;
+  return StateQ();
+}
+
+
+Eigen::Matrix3d MeshManifoldInterface::J(const StateX &state) const {
+  return J(state.pos_);
 }
 
 }  // namespace planning

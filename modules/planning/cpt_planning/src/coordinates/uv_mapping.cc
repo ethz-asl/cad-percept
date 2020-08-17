@@ -78,7 +78,7 @@ void UVMapping::createMappings() {
   CoordinateMeshBuilder builder(mesh_3d_->getMeshRef(), vertex_map_);
   cgal::Polyhedron mesh_2d;
   mesh_2d.delegate(builder);
-  mesh_2d_ = std::make_shared<cgal::MeshModel>(mesh_2d);
+  mesh_2d_ = std::make_shared<cgal::MeshModel>(mesh_2d, false);
   mesh_2d_->transform(cgal::eigenTransformationToCgalTransformation(uv_transform_.matrix()));
 
   map_2d_to_3d_.insert(mesh_2d_->getMeshRef().facets_begin(), mesh_2d_->getMeshRef().facets_end(),
