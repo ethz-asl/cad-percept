@@ -6,6 +6,7 @@
 *.lo
 *.o
 *.obj
+*.pyc
 
 # Precompiled Headers
 *.gch
@@ -26,11 +27,18 @@
 *.a
 *.lib
 
+# Python stuff
+*.pyc
+
 # Executables
 *.exe
 *.out
 *.app
 
-# CLION excludes
+# Editor excludes
 **/cmake-build-debug/*
 **/.idea/*
+**/.vscode/
+
+# ignore marker state
+cpt_selective_icp/state
