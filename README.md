@@ -11,8 +11,8 @@ These modules might pull in arbitrary dependencies and are currently not guarant
 
 # Installation
 
-Note that cad-percept was updated to CGAL Version 5. For the cgal_catkin dependency, please use the appropriate branch (feature/5.0.3) until it is merged.
-
+Note that cad-percept was updated to CGAL Version 5.
+The cgal_catkin package is already updated to check out version 5.0.3 by default.
 ## Install dependencies
 See the [maplab tutorial](https://github.com/ethz-asl/maplab/wiki/Installation-Ubuntu#installing-on-ubuntu-1404-1604-experimental-1804)
 for instructions to install ros and ccache.
