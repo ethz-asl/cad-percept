@@ -5,13 +5,12 @@
 #ifndef CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 #define CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 
-#include <CGAL/Simple_cartesian.h>
-
 #include <CGAL/Bbox_3.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Polygon_mesh_processing/measure.h>
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/Polyhedron_items_with_id_3.h>
+#include <CGAL/Simple_cartesian.h>
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 #include <CGAL/point_generators_3.h>
@@ -24,10 +23,6 @@
 
 // normal computation
 #include <CGAL/Polygon_mesh_processing/compute_normal.h>
-
-// shape detection
-#include <CGAL/Shape_detection_3.h>
-
 #include <CGAL/Polygon_mesh_processing/measure.h>
 #include <CGAL/Polygon_mesh_processing/stitch_borders.h>
 #include <CGAL/intersections.h>
