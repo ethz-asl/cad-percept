@@ -10,33 +10,35 @@
 #include <pcl/surface/convex_hull.h>
 #include <pcl_ros/point_cloud.h>
 #include <boost/circular_buffer.hpp>
-#include "pointmatcher/PointMatcher.h"
+//#include "pointmatcher/PointMatcher.h"
 
 namespace cad_percept {
 namespace cpt_utils {
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+/*
+ * Kicking out libpointmatcher dependencies for now.
 typedef PointMatcher<float> PM;
 typedef PM::TransformationParameters TP;
 typedef PM::DataPoints DP;
 
-/**
+
  * Taking sequence of pointclouds from circular buffer which are relatively
  * close and building a map with them. 3D PointClouds need to be pre-aligned
  * in map_frame. Function never tested!
- */
+
 void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *pointcloud_out);
 
-/**
+
  * Convert a DP to a PointCloud
- */
+
 PointCloud dpToPointCloud(const DP &dppointcloud);
 
-/**
- * Convert a PointCloud to a DP
- */
-DP pointCloudToDP(const PointCloud &pointcloud);
 
+ * Convert a PointCloud to a DP
+
+DP pointCloudToDP(const PointCloud &pointcloud);
+*/
 /**
  * Transform a point cloud with an affine transform.
  */
@@ -51,8 +53,10 @@ void sample_pc_from_mesh(const cgal::Polyhedron &P, const int no_of_points, cons
 /**
  *  Projecting a PointCloud on a cgal::Plane using a cgal method.
  */
-void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3 &plane,
-                    PointCloud *cloud_out);
+/*
+ Removed, as shapekernels were removed from cgal_definitions
+ void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3 &plane,
+                    PointCloud *cloud_out);*/
 void projectToPlane(const PointCloud &cloud_in, const cgal::Plane &plane, PointCloud *cloud_out);
 
 /**
