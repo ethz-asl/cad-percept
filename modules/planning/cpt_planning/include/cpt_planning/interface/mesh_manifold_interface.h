@@ -18,7 +18,7 @@ class MeshManifoldInterface : public ManifoldInterface, public rmpcpp::GeometryB
   using StateX = rmpcpp::State<3>;
   using StateQ = rmpcpp::State<3>;
 
-  virtual StateX convertToX(const StateQ &state_q) const = 0;
+  virtual StateX convertToX(const StateQ &state_q) const;
   virtual StateQ convertToQ(const StateX &state_x) const;
 
  protected:

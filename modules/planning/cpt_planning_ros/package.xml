@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-    <name>cpt_ros</name>
+    <name>cpt_planning_ros</name>
     <version>0.0.1</version>
     <description>cpt_planning_ros</description>
 
@@ -24,10 +24,10 @@
     <depend>cgal_msgs</depend>
     <depend>cpt_utils</depend>
     <depend>cpt_planning</depend>
-    <depend>cpt_collision_manifolds</depend>
+    <!--<depend>cpt_collision_manifolds</depend>-->
     <depend>eigen_catkin</depend>
     <depend>roscpp</depend>
-    <depend>rmpflow</depend>
+    <depend>rmpcpp</depend>
     <depend>sensor_msgs</depend>
     <depend>pcl_ros</depend>
     <depend>mav_msgs</depend>
