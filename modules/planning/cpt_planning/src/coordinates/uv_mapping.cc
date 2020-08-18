@@ -139,7 +139,8 @@ Eigen::Vector3d UVMapping::point3DtoUVH(const Eigen::Vector3d &point3d) const {
 
   // translate point on manifold
   Eigen::Vector3d p_uvh;
-  p_uvh.topRows<2>() = (Eigen::Vector2d) face_3d.translateTo(face_uv, ppid.first);
+  Eigen::Vector2d temp = face_3d.translateTo(face_uv, ppid.first);
+  p_uvh.topRows<2>() = temp;
 
   // restore H coordinate as distance to actual point (should be perpendicular?)
   p_uvh.z() = face_3d.getNormal().dot(point3d - closest_on_manifold);

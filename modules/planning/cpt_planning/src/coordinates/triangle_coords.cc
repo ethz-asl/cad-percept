@@ -24,7 +24,8 @@ cgal::Vector3Return TriangleCoords<N>::toBarycentric(cgal::VectorIn<N> point_on_
   // works for 2d and 3d cartesian coordinates (barycentric coordinates are always 3d.)
   v0 = a2_ - a1_;
   v1 = a3_ - a1_;
-  v2 = static_cast<Eigen::Matrix<double, N, 1>>(point_on_triangle) - a1_;
+  Eigen::Matrix<double,N,1> point_as_eigen = point_on_triangle;
+  v2 = point_as_eigen - a1_;
 
   double d00 = v0.dot(v0);
   double d01 = v0.dot(v1);

@@ -21,8 +21,21 @@ class TriangleCoords {
   static_assert(N == 2 || N == 3, "TRIANGLECOORDS ARE ONLY IMPLEMENTED FOR 2D/3D TYPES.");
 
  public:
-  explicit TriangleCoords(cgal::VectorIn<N>& a1, cgal::VectorIn<N>& a2, cgal::VectorIn<N>& a3)
-      : a1_(a1), a2_(a2), a3_(a3) {}
+  explicit TriangleCoords(cgal::VectorIn<N> a1, cgal::VectorIn<N>& a2, cgal::VectorIn<N>& a3)
+      : a1_(a1.operator typename cgal::VectorAdap<N>::eigenVector()),
+        a2_(a2.operator typename cgal::VectorAdap<N>::eigenVector()),
+        a3_(a3.operator typename cgal::VectorAdap<N>::eigenVector()) {
+    /*  Weird casts above.
+     *  Reason: Eigen Changed the conversion constructors and this somehow
+     *  breaks casting directly from our VectorAdapters (VectorIn<N>..)
+     *  https://forum.kde.org/viewtopic.php?f=74&t=137768
+     *  to be fixed later.
+     *  Now this is an ugly hack to enforce casting.
+     *  Even static_cast didn't work as it should?
+     *
+     */
+
+  }
 
   cgal::VectorReturn<N> toCartesian(cgal::Vector3In barycentric) const;
 
@@ -35,10 +48,9 @@ class TriangleCoords {
 
   Eigen::Matrix<double, N, 1> getVertex(uint id) const;
 
-
   bool isInside(cgal::VectorIn<N> point) const;
 
-  template<int M>
+  template <int M>
   Eigen::Matrix<double, N, N> getJacobianWrt(const TriangleCoords<M>& other) const;
 
   Eigen::Matrix<double, N, 1> getNormal() const;
