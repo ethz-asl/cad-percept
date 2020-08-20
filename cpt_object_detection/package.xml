@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>cpt_object_detection</name>
+  <version>0.0.0</version>
+  <description>
+    ROS package to perform object detection of a point cloud and a loaded mesh model.
+  </description>
+
+  <author email="gasserl@mavt.ethz.ch">Laura Gasser</author>
+  <maintainer email="gasserl@mavt.ethz.ch">Laura Gasser</maintainer>
+
+  <license>BSD</license>
+
+</package>
