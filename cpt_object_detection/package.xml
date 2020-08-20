@@ -17,6 +17,9 @@
   <depend>roscpp</depend>
   <depend>message_generation</depend>
   <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>pcl_ros</depend>
   <depend>cgal_conversions</depend>
   <depend>cgal_definitions</depend>
   <depend>cgal_msgs</depend>
