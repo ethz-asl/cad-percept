@@ -15,8 +15,14 @@ class DetectionMatcher {
   ~DetectionMatcher() = default;
 
  private:
+  void advertiseTopics();
+
+  void visualizeObjectMesh(const std::string& frame_id,
+                           const ros::Publisher& publisher) const;
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
+
+  ros::Publisher object_mesh_pub_;
 
   cgal::MeshModel mesh_model_;
 };

@@ -45,6 +45,8 @@ class MeshFromJSON : public CGAL::Modifier_base<HDS> {
 
 class MeshModel {
  public:
+  MeshModel(const std::string &off_pathm, bool verbose = false);
+
   typedef std::shared_ptr<MeshModel> Ptr;
   static bool create(const std::string &filepath, MeshModel::Ptr *meshmodel_ptr,
                      bool verbose = false);

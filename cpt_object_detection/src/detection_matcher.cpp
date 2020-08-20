@@ -1,5 +1,8 @@
 #include "cpt_object_detection/detection_matcher.h"
 
+#include <cgal_msgs/TriangleMeshStamped.h>
+#include <cgal_conversions/mesh_conversions.h>
+
 namespace cad_percept {
 namespace object_detection {
 
@@ -7,11 +10,45 @@ DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
                                    const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      mesh_model_(nh_private.param<std::string>("off_model","fail")) {
+      mesh_model_(nh_private.param<std::string>("off_model", "fail")) {
+  advertiseTopics();
+
   LOG(INFO) << "[DetectionMatcher] Object mesh with "
-            << mesh_model_.getMesh().size_of_facets() << " facets and "
-            << mesh_model_.getMesh().size_of_vertices()
+            << mesh_model_.getMesh().size_of_facets()
+            << " facets and " << mesh_model_.getMesh().size_of_vertices()
             << " vertices";
+
+  // init test
+  bool visualize_object_on_startup = false;
+  nh_private_.param("visualize_object_on_startup",
+                    visualize_object_on_startup, visualize_object_on_startup);
+  if (visualize_object_on_startup) {
+    visualizeObjectMesh(detection_frame_id_, object_mesh_init_pub_);
+    LOG(INFO) << "[DetectionMatcher] Visualizing object";
+  }
+}
+
+void DetectionMatcher::advertiseTopics() {
+  object_mesh_pub_ =
+      nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh", 1, true);
+  LOG(INFO) << "[DetectionMatcher] Publishing object mesh to topic ["
+            << object_mesh_pub_.getTopic() << "]";
+}
+
+void DetectionMatcher::visualizeObjectMesh(
+    const std::string& frame_id, const ros::Publisher& publisher) const {
+  cgal_msgs::TriangleMeshStamped p_msg;
+
+  // triangle mesh to prob. msg
+  cgal_msgs::TriangleMesh t_msg;
+  cgal::Polyhedron mesh = mesh_model_.getMesh();
+  cgal::triangleMeshToMsg(mesh, &t_msg);
+  p_msg.mesh = t_msg;
+
+  p_msg.header.frame_id = frame_id;
+  p_msg.header.stamp = ros::Time::now();
+  p_msg.header.seq = 0;
+  publisher.publish(p_msg);
 }
 
 }

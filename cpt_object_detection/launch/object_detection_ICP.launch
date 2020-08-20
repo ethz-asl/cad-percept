@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+  <node name="object_detection_matcher" pkg="cpt_object_detection" type="cpt_object_detection_node">
+    <param name="off_model" value="$(find cpt_object_detection)/resources/Y10148_Torus Thick.off"/>
+    <param name="visualize_object_on_startup" value="true"/>
+  </node>
+
+</launch>

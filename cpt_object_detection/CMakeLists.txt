@@ -6,6 +6,22 @@ catkin_simple(ALL_DEPS_REQUIRED)
 
 add_definitions(-std=c++11 -Wall -Wextra)
 
+#############
+# LIBRARIES #
+#############
+cs_add_library(${PROJECT_NAME}
+    src/detection_matcher.cpp
+)
+
+############
+# BINARIES #
+############
+cs_add_executable(${PROJECT_NAME}_node
+    src/detection_matcher_node.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
+
 ##########
 # EXPORT #
 ##########
