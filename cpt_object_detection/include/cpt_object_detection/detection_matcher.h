@@ -23,6 +23,9 @@ class DetectionMatcher {
   void subscribeToTopics();
   void advertiseTopics();
 
+  void processPointcloud();
+  bool findInitialGuess(
+      kindr::minimal::QuatTransformationTemplate<float>* T_object_detection_init);
   void visualizeObjectMesh(const std::string& frame_id,
                            const ros::Publisher& publisher) const;
   void visualizeObjectPointcloud();
@@ -33,6 +36,7 @@ class DetectionMatcher {
   ros::Subscriber detection_pointcloud_sub_;
   ros::Publisher object_pointcloud_pub_;
   ros::Publisher object_mesh_pub_;
+  ros::Publisher object_mesh_init_pub_;
 
   sensor_msgs::PointCloud2 detection_pointcloud_msg_;
   sensor_msgs::PointCloud2 object_pointcloud_msg_;
