@@ -4,8 +4,10 @@
 #include <ros/ros.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
+#include <kindr/minimal/quat-transformation.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pointmatcher/PointMatcher.h>
 #include <sensor_msgs/PointCloud2.h>
 
 namespace cad_percept {
@@ -26,6 +28,13 @@ class DetectionMatcher {
   void processPointcloud();
   bool findInitialGuess(
       kindr::minimal::QuatTransformationTemplate<float>* T_object_detection_init);
+  bool performICP(
+      const kindr::minimal::QuatTransformationTemplate<float>& T_object_detection_init,
+      kindr::minimal::QuatTransformationTemplate<float>* T_object_detection);
+  void publishTransformation(
+      const kindr::minimal::QuatTransformationTemplate<float>& transform,
+      const ros::Time& stamp, const std::string& parent_frame_id,
+      const std::string& child_frame_id) const;
   void visualizeObjectMesh(const std::string& frame_id,
                            const ros::Publisher& publisher) const;
   void visualizeObjectPointcloud();
@@ -44,6 +53,7 @@ class DetectionMatcher {
   pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
 
   std::string detection_frame_id_;
+  std::string object_frame_id_;
   cgal::MeshModel mesh_model_;
 };
 

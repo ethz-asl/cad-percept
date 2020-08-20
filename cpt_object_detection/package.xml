@@ -26,4 +26,7 @@
   <depend>cgal_definitions</depend>
   <depend>cgal_msgs</depend>
   <depend>cpt_utils</depend>
+  <depend>libpointmatcher</depend>
+  <depend>libpointmatcher_ros</depend>
+
 </package>

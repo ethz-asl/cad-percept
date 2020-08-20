@@ -4,6 +4,7 @@
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <tf/transform_broadcaster.h>
+#include <pointmatcher_ros/point_cloud.h>
 #include <pcl/common/pca.h>
 #include <cpt_utils/pc_processing.h>
 
@@ -14,6 +15,7 @@ DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
                                    const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private),
+      object_frame_id_("object_detection_mesh"),
       mesh_model_(nh_private.param<std::string>("off_model", "fail")) {
   subscribeToTopics();
   advertiseTopics();
@@ -96,6 +98,22 @@ void DetectionMatcher::processPointcloud() {
                         detection_pointcloud_msg_.header.stamp,
                         detection_frame_id_, object_frame_id_ + "_init");
   visualizeObjectMesh(object_frame_id_ + "_init", object_mesh_init_pub_);
+
+  // ICP with initial guess
+  kindr::minimal::QuatTransformationTemplate<float> T_object_detection;
+  if(!performICP(T_object_detection_init, &T_object_detection)) {
+    LOG(WARNING) << "ICP from detection pointcloud to "
+                    "object pointcloud failed!";
+    T_object_detection.setIdentity();
+  }
+
+  // Publish results
+  publishTransformation(T_object_detection.inverse(),
+                        detection_pointcloud_msg_.header.stamp,
+                        detection_frame_id_, object_frame_id_);
+  object_pointcloud_msg_.header.stamp = detection_pointcloud_msg_.header.stamp;
+  visualizeObjectPointcloud();
+  visualizeObjectMesh(object_frame_id_, object_mesh_pub_);
   LOG(INFO) << "Time: " << (ros::WallTime::now() - time_start).toSec();
 }
 
@@ -160,6 +178,65 @@ bool DetectionMatcher::findInitialGuess(
       kindr::minimal::QuatTransformationTemplate<float>(rotation,
                                                         translation).inverse();
   LOG(INFO) << "Time initial guess: " << (ros::WallTime::now() - time_start).toSec();
+  return true;
+}
+
+bool DetectionMatcher::performICP(
+    const kindr::minimal::QuatTransformationTemplate<float>& T_object_detection_init,
+    kindr::minimal::QuatTransformationTemplate<float>* T_object_detection) {
+  CHECK(T_object_detection);
+  ros::WallTime time_start = ros::WallTime::now();
+
+  // setup data points
+  PointMatcher<float>::DataPoints points_object =
+      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(object_pointcloud_msg_);
+  PointMatcher<float>::DataPoints points_detection =
+      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(detection_pointcloud_msg_);
+
+  // setup icp
+  PointMatcher<float>::ICP icp;
+  icp.setDefault();
+
+  std::string name;
+  PointMatcherSupport::Parametrizable::Parameters params;
+
+  // Prepare reading filters
+  name = "MaxPointCountDataPointsFilter";
+  params["maxCount"] = "500";
+  std::shared_ptr<PointMatcher<float>::DataPointsFilter> maxCount_read =
+      PointMatcher<float>::get().DataPointsFilterRegistrar.create(name, params);
+  params.clear();
+
+  // Prepare reference filters
+  name = "MaxPointCountDataPointsFilter";
+  params["maxCount"] = "500";
+  std::shared_ptr<PointMatcher<float>::DataPointsFilter> maxCount_ref =
+      PointMatcher<float>::get().DataPointsFilterRegistrar.create(name, params);
+  params.clear();
+
+  // Build ICP solution
+  icp.readingDataPointsFilters.push_back(maxCount_read);
+  icp.referenceDataPointsFilters.push_back(maxCount_ref);
+
+  // icp: reference - object mesh, data - detection cloud
+  PointMatcher<float>::TransformationParameters T_object_detection_icp;
+  try {
+    T_object_detection_icp =
+        icp(points_detection, points_object, T_object_detection_init.getTransformationMatrix());
+  } catch (PointMatcher<float>::ConvergenceError& error_msg) {
+    LOG(WARNING) << "[DetectionMatcher] ICP was not successful!\n"
+                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+    return false;
+  }
+
+  kindr::minimal::QuatTransformationTemplate<float>::TransformationMatrix Tmatrix(
+      T_object_detection_icp);
+  *T_object_detection =
+      kindr::minimal::QuatTransformationTemplate<float>(Tmatrix);
+
+  LOG(INFO) << "Time ICP: " << (ros::WallTime::now() - time_start).toSec();
+  LOG(INFO) << "[DetectionMatcher] ICP on detection pointcloud "
+               "and object mesh vertices successful!";
   return true;
 }
 
