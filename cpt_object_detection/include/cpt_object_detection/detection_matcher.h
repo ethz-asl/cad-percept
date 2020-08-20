@@ -25,14 +25,19 @@ class DetectionMatcher {
 
   void visualizeObjectMesh(const std::string& frame_id,
                            const ros::Publisher& publisher) const;
+  void visualizeObjectPointcloud();
+  
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
 
   ros::Subscriber detection_pointcloud_sub_;
+  ros::Publisher object_pointcloud_pub_;
   ros::Publisher object_mesh_pub_;
 
   sensor_msgs::PointCloud2 detection_pointcloud_msg_;
+  sensor_msgs::PointCloud2 object_pointcloud_msg_;
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
+  pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
 
   std::string detection_frame_id_;
   cgal::MeshModel mesh_model_;

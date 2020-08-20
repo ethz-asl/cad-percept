@@ -19,11 +19,25 @@ DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
             << " facets and " << mesh_model_.getMesh().size_of_vertices()
             << " vertices";
 
+  // TODO(gasserl): find appropriate number of points to sample
+  constexpr int n_points = 1e3;
+  cpt_utils::sample_pc_from_mesh(mesh_model_.getMesh(), n_points, 0.0, &object_pointcloud_);
+  LOG(INFO) << "[DetectionMatcher] Converted object mesh with "
+            << mesh_model_.getMesh().size_of_facets() << " facets and "
+            << mesh_model_.getMesh().size_of_vertices()
+            << " vertices to a pointcloud with "
+            << object_pointcloud_.size() << " points";
+
+  pcl::toROSMsg(object_pointcloud_, object_pointcloud_msg_);
+  object_pointcloud_msg_.header.frame_id = object_frame_id_;
+
   // init test
   bool visualize_object_on_startup = false;
   nh_private_.param("visualize_object_on_startup",
                     visualize_object_on_startup, visualize_object_on_startup);
   if (visualize_object_on_startup) {
+    detection_pointcloud_msg_.header.stamp = ros::Time::now();
+    visualizeObjectPointcloud();
     visualizeObjectMesh(detection_frame_id_, object_mesh_init_pub_);
     LOG(INFO) << "[DetectionMatcher] Visualizing object";
   }
@@ -42,6 +56,10 @@ void DetectionMatcher::subscribeToTopics() {
 }
 
 void DetectionMatcher::advertiseTopics() {
+  object_pointcloud_pub_ =
+      nh_private_.advertise<sensor_msgs::PointCloud2>("object_pcl", 1, true);
+  LOG(INFO) << "[DetectionMatcher] Publishing object poincloud to topic ["
+            << object_pointcloud_pub_.getTopic() << "]";
   object_mesh_pub_ =
       nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh", 1, true);
   LOG(INFO) << "[DetectionMatcher] Publishing object mesh to topic ["
@@ -68,6 +86,10 @@ void DetectionMatcher::visualizeObjectMesh(
   p_msg.header.stamp = detection_pointcloud_msg_.header.stamp;
   p_msg.header.seq = 0;
   publisher.publish(p_msg);
+}
+
+void DetectionMatcher::visualizeObjectPointcloud() {
+  object_pointcloud_pub_.publish(object_pointcloud_msg_);
 }
 
 }
