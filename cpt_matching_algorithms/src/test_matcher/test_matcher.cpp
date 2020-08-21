@@ -181,14 +181,6 @@ void TestMatcher::match() {
                  Matching
   ///////////////////////////////////////*/
 
-  ros::Publisher pub1 = nh_.advertise<sensor_msgs::PointCloud2>("pub1", 1, true);
-  ros::Publisher pub2 = nh_.advertise<sensor_msgs::PointCloud2>("pub2", 1, true);
-  ros::Publisher pub3 = nh_.advertise<sensor_msgs::PointCloud2>("pub3", 1, true);
-
-  DP ref_scan_1 = cpt_utils::pointCloudToDP(lidar_scan_);
-  pub1.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan_1, tf_map_frame_,
-                                                                  ros::Time::now()));
-
   // Selection of mapper
   std::string matcher = nh_private_.param<std::string>("Matcher", "fail");
   std::string extractor = nh_private_.param<std::string>("PlaneExtractor", "fail");
@@ -201,19 +193,10 @@ void TestMatcher::match() {
     if (nh_private_.param<bool>("useStructureFilter", false)) {
       int structure_threshold = nh_private_.param<int>("StructureThreshold", 150);
       CloudFilter::filterStaticObject(structure_threshold, lidar_scan_, static_structure_cloud_);
-
-      DP ref_scan_2 = cpt_utils::pointCloudToDP(lidar_scan_);
-      pub2.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan_2, tf_map_frame_,
-                                                                      ros::Time::now()));
     }
     if (nh_private_.param<bool>("useVoxelCentroidFilter", false)) {
       float search_radius = nh_private_.param<float>("Voxelsearchradius", 0.01);
       CloudFilter::filterVoxelCentroid(search_radius, lidar_scan_);
-
-      DP ref_scan_3 = cpt_utils::pointCloudToDP(lidar_scan_);
-      pub3.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_scan_3, tf_map_frame_,
-                                                                      ros::Time::now()));
-      ros::spin();
     }
 
     if (lidar_scan_.size() == 0) {
@@ -239,6 +222,8 @@ void TestMatcher::match() {
       return;
     }
 
+    PlaneExtractor::visualizePlane(extracted_planes, scan_pub_, tf_map_frame_);
+    ros::spin();
     // Convert planes to PointNormal PointCloud
     pcl::PointNormal norm_point;
     pcl::PointXYZ plane_centroid;

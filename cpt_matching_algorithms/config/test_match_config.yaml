@@ -25,10 +25,10 @@ PlaneExtractor: iterRhtPlaneExtraction # pclPlaneExtraction, rhtPlaneExtraction,
                                    # iterRhtPlaneExtraction, cgalRegionGrowing
 
 # Plane Matching
-PlaneMatch: PRRUS # useMatchSolution, IntersectionPatternMatcher
+PlaneMatch: fail # useMatchSolution, IntersectionPatternMatcher
                   # PRRUS, LineSegmentRansac
 
 # Refinement
-applyICP: true
+applyICP: false
 
 
