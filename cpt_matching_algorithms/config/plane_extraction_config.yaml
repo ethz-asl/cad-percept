@@ -32,13 +32,13 @@ iterRHTMinNumberInlier: 10 # minimum number of inlier a plane must have
 # Settings of PCL
 
 PCLDistanceThreshold: 0.1 # max distance between points to plane
-PCLMaxNumPlane: 8 # max number of extracted planes
-PCLMinInlier: 15 # min number of inliers of detected planes
+PCLMaxNumPlane: 12 # max number of extracted planes
+PCLMinInlier: 10 # min number of inliers of detected planes
 
 
 # Settings of CGAL Region Growing
 
-CGALRegionGrowMinNumInliers: 80 # min number of inliers of detected planes
+CGALRegionGrowMinNumInliers: 10 # min number of inliers of detected planes
 CGALRegionGrowMaxDistToPlane: 0.07 # max distance between points to plane
 CGALRegionGrowMaxDistBetwPoint: 10 # max distance between points to points along plane
 CGALRegionGrowMaxDiffNormalThreshold: 0.9 # max difference between normals of points of the same plane

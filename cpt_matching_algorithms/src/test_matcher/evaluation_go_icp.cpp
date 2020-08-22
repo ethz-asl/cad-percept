@@ -23,12 +23,14 @@ int main(int argc, char** argv) {
 
   bool useGoICP = nh_private.param<bool>("useEvalGoICP", true);
   bool makeGoICPTest = nh_private.param<bool>("makeGoICPTest", true);
+  bool apply_icp = nh_private.param<bool>("applyIcp", true);
   std::string goicp_location = nh_private.param<std::string>("goicp_folder", "fail");
   int max_test_iterations = nh_private.param<int>("maxTestIter", 1);
   float noise_variance = nh_private.param<float>("noiseVariance", 0);
   std::string test_result_file = nh_private.param<std::string>("test_results", "fail");
   std::string cache_folder = nh_private.param<std::string>("cache_folder", "fail");
   std::string path_to_construct = nh_private.param<std::string>("construct_file", "fail");
+  int plane_extractor = nh_private.param<int>("plane_extractor", 1);
 
   Eigen::Matrix4d res_transform;
   Eigen::Matrix4d gt_transform;
@@ -113,6 +115,7 @@ int main(int argc, char** argv) {
   }
 
   DP ref_dp_map = cpt_utils::pointCloudToDP(map_point_cloud);
+  DP ref_dp_scan;
   map_pub.publish(
       PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_map, "map", ros::Time::now()));
 
@@ -138,6 +141,8 @@ int main(int argc, char** argv) {
   std::vector<Eigen::Vector3d> plane_normals;
   std::vector<pcl::PointCloud<pcl::PointXYZ>> extracted_planes;
   pcl::PointCloud<pcl::PointNormal> scan_planes;
+  PM::ICP icp;
+  icp.setDefault();
 
   for (int i = 0; i < max_test_iterations; i++) {
     gt_transform(0, 3) = (double)(std::rand() % 500) * 0.1 - 25;
@@ -166,14 +171,24 @@ int main(int argc, char** argv) {
       t_end = std::chrono::steady_clock::now();
 
       pcl::transformPointCloud(transformed_scan, transformed_scan, res_transform);
-      DP ref_dp_scan = cpt_utils::pointCloudToDP(transformed_scan);
+      ref_dp_scan = cpt_utils::pointCloudToDP(transformed_scan);
       scan_pub.publish(
           PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_scan, "map", ros::Time::now()));
     } else {  // use PRRUS
       t_start = std::chrono::steady_clock::now();
 
-      PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, transformed_scan,
-                                             PlaneExtractor::loadIterRhtConfigFromServer());
+      if (plane_extractor == 1) {
+        PlaneExtractor::iterRhtPlaneExtraction(extracted_planes, plane_normals, transformed_scan,
+                                               PlaneExtractor::loadIterRhtConfigFromServer());
+      } else if (plane_extractor == 2) {
+        PlaneExtractor::cgalRegionGrowing(extracted_planes, plane_normals, transformed_scan,
+                                          PlaneExtractor::loadCgalRgConfigFromServer());
+      } else if (plane_extractor == 3) {
+        PlaneExtractor::pclPlaneExtraction(extracted_planes, plane_normals, transformed_scan,
+                                           PlaneExtractor::loadPclRansacConfigFromServer());
+      } else {
+        std::cout << "Plane Extractor not found" << std::endl;
+      }
       // Convert planes to PointNormal PointCloud
       pcl::PointNormal norm_point;
       pcl::PointXYZ plane_centroid;
@@ -202,6 +217,14 @@ int main(int argc, char** argv) {
       transform_error = PlaneMatch::prrus(cgal_transform, scan_planes, *map_planes,
                                           PlaneMatch::loadPrrusConfigFromServer());
       cgal::cgalTransformationToEigenTransformation(cgal_transform, &res_transform);
+
+      // Refine with ICP
+      if (apply_icp) {
+        pcl::transformPointCloud(transformed_scan, transformed_scan, res_transform);
+        ref_dp_scan = cpt_utils::pointCloudToDP(transformed_scan);
+        // Add refinement to final transformation
+        res_transform = icp(ref_dp_scan, ref_dp_map).cast<double>() * res_transform;
+      }
       t_end = std::chrono::steady_clock::now();
 
       int i = 0;
@@ -247,8 +270,8 @@ int main(int argc, char** argv) {
                 << gt_rotation.w() << " " << gt_rotation.x() << " " << gt_rotation.y() << " "
                 << gt_rotation.z() << " " << transform_TR[0] << " " << transform_TR[1] << " "
                 << transform_TR[2] << " " << transform_TR[3] << " " << transform_TR[4] << " "
-                << transform_TR[5] << " " << transform_TR[6] << " " << translation_error << " "
-                << rotation_error << " " << duration.count() << " " << transform_error << std::endl;
+                << transform_TR[5] << " " << transform_TR[6] << " " << duration.count() << " "
+                << transform_error << std::endl;
   }
   actuel_file.close();
 
