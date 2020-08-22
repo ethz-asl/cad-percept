@@ -22,7 +22,7 @@ iterAccumulatorPsiResolution: 0.02 # resolution of psi in discretization of accu
 iterAccumulatorKMaxSuppress: 5 # neighborhood (max norm) of Non-maxima Suppression, set to zero to deactivate
 iterAccumulatorMinThreshold: 30 # Threshold for votes such that plane gets detected
 
-iterRHTIter: 12 # number of rht iterations
+iterRHTIter: 8 # number of rht iterations
 iterRHTIterPerIter: 1000000 # sample iterations per iteration
 iterRHTTolDist: 2   # makes sure points are not too far apart
 iterRHTMinArea: 0.5 # min area spanned by two vectors created by three reference points (makes sure points are not the same or collinear)
@@ -32,13 +32,13 @@ iterRHTMinNumberInlier: 10 # minimum number of inlier a plane must have
 # Settings of PCL
 
 PCLDistanceThreshold: 0.1 # max distance between points to plane
-PCLMaxNumPlane: 12 # max number of extracted planes
-PCLMinInlier: 10 # min number of inliers of detected planes
+PCLMaxNumPlane: 8 # max number of extracted planes
+PCLMinInlier: 15 # min number of inliers of detected planes
 
 
 # Settings of CGAL Region Growing
 
-CGALRegionGrowMinNumInliers: 10 # min number of inliers of detected planes
+CGALRegionGrowMinNumInliers: 80 # min number of inliers of detected planes
 CGALRegionGrowMaxDistToPlane: 0.07 # max distance between points to plane
 CGALRegionGrowMaxDistBetwPoint: 10 # max distance between points to points along plane
 CGALRegionGrowMaxDiffNormalThreshold: 0.9 # max difference between normals of points of the same plane
