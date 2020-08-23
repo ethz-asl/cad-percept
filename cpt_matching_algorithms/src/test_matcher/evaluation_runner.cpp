@@ -433,19 +433,32 @@ bool in_map_bit_map_lee_h[12][13]{
 
 };
 
+bool in_map_bit_arche_upper_room[9][5]{
+    // 5 6 7  8  9
+    {1, 1, 1, 1, 1},  // 2
+    {1, 1, 1, 1, 1},  // 3
+    {1, 1, 1, 1, 1},  // 4
+    {1, 1, 1, 1, 1},  // 5
+    {1, 1, 1, 1, 1},  // 6
+    {1, 1, 1, 1, 1},  // 7
+    {1, 1, 1, 1, 1},  // 8
+    {1, 1, 1, 1, 1},  // 9
+    {1, 1, 1, 1, 1},  // 10
+};
+
 void samplePose() {
   bool valid_position = false;
   int x_coord;
   int y_coord;
   while (!valid_position) {
-    x_coord = std::rand() % 61;
-    y_coord = std::rand() % 15;
-    if (in_map_bit_map_garage[x_coord][y_coord]) {
+    x_coord = std::rand() % 9;  //% 61;
+    y_coord = std::rand() % 5;  //% 15;
+    if (in_map_bit_arche_upper_room[x_coord][y_coord]) {
       valid_position = true;
     }
   }
-  gt_translation[0] = x_coord - 23;
-  gt_translation[1] = y_coord - 7;
+  gt_translation[0] = x_coord + 2;
+  gt_translation[1] = y_coord + 5;
   gt_translation[2] = (double)(std::rand() % 10) * 0.1 + 0.5;
 
   // Uniform sampling

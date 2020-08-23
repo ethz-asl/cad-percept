@@ -1,4 +1,4 @@
-usetoyexample: false
+usetoyexample: true
 
 # Lidar Settings
 rangeOfLidar: 25
@@ -7,7 +7,7 @@ lidarAngularResolution: 2
 accuracyOfLidar: 0.0
 
 # Test Settings
-testIterations: 10
+testIterations: 300
 start_scan_nr: 0
 end_scan_nr: 741
 
