@@ -12,7 +12,7 @@ with an RVIZ visualization and a rosbag containing the previous detection steps.
 The bagfile can be downloaded [here](https://drive.google.com/file/d/1fhr-uqZKUYzn4yu6QJWsOqIJrIEoDE5Z/view?usp=sharing).
 
 Alternatively, the detection pointcloud can be obtained using the 
-piloting_detector package from the multisensor_tools library:   
+`piloting_detector` package from the [`multisensor_tools` library](https://github.com/ethz-asl/multisensor_tools/tree/detector/piloting_detector):   
 ```
 roslaunch piloting_detector master.launch
 ```

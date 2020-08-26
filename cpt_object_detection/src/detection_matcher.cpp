@@ -16,31 +16,23 @@ DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
     : nh_(nh),
       nh_private_(nh_private),
       mesh_model_(nh_private.param<std::string>("off_model", "fail")),
-      visualize_object_on_startup_(false),
       object_frame_id_("object_detection_mesh"),
-      num_points_object_pointcloud_(500),
       num_points_icp_(500) {
-  getParamsFromRos();
-  subscribeToTopics();
-  advertiseTopics();
-
   LOG(INFO) << "[DetectionMatcher] Object mesh with "
             << mesh_model_.getMesh().size_of_facets()
             << " facets and " << mesh_model_.getMesh().size_of_vertices()
             << " vertices";
 
+  getParamsFromRos();
+  subscribeToTopics();
+  advertiseTopics();
+
   processObject();
 }
 
 void DetectionMatcher::getParamsFromRos() {
-  nh_private_.param("visualize_object_on_startup",
-                    visualize_object_on_startup_,
-                    visualize_object_on_startup_);
   nh_private_.param("object_frame_id",
                     object_frame_id_, object_frame_id_);
-  nh_private_.param("num_points_object_pointcloud",
-                    num_points_object_pointcloud_,
-                    num_points_object_pointcloud_);
   nh_private_.param("num_points_icp", num_points_icp_, num_points_icp_);
 }
 
@@ -62,19 +54,25 @@ void DetectionMatcher::advertiseTopics() {
   LOG(INFO) << "[DetectionMatcher] Publishing object poincloud to topic ["
             << object_pointcloud_pub_.getTopic() << "]";
   object_mesh_pub_ =
-      nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh", 1, true);
+      nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh", 1,
+                                                            true);
   LOG(INFO) << "[DetectionMatcher] Publishing object mesh to topic ["
             << object_mesh_pub_.getTopic() << "]";
   object_mesh_init_pub_ =
-      nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh_init", 1, true);
+      nh_private_.advertise<cgal_msgs::TriangleMeshStamped>(
+          "object_mesh_init", 1, true);
   LOG(INFO) << "[DetectionMatcher] Publishing init object mesh to topic ["
             << object_mesh_init_pub_.getTopic() << "]";
 }
 
 void DetectionMatcher::processObject() {
   // TODO(gasserl): find appropriate number of points to sample
+  int num_points_object_pointcloud = 1e3;
+  nh_private_.param("num_points_object_pointcloud",
+                    num_points_object_pointcloud,
+                    num_points_object_pointcloud);
   cpt_utils::sample_pc_from_mesh(mesh_model_.getMesh(),
-                                 num_points_object_pointcloud_, 0.0,
+                                 num_points_object_pointcloud, 0.0,
                                  &object_pointcloud_);
   LOG(INFO) << "[DetectionMatcher] Converted object mesh with "
             << mesh_model_.getMesh().size_of_facets() << " facets and "
@@ -86,17 +84,20 @@ void DetectionMatcher::processObject() {
   object_pointcloud_msg_.header.frame_id = object_frame_id_;
 
   // init test
-  if (visualize_object_on_startup_) {
-    detection_pointcloud_msg_.header.stamp = ros::Time::now();
-    object_pointcloud_msg_.header.frame_id = detection_frame_id_;
-    visualizeObjectPointcloud();
+  bool visualize_object_on_startup = false;
+  nh_private_.param("visualize_object_on_startup",
+                    visualize_object_on_startup,
+                    visualize_object_on_startup);
+  if (visualize_object_on_startup) {
+    visualizeObjectPointcloud(ros::Time::now(), detection_frame_id_);
     visualizeObjectMesh(detection_frame_id_, object_mesh_init_pub_);
     LOG(INFO) << "[DetectionMatcher] Visualizing object";
     object_pointcloud_msg_.header.frame_id = object_frame_id_;
   }
 }
 
-void DetectionMatcher::pointcloudCallback(const sensor_msgs::PointCloud2 &cloud_msg_in) {
+void DetectionMatcher::pointcloudCallback(
+    const sensor_msgs::PointCloud2 &cloud_msg_in) {
   detection_frame_id_ = cloud_msg_in.header.frame_id;
   detection_pointcloud_msg_ = cloud_msg_in;
   pcl::fromROSMsg(detection_pointcloud_msg_, detection_pointcloud_);
@@ -108,7 +109,7 @@ void DetectionMatcher::processPointcloudUsingPcaAndIcp() {
   ros::WallTime time_start = ros::WallTime::now();
 
   // get initial guess
-  kindr::minimal::QuatTransformationTemplate<float> T_object_detection_init;
+  Transformation T_object_detection_init;
   if(!findInitialGuessUsingIcp(&T_object_detection_init)) {
     LOG(WARNING) << "Initialization of ICP from detection pointcloud to "
                     "object pointcloud failed!";
@@ -120,7 +121,7 @@ void DetectionMatcher::processPointcloudUsingPcaAndIcp() {
   visualizeObjectMesh(object_frame_id_ + "_init", object_mesh_init_pub_);
 
   // ICP with initial guess
-  kindr::minimal::QuatTransformationTemplate<float> T_object_detection;
+  Transformation T_object_detection;
   if(!performICP(T_object_detection_init, &T_object_detection)) {
     LOG(WARNING) << "ICP from detection pointcloud to "
                     "object pointcloud failed!";
@@ -131,14 +132,15 @@ void DetectionMatcher::processPointcloudUsingPcaAndIcp() {
   publishTransformation(T_object_detection.inverse(),
                         detection_pointcloud_msg_.header.stamp,
                         detection_frame_id_, object_frame_id_);
-  object_pointcloud_msg_.header.stamp = detection_pointcloud_msg_.header.stamp;
-  visualizeObjectPointcloud();
+  visualizeObjectPointcloud(detection_pointcloud_msg_.header.stamp,
+                            detection_frame_id_);
   visualizeObjectMesh(object_frame_id_, object_mesh_pub_);
-  LOG(INFO) << "Time: " << (ros::WallTime::now() - time_start).toSec();
+  LOG(INFO) << "Total matching time: "
+            << (ros::WallTime::now() - time_start).toSec();
 }
 
 bool DetectionMatcher::findInitialGuessUsingIcp(
-    kindr::minimal::QuatTransformationTemplate<float>* T_object_detection_init) {
+    Transformation* T_object_detection_init) {
   ros::WallTime time_start = ros::WallTime::now();
 
   if (detection_pointcloud_.size() < 3) {
@@ -179,14 +181,14 @@ bool DetectionMatcher::findInitialGuessUsingIcp(
   if (object_vectors.determinant() < 0) {
     object_vectors.col(2) = -object_vectors.col(2);
   }
-  // Get rotation between detection and object pointcloud R_obj_det
+  // Get rotation between detection and object pointcloud
   Eigen::Matrix3f rotation_matrix =
       detection_vectors * object_vectors.transpose();
 
-  kindr::minimal::RotationQuaternionTemplate<float> rotation;
+  Quaternion rotation;
   rotation.setIdentity();
-  if (kindr::minimal::RotationQuaternionTemplate<float>::isValidRotationMatrix(rotation_matrix)) {
-    rotation = kindr::minimal::RotationQuaternionTemplate<float>(rotation_matrix);
+  if (Quaternion::isValidRotationMatrix(rotation_matrix)) {
+    rotation = Quaternion(rotation_matrix);
   } else {
     LOG(WARNING) << "Rotation matrix is not valid!";
     LOG(INFO) << "determinant: " << rotation_matrix.determinant();
@@ -194,44 +196,43 @@ bool DetectionMatcher::findInitialGuessUsingIcp(
     return false;
   }
 
-  *T_object_detection_init =
-      kindr::minimal::QuatTransformationTemplate<float>(rotation,
-                                                        translation).inverse();
-  LOG(INFO) << "Time initial guess: " << (ros::WallTime::now() - time_start).toSec();
+  *T_object_detection_init = Transformation(rotation, translation).inverse();
+  LOG(INFO) << "Time initial guess: "
+            << (ros::WallTime::now() - time_start).toSec();
   return true;
 }
 
-bool DetectionMatcher::performICP(
-    const kindr::minimal::QuatTransformationTemplate<float>& T_object_detection_init,
-    kindr::minimal::QuatTransformationTemplate<float>* T_object_detection) {
+bool DetectionMatcher::performICP(const Transformation& T_object_detection_init,
+                                  Transformation* T_object_detection) {
   CHECK(T_object_detection);
   ros::WallTime time_start = ros::WallTime::now();
 
   // setup data points
-  PointMatcher<float>::DataPoints points_object =
-      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(object_pointcloud_msg_);
-  PointMatcher<float>::DataPoints points_detection =
-      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(detection_pointcloud_msg_);
+  PM::DataPoints points_object =
+      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(
+          object_pointcloud_msg_);
+  PM::DataPoints points_detection =
+      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(
+          detection_pointcloud_msg_);
 
   // setup icp
-  PointMatcher<float>::ICP icp;
+  PM::ICP icp;
   icp.setDefault();
 
+  // Prepare filters
   std::string name;
   PointMatcherSupport::Parametrizable::Parameters params;
-
-  // Prepare reading filters
+  // Reading filters
   name = "MaxPointCountDataPointsFilter";
   params["maxCount"] = std::to_string(num_points_icp_);
-  std::shared_ptr<PointMatcher<float>::DataPointsFilter> maxCount_read =
-      PointMatcher<float>::get().DataPointsFilterRegistrar.create(name, params);
+  std::shared_ptr<PM::DataPointsFilter> maxCount_read =
+      PM::get().DataPointsFilterRegistrar.create(name, params);
   params.clear();
-
-  // Prepare reference filters
+  // Reference filters
   name = "MaxPointCountDataPointsFilter";
   params["maxCount"] = std::to_string(num_points_icp_);
-  std::shared_ptr<PointMatcher<float>::DataPointsFilter> maxCount_ref =
-      PointMatcher<float>::get().DataPointsFilterRegistrar.create(name, params);
+  std::shared_ptr<PM::DataPointsFilter> maxCount_ref =
+      PM::get().DataPointsFilterRegistrar.create(name, params);
   params.clear();
 
   // Build ICP solution
@@ -239,20 +240,21 @@ bool DetectionMatcher::performICP(
   icp.referenceDataPointsFilters.push_back(maxCount_ref);
 
   // icp: reference - object mesh, data - detection cloud
-  PointMatcher<float>::TransformationParameters T_object_detection_icp;
+  PM::TransformationParameters T_object_detection_icp;
   try {
     T_object_detection_icp =
-        icp(points_detection, points_object, T_object_detection_init.getTransformationMatrix());
-  } catch (PointMatcher<float>::ConvergenceError& error_msg) {
+        icp(points_detection, points_object,
+            T_object_detection_init.getTransformationMatrix());
+  } catch (PM::ConvergenceError& error_msg) {
     LOG(WARNING) << "[DetectionMatcher] ICP was not successful!\n"
                     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
     return false;
   }
 
-  kindr::minimal::QuatTransformationTemplate<float>::TransformationMatrix Tmatrix(
+  Transformation::TransformationMatrix Tmatrix(
       T_object_detection_icp);
   *T_object_detection =
-      kindr::minimal::QuatTransformationTemplate<float>(Tmatrix);
+      Transformation(Tmatrix);
 
   LOG(INFO) << "Time ICP: " << (ros::WallTime::now() - time_start).toSec();
   LOG(INFO) << "[DetectionMatcher] ICP on detection pointcloud "
@@ -260,10 +262,10 @@ bool DetectionMatcher::performICP(
   return true;
 }
 
-void DetectionMatcher::publishTransformation(
-    const kindr::minimal::QuatTransformationTemplate<float>& transform,
-    const ros::Time& stamp, const std::string& parent_frame_id,
-    const std::string& child_frame_id) const {
+void DetectionMatcher::publishTransformation(const Transformation& transform,
+                                             const ros::Time& stamp,
+                                             const std::string& parent_frame_id,
+                                             const std::string& child_frame_id) {
   static tf::TransformBroadcaster tf_broadcaster;
   tf::Transform tf_transform;
   tf_transform.setOrigin(tf::Vector3(transform.getPosition().x(),
@@ -294,7 +296,10 @@ void DetectionMatcher::visualizeObjectMesh(
   publisher.publish(p_msg);
 }
 
-void DetectionMatcher::visualizeObjectPointcloud() {
+void DetectionMatcher::visualizeObjectPointcloud(const ros::Time& timestamp,
+                                                 const std::string& frame_id) {
+  detection_pointcloud_msg_.header.stamp = timestamp;
+  object_pointcloud_msg_.header.frame_id = frame_id;
   object_pointcloud_pub_.publish(object_pointcloud_msg_);
 }
 

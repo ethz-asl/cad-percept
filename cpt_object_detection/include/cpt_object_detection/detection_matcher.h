@@ -14,6 +14,10 @@ namespace cad_percept {
 namespace object_detection {
 
 class DetectionMatcher {
+  typedef kindr::minimal::QuatTransformationTemplate<float> Transformation;
+  typedef kindr::minimal::RotationQuaternionTemplate<float> Quaternion;
+  typedef PointMatcher<float> PM;
+
  public:
   DetectionMatcher(const ros::NodeHandle& nh,
                    const ros::NodeHandle& nh_private);
@@ -29,18 +33,18 @@ class DetectionMatcher {
   void processObject();
 
   void processPointcloudUsingPcaAndIcp();
-  bool findInitialGuessUsingIcp(
-      kindr::minimal::QuatTransformationTemplate<float>* T_object_detection_init);
-  bool performICP(
-      const kindr::minimal::QuatTransformationTemplate<float>& T_object_detection_init,
-      kindr::minimal::QuatTransformationTemplate<float>* T_object_detection);
-  void publishTransformation(
-      const kindr::minimal::QuatTransformationTemplate<float>& transform,
-      const ros::Time& stamp, const std::string& parent_frame_id,
-      const std::string& child_frame_id) const;
+  bool findInitialGuessUsingIcp(Transformation* T_object_detection_init);
+  bool performICP(const Transformation& T_object_detection_init,
+                  Transformation* T_object_detection);
   void visualizeObjectMesh(const std::string& frame_id,
                            const ros::Publisher& publisher) const;
-  void visualizeObjectPointcloud();
+  void visualizeObjectPointcloud(const ros::Time& timestamp,
+                                 const std::string& frame_id);
+
+  static void publishTransformation(
+      const Transformation& transform,
+      const ros::Time& stamp, const std::string& parent_frame_id,
+      const std::string& child_frame_id) ;
   
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
@@ -59,9 +63,7 @@ class DetectionMatcher {
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
 
   // Parameters
-  bool visualize_object_on_startup_;
   std::string object_frame_id_;
-  int num_points_object_pointcloud_;
   int num_points_icp_;
 };
 
