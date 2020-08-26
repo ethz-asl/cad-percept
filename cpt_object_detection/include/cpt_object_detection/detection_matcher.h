@@ -22,11 +22,14 @@ class DetectionMatcher {
   void pointcloudCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
 
  private:
+  void getParamsFromRos();
   void subscribeToTopics();
   void advertiseTopics();
 
-  void processPointcloud();
-  bool findInitialGuess(
+  void processObject();
+
+  void processPointcloudUsingPcaAndIcp();
+  bool findInitialGuessUsingIcp(
       kindr::minimal::QuatTransformationTemplate<float>* T_object_detection_init);
   bool performICP(
       const kindr::minimal::QuatTransformationTemplate<float>& T_object_detection_init,
@@ -47,14 +50,19 @@ class DetectionMatcher {
   ros::Publisher object_mesh_pub_;
   ros::Publisher object_mesh_init_pub_;
 
-  sensor_msgs::PointCloud2 detection_pointcloud_msg_;
-  sensor_msgs::PointCloud2 object_pointcloud_msg_;
-  pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
-  pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
-
-  std::string detection_frame_id_;
-  std::string object_frame_id_;
   cgal::MeshModel mesh_model_;
+  pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
+  sensor_msgs::PointCloud2 object_pointcloud_msg_;
+
+  sensor_msgs::PointCloud2 detection_pointcloud_msg_;
+  std::string detection_frame_id_;
+  pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
+
+  // Parameters
+  bool visualize_object_on_startup_;
+  std::string object_frame_id_;
+  int num_points_object_pointcloud_;
+  int num_points_icp_;
 };
 
 }
