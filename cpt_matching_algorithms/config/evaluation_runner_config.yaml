@@ -1,4 +1,4 @@
-usetoyexample: true
+usetoyexample: false
 
 # Lidar Settings
 rangeOfLidar: 25
@@ -18,7 +18,7 @@ StructureThreshold: -1
 Voxelsearchradius: 0.2
 
 # Plane Extraction
-Matcher: 2 # 0: GoICP
+Matcher: 4 # 0: GoICP
            # 1: PlaneMatcher with RHT
            # 2: PlaneMatcher with iter RHT
            # 3: PlaneMatcher with PCL RANSAC
