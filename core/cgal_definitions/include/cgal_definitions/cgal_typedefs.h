@@ -30,7 +30,8 @@
 namespace cad_percept {
 namespace cgal {
 
-typedef CGAL::Simple_cartesian<double> Kernel;
+//typedef CGAL::Simple_cartesian<double> Kernel;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef Kernel::FT FT;
 typedef Kernel::Point_3 Point;
 typedef Kernel::Point_2 Point_2;

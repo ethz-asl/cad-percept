@@ -101,6 +101,9 @@ class MeshModel {
    * Return mesh
    */
   Polyhedron getMesh() const;
+  Polyhedron* getMeshNonConst(){
+    return &P_;
+  }
 
   /**
    * Check coplanarity of two facets described by halfedge handle h1 and h2
