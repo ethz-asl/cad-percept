@@ -9,12 +9,22 @@
        default="$(find cpt_object_detection)/resources/Y10148_Torus Thick.off"/>
   <arg name="rosbag_file"
        default="$(find cpt_object_detection)/resources/detection_torus.bag"/>
-  <arg name="detection_pointcloud_topic" default="/detection_projector/object_pcl_3d"/>
+  <arg name="detection_pointcloud_topic"
+       default="/detection_projector/object_pcl_3d"/>
+  <arg name="keypoint_type" default="Uniform"/>
+  <arg name="descriptor_type" default="FPFH"/>
+  <arg name="num_points_object_pointcloud" default="5000"/>
 
-  <node name="object_detection_matcher" pkg="cpt_object_detection" type="cpt_object_detection_node">
+  <node name="object_detection_matcher"
+        pkg="cpt_object_detection" type="cpt_object_detection_node"
+        args="--colorlogtostderr">
     <param name="off_model" value="$(arg object_off_path)"/>
     <param name="pointcloud_topic" value="$(arg detection_pointcloud_topic)"/>
     <param name="visualize_object_on_startup" value="true"/>
+    <param name="keypoint_type" value="$(arg keypoint_type)"/>
+    <param name="descriptor_type" value="$(arg descriptor_type)"/>
+    <param name="num_points_object_pointcloud"
+           value="$(arg num_points_object_pointcloud)"/>
   </node>
 
   <node if="$(arg play_rosbag)" name="rosbag_player" pkg="rosbag" type="play"
