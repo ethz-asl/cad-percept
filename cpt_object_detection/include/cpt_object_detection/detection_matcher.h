@@ -33,7 +33,7 @@ class DetectionMatcher {
   void processObject();
 
   void processPointcloudUsingPcaAndIcp();
-  bool findInitialGuessUsingIcp(Transformation* T_object_detection_init);
+  bool findInitialGuessUsingPca(Transformation* T_object_detection_init);
   bool performICP(const Transformation& T_object_detection_init,
                   Transformation* T_object_detection);
   void visualizeObjectMesh(const std::string& frame_id,

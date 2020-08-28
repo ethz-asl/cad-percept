@@ -139,7 +139,7 @@ void DetectionMatcher::processPointcloudUsingPcaAndIcp() {
             << (ros::WallTime::now() - time_start).toSec();
 }
 
-bool DetectionMatcher::findInitialGuessUsingIcp(
+bool DetectionMatcher::findInitialGuessUsingPca(
     Transformation* T_object_detection_init) {
   ros::WallTime time_start = ros::WallTime::now();
 
