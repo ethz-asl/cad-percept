@@ -15,7 +15,7 @@ RHTPlaneNumber: 8 # number of principal planes, set to zero if all planes should
 
 #Settings of iterative RHT
 
-iterAccumulatorChoice: 1 # accumulator choice (1: array, 2: ball)
+iterAccumulatorChoice: 2 # accumulator choice (1: array, 2: ball)
 iterAccumulatorRhoResolution: 0.05 # resolution of rho in discretization of accumulator
 iterAccumulatorThetaResolution: 0.02 # resolution of theta in discretization of accumulator
 iterAccumulatorPsiResolution: 0.02 # resolution of psi in discretization of accumulator
@@ -27,7 +27,7 @@ iterRHTIterPerIter: 1000000 # sample iterations per iteration
 iterRHTTolDist: 2   # makes sure points are not too far apart
 iterRHTMinArea: 0.5 # min area spanned by two vectors created by three reference points (makes sure points are not the same or collinear)
 iterRHTNumPlanePerIter: 1 # set to zero to use threshold per iteration
-iterRHTMinNumberInlier: 30 # minimum number of inlier a plane must have
+iterRHTMinNumberInlier: 20 # minimum number of inlier a plane must have
 
 # Settings of PCL
 

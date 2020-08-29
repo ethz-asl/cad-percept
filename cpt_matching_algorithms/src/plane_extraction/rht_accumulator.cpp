@@ -181,7 +181,8 @@ int BallAccumulator::getBinIndexFromVector(Eigen::Vector3d &rtp_input) {
   normalizeRTP(rtp_input);
   rho_index = rtp_input[0] / rho_max * bin_number_rho_;
   psi_index = (rtp_input[2] + half_pi) / M_PI * bin_number_psi_;
-  theta_index = rtp_input[1] / two_pi * bin_number_theta_[psi_index];
+  theta_index = rtp_input[1] / two_pi *
+                bin_number_theta_[std::min(psi_index, (int)(bin_number_theta_.size() - 1))];
   return rho_index * bin_tot_number_theta_psi_ +
          std::accumulate(bin_number_theta_.begin(), bin_number_theta_.begin() + psi_index, 0) +
          theta_index;

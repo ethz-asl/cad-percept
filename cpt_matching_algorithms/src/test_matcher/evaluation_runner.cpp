@@ -26,6 +26,7 @@ std::vector<float> bin_elevation;
 float noise_variance;
 float range_of_lidar;
 float dtheta;
+bool use_filters;
 
 ros::Publisher scan_pub;
 ros::Publisher plane_pub;
@@ -43,6 +44,7 @@ cad_percept::cgal::Transformation ctransformation;
 
 BoundedPlanes *map_planes;
 PointCloud sampled_map;
+bool uniform_sampling;
 DP ref_dp_map;
 DP ref_dp_scan;
 
@@ -62,8 +64,18 @@ int main(int argc, char **argv) {
   // Settings for LiDAR simulation
   range_of_lidar = nh_private.param<float>("rangeOfLidar", 20);
   bin_elevation = nh_private.param<std::vector<float>>("binElevation", {0});
+  if (nh_private.param<bool>("uniformbinassigment", false)) {
+    int num_bins = nh_private.param<int>("numBins", 1000);
+    bin_elevation.clear();
+    float delta_psi = 180 / (float)num_bins;
+    for (int i = 0; i < num_bins; i++) {
+      bin_elevation.push_back(i * delta_psi - 90);
+    }
+  }
   dtheta = nh_private.param<float>("lidarAngularResolution", 1);
   noise_variance = nh_private.param<float>("accuracyOfLidar", 0.02);
+  use_filters = nh_private.param<bool>("useFilters", true);
+  uniform_sampling = nh_private.param<bool>("uniformSample", true);
 
   map_sub = nh.subscribe("/mesh_publisher/mesh_out", 1, &getCAD);
   scan_pub = nh.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1);
@@ -212,10 +224,8 @@ void runTestIterations() {
     } else if (0 < matcher && matcher < 5) {
       // Detect planes
       // Filtering / Preprocessing Point Cloud
-      if (!usetoyexample) {
+      if (use_filters) {
         CloudFilter::filterStaticObject(structure_threshold, lidar_scan, static_structure_cloud);
-      }
-      if (!usetoyexample) {
         CloudFilter::filterVoxelCentroid(search_radius, lidar_scan);
       }
 
@@ -340,7 +350,7 @@ void runTestIterations() {
                 << gt_rotation.z() << " " << transform_TR[0] << " " << transform_TR[1] << " "
                 << transform_TR[2] << " " << transform_TR[3] << " " << transform_TR[4] << " "
                 << transform_TR[5] << " " << transform_TR[6] << " " << translation_error << " "
-                << rotation_error << " " << duration.count() << " " << transform_error << std::endl;
+                << duration.count() << " " << transform_error << std::endl;
 
     // Preparation for next iteration
     std::cout << std::endl;
@@ -451,24 +461,28 @@ void samplePose() {
   int x_coord;
   int y_coord;
   while (!valid_position) {
-    x_coord = std::rand() % 9;  //% 61;
-    y_coord = std::rand() % 5;  //% 15;
+    x_coord = std::rand() % 9;  //% 12;  // 61;  //% 9;
+    y_coord = std::rand() % 5;  //% 13;  // 15;  //% 5;
     if (in_map_bit_arche_upper_room[x_coord][y_coord]) {
       valid_position = true;
     }
   }
-  gt_translation[0] = x_coord + 2;
-  gt_translation[1] = y_coord + 5;
-  gt_translation[2] = (double)(std::rand() % 10) * 0.1 + 0.5;
+  gt_translation[0] = x_coord + 2;  //- 5;  //- 23;
+  gt_translation[1] = y_coord + 5;  //- 9;  //- 7;
+  gt_translation[2] = (double)(std::rand() % 10) * 0.1 + 0.2;
 
-  // Uniform sampling
-  // double euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  // double euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-  // double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
-
-  double euler_x = 0;
-  double euler_y = 0;
-  double euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  double euler_x;
+  double euler_y;
+  double euler_z;
+  if (uniform_sampling) {
+    euler_x = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+    euler_y = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+    euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  } else {
+    euler_x = 0;
+    euler_y = 0;
+    euler_z = (std::rand() % 30) * M_PI / 15 - M_PI / 2;
+  }
 
   gt_rotation = Eigen::AngleAxisd(euler_x, Eigen::Vector3d::UnitX()) *
                 Eigen::AngleAxisd(euler_y, Eigen::Vector3d::UnitY()) *
