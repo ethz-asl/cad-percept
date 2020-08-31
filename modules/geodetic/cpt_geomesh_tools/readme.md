@@ -1,12 +1,14 @@
 # Geomesh Tools
 
 ## filter_center_node
-Simple node that loads a mesh, cuts it according to a ROI and stores it again in the given GeoTF file.
-Note, meshes are expected to be stored in pseudo-mercator / EPSG:3857 https://epsg.io/3857.
+Simple node that loads a mesh, cuts it according to a ROI and stores it again in the given output file.
+Note, input meshes are expected to be stored in pseudo-mercator / EPSG:3857 https://epsg.io/3857.
+ROI coordinates can be in any configured geotf frame.
+Output frame can by any configured geotf frame, probably should be a cartesian frame (e.g. ENU, UTM, swissgrid).
 
-See convert.launch as an example.
+See convert.launch for an example.
 
-In order to obtain such meshes from a digital elevation model / geoTIFF, the following tools 
+In order to obtain such input meshes from a digital elevation model / geoTIFF, the following tools 
 and steps can be executed.
 
 Tools:
