@@ -28,6 +28,13 @@ cs_add_executable(mesh_publisher_node
         )
 target_link_libraries(mesh_publisher_node ${PROJECT_NAME})
 
+############
+# Test #
+############
+catkin_add_gtest(perf_overhead_test test/perf_overhead_test.cc)
+target_link_libraries(perf_overhead_test ${PROJECT_NAME})
+
+
 ##########
 # EXPORT #
 ##########

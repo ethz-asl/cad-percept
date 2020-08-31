@@ -13,6 +13,8 @@ add_definitions(-std=c++17 -Wall -Wextra)
 cs_add_library(${PROJECT_NAME}
         src/mesh_model.cc
 )
+target_link_libraries(${PROJECT_NAME} gmp)
+
 
 ############
 # BINARIES #

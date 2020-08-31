@@ -1,6 +1,7 @@
 #ifndef CGAL_CONVERSIONS_EIGEN_CONVERSIONS_H
 #define CGAL_CONVERSIONS_EIGEN_CONVERSIONS_H
 
+#include <Eigen/Dense>
 #include <cgal_definitions/cgal_typedefs.h>
 
 namespace cad_percept {

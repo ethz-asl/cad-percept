@@ -50,6 +50,7 @@ class MeshModel {
                      bool verbose = false);
   static bool create(Polyhedron &p, MeshModel::Ptr *meshmodel_ptr, bool verbose = false);
   static bool create(nlohmann::json &j, MeshModel::Ptr *meshmodel_ptr, bool verbose = false);
+  MeshModel(Polyhedron &p, bool verbose);  // Constructor to be used by factory method
 
   /**
    * Check if there is an intersection.
@@ -111,6 +112,11 @@ class MeshModel {
   Polyhedron* getMeshNonConst(){
     return &P_;
   }
+
+  Polyhedron& getMeshRef();
+  PolyhedronPtr getMeshPtr();
+
+
 
   /**
    * Check coplanarity of two facets described by halfedge handle h1 and h2
@@ -176,7 +182,6 @@ class MeshModel {
   double squaredDistance(const Point &point) const;
 
  private:
-  MeshModel(Polyhedron &p, bool verbose);  // Constructor to be used by factory method
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;
   bool verbose_;

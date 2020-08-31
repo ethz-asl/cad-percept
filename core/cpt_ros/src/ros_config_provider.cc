@@ -13,8 +13,4 @@ bool RosConfigProvider::getParam_Impl(const std::string name, T& value) {
   return nh_.getParam(name, value);
 }
 
-void test() {
-  ros::NodeHandle test;
-  RosConfigProvider roscfg(test);
-}
 }  // namespace cad_percept
