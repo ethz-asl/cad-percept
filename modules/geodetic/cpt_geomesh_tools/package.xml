@@ -17,4 +17,5 @@
     <depend>cgal_conversions</depend>
     <depend>cgal_msgs</depend>
     <depend>roscpp</depend>
+    <depend>geotf</depend>
 </package>

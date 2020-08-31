@@ -92,6 +92,13 @@ class MeshModel {
    */
   void transform(const Transformation &transform);
 
+  template<class UnaryOperation>
+  void transform(const UnaryOperation op){
+    std::transform(P_.points_begin(), P_.points_end(), P_.points_begin(), op);
+    // create updated AABBTree:
+    tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first, CGAL::faces(P_).second, P_);
+    tree_->accelerate_distance_queries();
+  }
   /**
    * Return size of mesh (number of facet primitives).
    */

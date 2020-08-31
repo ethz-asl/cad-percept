@@ -1,0 +1,22 @@
+<launch>
+    <rosparam param="/geotf" >
+        Frames:
+            ENU:
+                Type: ENUOrigin
+                LonOrigin:  8.38370
+                LatOrigin:  46.58241
+                AltOrigin:  2233.1
+
+            GPS:
+                Type: GCSCode
+                Code: WGS84
+    </rosparam>
+    <node name="filter_center_node" pkg="cpt_geomesh_tools" type="filter_center_node" output="screen">
+        <param name="input_path" value="/home/mpantic/Work/Glacier/Rhone/swisstopo/swissALTI3D2019_EPSG3857_zemlya_0.2m.off"/>
+        <param name="output_path" value="/tmp/output.off"/>
+        <param name="output_frame" value="ENU"/>
+        <param name="roi_frame" value="GPS"/>
+        <param name="roi_x" value="[46.58391, 46.58190, 46.57975, 46.58184]" type="yaml"/>
+        <param name="roi_y" value="[8.38363,   8.39056,  8.38759,  8.38238]" type="yaml"/>
+    </node>
+</launch>

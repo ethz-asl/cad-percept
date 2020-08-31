@@ -217,6 +217,7 @@ Vector MeshModel::getNormal(const PointAndPrimitiveId &ppid) const {
   return getNormal(ppid.second);
 }
 
+
 void MeshModel::transform(const Transformation &transform) {
   std::transform(P_.points_begin(), P_.points_end(), P_.points_begin(), transform);
   // create updated AABBTree:
