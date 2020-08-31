@@ -24,4 +24,5 @@ Steps:
   - meshconv dem_3857.obj -c off 
  
  Result
+ Note ENU Frame location (rendered axes)
  ![example mesh](https://github.com/ethz-asl/cad-percept/raw/feature/geodetic_meshes/modules/geodetic/cpt_geomesh_tools/mesh_enu.png)
