@@ -110,7 +110,7 @@ void DetectionMatcher::processPointcloudUsingPcaAndIcp() {
 
   // get initial guess
   Transformation T_object_detection_init;
-  if(!findInitialGuessUsingIcp(&T_object_detection_init)) {
+  if(!findInitialGuessUsingPca(&T_object_detection_init)) {
     LOG(WARNING) << "Initialization of ICP from detection pointcloud to "
                     "object pointcloud failed!";
     T_object_detection_init.setIdentity();
