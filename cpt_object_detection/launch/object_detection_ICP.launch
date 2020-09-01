@@ -13,6 +13,7 @@
        default="/detection_projector/object_pcl_3d"/>
   <arg name="keypoint_type" default="Uniform"/>
   <arg name="descriptor_type" default="FPFH"/>
+  <arg name="matching_method" default="conventional"/> <!-- conventional or FGR -->
   <arg name="num_points_object_pointcloud" default="5000"/>
 
   <node name="object_detection_matcher"
@@ -23,6 +24,7 @@
     <param name="visualize_object_on_startup" value="true"/>
     <param name="keypoint_type" value="$(arg keypoint_type)"/>
     <param name="descriptor_type" value="$(arg descriptor_type)"/>
+    <param name="matching_method" value="$(arg matching_method)"/>
     <param name="num_points_object_pointcloud"
            value="$(arg num_points_object_pointcloud)"/>
   </node>

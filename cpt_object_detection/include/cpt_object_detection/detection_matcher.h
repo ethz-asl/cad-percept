@@ -40,6 +40,15 @@ class DetectionMatcher {
       {static_cast<size_t>(DescriptorType::kFpfh), "FPFH"},
       {static_cast<size_t>(DescriptorType::kShot), "SHOT"}
   };
+  enum MatchingMethod {
+    kConventional = 0,
+    kFastGlobalRegistration,
+    kNumMatchingMethods
+  };
+  std::map<size_t, std::string> MatchingMethodNames = {
+      {static_cast<size_t>(MatchingMethod::kConventional), "conventional"},
+      {static_cast<size_t>(MatchingMethod::kFastGlobalRegistration), "FGR"}
+  };
 
  public:
   DetectionMatcher(const ros::NodeHandle& nh,
@@ -65,6 +74,20 @@ class DetectionMatcher {
   template <typename descriptor_type>
   bool computeTransformUsing3dFeatures(
       const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+      Transformation* T_object_detection);
+  template <typename descriptor_type>
+  bool computeTransformUsingFgr(
+      const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+      const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+      Transformation* T_object_detection);
+  template <typename descriptor_type>
+  bool computeTransformUsingModelify(
+      const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+      const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
       Transformation* T_object_detection);
 
   template <typename descriptor_type>
@@ -145,10 +168,12 @@ class DetectionMatcher {
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
 
   // Parameters
-  std::string object_frame_id_;
-  int num_points_icp_;
   KeypointType keypoint_type_;
   DescriptorType descriptor_type_;
+  MatchingMethod matching_method_;
+
+  std::string object_frame_id_;
+  int num_points_icp_;
 };
 
 }

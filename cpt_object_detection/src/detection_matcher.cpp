@@ -12,6 +12,7 @@
 #include <modelify/feature_toolbox/keypoint_toolbox_3d.h>
 #include <modelify/feature_toolbox/descriptor_toolbox_3d.h>
 #include <modelify/registration_toolbox/registration_toolbox.h>
+#include <modelify/registration_toolbox/fast_global_registration.h>
 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -24,11 +25,12 @@ DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
     : nh_(nh),
       nh_private_(nh_private),
       mesh_model_(nh_private.param<std::string>("off_model", "fail")),
-      detection_frame_id_("camera_depth_frame"),
-      object_frame_id_("object_detection_mesh"),
-      num_points_icp_(500),
+      detection_frame_id_("camera_depth_optical_frame"),
       keypoint_type_(kHarris),
-      descriptor_type_(kShot) {
+      descriptor_type_(kShot),
+      matching_method_(kConventional),
+      object_frame_id_("object_detection_mesh"),
+      num_points_icp_(500) {
   LOG(INFO) << "[DetectionMatcher] Object mesh with "
             << mesh_model_.getMesh().size_of_facets()
             << " facets and " << mesh_model_.getMesh().size_of_vertices()
@@ -64,6 +66,7 @@ void DetectionMatcher::getParamsFromRos() {
     }
   }
   LOG(INFO) << "Using keypoint type " << KeypointNames[keypoint_type_];
+
   std::string descriptor_type;
   nh_private_.param("descriptor_type", descriptor_type, descriptor_type);
   bool valid_descriptor_type = false;
@@ -82,6 +85,25 @@ void DetectionMatcher::getParamsFromRos() {
     }
   }
   LOG(INFO) << "Using descriptor type " << DescriptorNames[descriptor_type_];
+
+  std::string matching_method;
+  nh_private_.param("matching_method", matching_method, matching_method);
+  bool valid_matching_method = false;
+  for (int i = 0; i < kNumMatchingMethods; ++i) {
+    if (matching_method == MatchingMethodNames[i]) {
+      matching_method_ = static_cast<MatchingMethod>(i);
+      valid_matching_method = true;
+      break;
+    }
+  }
+  if (!valid_matching_method && !matching_method.empty()) {
+    LOG(ERROR) << "Unknown matching method! " << matching_method;
+    LOG(INFO) << "Matching methods:";
+    for (int i = 0; i < MatchingMethod::kNumMatchingMethods; ++i) {
+      LOG(INFO) << MatchingMethodNames[i];
+    }
+  }
+  LOG(INFO) << "Using matching method " << MatchingMethodNames[matching_method_];
 }
 
 void DetectionMatcher::subscribeToTopics() {
@@ -460,6 +482,69 @@ bool DetectionMatcher::computeTransformUsing3dFeatures(
     return false;
   }
 
+  // Match features
+  switch (matching_method_) {
+    case kConventional:
+      return computeTransformUsingModelify<descriptor_type>(
+          object_descriptors, detection_surfels, detection_keypoints,
+          detection_descriptors, T_object_detection);
+    case kFastGlobalRegistration:
+      return computeTransformUsingFgr<descriptor_type>(
+          object_descriptors, detection_surfels, detection_keypoints,
+          detection_descriptors, T_object_detection);
+    default :
+      LOG(ERROR) << "Unknown matching method! " << matching_method_;
+      LOG(INFO) << "Matching methods:";
+      for (int i = 0; i < MatchingMethod::kNumMatchingMethods; ++i) {
+        LOG(INFO) << i << " (" << MatchingMethodNames[i] << ")";
+      }
+      return false;
+  }
+}
+
+template <typename descriptor_type>
+bool DetectionMatcher::computeTransformUsingFgr(
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+    Transformation* T_object_detection) {
+  modelify::registration_toolbox::FastGlobalRegistrationParams fgr_params;
+  fgr_params.crosscheck_test = true;  // 300 -> 30
+  fgr_params.tuple_test = false;      // 30 -> 0
+  fgr_params.refine_using_icp = true;
+  fgr_params.use_absolute_scale = true;
+  modelify::Correspondences correspondences;
+  modelify::Transformation transform;
+  if (!modelify::registration_toolbox::fast_global_registration::
+          estimateTransformationFastGlobalRegistration<
+              modelify::PointSurfelType, descriptor_type>(
+                detection_surfels, object_surfels_, detection_keypoints,
+                object_keypoints_, detection_descriptors, object_descriptors,
+                fgr_params, &correspondences, &transform)) {
+    LOG(ERROR) << "Fast global registration was not successful!";
+    return false;
+  }
+  modelify::CorrespondencesTypePtr corr_ptr(new modelify::CorrespondencesType());
+  for (const modelify::CorrespondencePair& correspondence : correspondences) {
+    pcl::Correspondence corr;
+    corr.index_match = correspondence.first;
+    corr.index_query = correspondence.second;
+    corr_ptr->push_back(corr);
+  }
+  visualizeCorrespondences(detection_keypoints, corr_ptr,
+                           detection_frame_id_, correspondences_pub_);
+  *T_object_detection = Transformation(transform);
+  return true;
+}
+
+template <typename descriptor_type>
+bool DetectionMatcher::computeTransformUsingModelify(
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+    Transformation* T_object_detection) {
   // Find correspondences
   modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
   if (object_descriptors->size() < flann_params.num_of_correspondences ||
