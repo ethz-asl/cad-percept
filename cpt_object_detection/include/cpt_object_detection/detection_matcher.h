@@ -29,7 +29,7 @@ class DetectionMatcher {
   std::map<size_t, std::string> KeypointNames = {
       {static_cast<size_t>(KeypointType::kIss), "ISS"},
       {static_cast<size_t>(KeypointType::kHarris), "Harris"},
-      {static_cast<size_t>(KeypointType::kUniform), "Uniform"}
+      {static_cast<size_t>(KeypointType::kUniform), "uniform"}
   };
   enum DescriptorType {
     kFpfh = 0,
@@ -128,15 +128,18 @@ class DetectionMatcher {
                            const ros::Publisher& publisher) const;
   void visualizeObjectPointcloud(const ros::Time& timestamp,
                                  const std::string& frame_id);
+  static void visualizeKeypoints(
+      const modelify::PointSurfelCloudType::Ptr& keypoints,
+      const ros::Time& timestamp,  const std::string& frame_id,
+      const ros::Publisher& publisher);
   void visualizeCorrespondences(
       const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
       const modelify::CorrespondencesTypePtr& correspondences,
-      const ros::Time& timestamp, const std::string& frame_id,
-      const ros::Publisher& publisher);
+      const std::string& frame_id, const ros::Publisher& publisher);
   static void visualizeNormals(
       const modelify::PointSurfelCloudType::Ptr& surfels,
-      const std::string& marker_namespace, const ros::Time& timestamp,
-      const std::string& frame_id, const ros::Publisher& publisher);
+      const std::string& marker_namespace, const std::string& frame_id,
+      const ros::Publisher& publisher);
 
   static void publishTransformation(
       const Transformation& transform,
@@ -174,6 +177,7 @@ class DetectionMatcher {
 
   std::string object_frame_id_;
   int num_points_icp_;
+  bool downsampling_;
 };
 
 }

@@ -30,7 +30,8 @@ DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
       descriptor_type_(kShot),
       matching_method_(kConventional),
       object_frame_id_("object_detection_mesh"),
-      num_points_icp_(500) {
+      num_points_icp_(500),
+      downsampling_(true) {
   LOG(INFO) << "[DetectionMatcher] Object mesh with "
             << mesh_model_.getMesh().size_of_facets()
             << " facets and " << mesh_model_.getMesh().size_of_vertices()
@@ -47,6 +48,7 @@ void DetectionMatcher::getParamsFromRos() {
   nh_private_.param("object_frame_id",
                     object_frame_id_, object_frame_id_);
   nh_private_.param("num_points_icp", num_points_icp_, num_points_icp_);
+  nh_private_.param("downsampling", downsampling_, downsampling_);
 
   std::string keypoint_type;
   nh_private_.param("keypoint_type", keypoint_type, keypoint_type);
@@ -211,6 +213,8 @@ void DetectionMatcher::processObject() {
     visualizeObjectPointcloud(ros::Time::now(), detection_frame_id_);
     visualizeObjectMesh(ros::Time::now(), detection_frame_id_,
                         object_mesh_init_pub_);
+    visualizeKeypoints(object_keypoints_, ros::Time::now(), detection_frame_id_,
+                       object_keypoint_pub_);
     LOG(INFO) << "[DetectionMatcher] Visualizing object";
   }
 }
@@ -220,21 +224,6 @@ void DetectionMatcher::pointcloudCallback(
   detection_frame_id_ = cloud_msg_in.header.frame_id;
   detection_pointcloud_msg_ = cloud_msg_in;
   pcl::fromROSMsg(detection_pointcloud_msg_, detection_pointcloud_);
-
-  pcl::PointCloud<pcl::PointXYZ> temp(detection_pointcloud_);
-  pcl::PointCloud<pcl::PointXYZ>::Ptr detection_pointcloud_ptr =
-      boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(temp);
-  pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter;
-  voxel_grid_filter.setInputCloud(detection_pointcloud_ptr);
-  constexpr float voxel_size = 0.002;
-  voxel_grid_filter.setLeafSize(voxel_size, voxel_size, voxel_size);
-  voxel_grid_filter.filter(detection_pointcloud_);
-  LOG(INFO) << "Detection pointcloud downsampled to resolution of "
-            << voxel_size << " m, resulting in " << detection_pointcloud_.size()
-            << " points";
-
-  /*pcl::toROSMsg(detection_pointcloud_, detection_pointcloud_msg_);
-  object_pointcloud_pub_.publish(detection_pointcloud_msg_);*/
 
 //  processPointcloudUsingPcaAndIcp();
   processPointcloudUsing3dFeatures();
@@ -402,6 +391,21 @@ bool DetectionMatcher::performICP(const Transformation& T_object_detection_init,
 
 // TODO(gasserl): another child class?
 void DetectionMatcher::processPointcloudUsing3dFeatures() {
+  // Downsampling detection pointcloud
+  if (downsampling_) {
+    pcl::PointCloud<pcl::PointXYZ> temp(detection_pointcloud_);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr detection_pointcloud_ptr =
+        boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(temp);
+    pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter;
+    voxel_grid_filter.setInputCloud(detection_pointcloud_ptr);
+    constexpr float voxel_size = 0.002;
+    voxel_grid_filter.setLeafSize(voxel_size, voxel_size, voxel_size);
+    voxel_grid_filter.filter(detection_pointcloud_);
+    LOG(INFO) << "Detection pointcloud downsampled to resolution of "
+              << voxel_size << " m, resulting in "
+              << detection_pointcloud_.size() << " points";
+  }
+
   // Compute transform between detection and object
   Transformation T_object_detection;
   bool success;
@@ -426,6 +430,12 @@ void DetectionMatcher::processPointcloudUsing3dFeatures() {
 
   if (!success) {
     LOG(ERROR) << "Matching features was not successful!";
+    return;
+  }
+
+  if (!T_object_detection.getTransformationMatrix().allFinite()) {
+    LOG(ERROR) << "Transformation not valid!";
+    LOG(INFO) << "Transformation:\n" << T_object_detection;
     return;
   }
 
@@ -459,23 +469,21 @@ bool DetectionMatcher::computeTransformUsing3dFeatures(
   get3dFeatures<descriptor_type>(detection_pointcloud_, detection_surfels,
                                  detection_keypoints, detection_descriptors);
 
-  sensor_msgs::PointCloud2 pcl_msg;
-  std_msgs::Header header = detection_pointcloud_msg_.header;
-  pcl::toROSMsg(*detection_keypoints, pcl_msg);
-  pcl_msg.header = header;
-  detection_keypoint_pub_.publish(pcl_msg);
-
-  pcl::toROSMsg(*object_keypoints_, pcl_msg);
-  pcl_msg.header = header;
-  object_keypoint_pub_.publish(pcl_msg);
-
-//  pcl::toROSMsg(*detection_surfels, pcl_msg);
-//  object_pointcloud_pub_.publish(pcl_msg);
-
+  // Visualizations
   visualizeNormals(object_surfels_, "object",
-                   header.stamp, header.frame_id, normals_pub_);
+                   detection_pointcloud_msg_.header.frame_id,
+                   normals_pub_);
   visualizeNormals(detection_surfels, "detection",
-                   header.stamp, header.frame_id, normals_pub_);
+                   detection_pointcloud_msg_.header.frame_id,
+                   normals_pub_);
+  visualizeKeypoints(detection_keypoints,
+                     detection_pointcloud_msg_.header.stamp,
+                     detection_pointcloud_msg_.header.frame_id,
+                     detection_keypoint_pub_);
+  visualizeKeypoints(object_keypoints_,
+                     detection_pointcloud_msg_.header.stamp,
+                     detection_pointcloud_msg_.header.frame_id,
+                     object_keypoint_pub_);
 
   if (detection_descriptors->empty()) {
     LOG(ERROR) << "Detection pointcloud has no features!";
@@ -565,9 +573,9 @@ bool DetectionMatcher::computeTransformUsingModelify(
     LOG(ERROR) << "No correspondences found!";
     return false;
   }
+  LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
 
   visualizeCorrespondences(detection_keypoints, correspondences,
-                           detection_pointcloud_msg_.header.stamp,
                            detection_pointcloud_msg_.header.frame_id,
                            correspondences_pub_);
 
@@ -602,6 +610,29 @@ bool DetectionMatcher::get3dFeatures(
     pointcloud_surfel_ptr->points[i].y = pointcloud_xyz.points[i].y;
     pointcloud_surfel_ptr->points[i].z = pointcloud_xyz.points[i].z;
   }
+
+  size_t size_before = pointcloud_surfel_ptr->size();
+  size_t i = 0;
+  while (i < pointcloud_surfel_ptr->size()) {
+    if (std::isnan(pointcloud_surfel_ptr->points[i].normal_x) ||
+        std::isnan(pointcloud_surfel_ptr->points[i].normal_y) ||
+        std::isnan(pointcloud_surfel_ptr->points[i].normal_z)) {
+      pointcloud_surfel_ptr->points.erase(
+          pointcloud_surfel_ptr->points.begin() + i);
+    } else if (std::isnan(pointcloud_surfel_ptr->points[i].x) ||
+        std::isnan(pointcloud_surfel_ptr->points[i].y) ||
+        std::isnan(pointcloud_surfel_ptr->points[i].z)) {
+      pointcloud_surfel_ptr->points.erase(
+          pointcloud_surfel_ptr->points.begin() + i);
+    } else {
+      ++i;
+    }
+  }
+  if (size_before > pointcloud_surfel_ptr->size()) {
+    LOG(INFO) << "Filtered " << size_before - pointcloud_surfel_ptr->size()
+              << " points with NaN points or normals";
+  }
+
   LOG(INFO) << "Computed " << pointcloud_surfel_ptr->size() << " surfel points";
 
   if (!getKeypoints(keypoint_type_, pointcloud_surfel_ptr, keypoints)) {
@@ -722,11 +753,15 @@ bool DetectionMatcher::computeTransformFromCorrespondences(
     Transformation* transform) {
   // Filter correspondences
   modelify::registration_toolbox::RansacParams ransac_params;
-  modelify::CorrespondencesTypePtr filtered_correspondences;
-  modelify::registration_toolbox::filterCorrespondences(
+  modelify::CorrespondencesTypePtr filtered_correspondences(
+      new modelify::CorrespondencesType());
+  if (!modelify::registration_toolbox::filterCorrespondences(
       detection_keypoints, object_keypoints_, ransac_params, correspondences,
-      filtered_correspondences);
-  // TODO(gasserl): use return value?
+      filtered_correspondences)) {
+    // TODO(gasserl): error instead of warning?
+    LOG(WARNING) << "Filtering correspondences failed!";
+    *filtered_correspondences = *correspondences;
+  }
 
   // Align features
   modelify::registration_toolbox::GeometricConsistencyParams consistency_params;
@@ -734,16 +769,19 @@ bool DetectionMatcher::computeTransformFromCorrespondences(
   std::vector<modelify::CorrespondencesType> clustered_correspondences;
   if (!modelify::registration_toolbox::alignKeypointsGeometricConsistency(
       detection_keypoints, object_keypoints_, filtered_correspondences,
-      consistency_params.min_cluster_size, consistency_params.consensus_set_resolution_m,
+      consistency_params.min_cluster_size,
+      consistency_params.consensus_set_resolution_m,
       &transforms, &clustered_correspondences)) {
     LOG(ERROR) << "Keypoint alignment failed!";
     return false;
   }
 
-  // Sort correspondence clusters
-  // TODO(gasserl): necessary?
-  /*modelify::TransformationVector transforms;
-  modelify::sortCorrespondenceClusters(clustered_correspondences, &transforms);*/
+  LOG(INFO) << "Publishing initial transformation from geometric consistency";
+  publishTransformation(Transformation(transforms[0]).inverse(),
+                        detection_pointcloud_msg_.header.stamp,
+                        detection_frame_id_, object_frame_id_ + "_init");
+  visualizeObjectMesh(detection_pointcloud_msg_.header.stamp,
+                      object_frame_id_ + "_init", object_mesh_init_pub_);
 
   // Validate alignment
   modelify::registration_toolbox::ICPParams icp_params;
@@ -760,15 +798,24 @@ bool DetectionMatcher::computeTransformFromCorrespondences(
   // TODO(gasserl): use validation!?
 
   // Refine transformation with ICP
-  modelify::Transformation T_icp;
-  if (!estimateTransformationPointToPoint(
+  modelify::Transformation transform_icp;
+  if (estimateTransformationPointToPoint(
       detection_surfels, object_surfels_, transforms[0], icp_params,
-      cloud_resolution, &T_icp, &mean_squared_distance)) {
-    LOG(WARNING) << "ICP refinement failed!";
-    *transform = Transformation(transforms[0]);
+      cloud_resolution, &transform_icp, &mean_squared_distance)) {
+    *transform = Transformation(transform_icp);
+    return true;
   }
+  LOG(WARNING) << "Keypoint ICP refinement failed!";
 
-  *transform = Transformation(T_icp);
+  Transformation T_icp;
+  if (performICP(Transformation(transforms[0]), &T_icp)) {
+    *transform = T_icp;
+    return true;
+  }
+  LOG(WARNING) << "Pointcloud ICP refinement failed!";
+
+  // TODO(gasserl): return false?
+  *transform = Transformation(transforms[0]);
   return true;
 }
 
@@ -809,16 +856,26 @@ void DetectionMatcher::visualizeObjectMesh(const ros::Time& timestamp,
 
 void DetectionMatcher::visualizeObjectPointcloud(const ros::Time& timestamp,
                                                  const std::string& frame_id) {
-  detection_pointcloud_msg_.header.stamp = timestamp;
+  object_pointcloud_msg_.header.stamp = timestamp;
   object_pointcloud_msg_.header.frame_id = frame_id;
   object_pointcloud_pub_.publish(object_pointcloud_msg_);
+}
+
+void DetectionMatcher::visualizeKeypoints(
+    const modelify::PointSurfelCloudType::Ptr& keypoints,
+    const ros::Time& timestamp,  const std::string& frame_id,
+    const ros::Publisher& publisher) {
+  sensor_msgs::PointCloud2 keypoint_msg;
+  pcl::toROSMsg(*keypoints, keypoint_msg);
+  keypoint_msg.header.stamp = timestamp;
+  keypoint_msg.header.frame_id = frame_id;
+  publisher.publish(keypoint_msg);
 }
 
 void DetectionMatcher::visualizeCorrespondences(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
     const modelify::CorrespondencesTypePtr& correspondences,
-    const ros::Time& timestamp, const std::string& frame_id,
-    const ros::Publisher& publisher) {
+    const std::string& frame_id, const ros::Publisher& publisher) {
   visualization_msgs::MarkerArray marker_array;
   visualization_msgs::Marker marker;
   marker.header.frame_id = frame_id;
@@ -828,7 +885,7 @@ void DetectionMatcher::visualizeCorrespondences(
   marker.color.r = 0;
   marker.color.g = 0.5;
   marker.color.b = 1;
-  marker.color.a = 0.7f;
+  marker.color.a = 0.5f;
   geometry_msgs::Point point_msg;
   marker.points.clear();
   for (auto it = correspondences->begin(); it != correspondences->end(); it++) {
@@ -849,8 +906,8 @@ void DetectionMatcher::visualizeCorrespondences(
 
 void DetectionMatcher::visualizeNormals(
     const modelify::PointSurfelCloudType::Ptr& surfels,
-    const std::string& marker_namespace, const ros::Time& timestamp,
-    const std::string& frame_id, const ros::Publisher& publisher) {
+    const std::string& marker_namespace, const std::string& frame_id,
+    const ros::Publisher& publisher) {
   visualization_msgs::MarkerArray marker_array;
   visualization_msgs::Marker marker;
   marker.header.frame_id = frame_id;

@@ -11,8 +11,8 @@
        default="$(find cpt_object_detection)/resources/detection_torus.bag"/>
   <arg name="detection_pointcloud_topic"
        default="/detection_projector/object_pcl_3d"/>
-  <arg name="keypoint_type" default="Uniform"/>
-  <arg name="descriptor_type" default="FPFH"/>
+  <arg name="keypoint_type" default="uniform"/> <!-- ISS or Harris or uniform-->
+  <arg name="descriptor_type" default="FPFH"/> <!-- FPFH or SHOT -->
   <arg name="matching_method" default="conventional"/> <!-- conventional or FGR -->
   <arg name="num_points_object_pointcloud" default="5000"/>
 
