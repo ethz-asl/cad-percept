@@ -13,15 +13,15 @@
 namespace cad_percept {
 namespace object_detection {
 
-class DetectionMatcher {
+class ObjectDetector3D {
   typedef kindr::minimal::QuatTransformationTemplate<float> Transformation;
   typedef kindr::minimal::RotationQuaternionTemplate<float> Quaternion;
   typedef PointMatcher<float> PM;
 
  public:
-  DetectionMatcher(const ros::NodeHandle& nh,
+  ObjectDetector3D(const ros::NodeHandle& nh,
                    const ros::NodeHandle& nh_private);
-  ~DetectionMatcher() = default;
+  ~ObjectDetector3D() = default;
 
   void pointcloudCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
 

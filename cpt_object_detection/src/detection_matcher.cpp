@@ -11,7 +11,7 @@
 namespace cad_percept {
 namespace object_detection {
 
-DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
+ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
                                    const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private),
@@ -27,7 +27,7 @@ DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
     LOG(ERROR) << "Could not get mesh model from off file at "
                << off_file << "!";
   }
-  LOG(INFO) << "[ObjectDetector3D] Object mesh with "
+  LOG(INFO) << "Object mesh with "
             << mesh_model_->getMesh().size_of_facets()
             << " facets and " << mesh_model_->getMesh().size_of_vertices()
             << " vertices";
@@ -35,42 +35,42 @@ DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
   processObject();
 }
 
-void DetectionMatcher::getParamsFromRos() {
+void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("object_frame_id",
                     object_frame_id_, object_frame_id_);
   nh_private_.param("num_points_icp", num_points_icp_, num_points_icp_);
 }
 
-void DetectionMatcher::subscribeToTopics() {
+void ObjectDetector3D::subscribeToTopics() {
   std::string pointcloud_topic = "/camera/depth/color/points";
   nh_private_.param("pointcloud_topic", pointcloud_topic, pointcloud_topic);
   int queue_size = 1;
   nh_private_.param("queue_size", queue_size, queue_size);
   detection_pointcloud_sub_ =
       nh_.subscribe(pointcloud_topic, queue_size,
-                    &DetectionMatcher::pointcloudCallback, this);
-  LOG(INFO) << "[DetectionMatcher] Subscribed to pointcloud topic ["
+                    &ObjectDetector3D::pointcloudCallback, this);
+  LOG(INFO) << "Subscribed to pointcloud topic ["
             << detection_pointcloud_sub_.getTopic() << "]";
 }
 
-void DetectionMatcher::advertiseTopics() {
+void ObjectDetector3D::advertiseTopics() {
   object_pointcloud_pub_ =
       nh_private_.advertise<sensor_msgs::PointCloud2>("object_pcl", 1, true);
-  LOG(INFO) << "[DetectionMatcher] Publishing object poincloud to topic ["
+  LOG(INFO) << "Publishing object poincloud to topic ["
             << object_pointcloud_pub_.getTopic() << "]";
   object_mesh_pub_ =
       nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh", 1,
                                                             true);
-  LOG(INFO) << "[DetectionMatcher] Publishing object mesh to topic ["
+  LOG(INFO) << "Publishing object mesh to topic ["
             << object_mesh_pub_.getTopic() << "]";
   object_mesh_init_pub_ =
       nh_private_.advertise<cgal_msgs::TriangleMeshStamped>(
           "object_mesh_init", 1, true);
-  LOG(INFO) << "[DetectionMatcher] Publishing init object mesh to topic ["
+  LOG(INFO) << "Publishing init object mesh to topic ["
             << object_mesh_init_pub_.getTopic() << "]";
 }
 
-void DetectionMatcher::processObject() {
+void ObjectDetector3D::processObject() {
   // TODO(gasserl): find appropriate number of points to sample
   int num_points_object_pointcloud = 1e3;
   nh_private_.param("num_points_object_pointcloud",
@@ -79,7 +79,7 @@ void DetectionMatcher::processObject() {
   cpt_utils::sample_pc_from_mesh(mesh_model_->getMesh(),
                                  num_points_object_pointcloud, 0.0,
                                  &object_pointcloud_);
-  LOG(INFO) << "[DetectionMatcher] Converted object mesh with "
+  LOG(INFO) << "Converted object mesh with "
             << mesh_model_->getMesh().size_of_facets() << " facets and "
             << mesh_model_->getMesh().size_of_vertices()
             << " vertices to a pointcloud with "
@@ -96,12 +96,12 @@ void DetectionMatcher::processObject() {
   if (visualize_object_on_startup) {
     visualizeObjectPointcloud(ros::Time::now(), detection_frame_id_);
     visualizeObjectMesh(detection_frame_id_, object_mesh_init_pub_);
-    LOG(INFO) << "[DetectionMatcher] Visualizing object";
+    LOG(INFO) << "Visualizing object";
     object_pointcloud_msg_.header.frame_id = object_frame_id_;
   }
 }
 
-void DetectionMatcher::pointcloudCallback(
+void ObjectDetector3D::pointcloudCallback(
     const sensor_msgs::PointCloud2 &cloud_msg_in) {
   detection_frame_id_ = cloud_msg_in.header.frame_id;
   detection_pointcloud_msg_ = cloud_msg_in;
@@ -110,7 +110,7 @@ void DetectionMatcher::pointcloudCallback(
   processPointcloudUsingPcaAndIcp();
 }
 
-void DetectionMatcher::processPointcloudUsingPcaAndIcp() {
+void ObjectDetector3D::processPointcloudUsingPcaAndIcp() {
   ros::WallTime time_start = ros::WallTime::now();
 
   // get initial guess
@@ -144,7 +144,7 @@ void DetectionMatcher::processPointcloudUsingPcaAndIcp() {
             << (ros::WallTime::now() - time_start).toSec();
 }
 
-bool DetectionMatcher::findInitialGuessUsingPca(
+bool ObjectDetector3D::findInitialGuessUsingPca(
     Transformation* T_object_detection_init) {
   ros::WallTime time_start = ros::WallTime::now();
 
@@ -207,7 +207,7 @@ bool DetectionMatcher::findInitialGuessUsingPca(
   return true;
 }
 
-bool DetectionMatcher::performICP(const Transformation& T_object_detection_init,
+bool ObjectDetector3D::performICP(const Transformation& T_object_detection_init,
                                   Transformation* T_object_detection) {
   CHECK(T_object_detection);
   ros::WallTime time_start = ros::WallTime::now();
@@ -251,7 +251,7 @@ bool DetectionMatcher::performICP(const Transformation& T_object_detection_init,
         icp(points_detection, points_object,
             T_object_detection_init.getTransformationMatrix());
   } catch (PM::ConvergenceError& error_msg) {
-    LOG(WARNING) << "[DetectionMatcher] ICP was not successful!\n"
+    LOG(WARNING) << "ICP was not successful!\n"
                     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
     return false;
   }
@@ -262,12 +262,12 @@ bool DetectionMatcher::performICP(const Transformation& T_object_detection_init,
       Transformation(Tmatrix);
 
   LOG(INFO) << "Time ICP: " << (ros::WallTime::now() - time_start).toSec();
-  LOG(INFO) << "[DetectionMatcher] ICP on detection pointcloud "
+  LOG(INFO) << "ICP on detection pointcloud "
                "and object mesh vertices successful!";
   return true;
 }
 
-void DetectionMatcher::publishTransformation(const Transformation& transform,
+void ObjectDetector3D::publishTransformation(const Transformation& transform,
                                              const ros::Time& stamp,
                                              const std::string& parent_frame_id,
                                              const std::string& child_frame_id) {
@@ -285,7 +285,7 @@ void DetectionMatcher::publishTransformation(const Transformation& transform,
   tf_broadcaster.sendTransform(tf_transform_stamped);
 }
 
-void DetectionMatcher::visualizeObjectMesh(
+void ObjectDetector3D::visualizeObjectMesh(
     const std::string& frame_id, const ros::Publisher& publisher) const {
   cgal_msgs::TriangleMeshStamped p_msg;
 
@@ -301,7 +301,7 @@ void DetectionMatcher::visualizeObjectMesh(
   publisher.publish(p_msg);
 }
 
-void DetectionMatcher::visualizeObjectPointcloud(const ros::Time& timestamp,
+void ObjectDetector3D::visualizeObjectPointcloud(const ros::Time& timestamp,
                                                  const std::string& frame_id) {
   detection_pointcloud_msg_.header.stamp = timestamp;
   object_pointcloud_msg_.header.frame_id = frame_id;
