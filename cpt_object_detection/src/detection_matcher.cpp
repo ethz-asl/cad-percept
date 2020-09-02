@@ -42,6 +42,8 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("object_frame_id",
                     object_frame_id_, object_frame_id_);
   nh_private_.param("num_points_icp", num_points_icp_, num_points_icp_);
+  nh_private_.param("icp_config_file", icp_config_file_,
+                    icp_config_file_);
 }
 
 void ObjectDetector3D::subscribeToTopics() {
@@ -116,18 +118,15 @@ void ObjectDetector3D::processPointcloudUsingPcaAndIcp() {
   // get initial guess
   Transformation T_detection_object_pca = pca(object_pointcloud_,
                                                      detection_pointcloud_);
+  // ICP with initial guess
+  Transformation T_object_detection =
+      icp(object_pointcloud_, detection_pointcloud_,
+          T_detection_object_pca.inverse(), icp_config_file_);
+
   publishTransformation(T_detection_object_pca,
                         detection_pointcloud_msg_.header.stamp,
                         detection_frame_id_, object_frame_id_ + "_init");
   visualizeObjectMesh(object_frame_id_ + "_init", object_mesh_init_pub_);
-
-  // ICP with initial guess
-  Transformation T_object_detection;
-  if(!performICP(T_detection_object_pca.inverse(), &T_object_detection)) {
-    LOG(WARNING) << "ICP from detection pointcloud to "
-                    "object pointcloud failed!";
-    T_object_detection.setIdentity();
-  }
 
   // Publish results
   publishTransformation(T_object_detection.inverse(),
@@ -202,42 +201,36 @@ ObjectDetector3D::Transformation ObjectDetector3D::pca(
   return Transformation(rotation, translation);
 }
 
-bool ObjectDetector3D::performICP(const Transformation& T_object_detection_init,
-                                  Transformation* T_object_detection) {
-  CHECK(T_object_detection);
+ObjectDetector3D::Transformation ObjectDetector3D::icp(
+    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+    const Transformation& T_object_detection_init,
+    const std::string& config_file) {
   ros::WallTime time_start = ros::WallTime::now();
 
   // setup data points
+  sensor_msgs::PointCloud2 msg;
+  pcl::toROSMsg(object_pointcloud, msg);
   PM::DataPoints points_object =
-      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(
-          object_pointcloud_msg_);
+      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(msg);
+  pcl::toROSMsg(detection_pointcloud, msg);
   PM::DataPoints points_detection =
-      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(
-          detection_pointcloud_msg_);
+      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(msg);
 
   // setup icp
   PM::ICP icp;
-  icp.setDefault();
-
-  // Prepare filters
-  std::string name;
-  PointMatcherSupport::Parametrizable::Parameters params;
-  // Reading filters
-  name = "MaxPointCountDataPointsFilter";
-  params["maxCount"] = std::to_string(num_points_icp_);
-  std::shared_ptr<PM::DataPointsFilter> maxCount_read =
-      PM::get().DataPointsFilterRegistrar.create(name, params);
-  params.clear();
-  // Reference filters
-  name = "MaxPointCountDataPointsFilter";
-  params["maxCount"] = std::to_string(num_points_icp_);
-  std::shared_ptr<PM::DataPointsFilter> maxCount_ref =
-      PM::get().DataPointsFilterRegistrar.create(name, params);
-  params.clear();
-
-  // Build ICP solution
-  icp.readingDataPointsFilters.push_back(maxCount_read);
-  icp.referenceDataPointsFilters.push_back(maxCount_ref);
+  if (!config_file.empty()) {
+    std::ifstream ifs(config_file.c_str());
+    if (ifs.good()) {
+      icp.loadFromYaml(ifs);
+    } else {
+      LOG(ERROR) << "Cannot load ICP config from YAML file " << config_file;
+      icp.setDefault();
+    }
+  } else {
+    LOG(INFO) << "No ICP config file given, using default";
+    icp.setDefault();
+  }
 
   // icp: reference - object mesh, data - detection cloud
   PM::TransformationParameters T_object_detection_icp;
@@ -246,20 +239,19 @@ bool ObjectDetector3D::performICP(const Transformation& T_object_detection_init,
         icp(points_detection, points_object,
             T_object_detection_init.getTransformationMatrix());
   } catch (PM::ConvergenceError& error_msg) {
-    LOG(WARNING) << "ICP was not successful!\n"
-                    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    return false;
+    LOG(WARNING) << "ICP was not successful!";
+    return T_object_detection_init;
   }
 
-  Transformation::TransformationMatrix Tmatrix(
-      T_object_detection_icp);
-  *T_object_detection =
-      Transformation(Tmatrix);
+  if (!Quaternion::isValidRotationMatrix(
+          T_object_detection_icp.block<3,3>(0,0))) {
+    LOG(ERROR) << "Invalid rotation matrix!";
+    return T_object_detection_init;
+  }
+  Transformation::TransformationMatrix Tmatrix(T_object_detection_icp);
 
   LOG(INFO) << "Time ICP: " << (ros::WallTime::now() - time_start).toSec();
-  LOG(INFO) << "ICP on detection pointcloud "
-               "and object mesh vertices successful!";
-  return true;
+  return Transformation(Tmatrix);
 }
 
 void ObjectDetector3D::publishTransformation(const Transformation& transform,

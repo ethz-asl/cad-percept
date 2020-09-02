@@ -55,7 +55,7 @@ oriented to form a right-handed system.
 The resulting transform is additionally published to the TF tree as 
 ``object_detection_mesh_init``.
 
-The more precise alignment is found using ICP in the function ``performICP``.
+The more precise alignment is found using ICP in the function ``icp``.
 We use the implementation of the library ``libpointmatcher``.
 In order to speed up the process, both the detection and the object pointclouds
 are uniformly sampled to contain a maximum number of points, defined in the 

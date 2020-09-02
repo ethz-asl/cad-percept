@@ -36,8 +36,11 @@ class ObjectDetector3D {
   static Transformation pca(
       const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
-  bool performICP(const Transformation& T_object_detection_init,
-                  Transformation* T_object_detection);
+  static Transformation icp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+      const Transformation& T_object_detection_init,
+      const std::string& config_file);
   void visualizeObjectMesh(const std::string& frame_id,
                            const ros::Publisher& publisher) const;
   void visualizeObjectPointcloud(const ros::Time& timestamp,
@@ -67,6 +70,7 @@ class ObjectDetector3D {
   // Parameters
   std::string pointcloud_topic_;
   std::string object_frame_id_;
+  std::string icp_config_file_;
   int num_points_icp_;
 };
 
