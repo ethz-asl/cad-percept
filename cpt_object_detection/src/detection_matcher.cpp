@@ -34,7 +34,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
             << " facets and " << mesh_model_->getMesh().size_of_vertices()
             << " vertices";
 
-  processObject();
+  processMesh();
 }
 
 void ObjectDetector3D::getParamsFromRos() {
@@ -74,8 +74,8 @@ void ObjectDetector3D::advertiseTopics() {
             << object_mesh_init_pub_.getTopic() << "]";
 }
 
-void ObjectDetector3D::processObject() {
-  // TODO(gasserl): find appropriate number of points to sample
+void ObjectDetector3D::processMesh() {
+  // Sample pointcloud from object mesh
   int num_points_object_pointcloud = 1e3;
   nh_private_.param("num_points_object_pointcloud",
                     num_points_object_pointcloud,
@@ -89,17 +89,15 @@ void ObjectDetector3D::processObject() {
             << " vertices to a pointcloud with "
             << object_pointcloud_.size() << " points";
 
-  // Serialize to a ROS message
-  pcl::toROSMsg(object_pointcloud_, object_pointcloud_msg_);
-
   // Visualize object
   bool visualize_object_on_startup = false;
   nh_private_.param("visualize_object_on_startup",
                     visualize_object_on_startup,
                     visualize_object_on_startup);
   if (visualize_object_on_startup) {
-    visualizeObjectPointcloud(ros::Time::now(), detection_frame_id_);
-    visualizeObjectMesh(detection_frame_id_, object_mesh_init_pub_);
+    visualizePointcloud(object_pointcloud_, ros::Time::now(),
+                        detection_frame_id_, object_pointcloud_pub_);
+    visualizeMesh(ros::Time::now(), detection_frame_id_, object_mesh_init_pub_);
     LOG(INFO) << "Visualizing object";
   }
 }
@@ -107,8 +105,8 @@ void ObjectDetector3D::processObject() {
 void ObjectDetector3D::objectDetectionCallback(
     const sensor_msgs::PointCloud2 &cloud_msg_in) {
   detection_frame_id_ = cloud_msg_in.header.frame_id;
-  detection_pointcloud_msg_ = cloud_msg_in;
-  pcl::fromROSMsg(detection_pointcloud_msg_, detection_pointcloud_);
+  detection_stamp_ = cloud_msg_in.header.stamp;
+  pcl::fromROSMsg(cloud_msg_in, detection_pointcloud_);
 
   processDetectionUsingPcaAndIcp();
 }
@@ -120,18 +118,17 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
                                    &T_object_detection_init);
 
   // Publish transformations to TF
-  publishTransformation(T_object_detection_init.inverse(),
-                        detection_pointcloud_msg_.header.stamp,
+  publishTransformation(T_object_detection_init.inverse(), detection_stamp_,
                         detection_frame_id_, object_frame_id_ + "_init");
-  publishTransformation(T_object_detection.inverse(),
-                        detection_pointcloud_msg_.header.stamp,
+  publishTransformation(T_object_detection.inverse(), detection_stamp_,
                         detection_frame_id_, object_frame_id_);
 
   // Visualize object
-  visualizeObjectMesh(object_frame_id_ + "_init", object_mesh_init_pub_);
-  visualizeObjectMesh(object_frame_id_, object_mesh_pub_);
-  visualizeObjectPointcloud(detection_pointcloud_msg_.header.stamp,
-                            detection_frame_id_);
+  visualizeMesh(detection_stamp_, object_frame_id_ + "_init",
+                object_mesh_init_pub_);
+  visualizeMesh(detection_stamp_, object_frame_id_, object_mesh_pub_);
+  visualizePointcloud(object_pointcloud_, detection_stamp_,
+                      detection_frame_id_, object_pointcloud_pub_);
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
@@ -294,8 +291,9 @@ void ObjectDetector3D::publishTransformation(const Transformation& transform,
   tf_broadcaster.sendTransform(stamped_transform_msg);
 }
 
-void ObjectDetector3D::visualizeObjectMesh(
-    const std::string& frame_id, const ros::Publisher& publisher) const {
+void ObjectDetector3D::visualizeMesh(const ros::Time& timestamp,
+                                     const std::string& frame_id,
+                                     const ros::Publisher& publisher) const {
   cgal_msgs::TriangleMeshStamped p_msg;
 
   // triangle mesh to prob. msg
@@ -305,16 +303,20 @@ void ObjectDetector3D::visualizeObjectMesh(
   p_msg.mesh = t_msg;
 
   p_msg.header.frame_id = frame_id;
-  p_msg.header.stamp = detection_pointcloud_msg_.header.stamp;
+  p_msg.header.stamp = timestamp;
   p_msg.header.seq = 0;
   publisher.publish(p_msg);
 }
 
-void ObjectDetector3D::visualizeObjectPointcloud(const ros::Time& timestamp,
-                                                 const std::string& frame_id) {
-  detection_pointcloud_msg_.header.stamp = timestamp;
-  object_pointcloud_msg_.header.frame_id = frame_id;
-  object_pointcloud_pub_.publish(object_pointcloud_msg_);
+void ObjectDetector3D::visualizePointcloud(
+    const pcl::PointCloud<pcl::PointXYZ>& pointcloud,
+    const ros::Time& timestamp, const std::string& frame_id,
+    const ros::Publisher& publisher) {
+  sensor_msgs::PointCloud2 msg;
+  pcl::toROSMsg(pointcloud, msg);
+  msg.header.stamp = timestamp;
+  msg.header.frame_id = frame_id;
+  publisher.publish(msg);
 }
 
 }

@@ -35,7 +35,7 @@ using rviz.
 
 ### Algorithm
 All initial processing of the object mesh is performed in the function 
-``processObject``, called by the constructor of the node. 
+``processMesh``, called by the constructor of the node. 
 The object mesh can be visualized upon startup of the node using the 
 parameter ``visualize_object_on_startup``.
 
