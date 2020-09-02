@@ -15,17 +15,22 @@ DetectionMatcher::DetectionMatcher(const ros::NodeHandle& nh,
                                    const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      mesh_model_(nh_private.param<std::string>("off_model", "fail")),
       object_frame_id_("object_detection_mesh"),
       num_points_icp_(500) {
-  LOG(INFO) << "[DetectionMatcher] Object mesh with "
-            << mesh_model_.getMesh().size_of_facets()
-            << " facets and " << mesh_model_.getMesh().size_of_vertices()
-            << " vertices";
-
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
+
+  std::string off_file =
+      nh_private.param<std::string>("off_model", "fail");
+  if (!cgal::MeshModel::create(off_file, &mesh_model_)) {
+    LOG(ERROR) << "Could not get mesh model from off file at "
+               << off_file << "!";
+  }
+  LOG(INFO) << "[ObjectDetector3D] Object mesh with "
+            << mesh_model_->getMesh().size_of_facets()
+            << " facets and " << mesh_model_->getMesh().size_of_vertices()
+            << " vertices";
 
   processObject();
 }
@@ -71,12 +76,12 @@ void DetectionMatcher::processObject() {
   nh_private_.param("num_points_object_pointcloud",
                     num_points_object_pointcloud,
                     num_points_object_pointcloud);
-  cpt_utils::sample_pc_from_mesh(mesh_model_.getMesh(),
+  cpt_utils::sample_pc_from_mesh(mesh_model_->getMesh(),
                                  num_points_object_pointcloud, 0.0,
                                  &object_pointcloud_);
   LOG(INFO) << "[DetectionMatcher] Converted object mesh with "
-            << mesh_model_.getMesh().size_of_facets() << " facets and "
-            << mesh_model_.getMesh().size_of_vertices()
+            << mesh_model_->getMesh().size_of_facets() << " facets and "
+            << mesh_model_->getMesh().size_of_vertices()
             << " vertices to a pointcloud with "
             << object_pointcloud_.size() << " points";
 
@@ -286,7 +291,7 @@ void DetectionMatcher::visualizeObjectMesh(
 
   // triangle mesh to prob. msg
   cgal_msgs::TriangleMesh t_msg;
-  cgal::Polyhedron mesh = mesh_model_.getMesh();
+  cgal::Polyhedron mesh = mesh_model_->getMesh();
   cgal::triangleMeshToMsg(mesh, &t_msg);
   p_msg.mesh = t_msg;
 

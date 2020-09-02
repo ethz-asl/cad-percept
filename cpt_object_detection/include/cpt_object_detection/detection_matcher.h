@@ -54,7 +54,7 @@ class DetectionMatcher {
   ros::Publisher object_mesh_pub_;
   ros::Publisher object_mesh_init_pub_;
 
-  cgal::MeshModel mesh_model_;
+  cgal::MeshModel::Ptr mesh_model_;
   pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
   sensor_msgs::PointCloud2 object_pointcloud_msg_;
 
