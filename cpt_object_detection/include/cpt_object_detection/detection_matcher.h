@@ -32,7 +32,7 @@ class ObjectDetector3D {
 
   void processObject();
 
-  void processPointcloudUsingPcaAndIcp();
+  void processDetectionUsingPcaAndIcp();
   bool findInitialGuessUsingPca(Transformation* T_object_detection_init);
   bool performICP(const Transformation& T_object_detection_init,
                   Transformation* T_object_detection);
