@@ -114,20 +114,16 @@ void ObjectDetector3D::processPointcloudUsingPcaAndIcp() {
   ros::WallTime time_start = ros::WallTime::now();
 
   // get initial guess
-  Transformation T_object_detection_init;
-  if(!findInitialGuessUsingPca(&T_object_detection_init)) {
-    LOG(WARNING) << "Initialization of ICP from detection pointcloud to "
-                    "object pointcloud failed!";
-    T_object_detection_init.setIdentity();
-  }
-  publishTransformation(T_object_detection_init.inverse(),
+  Transformation T_detection_object_pca = pca(object_pointcloud_,
+                                                     detection_pointcloud_);
+  publishTransformation(T_detection_object_pca,
                         detection_pointcloud_msg_.header.stamp,
                         detection_frame_id_, object_frame_id_ + "_init");
   visualizeObjectMesh(object_frame_id_ + "_init", object_mesh_init_pub_);
 
   // ICP with initial guess
   Transformation T_object_detection;
-  if(!performICP(T_object_detection_init, &T_object_detection)) {
+  if(!performICP(T_detection_object_pca.inverse(), &T_object_detection)) {
     LOG(WARNING) << "ICP from detection pointcloud to "
                     "object pointcloud failed!";
     T_object_detection.setIdentity();
@@ -144,36 +140,37 @@ void ObjectDetector3D::processPointcloudUsingPcaAndIcp() {
             << (ros::WallTime::now() - time_start).toSec();
 }
 
-bool ObjectDetector3D::findInitialGuessUsingPca(
-    Transformation* T_object_detection_init) {
+ObjectDetector3D::Transformation ObjectDetector3D::pca(
+    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
   ros::WallTime time_start = ros::WallTime::now();
 
-  if (detection_pointcloud_.size() < 3) {
+  if (detection_pointcloud.size() < 3) {
     LOG(WARNING) << "Detection PCA not possible! Too few points: "
-                 << detection_pointcloud_.size();
-    return false;
+                 << detection_pointcloud.size();
+    return Transformation();
   }
-  if (object_pointcloud_.size() < 3) {
+  if (object_pointcloud.size() < 3) {
     LOG(WARNING) << "Object PCA not possible! Too few points: "
-                 << object_pointcloud_.size();
-    return false;
+                 << object_pointcloud.size();
+    return Transformation();
   }
 
   // Get data from detection pointcloud
-  pcl::PCA<pcl::PointXYZ> detection_pca;
+  pcl::PCA<pcl::PointXYZ> pca_detection;
   pcl::PointCloud<pcl::PointXYZ>::Ptr detection_pointcloud_ptr =
-      detection_pointcloud_.makeShared();
-  detection_pca.setInputCloud(detection_pointcloud_ptr);
-  Eigen::Vector4f detection_centroid = detection_pca.getMean();
-  Eigen::Matrix3f detection_vectors = detection_pca.getEigenVectors();
+      detection_pointcloud.makeShared();
+  pca_detection.setInputCloud(detection_pointcloud_ptr);
+  Eigen::Vector4f detection_centroid = pca_detection.getMean();
+  Eigen::Matrix3f detection_vectors = pca_detection.getEigenVectors();
 
   // Get data from object pointcloud
-  pcl::PCA<pcl::PointXYZ> object_pca;
+  pcl::PCA<pcl::PointXYZ> pca_object;
   pcl::PointCloud<pcl::PointXYZ>::Ptr object_pointcloud_ptr =
-      object_pointcloud_.makeShared();
-  object_pca.setInputCloud(object_pointcloud_ptr);
-  Eigen::Vector4f object_centroid = object_pca.getMean();
-  Eigen::Matrix3f object_vectors = object_pca.getEigenVectors();
+      object_pointcloud.makeShared();
+  pca_object.setInputCloud(object_pointcloud_ptr);
+  Eigen::Vector4f object_centroid = pca_object.getMean();
+  Eigen::Matrix3f object_vectors = pca_object.getEigenVectors();
 
   // Translation from mean of pointclouds det_r_obj_det
   kindr::minimal::PositionTemplate<float> translation(
@@ -198,13 +195,11 @@ bool ObjectDetector3D::findInitialGuessUsingPca(
     LOG(WARNING) << "Rotation matrix is not valid!";
     LOG(INFO) << "determinant: " << rotation_matrix.determinant();
     LOG(INFO) << "R*R^T:\n" << rotation_matrix * rotation_matrix.transpose();
-    return false;
+    return Transformation();
   }
 
-  *T_object_detection_init = Transformation(rotation, translation).inverse();
-  LOG(INFO) << "Time initial guess: "
-            << (ros::WallTime::now() - time_start).toSec();
-  return true;
+  LOG(INFO) << "Time PCA: " << (ros::WallTime::now() - time_start).toSec();
+  return Transformation(rotation, translation);
 }
 
 bool ObjectDetector3D::performICP(const Transformation& T_object_detection_init,

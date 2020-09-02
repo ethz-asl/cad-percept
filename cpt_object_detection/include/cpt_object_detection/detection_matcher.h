@@ -33,7 +33,9 @@ class ObjectDetector3D {
   void processObject();
 
   void processPointcloudUsingPcaAndIcp();
-  bool findInitialGuessUsingPca(Transformation* T_object_detection_init);
+  static Transformation pca(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
   bool performICP(const Transformation& T_object_detection_init,
                   Transformation* T_object_detection);
   void visualizeObjectMesh(const std::string& frame_id,
