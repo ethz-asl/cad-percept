@@ -114,30 +114,54 @@ void ObjectDetector3D::objectDetectionCallback(
 }
 
 void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
-  ros::WallTime time_start = ros::WallTime::now();
-
-  // get initial guess
-  Transformation T_detection_object_pca = pca(object_pointcloud_,
-                                                     detection_pointcloud_);
-  // ICP with initial guess
+  Transformation T_object_detection_init;
   Transformation T_object_detection =
-      icp(object_pointcloud_, detection_pointcloud_,
-          T_detection_object_pca.inverse(), icp_config_file_);
+      alignDetectionUsingPcaAndIcp(object_pointcloud_, detection_pointcloud_,
+                                   &T_object_detection_init);
 
-  publishTransformation(T_detection_object_pca,
+  // Publish transformations to TF
+  publishTransformation(T_object_detection_init.inverse(),
                         detection_pointcloud_msg_.header.stamp,
                         detection_frame_id_, object_frame_id_ + "_init");
-  visualizeObjectMesh(object_frame_id_ + "_init", object_mesh_init_pub_);
-
-  // Publish results
   publishTransformation(T_object_detection.inverse(),
                         detection_pointcloud_msg_.header.stamp,
                         detection_frame_id_, object_frame_id_);
+
+  // Visualize object
+  visualizeObjectMesh(object_frame_id_ + "_init", object_mesh_init_pub_);
+  visualizeObjectMesh(object_frame_id_, object_mesh_pub_);
   visualizeObjectPointcloud(detection_pointcloud_msg_.header.stamp,
                             detection_frame_id_);
-  visualizeObjectMesh(object_frame_id_, object_mesh_pub_);
+}
+
+ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
+    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+    Transformation* T_object_detection_init) {
+  CHECK(T_object_detection_init);
+  ros::WallTime time_start = ros::WallTime::now();
+
+  // Get initial guess with PCA
+  Transformation T_detection_object_pca = pca(object_pointcloud,
+                                              detection_pointcloud);
+  *T_object_detection_init = T_detection_object_pca.inverse();
+
+  // Get final alignment with ICP
+  Transformation T_object_detection =
+      icp(object_pointcloud, detection_pointcloud,
+          *T_object_detection_init, icp_config_file_);
+
   LOG(INFO) << "Total matching time: "
             << (ros::WallTime::now() - time_start).toSec();
+  return T_object_detection;
+}
+
+ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
+    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
+  Transformation T;
+  return alignDetectionUsingPcaAndIcp(object_pointcloud, detection_pointcloud,
+                                      &T);
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::pca(

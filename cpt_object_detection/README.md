@@ -39,7 +39,7 @@ All initial processing of the object mesh is performed in the function
 The object mesh can be visualized upon startup of the node using the 
 parameter ``visualize_object_on_startup``.
 
-The function ``processPointcloudUsingPcaAndIcp`` contains all processing steps for each 
+The function ``processDetectionUsingPcaAndIcp`` contains all processing steps for each 
 pointcloud received by the node.
 The PCA-ICP pipeline aims to find the transformation by performing ICP on an 
 initial guess obtained by a PCA on the detection pointcloud and the a pointcloud 

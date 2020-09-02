@@ -33,6 +33,13 @@ class ObjectDetector3D {
   void processObject();
 
   void processDetectionUsingPcaAndIcp();
+  Transformation alignDetectionUsingPcaAndIcp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
+  Transformation alignDetectionUsingPcaAndIcp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+      Transformation* T_object_detection_init);
   static Transformation pca(
       const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
