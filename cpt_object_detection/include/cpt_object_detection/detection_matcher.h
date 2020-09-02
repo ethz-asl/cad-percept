@@ -23,7 +23,7 @@ class ObjectDetector3D {
                    const ros::NodeHandle& nh_private);
   ~ObjectDetector3D() = default;
 
-  void pointcloudCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
+  void objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
 
  private:
   void getParamsFromRos();
@@ -63,6 +63,7 @@ class ObjectDetector3D {
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
 
   // Parameters
+  std::string pointcloud_topic_;
   std::string object_frame_id_;
   int num_points_icp_;
 };

@@ -15,6 +15,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
                                    const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private),
+      pointcloud_topic_("/camera/depth/color/points"),
       object_frame_id_("object_detection_mesh"),
       num_points_icp_(500) {
   getParamsFromRos();
@@ -36,19 +37,18 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
 }
 
 void ObjectDetector3D::getParamsFromRos() {
+  nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id",
                     object_frame_id_, object_frame_id_);
   nh_private_.param("num_points_icp", num_points_icp_, num_points_icp_);
 }
 
 void ObjectDetector3D::subscribeToTopics() {
-  std::string pointcloud_topic = "/camera/depth/color/points";
-  nh_private_.param("pointcloud_topic", pointcloud_topic, pointcloud_topic);
   int queue_size = 1;
   nh_private_.param("queue_size", queue_size, queue_size);
   detection_pointcloud_sub_ =
-      nh_.subscribe(pointcloud_topic, queue_size,
-                    &ObjectDetector3D::pointcloudCallback, this);
+      nh_.subscribe(pointcloud_topic_, queue_size,
+                    &ObjectDetector3D::objectDetectionCallback, this);
   LOG(INFO) << "Subscribed to pointcloud topic ["
             << detection_pointcloud_sub_.getTopic() << "]";
 }
@@ -85,10 +85,10 @@ void ObjectDetector3D::processObject() {
             << " vertices to a pointcloud with "
             << object_pointcloud_.size() << " points";
 
+  // Serialize to a ROS message
   pcl::toROSMsg(object_pointcloud_, object_pointcloud_msg_);
-  object_pointcloud_msg_.header.frame_id = object_frame_id_;
 
-  // init test
+  // Visualize object
   bool visualize_object_on_startup = false;
   nh_private_.param("visualize_object_on_startup",
                     visualize_object_on_startup,
@@ -97,11 +97,10 @@ void ObjectDetector3D::processObject() {
     visualizeObjectPointcloud(ros::Time::now(), detection_frame_id_);
     visualizeObjectMesh(detection_frame_id_, object_mesh_init_pub_);
     LOG(INFO) << "Visualizing object";
-    object_pointcloud_msg_.header.frame_id = object_frame_id_;
   }
 }
 
-void ObjectDetector3D::pointcloudCallback(
+void ObjectDetector3D::objectDetectionCallback(
     const sensor_msgs::PointCloud2 &cloud_msg_in) {
   detection_frame_id_ = cloud_msg_in.header.frame_id;
   detection_pointcloud_msg_ = cloud_msg_in;
