@@ -7,6 +7,7 @@
 #include <pointmatcher_ros/point_cloud.h>
 #include <pcl/common/pca.h>
 #include <cpt_utils/pc_processing.h>
+#include <minkindr_conversions/kindr_msg.h>
 
 namespace cad_percept {
 namespace object_detection {
@@ -270,18 +271,15 @@ void ObjectDetector3D::publishTransformation(const Transformation& transform,
                                              const ros::Time& stamp,
                                              const std::string& parent_frame_id,
                                              const std::string& child_frame_id) {
-  static tf::TransformBroadcaster tf_broadcaster;
-  tf::Transform tf_transform;
-  tf_transform.setOrigin(tf::Vector3(transform.getPosition().x(),
-                                     transform.getPosition().y(),
-                                     transform.getPosition().z()));
-  tf_transform.setRotation(tf::Quaternion(transform.getRotation().x(),
-                                          transform.getRotation().y(),
-                                          transform.getRotation().z(),
-                                          transform.getRotation().w()));
-  const tf::StampedTransform tf_transform_stamped(
-      tf_transform, stamp, parent_frame_id, child_frame_id);
-  tf_broadcaster.sendTransform(tf_transform_stamped);
+  static tf2_ros::TransformBroadcaster tf_broadcaster;
+  geometry_msgs::Transform transform_msg;
+  tf::transformKindrToMsg(transform.cast<double>(), &transform_msg);
+  geometry_msgs::TransformStamped stamped_transform_msg;
+  stamped_transform_msg.header.stamp = stamp;
+  stamped_transform_msg.header.frame_id = parent_frame_id;
+  stamped_transform_msg.child_frame_id = child_frame_id;
+  stamped_transform_msg.transform = transform_msg;
+  tf_broadcaster.sendTransform(stamped_transform_msg);
 }
 
 void ObjectDetector3D::visualizeObjectMesh(
