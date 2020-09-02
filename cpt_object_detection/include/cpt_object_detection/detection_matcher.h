@@ -32,7 +32,7 @@ class ObjectDetector3D {
 
   void processObject();
 
-  void processPointcloudUsingPcaAndIcp();
+  void processDetectionUsingPcaAndIcp();
   static Transformation pca(
       const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);

@@ -23,7 +23,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
   subscribeToTopics();
   advertiseTopics();
 
-  std::string off_file =
+  const std::string& off_file =
       nh_private.param<std::string>("off_model", "fail");
   if (!cgal::MeshModel::create(off_file, &mesh_model_)) {
     LOG(ERROR) << "Could not get mesh model from off file at "
@@ -41,7 +41,8 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id",
                     object_frame_id_, object_frame_id_);
-  nh_private_.param("num_points_icp", num_points_icp_, num_points_icp_);
+  nh_private_.param("num_points_icp", num_points_icp_,
+                    num_points_icp_);
   nh_private_.param("icp_config_file", icp_config_file_,
                     icp_config_file_);
 }
@@ -109,10 +110,10 @@ void ObjectDetector3D::objectDetectionCallback(
   detection_pointcloud_msg_ = cloud_msg_in;
   pcl::fromROSMsg(detection_pointcloud_msg_, detection_pointcloud_);
 
-  processPointcloudUsingPcaAndIcp();
+  processDetectionUsingPcaAndIcp();
 }
 
-void ObjectDetector3D::processPointcloudUsingPcaAndIcp() {
+void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   ros::WallTime time_start = ros::WallTime::now();
 
   // get initial guess
