@@ -142,7 +142,7 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
                             detection_frame_id_);
   visualizeObjectMesh(object_frame_id_, object_mesh_pub_);
   LOG(INFO) << "Total matching time: "
-            << (ros::WallTime::now() - time_start).toSec();
+            << (ros::WallTime::now() - time_start).toSec() << " s";
 }
 
 bool ObjectDetector3D::findInitialGuessUsingPca(
@@ -198,13 +198,15 @@ bool ObjectDetector3D::findInitialGuessUsingPca(
   } else {
     LOG(WARNING) << "Rotation matrix is not valid!";
     LOG(INFO) << "determinant: " << rotation_matrix.determinant();
-    LOG(INFO) << "R*R^T:\n" << rotation_matrix * rotation_matrix.transpose();
+    LOG(INFO) << "R*R^T - I:\n"
+              << rotation_matrix * rotation_matrix.transpose()
+                     - Eigen::Matrix3f::Identity();
     return false;
   }
 
   *T_object_detection_init = Transformation(rotation, translation).inverse();
-  LOG(INFO) << "Time initial guess: "
-            << (ros::WallTime::now() - time_start).toSec();
+  LOG(INFO) << "Time PCA: "
+            << (ros::WallTime::now() - time_start).toSec() << " s";
   return true;
 }
 
@@ -262,7 +264,8 @@ bool ObjectDetector3D::performICP(const Transformation& T_object_detection_init,
   *T_object_detection =
       Transformation(Tmatrix);
 
-  LOG(INFO) << "Time ICP: " << (ros::WallTime::now() - time_start).toSec();
+  LOG(INFO) << "Time ICP: "
+            << (ros::WallTime::now() - time_start).toSec() << " s";
   LOG(INFO) << "ICP on detection pointcloud "
                "and object mesh vertices successful!";
   return true;
