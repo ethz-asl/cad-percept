@@ -45,7 +45,7 @@ class ObjectDetector3D {
       const std::string& config_file,
       Transformation* T_object_detection_init);
   static Transformation pca(
-      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const cgal::MeshModel::Ptr& mesh_model,
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
   static Transformation icp(
       const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,

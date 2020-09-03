@@ -138,7 +138,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
   ros::WallTime time_start = ros::WallTime::now();
 
   // Get initial guess with PCA
-  Transformation T_detection_object_pca = pca(object_pointcloud,
+  Transformation T_detection_object_pca = pca(mesh_model_,
                                               detection_pointcloud);
   *T_object_detection_init = T_detection_object_pca.inverse();
 
@@ -171,8 +171,9 @@ ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::pca(
-    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const cgal::MeshModel::Ptr& mesh_model,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
+  CHECK_NOTNULL(mesh_model);
   ros::WallTime time_start = ros::WallTime::now();
 
   if (detection_pointcloud.size() < 3) {
@@ -180,9 +181,8 @@ ObjectDetector3D::Transformation ObjectDetector3D::pca(
                  << detection_pointcloud.size();
     return Transformation();
   }
-  if (object_pointcloud.size() < 3) {
-    LOG(WARNING) << "Object PCA not possible! Too few points: "
-                 << object_pointcloud.size();
+  if (mesh_model->getMesh().empty()) {
+    LOG(WARNING) << "Object PCA not possible! Mesh is empty.";
     return Transformation();
   }
 
@@ -194,25 +194,44 @@ ObjectDetector3D::Transformation ObjectDetector3D::pca(
   Eigen::Vector4f detection_centroid = pca_detection.getMean();
   Eigen::Matrix3f detection_vectors = pca_detection.getEigenVectors();
 
-  // Get data from object pointcloud
-  pcl::PCA<pcl::PointXYZ> pca_object;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr object_pointcloud_ptr =
-      object_pointcloud.makeShared();
-  pca_object.setInputCloud(object_pointcloud_ptr);
-  Eigen::Vector4f object_centroid = pca_object.getMean();
-  Eigen::Matrix3f object_vectors = pca_object.getEigenVectors();
-
-  // Translation from mean of pointclouds det_r_obj_det
-  kindr::minimal::PositionTemplate<float> translation(
-      detection_centroid.head(3) - object_centroid.head(3));
-
   // Get coordinate system to be right
   if (detection_vectors.determinant() < 0) {
     detection_vectors.col(2) = -detection_vectors.col(2);
   }
-  if (object_vectors.determinant() < 0) {
-    object_vectors.col(2) = -object_vectors.col(2);
+
+  // Get triangle vector from mesh
+  std::vector<CGAL::Simple_cartesian<double>::Triangle_3> triangles;
+  triangles.reserve(mesh_model->size());
+  for (const auto& id : mesh_model->getFacetIds()) {
+    triangles.push_back(mesh_model->getTriangle(id));
   }
+
+  // Compute PCA for object triangles
+  CGAL::Simple_cartesian<double>::Plane_3 plane;
+  CGAL::Simple_cartesian<double>::Point_3 object_centroid;
+  CGAL::linear_least_squares_fitting_3(triangles.begin(), triangles.end(),
+                                       plane, object_centroid,
+                                       CGAL::Dimension_tag<2>());
+
+  // Get coordinate system from PCA
+  Eigen::Matrix3f object_vectors;
+  object_vectors.col(0) =
+      Eigen::Vector3f(plane.base1().x(), plane.base1().y(),
+                      plane.base1().z()).normalized();
+  object_vectors.col(1) =
+      Eigen::Vector3f(plane.base2().x(), plane.base2().y(),
+                      plane.base2().z()).normalized();
+  object_vectors.col(2) =
+      Eigen::Vector3f(plane.orthogonal_vector().x(),
+                      plane.orthogonal_vector().y(),
+                      plane.orthogonal_vector().z()).normalized();
+
+  // Translation from mean of pointclouds det_r_obj_det
+  kindr::minimal::PositionTemplate<float> translation(
+      detection_centroid.head(3) - Eigen::Vector3f(object_centroid.x(),
+                                                   object_centroid.y(),
+                                                   object_centroid.z()));
+
   // Get rotation between detection and object pointcloud
   Eigen::Matrix3f rotation_matrix =
       detection_vectors * object_vectors.transpose();
