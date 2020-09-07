@@ -15,7 +15,7 @@
 namespace cad_percept {
 namespace object_detection {
 
-class DetectionMatcher {
+class ObjectDetector3D {
   typedef kindr::minimal::QuatTransformationTemplate<float> Transformation;
   typedef kindr::minimal::RotationQuaternionTemplate<float> Quaternion;
   typedef PointMatcher<float> PM;
@@ -51,11 +51,11 @@ class DetectionMatcher {
   };
 
  public:
-  DetectionMatcher(const ros::NodeHandle& nh,
+  ObjectDetector3D(const ros::NodeHandle& nh,
                    const ros::NodeHandle& nh_private);
-  ~DetectionMatcher() = default;
+  ~ObjectDetector3D() = default;
 
-  void pointcloudCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
+  void objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
 
  private:
   void getParamsFromRos();
@@ -64,7 +64,7 @@ class DetectionMatcher {
 
   void processObject();
 
-  void processPointcloudUsingPcaAndIcp();
+  void processDetectionUsingPcaAndIcp();
   bool findInitialGuessUsingPca(Transformation* T_object_detection_init);
   bool performICP(const Transformation& T_object_detection_init,
                   Transformation* T_object_detection);
@@ -158,7 +158,7 @@ class DetectionMatcher {
   ros::Publisher correspondences_pub_;
   ros::Publisher normals_pub_;
 
-  cgal::MeshModel mesh_model_;
+  cgal::MeshModel::Ptr mesh_model_;
   pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
   sensor_msgs::PointCloud2 object_pointcloud_msg_;
   modelify::PointSurfelCloudType::Ptr object_surfels_;
@@ -175,6 +175,7 @@ class DetectionMatcher {
   DescriptorType descriptor_type_;
   MatchingMethod matching_method_;
 
+  std::string pointcloud_topic_;
   std::string object_frame_id_;
   int num_points_icp_;
   bool downsampling_;

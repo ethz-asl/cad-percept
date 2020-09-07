@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
   ros::NodeHandle nh;
   ros::NodeHandle nh_private("~");
 
-  cad_percept::object_detection::DetectionMatcher mapper(nh, nh_private);
+  cad_percept::object_detection::ObjectDetector3D mapper(nh, nh_private);
   ros::spin();
 
   return 0;

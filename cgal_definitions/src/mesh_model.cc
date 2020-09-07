@@ -3,28 +3,6 @@
 namespace cad_percept {
 namespace cgal {
 
-MeshModel::MeshModel(const std::string &off_path, bool verbose)
-    : verbose_(verbose) {
-  std::ifstream off_file(off_path.c_str(), std::ios::binary);
-  if (!CGAL::read_off(off_file, P_)) {
-    std::cerr << "Error: invalid STL file" << std::endl;
-  }
-
-  if (!P_.is_valid() || P_.empty()) {
-    std::cerr << "Error: Invalid facegraph" << std::endl;
-  }
-
-  /**
- * Now we have loaded the geometric structure and need to conduct intersection
- * and distance queries. For this, we build an AABB tree.
- **/
-  tree_ = std::make_shared<PolyhedronAABBTree>(CGAL::faces(P_).first,
-                                               CGAL::faces(P_).second, P_);
-  tree_->accelerate_distance_queries();
-
-  initializeFacetIndices(); // set fixed facet IDs for whole class
-};
-
 // A modifier creating a triangle with the incremental builder.
 template <class HDS>
 void MeshFromJSON<HDS>::operator()(HDS &hds) {

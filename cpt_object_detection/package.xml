@@ -22,6 +22,7 @@
   <depend>eigen_catkin</depend>
   <depend>pcl_ros</depend>
   <depend>minkindr</depend>
+  <depend>minkindr_conversions</depend>
   <depend>cgal_conversions</depend>
   <depend>cgal_definitions</depend>
   <depend>cgal_msgs</depend>
