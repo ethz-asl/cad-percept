@@ -33,11 +33,6 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
       object_frame_id_("object_detection_mesh"),
       num_points_icp_(500),
       downsampling_(true) {
-  LOG(INFO) << "[ObjectDetector3D] Object mesh with "
-            << mesh_model_->getMesh().size_of_facets()
-            << " facets and " << mesh_model_->getMesh().size_of_vertices()
-            << " vertices";
-
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
