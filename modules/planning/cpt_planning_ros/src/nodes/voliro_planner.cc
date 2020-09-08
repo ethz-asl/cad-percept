@@ -18,6 +18,22 @@
 #include <visualization_msgs/MarkerArray.h>
 
 #include <iostream>
+
+// from rosettacode
+template<typename tVal>
+tVal map_value(std::pair<tVal,tVal> a, std::pair<tVal, tVal> b, tVal inVal)
+{
+  tVal inValNorm = inVal - a.first;
+  tVal aUpperNorm = a.second - a.first;
+  tVal normPosition = inValNorm / aUpperNorm;
+
+  tVal bUpperNorm = b.second - b.first;
+  tVal bValNorm = normPosition * bUpperNorm;
+  tVal outVal = b.first + bValNorm;
+
+  return outVal;
+}
+
 class VoliroPlanner {
  public:
   VoliroPlanner(ros::NodeHandle nh) : nh_(nh) {
@@ -76,16 +92,20 @@ class VoliroPlanner {
     using TargetPolicy = rmpcpp::SimpleTargetPolicy<LinSpace>;
     using Integrator = rmpcpp::TrapezoidalIntegrator<TargetPolicy, RMPG>;
     RMPG::VectorX x_target3, x_target2, x_vec, x_dot;
-    Eigen::Vector3d end_tmp;
+    Eigen::Vector3d end_tmp(start_uv_);
 
-    end_tmp << joy->axes[0] * 0.5, joy->axes[1] * 0.5, fmax(0, joy->axes[2] * 0.5);
-    //    end_tmp += start_uv_;
+    end_tmp.x() += joy->axes[0] * 0.1;
+    end_tmp.y() += joy->axes[1] * 0.1;
+    end_tmp.z() = map_value({-1.0, 1.0},{0.0, 5.0}, joy->axes[2]);
+
+
     if (!mapping_->onManifold((Eigen::Vector2d)end_tmp.topRows<2>())) {
       return;
     }
     target_ = end_tmp;
 
     RMPG::VectorQ target_xyz = mapping_->pointUVHto3D(target_);
+
 
     Integrator integrator;
 
@@ -96,7 +116,7 @@ class VoliroPlanner {
     A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
     B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
     TargetPolicy pol2(target_, A, alpha, beta, c);  // goes to manifold as quick as possible
-    TargetPolicy pol3(Eigen::Vector3d::Zero(), B, alpha_z, beta_z, c_z);  // stays along it
+    TargetPolicy pol3(target_, B, alpha_z, beta_z, c_z);  // stays along it
     std::vector<TargetPolicy *> policies;
     policies.push_back(&pol2);
     policies.push_back(&pol3);
@@ -104,7 +124,7 @@ class VoliroPlanner {
     mav_msgs::EigenTrajectoryPoint::Vector trajectory;
     integrator.resetTo(newpos);
     double dt = 0.01;
-    for (double t = 0; t < 15.0; t += dt) {
+    for (double t = 0; t < 2.0; t += dt) {
       geometry_msgs::Point pos;
       pos.x = newpos.x();
       pos.y = newpos.y();
@@ -122,12 +142,13 @@ class VoliroPlanner {
       j.col(1).normalize();
       j.col(2).normalize();
 
-      Eigen::Matrix3d R;
-      R.col(0) = -j.col(1);
-      R.col(2) = j.col(2);
-      R.col(1) = -R.col(0).cross(R.col(2));
+      //Eigen::Matrix3d R;
+      //R.col(0) = -j.col(1);
+      //R.col(2) = j.col(2);
+      //R.col(1) = -R.col(0).cross(R.col(2));
       // Rotate around x
-      Eigen::Affine3d rotx(Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::UnitZ()));
+      //Eigen::Affine3d rotx(Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::UnitZ()));
+      Eigen::Matrix3d R(Eigen::Matrix3d::Identity());
       // Eigen::Affine3d roty(Eigen::AngleAxisd(-M_PI / 2.0, Eigen::Vector3d::UnitZ()));
 
       pt.orientation_W_B = Eigen::Quaterniond(R);
@@ -147,7 +168,7 @@ class VoliroPlanner {
     mav_trajectory_generation::drawMavSampledTrajectory(trajectory, distance, frame_id, &markers);
 
     pub_marker_.publish(markers);
-    if (joy->buttons[0]) {  // Test
+    if (!joy->buttons[0]) {  // Test
       trajectory_msgs::MultiDOFJointTrajectory msg;
       mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory, &msg);
       msg.header.frame_id = "world";

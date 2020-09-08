@@ -1,9 +1,9 @@
 <launch><!--
   <node name="rmp_zdistance_node" pkg="cpt_ros" type="rmp_zdistance_node" output="screen">
-  <param name="zero_angle" value="0.4"/>
+  <param name="zero_angle" value="0.0"/>
    <param name="zero_x" value="0.0"/>
    <param name="zero_y" value="0.0"/>
-   <param name="zero_z" value="0.707"/>
+   <param name="zero_z" value="0.0"/>
    <param name="off_path" value="/home/mpantic/Desktop/rss/surfaces/half_sphere2.off" />
    </node>-->
 
@@ -24,16 +24,19 @@
    <param name="off_path" value="/home/mpantic/Desktop/rss/surfaces/crazy_vicon.off" />
 </node>-->
 <node name="voliro_planner_node" pkg="cpt_planning_ros" type="voliro_planner_node" output="screen">
-    <param name="zero_angle" value="0.4"/>
+    <param name="zero_angle" value="0.0"/>
       <param name="zero_x" value="0.0"/>
       <param name="zero_y" value="0.0"/>
-      <param name="zero_z" value="1.75"/>
-   <param name="off_path" value="$(find cpt_planning_ros)/resources/half_sphere2_vicon.off" />-
+      <param name="zero_z" value="1.0"/>
+   <param name="off_path" value="/home/mpantic/ws/rmp/src/manifold_simulations/models/rhone_mesh/meshes/rhone_enu.off" />-
 </node>
    <!--<node name="spacenav_node" pkg="spacenav_node" type="spacenav_node">
         <remap from="/spacenav/joy" to="/joy" />
     </node>-->
    <node name="joy_node" pkg="joy" type="joy_node" output="screen">
+       <param name="autorepeat_rate" value="30"/>
+       <param name="deadzone" value="0.025"/>
+
     </node>
 
 

@@ -1,14 +1,14 @@
 <launch>
    <node name="planning_test_node" pkg="cpt_ros" type="planning_test_node" output="screen">
 
-     <param name="zero_angle" value="0.26"/>
-    <param name="zero_x" value="0.45"/>
-    <param name="zero_y" value="0.9"/>
-    <param name="zero_z" value="0.64"/>
-    <param name="off_path" value="/home/mpantic/Desktop/rss/surfaces/doublycurved.off" />
+     <param name="zero_angle" value="0.0"/>
+    <param name="zero_x" value="0.0"/>
+    <param name="zero_y" value="0.0"/>
+    <param name="zero_z" value="0.0"/>
+    <param name="off_path" value="/home/mpantic/ws/rmp/src/manifold_simulations/models/rhone_mesh/meshes/rhone_enu.off" />
       <remap from="/spacenav/joy" to="/joy" />
    </node>
-   <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="2 0 0 0 0 0 1 world uv 100" />
+   <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 0 1 world uv 100" />
 
  <node name="joy_node" pkg="joy" type="joy_node" output="screen">
     </node>
