@@ -42,3 +42,4 @@
 
 # ignore marker state
 cpt_selective_icp/state
+data_sets_icra/
