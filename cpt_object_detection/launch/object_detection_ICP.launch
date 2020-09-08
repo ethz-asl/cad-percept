@@ -15,6 +15,8 @@
   <arg name="descriptor_type" default="FPFH"/> <!-- FPFH or SHOT -->
   <arg name="matching_method" default="conventional"/> <!-- conventional or FGR -->
   <arg name="num_points_object_pointcloud" default="5000"/>
+  <arg name="icp_config_file"
+       default="$(find cpt_object_detection)/resources/icp_config.yaml"/>
 
   <node name="object_detection_matcher"
         pkg="cpt_object_detection" type="cpt_object_detection_node"
@@ -27,6 +29,7 @@
     <param name="matching_method" value="$(arg matching_method)"/>
     <param name="num_points_object_pointcloud"
            value="$(arg num_points_object_pointcloud)"/>
+    <param name="icp_config_file" value="$(arg icp_config_file)"/>
   </node>
 
   <node if="$(arg play_rosbag)" name="rosbag_player" pkg="rosbag" type="play"

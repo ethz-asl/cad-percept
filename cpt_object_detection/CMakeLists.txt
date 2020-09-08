@@ -4,7 +4,8 @@ project(cpt_object_detection)
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 
-add_definitions(-std=c++14 -Wall -Wextra)
+add_definitions(-std=c++17 -Wall -Wextra)
+set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_CXX_STANDARD 14)
 

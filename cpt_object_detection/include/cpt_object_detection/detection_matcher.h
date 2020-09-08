@@ -61,16 +61,30 @@ class ObjectDetector3D {
   void getParamsFromRos();
   void subscribeToTopics();
   void advertiseTopics();
-
-  void processObject();
+  void processMesh();
 
   void processDetectionUsingPcaAndIcp();
-  bool findInitialGuessUsingPca(Transformation* T_object_detection_init);
-  bool performICP(const Transformation& T_object_detection_init,
-                  Transformation* T_object_detection);
-
+  static Transformation alignDetectionUsingPcaAndIcp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
+  static Transformation alignDetectionUsingPcaAndIcp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+      const std::string& config_file);
+  static Transformation alignDetectionUsingPcaAndIcp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+      const std::string& config_file,
+      Transformation* T_object_detection_init);
+  static Transformation pca(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
+  static Transformation icp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+      const Transformation& T_object_detection_init,
+      const std::string& config_file);
   void processDetectionUsing3dFeatures();
-
   template <typename descriptor_type>
   bool computeTransformUsing3dFeatures(
       const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
@@ -96,7 +110,6 @@ class ObjectDetector3D {
       const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
       const modelify::PointSurfelCloudType::Ptr& keypoints,
       const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors);
-
   bool getKeypoints(
       const KeypointType& keypoint_type,
       const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
@@ -110,7 +123,6 @@ class ObjectDetector3D {
   static bool getUniformKeypoints(
       const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
       const modelify::PointSurfelCloudType::Ptr& keypoints);
-
   template <typename descriptor_type>
   static void getDescriptors(
       const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
@@ -123,11 +135,13 @@ class ObjectDetector3D {
       const modelify::CorrespondencesTypePtr& correspondences,
       Transformation* transform);
 
-  void visualizeObjectMesh(const ros::Time& timestamp,
-                           const std::string& frame_id,
-                           const ros::Publisher& publisher) const;
-  void visualizeObjectPointcloud(const ros::Time& timestamp,
-                                 const std::string& frame_id);
+  static void visualizeMesh(
+      const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,
+      const std::string& frame_id, const ros::Publisher& publisher);
+  static void visualizePointcloud(
+      const pcl::PointCloud<pcl::PointXYZ>& pointcloud,
+      const ros::Time& timestamp, const std::string& frame_id,
+      const ros::Publisher& publisher);
   static void visualizeKeypoints(
       const modelify::PointSurfelCloudType::Ptr& keypoints,
       const ros::Time& timestamp,  const std::string& frame_id,
@@ -144,7 +158,7 @@ class ObjectDetector3D {
   static void publishTransformation(
       const Transformation& transform,
       const ros::Time& stamp, const std::string& parent_frame_id,
-      const std::string& child_frame_id) ;
+      const std::string& child_frame_id);
   
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
@@ -158,15 +172,18 @@ class ObjectDetector3D {
   ros::Publisher correspondences_pub_;
   ros::Publisher normals_pub_;
 
+  // Object
   cgal::MeshModel::Ptr mesh_model_;
+  std::string object_frame_id_;
   pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
-  sensor_msgs::PointCloud2 object_pointcloud_msg_;
   modelify::PointSurfelCloudType::Ptr object_surfels_;
   modelify::PointSurfelCloudType::Ptr object_keypoints_;
   modelify::DescriptorFPFHCloudType::Ptr object_descriptors_fpfh_;
   modelify::DescriptorSHOTCloudType::Ptr object_descriptors_shot_;
 
-  sensor_msgs::PointCloud2 detection_pointcloud_msg_;
+  // Detection
+  std::string pointcloud_topic_;
+  ros::Time detection_stamp_;
   std::string detection_frame_id_;
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
 
@@ -175,9 +192,7 @@ class ObjectDetector3D {
   DescriptorType descriptor_type_;
   MatchingMethod matching_method_;
 
-  std::string pointcloud_topic_;
-  std::string object_frame_id_;
-  int num_points_icp_;
+  std::string icp_config_file_;
   bool downsampling_;
 };
 

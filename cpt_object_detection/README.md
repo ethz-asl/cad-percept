@@ -35,11 +35,11 @@ using rviz.
 
 ### Algorithm
 All initial processing of the object mesh is performed in the function 
-``processObject``, called by the constructor of the node. 
+``processMesh``, called by the constructor of the node. 
 The object mesh can be visualized upon startup of the node using the 
 parameter ``visualize_object_on_startup``.
 
-The function ``processPointcloudUsingPcaAndIcp`` contains all processing steps for each 
+The function ``processDetectionUsingPcaAndIcp`` contains all processing steps for each 
 pointcloud received by the node.
 The PCA-ICP pipeline aims to find the transformation by performing ICP on an 
 initial guess obtained by a PCA on the detection pointcloud and the a pointcloud 
@@ -55,7 +55,7 @@ oriented to form a right-handed system.
 The resulting transform is additionally published to the TF tree as 
 ``object_detection_mesh_init``.
 
-The more precise alignment is found using ICP in the function ``performICP``.
+The more precise alignment is found using ICP in the function ``icp``.
 We use the implementation of the library ``libpointmatcher``.
 In order to speed up the process, both the detection and the object pointclouds
 are uniformly sampled to contain a maximum number of points, defined in the 
