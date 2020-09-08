@@ -9,8 +9,6 @@ catkin_simple(ALL_DEPS_REQUIRED)
 add_definitions(-std=c++17 -Wall -Wextra)
 set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_CXX_STANDARD 14)
-
 #############
 # LIBRARIES #
 #############
