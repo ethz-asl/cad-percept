@@ -1,4 +1,4 @@
-usetoyexample: true
+usetoyexample: false
 
 # Lidar Settings
 rangeOfLidar: 25
@@ -10,19 +10,19 @@ accuracyOfLidar: 0.0
 uniformSample: false
 
 # Test Settings
-testIterations: 300
+testIterations: 150
 start_scan_nr: 0
-end_scan_nr: 741
+end_scan_nr: 978
 
 # Settings for Plane Matcher
 
 # Filters
-useFilters: true
+useFilters: false
 StructureThreshold: -1
 Voxelsearchradius: 0.2
 
 # Plane Extraction
-Matcher: 2 # 0: GoICP
+Matcher: 0 # 0: GoICP
            # 1: PlaneMatcher with RHT
            # 2: PlaneMatcher with iter RHT
            # 3: PlaneMatcher with PCL RANSAC

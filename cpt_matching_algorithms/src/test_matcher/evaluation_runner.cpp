@@ -30,6 +30,7 @@ bool use_filters;
 
 ros::Publisher scan_pub;
 ros::Publisher plane_pub;
+ros::Publisher map_pub;
 ros::Subscriber map_sub;
 cad_percept::cgal::MeshModel::Ptr reference_mesh;
 bool map_ready = false;
@@ -79,7 +80,9 @@ int main(int argc, char **argv) {
 
   map_sub = nh.subscribe("/mesh_publisher/mesh_out", 1, &getCAD);
   scan_pub = nh.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1);
-  plane_pub = nh.advertise<sensor_msgs::PointCloud2>("extracted_planes", 1, true);
+  plane_pub = nh.advertise<sensor_msgs::PointCloud2>("matched_extracted_planes", 1, true);
+  map_pub = nh.advertise<sensor_msgs::PointCloud2>("map_point_cloud", 1, true);
+
   std::cout << "Wait for setup... Tab Enter to start tests" << std::endl;
   std::cin.ignore();
 
@@ -139,6 +142,7 @@ void runTestIterations() {
   // Variables for real data
   std::string test_result_file = nh_private.param<std::string>("test_results", "fail");
   std::string data_set_folder = nh_private.param<std::string>("data_set_folder", "fail");
+  std::string goicp_location = nh_private.param<std::string>("goicp_folder", "fail");
   std::string lidar_scan_file;
   int start_scan_nr = nh_private.param<int>("start_scan_nr", 0);
   int end_scan_nr = nh_private.param<int>("end_scan_nr", 10);
@@ -185,6 +189,72 @@ void runTestIterations() {
   float transform_error;
 
   std::ofstream actuel_file(test_result_file);
+
+  // Make a short test using the demo
+  // Read demo examples
+  if (!matcher) {
+    std::cout << "Start test of GoICP with provided demo" << std::endl;
+    pcl::PointCloud<pcl::PointXYZ> data_bunny;
+    pcl::PointCloud<pcl::PointXYZ> model_bunny;
+
+    chdir(goicp_location.c_str());
+    pcl::PointXYZ demo_points;
+    std::ifstream demo_files;
+    int number_demo_points;
+    std::cout << "open " << goicp_location << "/data_bunny.txt ..." << std::endl;
+    demo_files.open("model_bunny.txt");
+    demo_files >> number_demo_points;
+    for (int point = 0; point < number_demo_points; ++point) {
+      demo_files >> demo_points.x;
+      demo_files >> demo_points.y;
+      demo_files >> demo_points.z;
+      data_bunny.push_back(demo_points);
+    }
+    Eigen::Matrix4f transform_demo = Eigen::Matrix4f::Identity();
+    Eigen::Matrix3f rotation_demo = (Eigen::AngleAxisf(0, Eigen::Vector3f::UnitX()) *
+                                     Eigen::AngleAxisf(M_PI / 2, Eigen::Vector3f::UnitY()) *
+                                     Eigen::AngleAxisf(M_PI * 4 / 7, Eigen::Vector3f::UnitZ()))
+                                        .matrix();
+    Eigen::Vector3f translation_demo = Eigen::Vector3f(5, 2, 3);
+    transform_demo.block(0, 0, 3, 3) = rotation_demo;
+    transform_demo.block(0, 3, 3, 1) = translation_demo;
+    pcl::transformPointCloud(data_bunny, data_bunny, transform_demo);
+    demo_files.close();
+    std::cout << "open " << goicp_location << "/model_bunny.txt ..." << std::endl;
+    demo_files.open("model_bunny.txt");
+    demo_files >> number_demo_points;
+    for (int point = 0; point < number_demo_points; ++point) {
+      demo_files >> demo_points.x;
+      demo_files >> demo_points.y;
+      demo_files >> demo_points.z;
+      model_bunny.push_back(demo_points);
+    }
+    demo_files.close();
+
+    GoIcp::goIcpMatch(res_transform, data_bunny, model_bunny);
+
+    // Transform
+    pcl::transformPointCloud(data_bunny, data_bunny, res_transform);
+
+    ref_dp_map = cpt_utils::pointCloudToDP(model_bunny);
+    map_pub.publish(
+        PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_map, "map", ros::Time::now()));
+    ref_dp_scan = cpt_utils::pointCloudToDP(data_bunny);
+    scan_pub.publish(
+        PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_scan, "map", ros::Time::now()));
+
+    ros::spinOnce();
+    std::cout << "gt_transform: " << std::endl;
+    std::cout << transform_demo << std::endl;
+    std::cout << "found transformation: " << std::endl;
+    std::cout << res_transform.cast<float>().inverse() << std::endl;
+    std::cout << "Demo processed, press enter to continue..." << std::endl;
+    std::cin.ignore();
+  }
+
+  ref_dp_map = cpt_utils::pointCloudToDP(sampled_map);
+  map_pub.publish(
+      PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_map, "map", ros::Time::now()));
 
   // Start evaluation iterations
   for (int iter = 0;
@@ -307,6 +377,9 @@ void runTestIterations() {
       PlaneExtractor::visualizePlane(extracted_planes, scan_pub, tf_map_frame);
     } else {
       pcl::transformPointCloud(lidar_scan, lidar_scan, res_transform);
+      ref_dp_scan = cpt_utils::pointCloudToDP(lidar_scan);
+      scan_pub.publish(
+          PointMatcher_ros::pointMatcherCloudToRosMsg<float>(ref_dp_scan, "map", ros::Time::now()));
     }
     ros::spinOnce();
 
@@ -467,8 +540,8 @@ void samplePose() {
       valid_position = true;
     }
   }
-  gt_translation[0] = x_coord + 2;  //- 5;  //- 23;
-  gt_translation[1] = y_coord + 5;  //- 9;  //- 7;
+  gt_translation[0] = x_coord + 2;  // 2 //- 5;  //- 23;
+  gt_translation[1] = y_coord + 5;  // 5 //- 9;  //- 7;
   gt_translation[2] = (double)(std::rand() % 10) * 0.1 + 0.2;
 
   double euler_x;

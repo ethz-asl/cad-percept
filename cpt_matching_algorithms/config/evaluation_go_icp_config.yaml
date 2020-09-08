@@ -1,8 +1,8 @@
-useEvalGoICP: false
-makeGoICPTest: false
+useEvalGoICP: true
+makeGoICPTest: true
 applyIcp: true
-plane_extractor: 3 # 1: RHT, 2: RG, 3: PCL
-maxTestIter: 100
+plane_extractor: 1 # 1: RHT, 2: RG, 3: PCL
+maxTestIter: 1
 noiseVariance: 0
 GoICPdownsample: "1000" # demo (data_bunny -> model_bunny) if this value is set to 900 or below
 
