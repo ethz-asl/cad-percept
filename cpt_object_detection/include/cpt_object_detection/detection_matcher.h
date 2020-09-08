@@ -29,18 +29,37 @@ class ObjectDetector3D {
   void getParamsFromRos();
   void subscribeToTopics();
   void advertiseTopics();
-
-  void processObject();
+  void processMesh();
 
   void processDetectionUsingPcaAndIcp();
-  bool findInitialGuessUsingPca(Transformation* T_object_detection_init);
-  bool performICP(const Transformation& T_object_detection_init,
-                  Transformation* T_object_detection);
-  void visualizeObjectMesh(const std::string& frame_id,
-                           const ros::Publisher& publisher) const;
-  void visualizeObjectPointcloud(const ros::Time& timestamp,
-                                 const std::string& frame_id);
+  static Transformation alignDetectionUsingPcaAndIcp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
+  static Transformation alignDetectionUsingPcaAndIcp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+      const std::string& config_file);
+  static Transformation alignDetectionUsingPcaAndIcp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+      const std::string& config_file,
+      Transformation* T_object_detection_init);
+  static Transformation pca(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
+  static Transformation icp(
+      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+      const Transformation& T_object_detection_init,
+      const std::string& config_file);
 
+  static void visualizeMesh(
+      const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,
+      const std::string& frame_id, const ros::Publisher& publisher);
+  static void visualizePointcloud(
+      const pcl::PointCloud<pcl::PointXYZ>& pointcloud,
+      const ros::Time& timestamp, const std::string& frame_id,
+      const ros::Publisher& publisher);
   static void publishTransformation(
       const Transformation& transform,
       const ros::Time& stamp, const std::string& parent_frame_id,
@@ -56,15 +75,15 @@ class ObjectDetector3D {
 
   cgal::MeshModel::Ptr mesh_model_;
   pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
-  sensor_msgs::PointCloud2 object_pointcloud_msg_;
 
-  sensor_msgs::PointCloud2 detection_pointcloud_msg_;
+  ros::Time detection_stamp_;
   std::string detection_frame_id_;
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
 
   // Parameters
   std::string pointcloud_topic_;
   std::string object_frame_id_;
+  std::string icp_config_file_;
   int num_points_icp_;
 };
 
