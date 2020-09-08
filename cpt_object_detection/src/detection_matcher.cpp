@@ -769,22 +769,26 @@ bool ObjectDetector3D::computeTransformFromCorrespondences(
     LOG(WARNING) << "Filtering correspondences failed!";
     *filtered_correspondences = *correspondences;
   }
+  LOG(INFO) << "Filtered correspondences to " << correspondences->size();
 
   // Align features
   modelify::registration_toolbox::GeometricConsistencyParams consistency_params;
-  modelify::TransformationVector transforms;
+  modelify::TransformationVector T_geometric_consistency;
   std::vector<modelify::CorrespondencesType> clustered_correspondences;
   if (!modelify::registration_toolbox::alignKeypointsGeometricConsistency(
       detection_keypoints, object_keypoints_, filtered_correspondences,
       consistency_params.min_cluster_size,
       consistency_params.consensus_set_resolution_m,
-      &transforms, &clustered_correspondences)) {
+      &T_geometric_consistency, &clustered_correspondences)) {
     LOG(ERROR) << "Keypoint alignment failed!";
     return false;
   }
+  LOG(INFO) << "Aligned keypoints, best alignment found with "
+            << clustered_correspondences[0].size()
+            << " correspondences and transform\n" << T_geometric_consistency[0];
 
   LOG(INFO) << "Publishing initial transformation from geometric consistency";
-  publishTransformation(Transformation(transforms[0]).inverse(),
+  publishTransformation(Transformation(T_geometric_consistency[0]).inverse(),
                         detection_pointcloud_msg_.header.stamp,
                         detection_frame_id_, object_frame_id_ + "_init");
   visualizeObjectMesh(detection_pointcloud_msg_.header.stamp,
@@ -797,32 +801,43 @@ bool ObjectDetector3D::computeTransformFromCorrespondences(
   double inlier_ratio;
   std::vector<size_t> outlier_indices;
   modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-      detection_surfels, object_surfels_, transforms[0], icp_params,
+      detection_surfels, object_surfels_, T_geometric_consistency[0], icp_params,
       cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
-  LOG(INFO) << "Geometric alignment results: "
+  LOG(INFO) << "Geometric alignment validation results: "
             << mean_squared_distance << " mean squared distance, "
             << inlier_ratio << " inlier ratio";
   // TODO(gasserl): use validation!?
 
   // Refine transformation with ICP
-  modelify::Transformation transform_icp;
-  if (estimateTransformationPointToPoint(
-      detection_surfels, object_surfels_, transforms[0], icp_params,
-      cloud_resolution, &transform_icp, &mean_squared_distance)) {
-    *transform = Transformation(transform_icp);
-    return true;
-  }
-  LOG(WARNING) << "Keypoint ICP refinement failed!";
+  modelify::Transformation T_icp;
+  if (!estimateTransformationPointToPoint(
+      detection_surfels, object_surfels_, T_geometric_consistency[0],
+      icp_params, cloud_resolution, &T_icp, &mean_squared_distance)) {
+    LOG(WARNING) << "Keypoint ICP refinement failed!";
 
-  Transformation T_icp;
-  if (performICP(Transformation(transforms[0]), &T_icp)) {
-    *transform = T_icp;
-    return true;
+    Transformation transform_icp;
+    if (!performICP(Transformation(T_geometric_consistency[0]),
+                    &transform_icp)) {
+      LOG(WARNING) << "Pointcloud ICP refinement failed!";
+      *transform = Transformation(T_geometric_consistency[0]);
+      // TODO(gasserl): return false?
+    } else {
+      *transform = transform_icp;
+    }
+  } else {
+    *transform = Transformation(T_icp);
   }
-  LOG(WARNING) << "Pointcloud ICP refinement failed!";
 
-  // TODO(gasserl): return false?
-  *transform = Transformation(transforms[0]);
+  // Validate alignment
+  icp_params.inlier_distance_threshold_m = 0.01;
+  modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+      detection_surfels, object_surfels_, transform->getTransformationMatrix(),
+      icp_params, cloud_resolution, &mean_squared_distance, &inlier_ratio,
+      &outlier_indices);
+  LOG(INFO) << "ICP validation results: "
+            << mean_squared_distance << " mean squared distance, "
+            << inlier_ratio << " inlier ratio";
+  // TODO(gasserl): use validation!?
   return true;
 }
 
