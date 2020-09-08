@@ -230,7 +230,7 @@ void ObjectDetector3D::objectDetectionCallback(
   pcl::fromROSMsg(detection_pointcloud_msg_, detection_pointcloud_);
 
 //  processDetectionUsingPcaAndIcp();
-  processPointcloudUsing3dFeatures();
+  processDetectionUsing3dFeatures();
 }
 
 // TODO(gasserl): make child classes for each thing?
@@ -397,7 +397,7 @@ bool ObjectDetector3D::performICP(const Transformation& T_object_detection_init,
 }
 
 // TODO(gasserl): another child class?
-void ObjectDetector3D::processPointcloudUsing3dFeatures() {
+void ObjectDetector3D::processDetectionUsing3dFeatures() {
   // Downsampling detection pointcloud
   if (downsampling_) {
     pcl::PointCloud<pcl::PointXYZ> temp(detection_pointcloud_);

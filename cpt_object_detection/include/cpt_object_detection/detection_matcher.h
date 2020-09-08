@@ -69,7 +69,7 @@ class ObjectDetector3D {
   bool performICP(const Transformation& T_object_detection_init,
                   Transformation* T_object_detection);
 
-  void processPointcloudUsing3dFeatures();
+  void processDetectionUsing3dFeatures();
 
   template <typename descriptor_type>
   bool computeTransformUsing3dFeatures(
