@@ -17,8 +17,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
     : nh_(nh),
       nh_private_(nh_private),
       pointcloud_topic_("/camera/depth/color/points"),
-      object_frame_id_("object_detection_mesh"),
-      num_points_icp_(500) {
+      object_frame_id_("object_detection_mesh") {
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
@@ -41,8 +40,6 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id",
                     object_frame_id_, object_frame_id_);
-  nh_private_.param("num_points_icp", num_points_icp_,
-                    num_points_icp_);
   nh_private_.param("icp_config_file", icp_config_file_,
                     icp_config_file_);
 }

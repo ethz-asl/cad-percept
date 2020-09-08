@@ -73,18 +73,19 @@ class ObjectDetector3D {
   ros::Publisher object_mesh_pub_;
   ros::Publisher object_mesh_init_pub_;
 
+  // Object
   cgal::MeshModel::Ptr mesh_model_;
+  std::string object_frame_id_;
   pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
 
+  // Detection
+  std::string pointcloud_topic_;
   ros::Time detection_stamp_;
   std::string detection_frame_id_;
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
 
   // Parameters
-  std::string pointcloud_topic_;
-  std::string object_frame_id_;
   std::string icp_config_file_;
-  int num_points_icp_;
 };
 
 }
