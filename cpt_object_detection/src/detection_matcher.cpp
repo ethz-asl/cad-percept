@@ -149,7 +149,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
           *T_object_detection_init, icp_config_file_);
 
   LOG(INFO) << "Total matching time: "
-            << (ros::WallTime::now() - time_start).toSec();
+            << (ros::WallTime::now() - time_start).toSec() << " s";
   return T_object_detection;
 }
 
@@ -215,11 +215,14 @@ ObjectDetector3D::Transformation ObjectDetector3D::pca(
   } else {
     LOG(WARNING) << "Rotation matrix is not valid!";
     LOG(INFO) << "determinant: " << rotation_matrix.determinant();
-    LOG(INFO) << "R*R^T:\n" << rotation_matrix * rotation_matrix.transpose();
+    LOG(INFO) << "R*R^T - I:\n"
+              << rotation_matrix * rotation_matrix.transpose()
+                     - Eigen::Matrix3f::Identity();
     return Transformation();
   }
 
-  LOG(INFO) << "Time PCA: " << (ros::WallTime::now() - time_start).toSec();
+  LOG(INFO) << "Time PCA: "
+            << (ros::WallTime::now() - time_start).toSec() << " s";
   return Transformation(rotation, translation);
 }
 
@@ -258,8 +261,11 @@ ObjectDetector3D::Transformation ObjectDetector3D::icp(
   PM::TransformationParameters T_object_detection_icp;
   try {
     T_object_detection_icp =
-        icp(points_detection, points_object,
-            T_object_detection_init.getTransformationMatrix());
+        icp.compute(points_detection, points_object,
+                    T_object_detection_init.getTransformationMatrix());
+    if (icp.getMaxNumIterationsReached()) {
+      LOG(ERROR) << "ICP reached maximum number of iterations!";
+    }
   } catch (PM::ConvergenceError& error_msg) {
     LOG(WARNING) << "ICP was not successful!";
     return T_object_detection_init;
@@ -272,7 +278,10 @@ ObjectDetector3D::Transformation ObjectDetector3D::icp(
   }
   Transformation::TransformationMatrix Tmatrix(T_object_detection_icp);
 
-  LOG(INFO) << "Time ICP: " << (ros::WallTime::now() - time_start).toSec();
+  LOG(INFO) << "Time ICP: "
+            << (ros::WallTime::now() - time_start).toSec() << " s";
+  LOG(INFO) << "ICP on detection pointcloud "
+               "and object mesh vertices successful!";
   return Transformation(Tmatrix);
 }
 
