@@ -97,7 +97,8 @@ void ObjectDetector3D::processMesh() {
   if (visualize_object_on_startup) {
     visualizePointcloud(object_pointcloud_, ros::Time::now(),
                         detection_frame_id_, object_pointcloud_pub_);
-    visualizeMesh(ros::Time::now(), detection_frame_id_, object_mesh_init_pub_);
+    visualizeMesh(mesh_model_, ros::Time::now(), detection_frame_id_,
+                  object_mesh_init_pub_);
     LOG(INFO) << "Visualizing object";
   }
 }
@@ -115,7 +116,7 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   Transformation T_object_detection_init;
   Transformation T_object_detection =
       alignDetectionUsingPcaAndIcp(object_pointcloud_, detection_pointcloud_,
-                                   &T_object_detection_init);
+                                   icp_config_file_, &T_object_detection_init);
 
   // Publish transformations to TF
   publishTransformation(T_object_detection_init.inverse(), detection_stamp_,
@@ -124,9 +125,9 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
                         detection_frame_id_, object_frame_id_);
 
   // Visualize object
-  visualizeMesh(detection_stamp_, object_frame_id_ + "_init",
+  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init",
                 object_mesh_init_pub_);
-  visualizeMesh(detection_stamp_, object_frame_id_, object_mesh_pub_);
+  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
   visualizePointcloud(object_pointcloud_, detection_stamp_,
                       detection_frame_id_, object_pointcloud_pub_);
 }
@@ -134,6 +135,7 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
 ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
     const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+    const std::string& config_file,
     Transformation* T_object_detection_init) {
   CHECK(T_object_detection_init);
   ros::WallTime time_start = ros::WallTime::now();
@@ -146,7 +148,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
   // Get final alignment with ICP
   Transformation T_object_detection =
       icp(object_pointcloud, detection_pointcloud,
-          *T_object_detection_init, icp_config_file_);
+          *T_object_detection_init, config_file);
 
   LOG(INFO) << "Total matching time: "
             << (ros::WallTime::now() - time_start).toSec() << " s";
@@ -157,8 +159,18 @@ ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
     const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
   Transformation T;
+  std::string config_file;
   return alignDetectionUsingPcaAndIcp(object_pointcloud, detection_pointcloud,
-                                      &T);
+                                      config_file, &T);
+}
+
+ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
+    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+    const std::string& config_file) {
+  Transformation T;
+  return alignDetectionUsingPcaAndIcp(object_pointcloud, detection_pointcloud,
+                                      config_file, &T);
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::pca(
@@ -253,7 +265,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::icp(
       icp.setDefault();
     }
   } else {
-    LOG(INFO) << "No ICP config file given, using default";
+    LOG(INFO) << "No ICP config file given, using default ICP settings";
     icp.setDefault();
   }
 
@@ -300,14 +312,15 @@ void ObjectDetector3D::publishTransformation(const Transformation& transform,
   tf_broadcaster.sendTransform(stamped_transform_msg);
 }
 
-void ObjectDetector3D::visualizeMesh(const ros::Time& timestamp,
+void ObjectDetector3D::visualizeMesh(const cgal::MeshModel::Ptr& mesh_model,
+                                     const ros::Time& timestamp,
                                      const std::string& frame_id,
-                                     const ros::Publisher& publisher) const {
+                                     const ros::Publisher& publisher) {
   cgal_msgs::TriangleMeshStamped p_msg;
 
   // triangle mesh to prob. msg
   cgal_msgs::TriangleMesh t_msg;
-  cgal::Polyhedron mesh = mesh_model_->getMesh();
+  cgal::Polyhedron mesh = mesh_model->getMesh();
   cgal::triangleMeshToMsg(mesh, &t_msg);
   p_msg.mesh = t_msg;
 

@@ -1,12 +1,8 @@
 readingDataPointsFilters:
-#  - RandomSamplingDataPointsFilter:
-#      prob: 0.5
   - MaxPointCountDataPointsFilter:
       maxCount: 500
 
 referenceDataPointsFilters:
-#  - SamplingSurfaceNormalDataPointsFilter:
-#      knn: 10
   - MaxPointCountDataPointsFilter:
       maxCount: 500
 
