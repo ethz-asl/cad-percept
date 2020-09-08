@@ -251,8 +251,11 @@ bool ObjectDetector3D::performICP(const Transformation& T_object_detection_init,
   PM::TransformationParameters T_object_detection_icp;
   try {
     T_object_detection_icp =
-        icp(points_detection, points_object,
-            T_object_detection_init.getTransformationMatrix());
+        icp.compute(points_detection, points_object,
+                    T_object_detection_init.getTransformationMatrix());
+    if (icp.getMaxNumIterationsReached()) {
+      LOG(ERROR) << "ICP reached maximum number of iterations!";
+    }
   } catch (PM::ConvergenceError& error_msg) {
     LOG(WARNING) << "ICP was not successful!\n"
                     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
