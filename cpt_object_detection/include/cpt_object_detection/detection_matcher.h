@@ -52,6 +52,8 @@ class ObjectDetector3D {
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
       const Transformation& T_object_detection_init,
       const std::string& config_file);
+  static PM::DataPoints convertMeshToDataPoints(
+      const cgal::MeshModel::Ptr& mesh_model);
 
   static void visualizeMesh(
       const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,

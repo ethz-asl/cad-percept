@@ -254,6 +254,44 @@ ObjectDetector3D::Transformation ObjectDetector3D::pca(
   return Transformation(rotation, translation);
 }
 
+ObjectDetector3D::PM::DataPoints ObjectDetector3D::convertMeshToDataPoints(
+    const cgal::MeshModel::Ptr& mesh_model) {
+  CHECK(mesh_model);
+
+  // Define feature and descriptor labels
+  PM::DataPoints::Labels feature_labels;
+  feature_labels.push_back(PM::DataPoints::Label("x", 1));
+  feature_labels.push_back(PM::DataPoints::Label("y", 1));
+  feature_labels.push_back(PM::DataPoints::Label("z", 1));
+  feature_labels.push_back(PM::DataPoints::Label("pad", 1));
+
+  PM::DataPoints::Labels descriptor_labels;
+  descriptor_labels.push_back(PM::DataPoints::Label("normals", 3));
+
+  // Get data from mesh
+  PM::Matrix features(feature_labels.totalDim(), mesh_model->size());
+  PM::Matrix descriptors(descriptor_labels.totalDim(), mesh_model->size());
+  size_t i = 0;
+  ros::WallTime conversion_start = ros::WallTime::now();
+  for (const auto& id : mesh_model->getFacetIds()) {
+    CGAL::Simple_cartesian<double>::Triangle_3 triangle =
+        mesh_model->getTriangle(id);
+    CGAL::Simple_cartesian<double>::Point_3 centroid = CGAL::centroid(triangle); // TODO(gasserl): replace with just a vertex?
+    CGAL::Simple_cartesian<double>::Vector_3 normal =
+        triangle.supporting_plane().orthogonal_vector();
+
+    features.col(i) =
+        Eigen::Vector4f(centroid.x(), centroid.y(), centroid.z(), 1);
+    descriptors.col(i) = Eigen::Vector3f(normal.x(), normal.y(), normal.z());
+    ++i;
+  }
+  LOG(INFO) << "Time conversion mesh to pointmatcher: "
+            << (ros::WallTime::now() - conversion_start).toSec() << " s";
+
+  return PM::DataPoints(features, feature_labels,
+                        descriptors, descriptor_labels);
+}
+
 ObjectDetector3D::Transformation ObjectDetector3D::icp(
     const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
