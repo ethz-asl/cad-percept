@@ -16,8 +16,8 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
                                    const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      pointcloud_topic_("/camera/depth/color/points"),
-      object_frame_id_("object_detection_mesh") {
+      object_frame_id_("object_detection_mesh"),
+      pointcloud_topic_("/camera/depth/color/points") {
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
@@ -147,7 +147,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
       icp(mesh_model, detection_pointcloud,
           *T_object_detection_init, config_file);
 
-  LOG(INFO) << "Total matching time: "
+  LOG(INFO) << "Time matching total: "
             << (ros::WallTime::now() - time_start).toSec() << " s";
   return T_object_detection;
 }
@@ -330,12 +330,13 @@ ObjectDetector3D::Transformation ObjectDetector3D::icp(
     T_object_detection_icp =
         icp.compute(points_detection, points_object,
                     T_object_detection_init.getTransformationMatrix());
-    if (icp.getMaxNumIterationsReached()) {
-      LOG(ERROR) << "ICP reached maximum number of iterations!";
-    }
   } catch (PM::ConvergenceError& error_msg) {
     LOG(WARNING) << "ICP was not successful!";
     return T_object_detection_init;
+  }
+
+  if (icp.getMaxNumIterationsReached()) {
+    LOG(ERROR) << "ICP reached maximum number of iterations!";
   }
 
   if (!Quaternion::isValidRotationMatrix(
@@ -345,10 +346,9 @@ ObjectDetector3D::Transformation ObjectDetector3D::icp(
   }
   Transformation::TransformationMatrix Tmatrix(T_object_detection_icp);
 
+  LOG(INFO) << "ICP on detection pointcloud and object mesh vertices successful!";
   LOG(INFO) << "Time ICP: "
             << (ros::WallTime::now() - time_start).toSec() << " s";
-  LOG(INFO) << "ICP on detection pointcloud "
-               "and object mesh vertices successful!";
   return Transformation(Tmatrix);
 }
 
