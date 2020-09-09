@@ -33,14 +33,14 @@ class ObjectDetector3D {
 
   void processDetectionUsingPcaAndIcp();
   static Transformation alignDetectionUsingPcaAndIcp(
-      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const cgal::MeshModel::Ptr& mesh_model,
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
   static Transformation alignDetectionUsingPcaAndIcp(
-      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const cgal::MeshModel::Ptr& mesh_model,
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
       const std::string& config_file);
   static Transformation alignDetectionUsingPcaAndIcp(
-      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const cgal::MeshModel::Ptr& mesh_model,
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
       const std::string& config_file,
       Transformation* T_object_detection_init);
@@ -48,7 +48,7 @@ class ObjectDetector3D {
       const cgal::MeshModel::Ptr& mesh_model,
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
   static Transformation icp(
-      const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+      const cgal::MeshModel::Ptr& mesh_model,
       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
       const Transformation& T_object_detection_init,
       const std::string& config_file);

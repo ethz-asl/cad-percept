@@ -112,7 +112,7 @@ void ObjectDetector3D::objectDetectionCallback(
 void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   Transformation T_object_detection_init;
   Transformation T_object_detection =
-      alignDetectionUsingPcaAndIcp(object_pointcloud_, detection_pointcloud_,
+      alignDetectionUsingPcaAndIcp(mesh_model_, detection_pointcloud_,
                                    icp_config_file_, &T_object_detection_init);
 
   // Publish transformations to TF
@@ -130,7 +130,7 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
-    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const cgal::MeshModel::Ptr& mesh_model,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
     const std::string& config_file,
     Transformation* T_object_detection_init) {
@@ -138,13 +138,13 @@ ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
   ros::WallTime time_start = ros::WallTime::now();
 
   // Get initial guess with PCA
-  Transformation T_detection_object_pca = pca(mesh_model_,
+  Transformation T_detection_object_pca = pca(mesh_model,
                                               detection_pointcloud);
   *T_object_detection_init = T_detection_object_pca.inverse();
 
   // Get final alignment with ICP
   Transformation T_object_detection =
-      icp(object_pointcloud, detection_pointcloud,
+      icp(mesh_model, detection_pointcloud,
           *T_object_detection_init, config_file);
 
   LOG(INFO) << "Total matching time: "
@@ -153,20 +153,20 @@ ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
-    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const cgal::MeshModel::Ptr& mesh_model,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
   Transformation T;
   std::string config_file;
-  return alignDetectionUsingPcaAndIcp(object_pointcloud, detection_pointcloud,
+  return alignDetectionUsingPcaAndIcp(mesh_model, detection_pointcloud,
                                       config_file, &T);
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::alignDetectionUsingPcaAndIcp(
-    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const cgal::MeshModel::Ptr& mesh_model,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
     const std::string& config_file) {
   Transformation T;
-  return alignDetectionUsingPcaAndIcp(object_pointcloud, detection_pointcloud,
+  return alignDetectionUsingPcaAndIcp(mesh_model, detection_pointcloud,
                                       config_file, &T);
 }
 
@@ -293,17 +293,18 @@ ObjectDetector3D::PM::DataPoints ObjectDetector3D::convertMeshToDataPoints(
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::icp(
-    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const cgal::MeshModel::Ptr& mesh_model,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
     const Transformation& T_object_detection_init,
     const std::string& config_file) {
+  CHECK(mesh_model);
   ros::WallTime time_start = ros::WallTime::now();
 
   // setup data points
-  sensor_msgs::PointCloud2 msg;
-  pcl::toROSMsg(object_pointcloud, msg);
   PM::DataPoints points_object =
-      PointMatcher_ros::rosMsgToPointMatcherCloud<float>(msg);
+      convertMeshToDataPoints(mesh_model);
+
+  sensor_msgs::PointCloud2 msg;
   pcl::toROSMsg(detection_pointcloud, msg);
   PM::DataPoints points_detection =
       PointMatcher_ros::rosMsgToPointMatcherCloud<float>(msg);
