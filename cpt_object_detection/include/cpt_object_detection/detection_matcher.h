@@ -29,7 +29,6 @@ class ObjectDetector3D {
   void getParamsFromRos();
   void subscribeToTopics();
   void advertiseTopics();
-  void processMesh();
 
   void processDetectionUsingPcaAndIcp();
   static Transformation alignDetectionUsingPcaAndIcp(

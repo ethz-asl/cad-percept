@@ -33,7 +33,16 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
             << " facets and " << mesh_model_->getMesh().size_of_vertices()
             << " vertices";
 
-  processMesh();
+  // Visualize object
+  bool visualize_object_on_startup = false;
+  nh_private_.param("visualize_object_on_startup",
+                    visualize_object_on_startup,
+                    visualize_object_on_startup);
+  if (visualize_object_on_startup) {
+    visualizeMesh(mesh_model_, ros::Time::now(), detection_frame_id_,
+                  object_mesh_init_pub_);
+    LOG(INFO) << "Visualizing object";
+  }
 }
 
 void ObjectDetector3D::getParamsFromRos() {
@@ -65,19 +74,6 @@ void ObjectDetector3D::advertiseTopics() {
           "object_mesh_init", 1, true);
   LOG(INFO) << "Publishing init object mesh to topic ["
             << object_mesh_init_pub_.getTopic() << "]";
-}
-
-void ObjectDetector3D::processMesh() {
-  // Visualize object
-  bool visualize_object_on_startup = false;
-  nh_private_.param("visualize_object_on_startup",
-                    visualize_object_on_startup,
-                    visualize_object_on_startup);
-  if (visualize_object_on_startup) {
-    visualizeMesh(mesh_model_, ros::Time::now(), detection_frame_id_,
-                  object_mesh_init_pub_);
-    LOG(INFO) << "Visualizing object";
-  }
 }
 
 void ObjectDetector3D::objectDetectionCallback(
