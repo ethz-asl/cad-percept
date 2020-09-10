@@ -71,14 +71,12 @@ class ObjectDetector3D {
   ros::NodeHandle nh_private_;
 
   ros::Subscriber detection_pointcloud_sub_;
-  ros::Publisher object_pointcloud_pub_;
   ros::Publisher object_mesh_pub_;
   ros::Publisher object_mesh_init_pub_;
 
   // Object
   cgal::MeshModel::Ptr mesh_model_;
   std::string object_frame_id_;
-  pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
 
   // Detection
   std::string pointcloud_topic_;
