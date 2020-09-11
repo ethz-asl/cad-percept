@@ -25,12 +25,13 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh,
                                    const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private),
+      object_frame_id_("object_detection_mesh"),
+      pointcloud_topic_("/camera/depth/color/points"),
       detection_frame_id_("camera_depth_optical_frame"),
       keypoint_type_(kHarris),
       descriptor_type_(kShot),
       matching_method_(kConventional),
-      pointcloud_topic_("/camera/depth/color/points"),
-      object_frame_id_("object_detection_mesh"),
+      correspondence_threshold_(0.1),
       downsampling_(true) {
   getParamsFromRos();
   subscribeToTopics();
@@ -56,6 +57,8 @@ void ObjectDetector3D::getParamsFromRos() {
                     object_frame_id_, object_frame_id_);
   nh_private_.param("icp_config_file", icp_config_file_,
                     icp_config_file_);
+  nh_private_.param("correspondence_threshold", correspondence_threshold_,
+                    correspondence_threshold_);
   nh_private_.param("downsampling", downsampling_, downsampling_);
 
   std::string keypoint_type;
@@ -467,13 +470,13 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
   }
 
   // Publish results
-  LOG(INFO) << "Publishing results";
   publishTransformation(T_object_detection.inverse(), detection_stamp_,
                         detection_frame_id_, object_frame_id_);
   visualizePointcloud(object_pointcloud_, detection_stamp_,
                       detection_frame_id_, object_pointcloud_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_,
                 object_mesh_pub_);
+  LOG(INFO) << "Published results.";
 }
 
 template <typename descriptor_type>
@@ -540,7 +543,7 @@ bool ObjectDetector3D::computeTransformUsingFgr(
   modelify::registration_toolbox::FastGlobalRegistrationParams fgr_params;
   fgr_params.crosscheck_test = true;  // 300 -> 30
   fgr_params.tuple_test = false;      // 30 -> 0
-  fgr_params.refine_using_icp = true;
+  fgr_params.refine_using_icp = false;
   fgr_params.use_absolute_scale = true;
   modelify::Correspondences correspondences;
   modelify::Transformation transform;
@@ -553,6 +556,9 @@ bool ObjectDetector3D::computeTransformUsingFgr(
     LOG(ERROR) << "Fast global registration was not successful!";
     return false;
   }
+  LOG(INFO) << "Time FGR: " << (ros::WallTime::now() - start).toSec();
+
+  // Visualize correspondences
   modelify::CorrespondencesTypePtr corr_ptr(new modelify::CorrespondencesType());
   for (const modelify::CorrespondencePair& correspondence : correspondences) {
     pcl::Correspondence corr;
@@ -594,6 +600,7 @@ bool ObjectDetector3D::computeTransformUsingModelify(
                << flann_params.num_of_correspondences;
     return false;
   }
+  flann_params.similarity_threshold = correspondence_threshold_;
   modelify::CorrespondencesTypePtr correspondences(
       new modelify::CorrespondencesType());
   modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
@@ -741,6 +748,7 @@ bool ObjectDetector3D::get3dFeatures(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors) {
+  ros::WallTime start = ros::WallTime::now();
   // Get surfels
   pcl::NormalEstimation<pcl::PointXYZ,
                         modelify::PointSurfelType> normal_estimator;
@@ -783,14 +791,18 @@ bool ObjectDetector3D::get3dFeatures(
     LOG(INFO) << "Filtered " << size_before - pointcloud_surfel_ptr->size()
               << " points with NaN points or normals";
   }
+  LOG(INFO) << "Time normals: " << (ros::WallTime::now() - start).toSec();
 
-  LOG(INFO) << "Computed " << pointcloud_surfel_ptr->size() << " surfel points";
-
+  ros::WallTime start_keypoints = ros::WallTime::now();
   if (!getKeypoints(keypoint_type_, pointcloud_surfel_ptr, keypoints)) {
     return false;
   }
+  LOG(INFO) << "Time keypoints: " << (ros::WallTime::now() - start_keypoints).toSec();
 
+  ros::WallTime start_descriptors = ros::WallTime::now();
   getDescriptors<descriptor_type>(pointcloud_surfel_ptr, keypoints, descriptors);
+  LOG(INFO) << "Time descriptors: " << (ros::WallTime::now() - start_descriptors).toSec();
+  LOG(INFO) << "Time 3D features: " << (ros::WallTime::now() - start).toSec();
   return true;
 }
 
@@ -882,7 +894,6 @@ void ObjectDetector3D::getDescriptors<modelify::DescriptorSHOT>(
   modelify::feature_toolbox::describeKeypoints<modelify::DescriptorSHOT>(
       pointcloud_surfel_ptr, modelify::kInvalidCloudResolution, shot_params,
       keypoints, descriptors);
-  LOG(INFO) << "Found SHOT descriptors for keypoints";
 }
 
 template <>
@@ -894,7 +905,6 @@ void ObjectDetector3D::getDescriptors<modelify::DescriptorFPFH>(
   modelify::feature_toolbox::describeKeypoints<modelify::DescriptorFPFH>(
       pointcloud_surfel_ptr, modelify::kInvalidCloudResolution, fpfh_params,
       keypoints, descriptors);
-  LOG(INFO) << "Found FPFH descriptors for keypoints";
 }
 
 void ObjectDetector3D::publishTransformation(const Transformation& transform,

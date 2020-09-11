@@ -196,6 +196,7 @@ class ObjectDetector3D {
   MatchingMethod matching_method_;
 
   std::string icp_config_file_;
+  float correspondence_threshold_;
   bool downsampling_;
 };
 

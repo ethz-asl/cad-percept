@@ -30,6 +30,8 @@
     <param name="num_points_object_pointcloud"
            value="$(arg num_points_object_pointcloud)"/>
     <param name="icp_config_file" value="$(arg icp_config_file)"/>
+    <param name="descriptor_threshold" value="0.2"/>
+    <param name="downsampling" value="true"/>
   </node>
 
   <node if="$(arg play_rosbag)" name="rosbag_player" pkg="rosbag" type="play"
