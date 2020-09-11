@@ -103,6 +103,15 @@ class ObjectDetector3D {
       const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
       const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
       Transformation* T_object_detection);
+  bool computeTransformFromCorrespondences(
+      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+      const modelify::CorrespondencesTypePtr& correspondences,
+      Transformation* transform);
+  static Transformation icpUsingModelify(
+      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+      const modelify::PointSurfelCloudType::Ptr& object_surfels,
+      const Transformation& transform_init);
 
   template <typename descriptor_type>
   bool get3dFeatures(
@@ -128,16 +137,6 @@ class ObjectDetector3D {
       const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
       const modelify::PointSurfelCloudType::Ptr& keypoints,
       const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors);
-
-  bool computeTransformFromCorrespondences(
-      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
-      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-      const modelify::CorrespondencesTypePtr& correspondences,
-      Transformation* transform);
-  static Transformation icpUsingModelify(
-      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
-      const modelify::PointSurfelCloudType::Ptr& object_surfels,
-      const Transformation& transform_init);
 
   static void visualizeMesh(
       const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,
