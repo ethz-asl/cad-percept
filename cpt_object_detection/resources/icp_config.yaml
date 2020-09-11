@@ -23,14 +23,14 @@ transformationCheckers:
   - DifferentialTransformationChecker:
       minDiffRotErr: 0.001
       minDiffTransErr: 0.01
-      smoothLength: 4 
+      smoothLength: 4
 
 inspector:
   VTKFileInspector:
-     baseFileName : vissteps
-     dumpDataLinks : 1
-     dumpReading : 1
-     dumpReference : 1
+    baseFileName: vissteps
+    dumpDataLinks: 1
+    dumpReading: 1
+    dumpReference: 1
 
 logger:
   FileLogger

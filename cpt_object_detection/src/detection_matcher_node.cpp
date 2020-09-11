@@ -1,7 +1,8 @@
-#include "cpt_object_detection/detection_matcher.h"
-#include <ros/ros.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <ros/ros.h>
+
+#include "cpt_object_detection/detection_matcher.h"
 
 // Main function supporting the Mapper class
 int main(int argc, char **argv) {

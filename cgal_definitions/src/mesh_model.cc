@@ -231,7 +231,7 @@ Polyhedron MeshModel::getMesh() const { return P_; }
 std::vector<std::string> MeshModel::getFacetIds() const {
   std::vector<std::string> keys;
   keys.reserve(facetToHandle_.size());
-  for (const auto& kv : facetToHandle_) {
+  for (const auto &kv : facetToHandle_) {
     keys.push_back(kv.first);
   }
   return keys;
