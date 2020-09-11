@@ -134,6 +134,10 @@ class ObjectDetector3D {
       const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
       const modelify::CorrespondencesTypePtr& correspondences,
       Transformation* transform);
+  static Transformation icpUsingModelify(
+      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+      const modelify::PointSurfelCloudType::Ptr& object_surfels,
+      const Transformation& transform_init);
 
   static void visualizeMesh(
       const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,

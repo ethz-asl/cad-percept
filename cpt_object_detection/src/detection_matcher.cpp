@@ -563,6 +563,16 @@ bool ObjectDetector3D::computeTransformUsingFgr(
   visualizeCorrespondences(detection_keypoints, corr_ptr,
                            detection_frame_id_, correspondences_pub_);
   *T_object_detection = Transformation(transform);
+
+  // Publish initial transform
+  publishTransformation(Transformation(transform).inverse(), detection_stamp_,
+                        detection_frame_id_, object_frame_id_ + "_init");
+  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init",
+                object_mesh_init_pub_);
+
+  // Refine using ICP
+  *T_object_detection =
+      icpUsingModelify(detection_surfels, object_surfels_, Transformation(transform));
   return true;
 }
 
@@ -599,8 +609,11 @@ bool ObjectDetector3D::computeTransformUsingModelify(
                            detection_frame_id_, correspondences_pub_);
 
   // Get transformation between detection and object pointcloud
-  return computeTransformFromCorrespondences(detection_surfels, detection_keypoints,
-                                             correspondences, T_object_detection);
+  bool success = computeTransformFromCorrespondences(detection_surfels, detection_keypoints,
+                                                     correspondences, T_object_detection);
+  *T_object_detection =
+      icpUsingModelify(detection_surfels, object_surfels_, *T_object_detection);
+  return success;
 }
 
 template <typename descriptor_type>
@@ -807,51 +820,67 @@ bool ObjectDetector3D::computeTransformFromCorrespondences(
                 object_mesh_init_pub_);
 
   // Validate alignment
+  if (!Quaternion::isValidRotationMatrix(T_geometric_consistency[0].block<3,3>(0,0))) {
+    for (int i = 0; i < 3; ++i) {
+      T_geometric_consistency[0].block<3,1>(0, i) =
+          T_geometric_consistency[0].block<3,1>(0, i).normalized();
+    }
+  }
+  *transform = Transformation(T_geometric_consistency[0]);
+
+  return true;
+}
+
+ObjectDetector3D::Transformation ObjectDetector3D::icpUsingModelify(
+    const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+    const modelify::PointSurfelCloudType::Ptr& object_surfels,
+    const Transformation& transform_init) {
+  // Validate initial alignment
   modelify::registration_toolbox::ICPParams icp_params;
-  double cloud_resolution = 0;
+  double cloud_resolution = modelify::kInvalidCloudResolution;
   double mean_squared_distance;
   double inlier_ratio;
   std::vector<size_t> outlier_indices;
   modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-      detection_surfels, object_surfels_, T_geometric_consistency[0],
+      detection_surfels, object_surfels, transform_init.getTransformationMatrix(),
       icp_params, cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
-  LOG(INFO) << "Geometric alignment validation results: "
+  LOG(INFO) << "Initial validation results: "
             << mean_squared_distance << " mean squared distance, "
             << inlier_ratio << " inlier ratio";
-  // TODO(gasserl): use validation!?
 
-  // Refine transformation with ICP
+  // Refine transformation with modelify ICP
   modelify::Transformation T_icp;
+  double mean_squared_distance_icp = 0;
+  double inlier_ratio_icp = mean_squared_distance;
   if (!estimateTransformationPointToPoint(
-      detection_surfels, object_surfels_, T_geometric_consistency[0],
-      icp_params, cloud_resolution, &T_icp, &mean_squared_distance)) {
+      detection_surfels, object_surfels, transform_init.getTransformationMatrix(),
+      icp_params, cloud_resolution, &T_icp, &mean_squared_distance_icp)) {
     LOG(WARNING) << "Keypoint ICP refinement failed!";
-
-    Transformation transform_icp =
-        icp(object_pointcloud_, detection_pointcloud_,
-            Transformation(T_geometric_consistency[0]), icp_config_file_);
-    if (transform_icp == Transformation()) {
-      LOG(WARNING) << "Pointcloud ICP refinement failed!";
-      *transform = Transformation(T_geometric_consistency[0]);
-      // TODO(gasserl): return false?
-    } else {
-      *transform = transform_icp;
-    }
   } else {
-    *transform = Transformation(T_icp);
-  }
+    if (!Quaternion::isValidRotationMatrix(T_icp.block<3,3>(0,0))) {
+      for (int i = 0; i < 3; ++i) {
+        T_icp.block<3,1>(0, i) = T_icp.block<3,1>(0, i).normalized();
+      }
+    }
+    Transformation transform_icp =
+        Transformation(T_icp) * Transformation(transform_init.getTransformationMatrix());
 
-  // Validate alignment
-  icp_params.inlier_distance_threshold_m = 0.01;
-  modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-      detection_surfels, object_surfels_, transform->getTransformationMatrix(),
-      icp_params, cloud_resolution, &mean_squared_distance, &inlier_ratio,
-      &outlier_indices);
-  LOG(INFO) << "ICP validation results: "
-            << mean_squared_distance << " mean squared distance, "
-            << inlier_ratio << " inlier ratio";
-  // TODO(gasserl): use validation!?
-  return true;
+    // Validate alignment ICP
+    modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+        detection_surfels, object_surfels, transform_icp.getTransformationMatrix(),
+        icp_params, cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp,
+        &outlier_indices);
+    LOG(INFO) << "ICP validation results: "
+              << mean_squared_distance_icp << " mean squared distance, "
+              << inlier_ratio_icp << " inlier ratio";
+
+    if (inlier_ratio_icp > inlier_ratio) {// && mean_squared_distance_icp < mean_squared_distance) {
+      return transform_icp;
+    } else {
+      LOG(WARNING) << "ICP didn't improve alignment!";
+    }
+  }
+  return transform_init;
 }
 
 void ObjectDetector3D::publishTransformation(const Transformation& transform,
