@@ -128,7 +128,7 @@ void MeshModel::setTriangleIds(const std::vector<std::string> &triangle_ids) {
   std::unordered_map<std::string, Polyhedron::Facet_handle> facetToHandle_new;
   std::unordered_map<std::string, std::string> facetToPlane_new;
   std::unordered_multimap<std::string, std::string> planeToFacets_new;
-  for (int facet_idx = 0; facet_idx < P_.size_of_facets(); ++facet_idx) {
+  for (uint facet_idx = 0; facet_idx < P_.size_of_facets(); ++facet_idx) {
     std::string new_id = triangle_ids[facet_idx];
     std::string old_id = facetIdxToId_[facet_idx];
     facetIdxToId_new[facet_idx] = new_id;
