@@ -21,7 +21,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
   subscribeToTopics();
   advertiseTopics();
 
-  const std::string& off_file = nh_private.param<std::string>("off_model", "fail");
+  const std::string& off_file = nh_private_.param<std::string>("off_model", "fail");
   if (!cgal::MeshModel::create(off_file, &mesh_model_)) {
     LOG(ERROR) << "Could not get mesh model from off file at " << off_file << "!";
   }
