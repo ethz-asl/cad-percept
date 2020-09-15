@@ -1,7 +1,6 @@
 #ifndef CPT_UTILS_H
 #define CPT_UTILS_H
 
-#include <kindr/minimal/quat-transformation-gtsam.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 
@@ -15,8 +14,8 @@
 namespace cad_percept {
 namespace cpt_utils {
 
-typedef kindr::minimal::QuatTransformationTemplate<double> SE3;
-typedef SE3::Rotation SO3;
+/*typedef kindr::minimal::QuatTransformationTemplate<double> SE3;
+typedef SE3::Rotation SO3;*/
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 struct Associations {

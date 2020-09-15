@@ -22,12 +22,9 @@
   <depend>eigen_conversions</depend>
   <depend>geometry_msgs</depend>
   <depend>glog_catkin</depend>
-  <depend>gtsam_catkin</depend>
   <depend>minkindr</depend>
-  <depend>minkindr_gtsam</depend>
   <depend>pcl_ros</depend>
   <depend>roscpp</depend>
-  <depend>libpointmatcher</depend>
 
   <depend>geometric_shapes</depend>
   <depend>tf_conversions</depend>
