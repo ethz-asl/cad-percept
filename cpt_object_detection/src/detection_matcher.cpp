@@ -381,16 +381,30 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
   }
 
   // Compute transform between detection and object
-  Transformation T_object_detection;
-  bool success;
+  Transformation T_features;
+  modelify::PointSurfelCloudType::Ptr detection_surfels(new modelify::PointSurfelCloudType());
+  modelify::PointSurfelCloudType::Ptr detection_keypoints(new modelify::PointSurfelCloudType());
+  typename pcl::PointCloud<modelify::DescriptorFPFH>::Ptr detection_descriptors_fpfh(
+      new pcl::PointCloud<modelify::DescriptorFPFH>());
+  typename pcl::PointCloud<modelify::DescriptorSHOT>::Ptr detection_descriptors_shot(
+      new pcl::PointCloud<modelify::DescriptorSHOT>());
+  modelify::CorrespondencesTypePtr correspondences(new modelify::CorrespondencesType());
   switch (descriptor_type_) {
     case kFpfh:
-      success = computeTransformUsing3dFeatures<modelify::DescriptorFPFH>(object_descriptors_fpfh_,
-                                                                          &T_object_detection);
+      get3dFeatures<modelify::DescriptorFPFH>(detection_pointcloud_, detection_surfels,
+                                              detection_keypoints, detection_descriptors_fpfh);
+      T_features = computeTransformUsing3dFeatures<modelify::DescriptorFPFH>(
+          kConventional, detection_surfels, detection_keypoints, detection_descriptors_fpfh,
+          object_surfels_, object_keypoints_, object_descriptors_fpfh_, correspondence_threshold_,
+          correspondences);
       break;
     case kShot:
-      success = computeTransformUsing3dFeatures<modelify::DescriptorSHOT>(object_descriptors_shot_,
-                                                                          &T_object_detection);
+      get3dFeatures<modelify::DescriptorSHOT>(detection_pointcloud_, detection_surfels,
+                                              detection_keypoints, detection_descriptors_shot);
+      T_features = computeTransformUsing3dFeatures<modelify::DescriptorSHOT>(
+          kConventional, detection_surfels, detection_keypoints, detection_descriptors_shot,
+          object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
+          correspondences);
       break;
     default:
       LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
@@ -398,24 +412,43 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
       for (int i = 0; i < DescriptorType::kNumDescriptorTypes; ++i) {
         LOG(INFO) << i << " (" << DescriptorNames[i] << ")";
       }
-      success = false;
-      break;
+      return;
   }
 
-  if (!success) {
-    LOG(ERROR) << "Matching features was not successful!";
+  if (!T_features.getTransformationMatrix().allFinite() ||
+      !Quaternion::isValidRotationMatrix(T_features.getRotationMatrix())) {
+    LOG(ERROR) << "Transformation from 3D features is not valid!\n" << T_features;
     return;
   }
 
-  if (!T_object_detection.getTransformationMatrix().allFinite()) {
-    LOG(ERROR) << "Transformation not valid!";
-    LOG(INFO) << "Transformation:\n" << T_object_detection;
+  // Refine using ICP
+  Transformation T_icp = icpUsingModelify(detection_surfels, object_surfels_, T_features);
+
+  if (!T_icp.getTransformationMatrix().allFinite() ||
+      !Quaternion::isValidRotationMatrix(T_icp.getRotationMatrix())) {
+    LOG(ERROR) << "Transformation from ICP is not valid!\n" << T_icp;
     return;
   }
+
+  // Visualizations
+  visualizeNormals(detection_surfels, "detection", detection_frame_id_, normals_pub_);
+  visualizeNormals(object_surfels_, "object", detection_frame_id_, normals_pub_);
+  visualizeKeypoints(detection_keypoints, detection_stamp_, detection_frame_id_,
+                     detection_keypoint_pub_);
+  visualizeKeypoints(object_keypoints_, detection_stamp_, detection_frame_id_,
+                     object_keypoint_pub_);
+
+  // Visualize correspondences
+  visualizeCorrespondences(detection_keypoints, correspondences, detection_frame_id_,
+                           correspondences_pub_);
+
+  // Publish initial transform
+  publishTransformation(T_features.inverse(), detection_stamp_, detection_frame_id_,
+                        object_frame_id_ + "_init");
+  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
 
   // Publish results
-  publishTransformation(T_object_detection.inverse(), detection_stamp_, detection_frame_id_,
-                        object_frame_id_);
+  publishTransformation(T_icp.inverse(), detection_stamp_, detection_frame_id_, object_frame_id_);
   visualizePointcloud(object_pointcloud_, detection_stamp_, detection_frame_id_,
                       object_pointcloud_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
@@ -423,109 +456,87 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
 }
 
 template <typename descriptor_type>
-bool ObjectDetector3D::computeTransformUsing3dFeatures(
+ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsing3dFeatures(
+    MatchingMethod matching_method, const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& object_surfels,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    Transformation* T_object_detection) {
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
   if (object_descriptors->empty()) {
     LOG(ERROR) << "Object pointcloud has no features!";
-    return false;
+    return Transformation();
   }
-
-  // Find features of detection pointcloud
-  modelify::PointSurfelCloudType::Ptr detection_surfels(new modelify::PointSurfelCloudType());
-  modelify::PointSurfelCloudType::Ptr detection_keypoints(new modelify::PointSurfelCloudType());
-  typename pcl::PointCloud<descriptor_type>::Ptr detection_descriptors(
-      new pcl::PointCloud<descriptor_type>());
-  get3dFeatures<descriptor_type>(detection_pointcloud_, detection_surfels, detection_keypoints,
-                                 detection_descriptors);
-
-  // Visualizations
-  visualizeNormals(object_surfels_, "object", detection_frame_id_, normals_pub_);
-  visualizeNormals(detection_surfels, "detection", detection_frame_id_, normals_pub_);
-  visualizeKeypoints(detection_keypoints, detection_stamp_, detection_frame_id_,
-                     detection_keypoint_pub_);
-  visualizeKeypoints(object_keypoints_, detection_stamp_, detection_frame_id_,
-                     object_keypoint_pub_);
 
   if (detection_descriptors->empty()) {
     LOG(ERROR) << "Detection pointcloud has no features!";
-    return false;
+    return Transformation();
   }
 
   // Match features
-  switch (matching_method_) {
+  switch (matching_method) {
     case kConventional:
       return computeTransformUsingModelify<descriptor_type>(
-          object_descriptors, detection_surfels, detection_keypoints, detection_descriptors,
-          T_object_detection);
+          detection_surfels, detection_keypoints, detection_descriptors, object_surfels,
+          object_keypoints, object_descriptors, similarity_threshold, correspondences);
+      break;
     case kFastGlobalRegistration:
-      return computeTransformUsingFgr<descriptor_type>(object_descriptors, detection_surfels,
-                                                       detection_keypoints, detection_descriptors,
-                                                       T_object_detection);
+      return computeTransformUsingFgr<descriptor_type>(
+          detection_surfels, detection_keypoints, detection_descriptors, object_surfels,
+          object_keypoints, object_descriptors, correspondences);
+      break;
     default:
-      LOG(ERROR) << "Unknown matching method! " << matching_method_;
-      LOG(INFO) << "Matching methods:";
-      for (int i = 0; i < MatchingMethod::kNumMatchingMethods; ++i) {
-        LOG(INFO) << i << " (" << MatchingMethodNames[i] << ")";
-      }
-      return false;
+      LOG(ERROR) << "Unknown matching method! " << matching_method;
+      return Transformation();
   }
 }
 
 template <typename descriptor_type>
-bool ObjectDetector3D::computeTransformUsingFgr(
-    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingFgr(
     const modelify::PointSurfelCloudType::Ptr& detection_surfels,
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-    Transformation* T_object_detection) {
+    const modelify::PointSurfelCloudType::Ptr& object_surfels,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    const modelify::CorrespondencesTypePtr& correspondences) {
+  ros::WallTime start = ros::WallTime::now();
   modelify::registration_toolbox::FastGlobalRegistrationParams fgr_params;
   fgr_params.crosscheck_test = true;  // 300 -> 30
   fgr_params.tuple_test = false;      // 30 -> 0
   fgr_params.refine_using_icp = false;
   fgr_params.use_absolute_scale = true;
-  modelify::Correspondences correspondences;
   modelify::Transformation transform;
+  modelify::Correspondences corrs;
   if (!modelify::registration_toolbox::fast_global_registration::
           estimateTransformationFastGlobalRegistration<modelify::PointSurfelType, descriptor_type>(
-              detection_surfels, object_surfels_, detection_keypoints, object_keypoints_,
-              detection_descriptors, object_descriptors, fgr_params, &correspondences,
-              &transform)) {
+              detection_surfels, object_surfels, detection_keypoints, object_keypoints,
+              detection_descriptors, object_descriptors, fgr_params, &corrs, &transform)) {
     LOG(ERROR) << "Fast global registration was not successful!";
-    return false;
+    return Transformation();
   }
   LOG(INFO) << "Time FGR: " << (ros::WallTime::now() - start).toSec();
 
-  // Visualize correspondences
-  modelify::CorrespondencesTypePtr corr_ptr(new modelify::CorrespondencesType());
-  for (const modelify::CorrespondencePair& correspondence : correspondences) {
+  for (const modelify::CorrespondencePair& correspondence : corrs) {
     pcl::Correspondence corr;
     corr.index_match = correspondence.first;
     corr.index_query = correspondence.second;
-    corr_ptr->push_back(corr);
+    correspondences->push_back(corr);
   }
-  visualizeCorrespondences(detection_keypoints, corr_ptr,
-                           detection_frame_id_, correspondences_pub_);
-  *T_object_detection = Transformation(transform);
 
-  // Publish initial transform
-  publishTransformation(Transformation(transform).inverse(), detection_stamp_, detection_frame_id_,
-                        object_frame_id_ + "_init");
-  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
-
-  // Refine using ICP
-  *T_object_detection =
-      icpUsingModelify(detection_surfels, object_surfels_, Transformation(transform));
-  return true;
+  return ObjectDetector3D::Transformation(transform);
 }
 
 template <typename descriptor_type>
-bool ObjectDetector3D::computeTransformUsingModelify(
-    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingModelify(
     const modelify::PointSurfelCloudType::Ptr& detection_surfels,
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-    Transformation* T_object_detection) {
+    const modelify::PointSurfelCloudType::Ptr& object_surfels,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
   // Find correspondences
   modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
   if (object_descriptors->size() < flann_params.num_of_correspondences ||
@@ -534,37 +545,31 @@ bool ObjectDetector3D::computeTransformUsingModelify(
                << flann_params.num_of_correspondences
                << ", Detection: " << detection_descriptors->size() << "/"
                << flann_params.num_of_correspondences;
-    return false;
+    return Transformation();
   }
-  flann_params.similarity_threshold = correspondence_threshold_;
-  modelify::CorrespondencesTypePtr correspondences(new modelify::CorrespondencesType());
+  flann_params.similarity_threshold = correspondence_threshold;
   modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
       detection_descriptors, object_descriptors, flann_params, correspondences);
 
   if (correspondences->empty()) {
     LOG(ERROR) << "No correspondences found!";
-    return false;
+    return Transformation();
   }
   LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
 
-  visualizeCorrespondences(detection_keypoints, correspondences,
-                           detection_frame_id_, correspondences_pub_);
-
   // Get transformation between detection and object pointcloud
-  bool success = computeTransformFromCorrespondences(detection_surfels, detection_keypoints,
-                                                     correspondences, T_object_detection);
-  *T_object_detection = icpUsingModelify(detection_surfels, object_surfels_, *T_object_detection);
-  return success;
+  return computeTransformFromCorrespondences(detection_keypoints, object_keypoints,
+                                             correspondences);
 }
 
-bool ObjectDetector3D::computeTransformFromCorrespondences(
-    const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+ObjectDetector3D::Transformation ObjectDetector3D::computeTransformFromCorrespondences(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-    const modelify::CorrespondencesTypePtr& correspondences, Transformation* transform) {
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const modelify::CorrespondencesTypePtr& correspondences) {
   // Filter correspondences
   modelify::registration_toolbox::RansacParams ransac_params;
   modelify::CorrespondencesTypePtr filtered_correspondences(new modelify::CorrespondencesType());
-  if (!modelify::registration_toolbox::filterCorrespondences(detection_keypoints, object_keypoints_,
+  if (!modelify::registration_toolbox::filterCorrespondences(detection_keypoints, object_keypoints,
                                                              ransac_params, correspondences,
                                                              filtered_correspondences)) {
     // TODO(gasserl): error instead of warning?
@@ -579,36 +584,26 @@ bool ObjectDetector3D::computeTransformFromCorrespondences(
   modelify::TransformationVector T_geometric_consistency;
   std::vector<modelify::CorrespondencesType> clustered_correspondences;
   if (!modelify::registration_toolbox::alignKeypointsGeometricConsistency(
-          detection_keypoints, object_keypoints_, filtered_correspondences,
+          detection_keypoints, object_keypoints, filtered_correspondences,
           consistency_params.min_cluster_size, consistency_params.consensus_set_resolution_m,
           &T_geometric_consistency, &clustered_correspondences)) {
     LOG(ERROR) << "Keypoint alignment failed!";
-    return false;
+    return Transformation();
   }
+  *correspondences = clustered_correspondences[0];
   LOG(INFO) << "Aligned keypoints, best alignment found with "
             << clustered_correspondences[0].size() << " correspondences and transform\n"
             << T_geometric_consistency[0];
-
-  LOG(INFO) << "Publishing initial transformation from geometric consistency";
-  publishTransformation(Transformation(T_geometric_consistency[0]).inverse(), detection_stamp_,
-                        detection_frame_id_, object_frame_id_ + "_init");
-  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
-
-  modelify::CorrespondencesTypePtr valid_correspondences =
-      boost::make_shared<modelify::CorrespondencesType>(clustered_correspondences[0]);
-  LOG(INFO) << valid_correspondences->size() << " remaining valid correspondences.";
-  visualizeCorrespondences(detection_keypoints, valid_correspondences, detection_frame_id_,
-                           correspondences_pub_);
 
   if (!Quaternion::isValidRotationMatrix(T_geometric_consistency[0].block<3, 3>(0, 0))) {
     for (int i = 0; i < 3; ++i) {
       T_geometric_consistency[0].block<3, 1>(0, i) =
           T_geometric_consistency[0].block<3, 1>(0, i).normalized();
     }
+    LOG(WARNING) << "Normalized rotation matrix, new transformation:\n"
+                 << T_geometric_consistency[0];
   }
-  *transform = Transformation(T_geometric_consistency[0]);
-
-  return true;
+  return Transformation(T_geometric_consistency[0]);
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::icpUsingModelify(
@@ -641,8 +636,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::icpUsingModelify(
         T_icp.block<3, 1>(0, i) = T_icp.block<3, 1>(0, i).normalized();
       }
     }
-    Transformation transform_icp =
-        Transformation(T_icp) * Transformation(transform_init.getTransformationMatrix());
+    Transformation transform_icp = Transformation(T_icp) * transform_init;
 
     // Validate alignment ICP
     modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
@@ -651,8 +645,8 @@ ObjectDetector3D::Transformation ObjectDetector3D::icpUsingModelify(
     LOG(INFO) << "ICP validation results: " << mean_squared_distance_icp
               << " mean squared distance, " << inlier_ratio_icp << " inlier ratio";
 
-    if (inlier_ratio_icp >
-        inlier_ratio) {  // && mean_squared_distance_icp < mean_squared_distance) {
+    if (inlier_ratio_icp >= inlier_ratio) {
+      // && mean_squared_distance_icp < mean_squared_distance) {
       return transform_icp;
     } else {
       LOG(WARNING) << "ICP didn't improve alignment!";
@@ -875,8 +869,8 @@ void ObjectDetector3D::visualizeKeypoints(const modelify::PointSurfelCloudType::
 
 void ObjectDetector3D::visualizeCorrespondences(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-    const modelify::CorrespondencesTypePtr& correspondences,
-    const std::string& frame_id, const ros::Publisher& publisher) {
+    const modelify::CorrespondencesTypePtr& correspondences, const std::string& frame_id,
+    const ros::Publisher& publisher) {
   visualization_msgs::MarkerArray marker_array;
   visualization_msgs::Marker marker;
   marker.header.frame_id = frame_id;
@@ -884,7 +878,7 @@ void ObjectDetector3D::visualizeCorrespondences(
   marker.type = visualization_msgs::Marker::LINE_LIST;
   marker.scale.x = 0.001;
   marker.color.r = 0;
-  marker.color.g = 0.5;
+  marker.color.g = 1;
   marker.color.b = 1;
   marker.color.a = 0.5f;
   geometry_msgs::Point point_msg;
