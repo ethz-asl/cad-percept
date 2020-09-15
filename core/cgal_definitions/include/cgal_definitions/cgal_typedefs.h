@@ -5,13 +5,12 @@
 #ifndef CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 #define CGAL_DEFINITIONS_CGAL_TYPEDEFS_H
 
-#include <CGAL/Simple_cartesian.h>
-
 #include <CGAL/Bbox_3.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Polygon_mesh_processing/measure.h>
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/Polyhedron_items_with_id_3.h>
+#include <CGAL/Simple_cartesian.h>
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 #include <CGAL/point_generators_3.h>
@@ -24,10 +23,6 @@
 
 // normal computation
 #include <CGAL/Polygon_mesh_processing/compute_normal.h>
-
-// shape detection
-#include <CGAL/Shape_detection_3.h>
-
 #include <CGAL/Polygon_mesh_processing/measure.h>
 #include <CGAL/Polygon_mesh_processing/stitch_borders.h>
 #include <CGAL/intersections.h>
@@ -52,20 +47,6 @@ typedef CGAL::Aff_transformation_3<Kernel> Transformation;
 
 typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef std::shared_ptr<Polyhedron> PolyhedronPtr;
-
-// Shape detection typedefs
-typedef CGAL::Exact_predicates_inexact_constructions_kernel ShapeKernel;
-typedef ShapeKernel::FT FT;
-typedef std::pair<ShapeKernel::Point_3, ShapeKernel::Vector_3> Point_with_normal;
-typedef std::vector<Point_with_normal> Pwn_vector;
-typedef CGAL::First_of_pair_property_map<Point_with_normal> Point_map;
-typedef CGAL::Second_of_pair_property_map<Point_with_normal> Normal_map;
-typedef CGAL::Shape_detection_3::Shape_detection_traits<ShapeKernel, Pwn_vector, Point_map,
-                                                        Normal_map>
-    Traits;
-typedef CGAL::Shape_detection_3::Efficient_RANSAC<Traits> Efficient_RANSAC;
-typedef CGAL::Shape_detection_3::Region_growing<Traits> Region_growing;
-typedef CGAL::Shape_detection_3::Plane<Traits> ShapePlane;
 
 // datastructures
 typedef Polyhedron::HalfedgeDS HalfedgeDS;

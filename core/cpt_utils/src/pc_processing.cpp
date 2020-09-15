@@ -7,7 +7,8 @@ namespace cpt_utils {
 
 /**
  *  This function was not tested yet!
- */
+ *  (mpantic, Aug 2020): Removed, should be moved somewhere else to avoid libpointmatcher dependency
+
 void align_sequence(const boost::circular_buffer<PointCloud> &cb, PointCloud *pointcloud_out) {
   PM::ICP icp;
   icp.setDefault();
@@ -100,6 +101,7 @@ DP pointCloudToDP(const PointCloud &pointcloud) {
 
   return dppointcloud;
 }
+*/
 
 void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transform) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>());
@@ -147,6 +149,7 @@ void sample_pc_from_mesh(const cgal::Polyhedron &P, const int no_of_points, cons
   }
 }
 
+/*
 void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3 &plane,
                     PointCloud *cloud_out) {
   for (auto point : cloud_in) {
@@ -155,7 +158,7 @@ void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3
     cloud_out->push_back(pcl::PointXYZ(p_proj.x(), p_proj.y(), p_proj.z()));
   }
 }
-
+*/
 void projectToPlane(const PointCloud &cloud_in, const cgal::Plane &plane, PointCloud *cloud_out) {
   for (auto point : cloud_in) {
     cgal::Point p_proj;
