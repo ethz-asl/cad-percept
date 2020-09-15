@@ -19,7 +19,6 @@ class ObjectDetector3D {
   typedef kindr::minimal::RotationQuaternionTemplate<float> Quaternion;
   typedef PointMatcher<float> PM;
 
- private:
   enum KeypointType { kIss = 0, kHarris, kUniform, kNumKeypointTypes };
   std::map<size_t, std::string> KeypointNames = {
       {static_cast<size_t>(KeypointType::kIss), "ISS"},
@@ -67,23 +66,40 @@ class ObjectDetector3D {
 
   void processDetectionUsing3dFeatures();
   template <typename descriptor_type>
-  bool computeTransformUsing3dFeatures(
+  static Transformation computeTransformUsing3dFeatures(
+      MatchingMethod matching_method, const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+      const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+      const modelify::PointSurfelCloudType::Ptr& object_surfels,
+      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
       const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-      Transformation* T_object_detection);
+      double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences);
   template <typename descriptor_type>
-  bool computeTransformUsingFgr(
-      const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+  static Transformation computeTransformUsingFgr(
       const modelify::PointSurfelCloudType::Ptr& detection_surfels,
       const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
       const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-      Transformation* T_object_detection);
-  template <typename descriptor_type>
-  bool computeTransformUsingModelify(
+      const modelify::PointSurfelCloudType::Ptr& object_surfels,
+      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
       const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+      const modelify::CorrespondencesTypePtr& correspondences);
+  template <typename descriptor_type>
+  static Transformation computeTransformUsingModelify(
       const modelify::PointSurfelCloudType::Ptr& detection_surfels,
       const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
       const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-      Transformation* T_object_detection);
+      const modelify::PointSurfelCloudType::Ptr& object_surfels,
+      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+      const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+      double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences);
+  static Transformation computeTransformFromCorrespondences(
+      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+      const modelify::CorrespondencesTypePtr& correspondences);
+  static Transformation icpUsingModelify(
+      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+      const modelify::PointSurfelCloudType::Ptr& object_surfels,
+      const Transformation& transform_init);
 
   template <typename descriptor_type>
   bool get3dFeatures(const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz,
@@ -103,11 +119,6 @@ class ObjectDetector3D {
   static void getDescriptors(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
                              const modelify::PointSurfelCloudType::Ptr& keypoints,
                              const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors);
-
-  bool computeTransformFromCorrespondences(
-      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
-      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-      const modelify::CorrespondencesTypePtr& correspondences, Transformation* transform);
 
   static void visualizeMesh(const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,
                             const std::string& frame_id, const ros::Publisher& publisher);
@@ -161,6 +172,7 @@ class ObjectDetector3D {
   MatchingMethod matching_method_;
 
   std::string icp_config_file_;
+  float correspondence_threshold_;
   bool downsampling_;
 };
 
