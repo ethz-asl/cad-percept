@@ -30,8 +30,9 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       keypoint_type_(kHarris),
       descriptor_type_(kShot),
       matching_method_(kConventional),
+      use_3d_features_(true),
       correspondence_threshold_(0.1),
-      downsampling_(true) {
+      downsampling_resolution_(0.001) {
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
@@ -49,10 +50,11 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
 void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
+  nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
   nh_private_.param("icp_config_file", icp_config_file_, icp_config_file_);
   nh_private_.param("correspondence_threshold", correspondence_threshold_,
                     correspondence_threshold_);
-  nh_private_.param("downsampling", downsampling_, downsampling_);
+  nh_private_.param("downsampling", downsampling_resolution_, downsampling_resolution_);
 
   std::string keypoint_type;
   nh_private_.param("keypoint_type", keypoint_type, keypoint_type);
@@ -197,8 +199,11 @@ void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& c
   detection_stamp_ = cloud_msg_in.header.stamp;
   pcl::fromROSMsg(cloud_msg_in, detection_pointcloud_);
 
-//  processDetectionUsingPcaAndIcp();
-  processDetectionUsing3dFeatures();
+  if (!use_3d_features_) {
+    processDetectionUsingPcaAndIcp();
+  } else {
+    processDetectionUsing3dFeatures();
+  }
 }
 
 // TODO(gasserl): make child classes for each thing?
@@ -368,16 +373,16 @@ ObjectDetector3D::Transformation ObjectDetector3D::icp(
 // TODO(gasserl): another child class?
 void ObjectDetector3D::processDetectionUsing3dFeatures() {
   // Downsampling detection pointcloud
-  if (downsampling_) {
+  if (downsampling_resolution_ > 0) {
     pcl::PointCloud<pcl::PointXYZ> temp(detection_pointcloud_);
     pcl::PointCloud<pcl::PointXYZ>::Ptr detection_pointcloud_ptr =
         boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(temp);
     pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter;
     voxel_grid_filter.setInputCloud(detection_pointcloud_ptr);
-    constexpr float voxel_size = 0.002;
-    voxel_grid_filter.setLeafSize(voxel_size, voxel_size, voxel_size);
+    voxel_grid_filter.setLeafSize(downsampling_resolution_, downsampling_resolution_,
+                                  downsampling_resolution_);
     voxel_grid_filter.filter(detection_pointcloud_);
-    LOG(INFO) << "Detection pointcloud downsampled to resolution of " << voxel_size
+    LOG(INFO) << "Detection pointcloud downsampled to resolution of " << downsampling_resolution_
               << " m, resulting in " << detection_pointcloud_.size() << " points";
   }
 

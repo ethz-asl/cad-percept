@@ -179,9 +179,10 @@ class ObjectDetector3D {
   DescriptorType descriptor_type_;
   MatchingMethod matching_method_;
 
+  bool use_3d_features_;
   std::string icp_config_file_;
   float correspondence_threshold_;
-  bool downsampling_;
+  float downsampling_resolution_;
 };
 
 }  // namespace object_detection
