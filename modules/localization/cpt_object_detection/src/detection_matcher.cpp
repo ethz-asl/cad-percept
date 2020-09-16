@@ -13,6 +13,7 @@
 #include <modelify/registration_toolbox/registration_toolbox.h>
 #include <pcl/common/pca.h>
 #include <pointmatcher_ros/point_cloud.h>
+#include <teaser/registration.h>
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -486,6 +487,11 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsing3dFeatur
           detection_surfels, detection_keypoints, detection_descriptors, object_surfels,
           object_keypoints, object_descriptors, correspondences);
       break;
+    case kTeaser:
+      return computeTransformUsingTeaser<descriptor_type>(
+          detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
+          similarity_threshold, correspondences);
+      break;
     default:
       LOG(ERROR) << "Unknown matching method! " << matching_method;
       return Transformation();
@@ -560,6 +566,74 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingModelify
   // Get transformation between detection and object pointcloud
   return computeTransformFromCorrespondences(detection_keypoints, object_keypoints,
                                              correspondences);
+}
+
+template <typename descriptor_type>
+ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingTeaser(
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+  // Find correspondences
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
+  flann_params.num_of_correspondences = 3;
+  if (object_descriptors->size() < flann_params.num_of_correspondences ||
+      detection_descriptors->size() < flann_params.num_of_correspondences) {
+    LOG(ERROR) << "Too few features found! Object: " << object_descriptors->size() << "/"
+               << flann_params.num_of_correspondences
+               << ", Detection: " << detection_descriptors->size() << "/"
+               << flann_params.num_of_correspondences;
+    return Transformation();
+  }
+  flann_params.similarity_threshold = correspondence_threshold;
+  modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
+      detection_descriptors, object_descriptors, flann_params, correspondences);
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
+  LOG(INFO) << "Time correspondences: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+
+  // Convert keypoints into matrix
+  begin = std::chrono::steady_clock::now();
+  Eigen::Matrix<double, 3, Eigen::Dynamic> object_matrix(3, correspondences->size());
+  Eigen::Matrix<double, 3, Eigen::Dynamic> detection_matrix(3, correspondences->size());
+  uint idx = 0;
+  for (const auto& correspondence : *correspondences) {
+    object_matrix.col(idx) << object_keypoints->points[correspondence.index_match].x,
+        detection_keypoints->points[correspondence.index_match].y,
+        detection_keypoints->points[correspondence.index_match].z;
+    detection_matrix.col(idx) << detection_keypoints->points[correspondence.index_query].x,
+        detection_keypoints->points[correspondence.index_query].y,
+        detection_keypoints->points[correspondence.index_query].z;
+    ++idx;
+  }
+  end = std::chrono::steady_clock::now();
+  LOG(INFO) << "Time conversion: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+
+  // Solve with TEASER++
+  teaser::RobustRegistrationSolver::Params params;
+  params.estimate_scaling = false;
+  params.rotation_cost_threshold = 0.005;
+  teaser::RobustRegistrationSolver solver(params);
+  begin = std::chrono::steady_clock::now();
+  teaser::RegistrationSolution solution = solver.solve(object_matrix, detection_matrix);
+  end = std::chrono::steady_clock::now();
+  LOG(INFO) << "Time teaser: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+
+  if (!solution.valid) {
+    LOG(ERROR) << "Registration using Teaser failed!";
+    return Transformation();
+  }
+
+  Eigen::Matrix3f rotation_matrix = solution.rotation.cast<float>();
+  Transformation T_teaser =
+      Transformation(solution.translation.cast<float>(), Quaternion(rotation_matrix)).inverse();
+  LOG(INFO) << "Transformation teaser:\n" << T_teaser.getTransformationMatrix();
+  return T_teaser;
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::computeTransformFromCorrespondences(

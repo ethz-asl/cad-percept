@@ -22,6 +22,7 @@ cs_add_executable(${PROJECT_NAME}_node
     )
 
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME}_node teaserpp::teaser_registration)
 
 ##########
 # EXPORT #
