@@ -28,6 +28,9 @@ cs_add_executable(mesh_publisher_node
         )
 target_link_libraries(mesh_publisher_node ${PROJECT_NAME})
 
+cs_add_executable(altitude_node
+        src/altitude_node.cc
+        )
 ##########
 # EXPORT #
 ##########
