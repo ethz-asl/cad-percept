@@ -20,7 +20,6 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>eigen_catkin</depend>
-  <depend>pcl_ros</depend>
   <depend>minkindr</depend>
   <depend>minkindr_conversions</depend>
   <depend>cgal_conversions</depend>

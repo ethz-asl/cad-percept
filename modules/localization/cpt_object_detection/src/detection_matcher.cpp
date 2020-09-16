@@ -31,6 +31,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       descriptor_type_(kShot),
       matching_method_(kConventional),
       use_3d_features_(true),
+      refine_(true),
       correspondence_threshold_(0.1),
       downsampling_resolution_(0.001) {
   getParamsFromRos();
@@ -51,6 +52,7 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
   nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
+  nh_private_.param("refine", refine_, refine_);
   nh_private_.param("icp_config_file", icp_config_file_, icp_config_file_);
   nh_private_.param("correspondence_threshold", correspondence_threshold_,
                     correspondence_threshold_);
@@ -428,7 +430,10 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
   }
 
   // Refine using ICP
-  Transformation T_icp = icpUsingModelify(detection_surfels, object_surfels_, T_features);
+  Transformation T_icp = T_features;
+  if (refine_) {
+    T_icp = icpUsingModelify(detection_surfels, object_surfels_, T_features);
+  }
 
   if (!T_icp.getTransformationMatrix().allFinite() ||
       !Quaternion::isValidRotationMatrix(T_icp.getRotationMatrix())) {
@@ -484,8 +489,8 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsing3dFeatur
   switch (matching_method) {
     case kConventional:
       return computeTransformUsingModelify<descriptor_type>(
-          detection_surfels, detection_keypoints, detection_descriptors, object_surfels,
-          object_keypoints, object_descriptors, similarity_threshold, correspondences);
+          detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
+          similarity_threshold, correspondences);
       break;
     case kFastGlobalRegistration:
       return computeTransformUsingFgr<descriptor_type>(
@@ -541,14 +546,13 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingFgr(
 
 template <typename descriptor_type>
 ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingModelify(
-    const modelify::PointSurfelCloudType::Ptr& detection_surfels,
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-    const modelify::PointSurfelCloudType::Ptr& object_surfels,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
     double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
   // Find correspondences
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
   flann_params.num_of_correspondences = 3;
   if (object_descriptors->size() < flann_params.num_of_correspondences ||
@@ -560,9 +564,15 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingModelify
     return Transformation();
   }
   flann_params.similarity_threshold = correspondence_threshold;
+  if (correspondence_threshold == 0) {
+    flann_params.prefilter = false;
+  }
+  flann_params.keep_statistics = true;
   modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
       detection_descriptors, object_descriptors, flann_params, correspondences);
-
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  LOG(INFO) << "Time correspondences: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
   if (correspondences->empty()) {
     LOG(ERROR) << "No correspondences found!";
     return Transformation();
@@ -594,12 +604,20 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingTeaser(
     return Transformation();
   }
   flann_params.similarity_threshold = correspondence_threshold;
+  if (correspondence_threshold == 0) {
+    flann_params.prefilter = false;
+  }
+  flann_params.keep_statistics = true;
   modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
       detection_descriptors, object_descriptors, flann_params, correspondences);
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
   LOG(INFO) << "Time correspondences: "
             << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+  if (correspondences->empty()) {
+    LOG(ERROR) << "No correspondences found!";
+    return Transformation();
+  }
+  LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
 
   // Convert keypoints into matrix
   begin = std::chrono::steady_clock::now();
@@ -625,7 +643,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingTeaser(
   params.rotation_cost_threshold = 0.005;
   teaser::RobustRegistrationSolver solver(params);
   begin = std::chrono::steady_clock::now();
-  teaser::RegistrationSolution solution = solver.solve(object_matrix, detection_matrix);
+  teaser::RegistrationSolution solution = solver.solve(detection_matrix, object_matrix);
   end = std::chrono::steady_clock::now();
   LOG(INFO) << "Time teaser: "
             << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
@@ -637,7 +655,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingTeaser(
 
   Eigen::Matrix3f rotation_matrix = solution.rotation.cast<float>();
   Transformation T_teaser =
-      Transformation(solution.translation.cast<float>(), Quaternion(rotation_matrix)).inverse();
+      Transformation(solution.translation.cast<float>(), Quaternion(rotation_matrix));
   LOG(INFO) << "Transformation teaser:\n" << T_teaser.getTransformationMatrix();
   return T_teaser;
 }
@@ -656,7 +674,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformFromCorrespon
     LOG(WARNING) << "Filtering correspondences failed!";
     *filtered_correspondences = *correspondences;
   }
-  LOG(INFO) << "Filtered correspondences to " << correspondences->size();
+  LOG(INFO) << "Filtered correspondences to " << filtered_correspondences->size();
 
   // Align features
   modelify::registration_toolbox::GeometricConsistencyParams consistency_params;
