@@ -400,7 +400,7 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
       get3dFeatures<modelify::DescriptorFPFH>(detection_pointcloud_, detection_surfels,
                                               detection_keypoints, detection_descriptors_fpfh);
       T_features = computeTransformUsing3dFeatures<modelify::DescriptorFPFH>(
-          kConventional, detection_surfels, detection_keypoints, detection_descriptors_fpfh,
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_fpfh,
           object_surfels_, object_keypoints_, object_descriptors_fpfh_, correspondence_threshold_,
           correspondences);
       break;
@@ -408,7 +408,7 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
       get3dFeatures<modelify::DescriptorSHOT>(detection_pointcloud_, detection_surfels,
                                               detection_keypoints, detection_descriptors_shot);
       T_features = computeTransformUsing3dFeatures<modelify::DescriptorSHOT>(
-          kConventional, detection_surfels, detection_keypoints, detection_descriptors_shot,
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_shot,
           object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
           correspondences);
       break;
@@ -550,6 +550,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingModelify
     double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
   // Find correspondences
   modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
+  flann_params.num_of_correspondences = 3;
   if (object_descriptors->size() < flann_params.num_of_correspondences ||
       detection_descriptors->size() < flann_params.num_of_correspondences) {
     LOG(ERROR) << "Too few features found! Object: " << object_descriptors->size() << "/"
