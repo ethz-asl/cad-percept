@@ -28,10 +28,11 @@ class ObjectDetector3D {
   std::map<size_t, std::string> DescriptorNames = {
       {static_cast<size_t>(DescriptorType::kFpfh), "FPFH"},
       {static_cast<size_t>(DescriptorType::kShot), "SHOT"}};
-  enum MatchingMethod { kConventional = 0, kFastGlobalRegistration, kNumMatchingMethods };
+  enum MatchingMethod { kConventional = 0, kFastGlobalRegistration, kTeaser, kNumMatchingMethods };
   std::map<size_t, std::string> MatchingMethodNames = {
       {static_cast<size_t>(MatchingMethod::kConventional), "conventional"},
-      {static_cast<size_t>(MatchingMethod::kFastGlobalRegistration), "FGR"}};
+      {static_cast<size_t>(MatchingMethod::kFastGlobalRegistration), "FGR"},
+      {static_cast<size_t>(MatchingMethod::kTeaser), "Teaser"}};
 
  public:
   ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
@@ -89,6 +90,13 @@ class ObjectDetector3D {
       const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
       const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
       const modelify::PointSurfelCloudType::Ptr& object_surfels,
+      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+      const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+      double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences);
+  template <typename descriptor_type>
+  static Transformation computeTransformUsingTeaser(
+      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+      const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
       const modelify::PointSurfelCloudType::Ptr& object_keypoints,
       const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
       double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences);
@@ -171,9 +179,10 @@ class ObjectDetector3D {
   DescriptorType descriptor_type_;
   MatchingMethod matching_method_;
 
+  bool use_3d_features_;
   std::string icp_config_file_;
   float correspondence_threshold_;
-  bool downsampling_;
+  float downsampling_resolution_;
 };
 
 }  // namespace object_detection

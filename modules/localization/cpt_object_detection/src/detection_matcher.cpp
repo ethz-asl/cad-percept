@@ -13,6 +13,7 @@
 #include <modelify/registration_toolbox/registration_toolbox.h>
 #include <pcl/common/pca.h>
 #include <pointmatcher_ros/point_cloud.h>
+#include <teaser/registration.h>
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -29,8 +30,9 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       keypoint_type_(kHarris),
       descriptor_type_(kShot),
       matching_method_(kConventional),
+      use_3d_features_(true),
       correspondence_threshold_(0.1),
-      downsampling_(true) {
+      downsampling_resolution_(0.001) {
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
@@ -48,10 +50,11 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
 void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
+  nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
   nh_private_.param("icp_config_file", icp_config_file_, icp_config_file_);
   nh_private_.param("correspondence_threshold", correspondence_threshold_,
                     correspondence_threshold_);
-  nh_private_.param("downsampling", downsampling_, downsampling_);
+  nh_private_.param("downsampling", downsampling_resolution_, downsampling_resolution_);
 
   std::string keypoint_type;
   nh_private_.param("keypoint_type", keypoint_type, keypoint_type);
@@ -196,8 +199,11 @@ void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& c
   detection_stamp_ = cloud_msg_in.header.stamp;
   pcl::fromROSMsg(cloud_msg_in, detection_pointcloud_);
 
-  //  processDetectionUsingPcaAndIcp();
-  processDetectionUsing3dFeatures();
+  if (!use_3d_features_) {
+    processDetectionUsingPcaAndIcp();
+  } else {
+    processDetectionUsing3dFeatures();
+  }
 }
 
 // TODO(gasserl): make child classes for each thing?
@@ -421,16 +427,16 @@ ObjectDetector3D::Transformation ObjectDetector3D::icp(
 // TODO(gasserl): another child class?
 void ObjectDetector3D::processDetectionUsing3dFeatures() {
   // Downsampling detection pointcloud
-  if (downsampling_) {
+  if (downsampling_resolution_ > 0) {
     pcl::PointCloud<pcl::PointXYZ> temp(detection_pointcloud_);
     pcl::PointCloud<pcl::PointXYZ>::Ptr detection_pointcloud_ptr =
         boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(temp);
     pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter;
     voxel_grid_filter.setInputCloud(detection_pointcloud_ptr);
-    constexpr float voxel_size = 0.002;
-    voxel_grid_filter.setLeafSize(voxel_size, voxel_size, voxel_size);
+    voxel_grid_filter.setLeafSize(downsampling_resolution_, downsampling_resolution_,
+                                  downsampling_resolution_);
     voxel_grid_filter.filter(detection_pointcloud_);
-    LOG(INFO) << "Detection pointcloud downsampled to resolution of " << voxel_size
+    LOG(INFO) << "Detection pointcloud downsampled to resolution of " << downsampling_resolution_
               << " m, resulting in " << detection_pointcloud_.size() << " points";
   }
 
@@ -448,7 +454,7 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
       get3dFeatures<modelify::DescriptorFPFH>(detection_pointcloud_, detection_surfels,
                                               detection_keypoints, detection_descriptors_fpfh);
       T_features = computeTransformUsing3dFeatures<modelify::DescriptorFPFH>(
-          kConventional, detection_surfels, detection_keypoints, detection_descriptors_fpfh,
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_fpfh,
           object_surfels_, object_keypoints_, object_descriptors_fpfh_, correspondence_threshold_,
           correspondences);
       break;
@@ -456,7 +462,7 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
       get3dFeatures<modelify::DescriptorSHOT>(detection_pointcloud_, detection_surfels,
                                               detection_keypoints, detection_descriptors_shot);
       T_features = computeTransformUsing3dFeatures<modelify::DescriptorSHOT>(
-          kConventional, detection_surfels, detection_keypoints, detection_descriptors_shot,
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_shot,
           object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
           correspondences);
       break;
@@ -540,6 +546,11 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsing3dFeatur
           detection_surfels, detection_keypoints, detection_descriptors, object_surfels,
           object_keypoints, object_descriptors, correspondences);
       break;
+    case kTeaser:
+      return computeTransformUsingTeaser<descriptor_type>(
+          detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
+          similarity_threshold, correspondences);
+      break;
     default:
       LOG(ERROR) << "Unknown matching method! " << matching_method;
       return Transformation();
@@ -593,6 +604,7 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingModelify
     double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
   // Find correspondences
   modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
+  flann_params.num_of_correspondences = 3;
   if (object_descriptors->size() < flann_params.num_of_correspondences ||
       detection_descriptors->size() < flann_params.num_of_correspondences) {
     LOG(ERROR) << "Too few features found! Object: " << object_descriptors->size() << "/"
@@ -614,6 +626,74 @@ ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingModelify
   // Get transformation between detection and object pointcloud
   return computeTransformFromCorrespondences(detection_keypoints, object_keypoints,
                                              correspondences);
+}
+
+template <typename descriptor_type>
+ObjectDetector3D::Transformation ObjectDetector3D::computeTransformUsingTeaser(
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+  // Find correspondences
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
+  flann_params.num_of_correspondences = 3;
+  if (object_descriptors->size() < flann_params.num_of_correspondences ||
+      detection_descriptors->size() < flann_params.num_of_correspondences) {
+    LOG(ERROR) << "Too few features found! Object: " << object_descriptors->size() << "/"
+               << flann_params.num_of_correspondences
+               << ", Detection: " << detection_descriptors->size() << "/"
+               << flann_params.num_of_correspondences;
+    return Transformation();
+  }
+  flann_params.similarity_threshold = correspondence_threshold;
+  modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
+      detection_descriptors, object_descriptors, flann_params, correspondences);
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
+  LOG(INFO) << "Time correspondences: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+
+  // Convert keypoints into matrix
+  begin = std::chrono::steady_clock::now();
+  Eigen::Matrix<double, 3, Eigen::Dynamic> object_matrix(3, correspondences->size());
+  Eigen::Matrix<double, 3, Eigen::Dynamic> detection_matrix(3, correspondences->size());
+  uint idx = 0;
+  for (const auto& correspondence : *correspondences) {
+    object_matrix.col(idx) << object_keypoints->points[correspondence.index_match].x,
+        detection_keypoints->points[correspondence.index_match].y,
+        detection_keypoints->points[correspondence.index_match].z;
+    detection_matrix.col(idx) << detection_keypoints->points[correspondence.index_query].x,
+        detection_keypoints->points[correspondence.index_query].y,
+        detection_keypoints->points[correspondence.index_query].z;
+    ++idx;
+  }
+  end = std::chrono::steady_clock::now();
+  LOG(INFO) << "Time conversion: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+
+  // Solve with TEASER++
+  teaser::RobustRegistrationSolver::Params params;
+  params.estimate_scaling = false;
+  params.rotation_cost_threshold = 0.005;
+  teaser::RobustRegistrationSolver solver(params);
+  begin = std::chrono::steady_clock::now();
+  teaser::RegistrationSolution solution = solver.solve(object_matrix, detection_matrix);
+  end = std::chrono::steady_clock::now();
+  LOG(INFO) << "Time teaser: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+
+  if (!solution.valid) {
+    LOG(ERROR) << "Registration using Teaser failed!";
+    return Transformation();
+  }
+
+  Eigen::Matrix3f rotation_matrix = solution.rotation.cast<float>();
+  Transformation T_teaser =
+      Transformation(solution.translation.cast<float>(), Quaternion(rotation_matrix)).inverse();
+  LOG(INFO) << "Transformation teaser:\n" << T_teaser.getTransformationMatrix();
+  return T_teaser;
 }
 
 ObjectDetector3D::Transformation ObjectDetector3D::computeTransformFromCorrespondences(
