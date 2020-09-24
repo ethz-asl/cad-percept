@@ -1,5 +1,6 @@
 #include "pointlaser_loc/localization_optimizer.h"
 
+namespace cad_percept {
 namespace localization_optimizer {
 
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
@@ -152,3 +153,4 @@ QuatTransformation LocalizationOptimizer::optimize(const bool verbose) {
   return result.at<QuatTransformation>(0);
 };
 }  // namespace localization_optimizer
+}  // namespace cad_percept

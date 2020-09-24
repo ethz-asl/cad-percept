@@ -18,6 +18,7 @@
 #include "pointlaser_loc/architectmodel.h"
 #include "pointlaser_loc/architectmodel_fake_trait.h"
 
+namespace cad_percept {
 namespace localization_optimizer {
 
 typedef gtsam::Expression<kindr::minimal::QuatTransformation> ETransformation;
@@ -131,4 +132,5 @@ class LocalizationOptimizer {
   gtsam::Values initialization_;
 };
 }  // namespace localization_optimizer
+}  // namespace cad_percept
 #endif  // LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
