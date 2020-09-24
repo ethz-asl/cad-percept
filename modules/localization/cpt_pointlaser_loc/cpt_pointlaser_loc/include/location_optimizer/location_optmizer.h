@@ -1,10 +1,11 @@
 #ifndef LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
 #define LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
 
+#include <gtsam/base/OptionalJacobian.h>
+#include <gtsam/linear/NoiseModel.h>
+#include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/slam/expressions.h>
+#include <gtsam/nonlinear/Values.h>
 #include <kindr/minimal/common-gtsam.h>
 #include <kindr/minimal/cubic-hermite-interpolation-gtsam.h>
 #include <kindr/minimal/cubic-hermite-quaternion-gtsam.h>
