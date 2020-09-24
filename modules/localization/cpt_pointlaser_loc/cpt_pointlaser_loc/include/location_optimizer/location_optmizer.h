@@ -20,10 +20,7 @@
 
 namespace localization_optimizer {
 
-using namespace gtsam;
-using namespace kindr::minimal;
-
-typedef gtsam::Expression<QuatTransformation> ETransformation;
+typedef gtsam::Expression<kindr::minimal::QuatTransformation> ETransformation;
 typedef gtsam::Expression<Eigen::Vector3d> EVector3;
 
 static double multiplyVectorsImplementation(Eigen::Vector3d a,
@@ -35,10 +32,10 @@ static double multiplyVectorsImplementation(Eigen::Vector3d a,
   return a.transpose() * b;
 }
 
-static Expression<double> multiplyVectors(
-    const Expression<Eigen::Vector3d>& C1,
-    const Expression<Eigen::Vector3d>& C2) {
-  return Expression<double>(&multiplyVectorsImplementation, C1, C2);
+static gtsam::Expression<double> multiplyVectors(
+    const gtsam::Expression<Eigen::Vector3d>& C1,
+    const gtsam::Expression<Eigen::Vector3d>& C2) {
+  return gtsam::Expression<double>(&multiplyVectorsImplementation, C1, C2);
 }
 
 static double checkPositiveImplementation(double a,
@@ -48,36 +45,39 @@ static double checkPositiveImplementation(double a,
   return a;
 }
 
-static Expression<double> checkPositive(const Expression<double>& C) {
-  return Expression<double>(&checkPositiveImplementation, C);
+static gtsam::Expression<double> checkPositive(
+    const gtsam::Expression<double>& C) {
+  return gtsam::Expression<double>(&checkPositiveImplementation, C);
 }
 
 static double divideImplementation(double a, double b,
-                                   OptionalJacobian<1, 1> Ha,
-                                   OptionalJacobian<1, 1> Hb) {
+                                   gtsam::OptionalJacobian<1, 1> Ha,
+                                   gtsam::OptionalJacobian<1, 1> Hb) {
   if (Ha) (*Ha)(0, 0) = 1.0 / b;
   if (Hb) (*Hb)(0, 0) = -a / (b * b);
   return a / b;
 }
 
-static Expression<double> divide(const Expression<double>& a,
-                                 const Expression<double>& b) {
-  return Expression<double>(&divideImplementation, a, b);
+static gtsam::Expression<double> divide(const gtsam::Expression<double>& a,
+                                        const gtsam::Expression<double>& b) {
+  return gtsam::Expression<double>(&divideImplementation, a, b);
 }
 
 static Eigen::Vector3d getIntersectionPointImplementation(
-    const Eigen::Matrix<double, 6, 1>& intersection, OptionalJacobian<3, 6> H) {
+    const Eigen::Matrix<double, 6, 1>& intersection,
+    gtsam::OptionalJacobian<3, 6> H) {
   if (H) *H = Eigen::Matrix<double, 3, 6>::Identity();
   return intersection.head<3>();
 }
 
 static EVector3 getIntersectionPoint(
-    const Expression<Eigen::Matrix<double, 6, 1>>& intersection) {
+    const gtsam::Expression<Eigen::Matrix<double, 6, 1>>& intersection) {
   return EVector3(&getIntersectionPointImplementation, intersection);
 }
 
 static Eigen::Vector3d getIntersectionNormalImplementation(
-    const Eigen::Matrix<double, 6, 1>& intersection, OptionalJacobian<3, 6> H) {
+    const Eigen::Matrix<double, 6, 1>& intersection,
+    gtsam::OptionalJacobian<3, 6> H) {
   if (H) {
     H->leftCols<3>().setZero();
     H->rightCols<3>().setIdentity();
@@ -86,47 +86,49 @@ static Eigen::Vector3d getIntersectionNormalImplementation(
 }
 
 static EVector3 getIntersectionNormal(
-    const Expression<Eigen::Matrix<double, 6, 1>>& intersection) {
+    const gtsam::Expression<Eigen::Matrix<double, 6, 1>>& intersection) {
   return EVector3(&getIntersectionNormalImplementation, intersection);
 }
 
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
-    const QuatTransformation& sensor_pose,
+    const kindr::minimal::QuatTransformation& sensor_pose,
     const std::shared_ptr<architect_model::ArchitectModel> model,
     gtsam::OptionalJacobian<6, 6> H, gtsam::OptionalJacobian<6, 1> H_ignored);
 
-Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
+gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
     const ETransformation& sensor_pose,
-    Expression<std::shared_ptr<architect_model::ArchitectModel>>& model);
+    gtsam::Expression<std::shared_ptr<architect_model::ArchitectModel>>& model);
 
-Expression<double> expectedDistance(ETransformation& laser_in_map,
-                                    EVector3& plane_support,
-                                    EVector3& plane_normal);
+gtsam::Expression<double> expectedDistance(ETransformation& laser_in_map,
+                                           EVector3& plane_support,
+                                           EVector3& plane_normal);
 
 class LocalizationOptimizer {
  public:
   LocalizationOptimizer(
-      const QuatTransformation& architecture_offset,
-      const QuatTransformation& initial_pose,
+      const kindr::minimal::QuatTransformation& architecture_offset,
+      const kindr::minimal::QuatTransformation& initial_pose,
       const std::shared_ptr<architect_model::ArchitectModel> arch_model,
       const Eigen::Matrix<double, 6, 1>& architecture_offset_std,
       const Eigen::Matrix<double, 6, 1>& odometry_noise_std,
       const double pointlaser_noise_std, const bool fix_retrieved_planes,
       const bool add_prior, const bool only_optimize_translation);
-  Eigen::Vector3d addRelativeMeasurement(const double distance,
-                                         const QuatTransformation joint2sensor);
-  void addOdometry(const QuatTransformation odometry);
-  QuatTransformation optimize(const bool verbose = false);
+  Eigen::Vector3d addRelativeMeasurement(
+      const double distance,
+      const kindr::minimal::QuatTransformation joint2sensor);
+  void addOdometry(const kindr::minimal::QuatTransformation odometry);
+  kindr::minimal::QuatTransformation optimize(const bool verbose = false);
 
  private:
   bool fix_retrieved_planes_, only_optimize_translation_;
-  ExpressionFactorGraph graph_;
-  QuatTransformation current_arm_pose_, initial_architect_offset_;
+  gtsam::ExpressionFactorGraph graph_;
+  kindr::minimal::QuatTransformation current_arm_pose_,
+      initial_architect_offset_;
   ETransformation architect_offset_;
   std::shared_ptr<architect_model::ArchitectModel> architect_model_;
-  noiseModel::Base::shared_ptr pointlaser_noise_;
-  noiseModel::Diagonal::shared_ptr odometry_noise_;
-  Values initialization_;
+  gtsam::noiseModel::Base::shared_ptr pointlaser_noise_;
+  gtsam::noiseModel::Diagonal::shared_ptr odometry_noise_;
+  gtsam::Values initialization_;
 };
 }  // namespace localization_optimizer
 #endif  // LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
