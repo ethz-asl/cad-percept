@@ -6,12 +6,7 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
-#include <kindr/minimal/common-gtsam.h>
-#include <kindr/minimal/cubic-hermite-interpolation-gtsam.h>
-#include <kindr/minimal/cubic-hermite-quaternion-gtsam.h>
-#include <kindr/minimal/quat-transformation-gtsam.h>
 #include <kindr/minimal/quat-transformation.h>
-#include <kindr/minimal/rotation-quaternion-gtsam.h>
 
 #include <Eigen/Geometry>
 
