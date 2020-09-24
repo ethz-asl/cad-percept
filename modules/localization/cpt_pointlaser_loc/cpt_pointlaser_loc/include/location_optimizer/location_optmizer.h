@@ -1,5 +1,5 @@
-#ifndef LOCALIZATION_OPTIMIZER
-#define LOCALIZATION_OPTIMIZER
+#ifndef LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
+#define LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
 
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -128,4 +128,4 @@ class LocalizationOptimizer {
   Values initialization_;
 };
 }  // namespace localization_optimizer
-#endif
+#endif  // LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
