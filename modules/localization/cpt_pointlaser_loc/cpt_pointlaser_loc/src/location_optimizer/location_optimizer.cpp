@@ -4,7 +4,7 @@ namespace cad_percept {
 namespace localization_optimizer {
 
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
-    const QuatTransformation& sensor_pose,
+    const kindr::minimal::QuatTransformation& sensor_pose,
     const std::shared_ptr<architect_model::ArchitectModel> model,
     gtsam::OptionalJacobian<6, 6> H, gtsam::OptionalJacobian<6, 1> H_ignored) {
   if (H) *H = Eigen::Matrix<double, 6, 6>::Zero();
@@ -20,17 +20,19 @@ Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
   return response;
 };
 
-Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
+gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
     ETransformation& sensor_pose,
-    Expression<std::shared_ptr<architect_model::ArchitectModel>>& model) {
-  return Expression<Eigen::Matrix<double, 6, 1>>(
+    gtsam::Expression<std::shared_ptr<architect_model::ArchitectModel>>&
+       
+        model) {
+  return gtsam::Expression<Eigen::Matrix<double, 6, 1>>(
       &getIntersectionPlaneImplementation, sensor_pose, model);
 };
 
 // Get the expected distance for the retrieved plane and the laser pose.
-Expression<double> expectedDistance(ETransformation& laser_in_map,
-                                    EVector3& plane_support,
-                                    EVector3& plane_normal) {
+gtsam::Expression<double> expectedDistance(ETransformation& laser_in_map,
+                                           EVector3& plane_support,
+                                           EVector3& plane_normal) {
   EVector3 unit_dir(Eigen::Vector3d(1, 0, 0));
   EVector3 origin(Eigen::Vector3d(0, 0, 0));
   // construct ray
@@ -38,15 +40,15 @@ Expression<double> expectedDistance(ETransformation& laser_in_map,
       rotate(rotationFromTransformation(laser_in_map), unit_dir);
   EVector3 ray_origin = laser_in_map * origin;
   // find intersection distance
-  Expression<double> shortest_distance =
+  gtsam::Expression<double> shortest_distance =
       multiplyVectors(plane_support - ray_origin, plane_normal);
   return checkPositive(
       divide(shortest_distance, multiplyVectors(ray_direction, plane_normal)));
 };
 
 LocalizationOptimizer::LocalizationOptimizer(
-    const QuatTransformation& architecture_offset,
-    const QuatTransformation& initial_pose,
+    const kindr::minimal::QuatTransformation& architecture_offset,
+    const kindr::minimal::QuatTransformation& initial_pose,
     const std::shared_ptr<architect_model::ArchitectModel> arch_model,
     const Eigen::Matrix<double, 6, 1>& architecture_offset_std,
     const Eigen::Matrix<double, 6, 1>& odometry_noise_std,
@@ -58,26 +60,28 @@ LocalizationOptimizer::LocalizationOptimizer(
       initial_architect_offset_(architecture_offset),
       current_arm_pose_(initial_pose),
       architect_model_(arch_model),
-      odometry_noise_(noiseModel::Diagonal::Sigmas(odometry_noise_std)),
+      odometry_noise_(gtsam::noiseModel::Diagonal::Sigmas(odometry_noise_std)),
       // could also try GemanMcClure
-      pointlaser_noise_(noiseModel::Robust::Create(
-          noiseModel::mEstimator::Cauchy::Create(1),
-          noiseModel::Diagonal::Sigmas(Vector1(pointlaser_noise_std)))),
+      pointlaser_noise_(gtsam::noiseModel::Robust::Create(
+          gtsam::noiseModel::mEstimator::Cauchy::Create(1),
+          gtsam::noiseModel::Diagonal::Sigmas(Vector1(pointlaser_noise_std)))),
       fix_retrieved_planes_(fix_retrieved_planes),
       only_optimize_translation_(only_optimize_translation) {
   // Initialize the optimizer with the pose that is measured by the state
   // estimator.
-  initialization_.insert<QuatTransformation>(0, architecture_offset);
+  initialization_.insert<kindr::minimal::QuatTransformation>(
+      0, architecture_offset);
   if (add_prior) {
     // add a factor for the prior of the architecture_offset
     graph_.addExpressionFactor(
         architect_offset_, architecture_offset,
-        noiseModel::Diagonal::Sigmas(architecture_offset_std));
+        gtsam::noiseModel::Diagonal::Sigmas(architecture_offset_std));
   }
 };
 
 Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
-    const double distance, const QuatTransformation joint2sensor) {
+    const double distance,
+    const kindr::minimal::QuatTransformation joint2sensor) {
   ETransformation armbase2sensor(current_arm_pose_ * joint2sensor);
   // TODO once cpp14 is supported, change to unique pointers
   std::shared_ptr<ETransformation> laser_in_map;
@@ -95,7 +99,7 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
         std::make_shared<ETransformation>(architect_offset_ * armbase2sensor);
   }
   if (fix_retrieved_planes_) {
-    QuatTransformation slam_guess_laser_in_map =
+    kindr::minimal::QuatTransformation slam_guess_laser_in_map =
         initial_architect_offset_ * current_arm_pose_ * joint2sensor;
     architect_model::Intersection plane =
         architect_model_->getIntersection(slam_guess_laser_in_map);
@@ -103,8 +107,9 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
     plane_normal = std::make_shared<EVector3>(plane.surface_normal);
   } else {
     // make a constant from the architecture model
-    auto model = Expression<std::shared_ptr<architect_model::ArchitectModel>>(
-        architect_model_);
+    auto model =
+        gtsam::Expression<std::shared_ptr<architect_model::ArchitectModel>>(
+            architect_model_);
     auto intersection = getIntersectionPlane(*laser_in_map, model);
     plane_normal =
         std::make_shared<EVector3>(getIntersectionNormal(intersection));
@@ -118,9 +123,9 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
       rotate(rotationFromTransformation(*laser_in_map), unit_dir);
   EVector3 ray_origin = *laser_in_map * origin;
   // find intersection distance
-  Expression<double> shortest_distance =
+  gtsam::Expression<double> shortest_distance =
       multiplyVectors(*plane_support - ray_origin, *plane_normal);
-  Expression<double> expected_distance = checkPositive(
+  gtsam::Expression<double> expected_distance = checkPositive(
       divide(shortest_distance, multiplyVectors(ray_direction, *plane_normal)));
   graph_.addExpressionFactor(expected_distance, distance, pointlaser_noise_);
   // Return the intersection point for debugging / visualization.
@@ -128,11 +133,13 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   return plane_support->value(initialization_);
 };
 
-void LocalizationOptimizer::addOdometry(const QuatTransformation transform) {
+void LocalizationOptimizer::addOdometry(
+    const kindr::minimal::QuatTransformation transform) {
   current_arm_pose_ = current_arm_pose_ * transform;
 };
 
-QuatTransformation LocalizationOptimizer::optimize(const bool verbose) {
+kindr::minimal::QuatTransformation LocalizationOptimizer::optimize(
+    const bool verbose) {
   // for debugging
   if (verbose) graph_.print("\nlocalisation graph:\n");
   if (verbose) initialization_.print("initializations:\n");
@@ -145,12 +152,13 @@ QuatTransformation LocalizationOptimizer::optimize(const bool verbose) {
     // the rotation is still somehow changed in the optimization, but for the
     // loss always fixed to the initialization. Overwrite it again with the
     // initialization.
-    QuatTransformation optimized(result.at<QuatTransformation>(0));
-    QuatTransformation ret(optimized.getPosition(),
-                           initial_architect_offset_.getRotation());
+    kindr::minimal::QuatTransformation optimized(
+        result.at<kindr::minimal::QuatTransformation>(0));
+    kindr::minimal::QuatTransformation ret(
+        optimized.getPosition(), initial_architect_offset_.getRotation());
     return ret;
   }
-  return result.at<QuatTransformation>(0);
+  return result.at<kindr::minimal::QuatTransformation>(0);
 };
 }  // namespace localization_optimizer
 }  // namespace cad_percept
