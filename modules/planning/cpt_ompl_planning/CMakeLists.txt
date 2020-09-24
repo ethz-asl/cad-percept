@@ -12,15 +12,11 @@ add_definitions(-std=c++17 -Wall -Wextra)
 #############
 # LIBRARIES #
 #############
-#cs_add_library(${PROJECT_NAME}
-#        src/ompl_surface_planner.cpp
-#        )
+cs_add_library(${PROJECT_NAME}
+        src/ompl_mesh_sampling_planner.cpp)
 
-cs_add_executable(ompl_surface_planner_node
-        src/ompl_mesh_sampling_planner.cpp
-        )
 
-target_link_libraries(ompl_surface_planner_node ${OMPL_LIBRARIES}
+target_link_libraries(${PROJECT_NAME} ${OMPL_LIBRARIES}
         cgal_definitions)
 
 ##########
