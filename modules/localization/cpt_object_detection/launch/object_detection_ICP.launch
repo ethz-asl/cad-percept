@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+  <param name="use_sim_time" value="true"/>
+
+  <arg name="visualize" default="true"/>
+  <arg name="play_rosbag" default="true"/>
+  <arg name="object_off_path"
+       default="$(find cpt_object_detection)/resources/Y10148_Torus Thick.off"/>
+  <arg name="rosbag_file"
+       default="$(find cpt_object_detection)/resources/detection_torus.bag"/>
+  <arg name="detection_pointcloud_topic"
+       default="/detection_projector/object_pcl_3d"/>
+  <arg name="icp_config_file"
+       default="$(find cpt_object_detection)/resources/icp_config.yaml"/>
+
+  <node name="object_detection_matcher" pkg="cpt_object_detection"
+        type="cpt_object_detection_node">
+    <param name="off_model" value="$(arg object_off_path)"/>
+    <param name="pointcloud_topic" value="$(arg detection_pointcloud_topic)"/>
+    <param name="visualize_object_on_startup" value="true"/>
+    <param name="icp_config_file" value="$(arg icp_config_file)"/>
+  </node>
+
+  <node if="$(arg play_rosbag)" name="rosbag_player" pkg="rosbag" type="play"
+        args="--clock -q $(arg rosbag_file)"/>
+
+  <node if="$(arg visualize)" name="rviz" pkg="rviz" type="rviz"
+        args="-d $(find cpt_object_detection)/resources/object_detection_matching.rviz"/>
+</launch>
