@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>cpt_pointlaser_loc_ros</name>
+  <version>0.0.1</version>
+  <description>ROS wrapper of `cpt_pointlaser_loc` package</description>
+
+  <maintainer email="fmilano@ethz.ch">Francesco Milano</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>cpt_pointlaser_loc</depend>
+</package>
