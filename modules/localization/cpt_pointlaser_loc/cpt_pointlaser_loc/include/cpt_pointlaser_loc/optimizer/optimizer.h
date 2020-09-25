@@ -10,15 +10,13 @@
 
 #include <Eigen/Geometry>
 
+#include "cpt_pointlaser_loc/optimizer/common.h"
 #include "pointlaser_loc/architectmodel.h"
 #include "pointlaser_loc/architectmodel_fake_trait.h"
 
 namespace cad_percept {
 namespace pointlaser_loc {
 namespace optimizer {
-
-typedef gtsam::Expression<kindr::minimal::QuatTransformation> ETransformation;
-typedef gtsam::Expression<Eigen::Vector3d> EVector3;
 
 static double multiplyVectorsImplementation(Eigen::Vector3d a,
                                             Eigen::Vector3d b,
