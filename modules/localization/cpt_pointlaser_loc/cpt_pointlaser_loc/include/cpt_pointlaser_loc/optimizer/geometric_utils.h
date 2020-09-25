@@ -7,6 +7,8 @@
 
 #include <Eigen/Geometry>
 
+#include "cpt_pointlaser_loc/optimizer/common.h"
+
 namespace cad_percept {
 namespace pointlaser_loc {
 namespace optimizer {
