@@ -1,4 +1,4 @@
-#include "cpt_pointlaser_loc/cpt_pointlaser_loc.h"
+#include "cpt_pointlaser_loc/localizer/localizer.h"
 
 namespace cad_percept {
 namespace pointlaser_loc {

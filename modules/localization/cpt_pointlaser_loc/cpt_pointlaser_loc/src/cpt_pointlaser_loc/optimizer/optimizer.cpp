@@ -1,4 +1,4 @@
-#include "localization_optimizer/localization_optimizer.h"
+#include "cpt_pointlaser_loc/optimizer/optimizer.h"
 
 namespace cad_percept {
 namespace localization_optimizer {
@@ -23,7 +23,7 @@ Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
     ETransformation& sensor_pose,
     gtsam::Expression<std::shared_ptr<architect_model::ArchitectModel>>&
-       
+
         model) {
   return gtsam::Expression<Eigen::Matrix<double, 6, 1>>(
       &getIntersectionPlaneImplementation, sensor_pose, model);
