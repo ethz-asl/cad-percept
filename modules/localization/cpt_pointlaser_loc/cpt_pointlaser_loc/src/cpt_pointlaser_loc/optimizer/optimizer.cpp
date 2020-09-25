@@ -1,3 +1,6 @@
+#include <gtsam/base/Vector.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+
 #include "cpt_pointlaser_loc/optimizer/geometric_utils.h"
 #include "cpt_pointlaser_loc/optimizer/optimizer.h"
 
@@ -23,7 +26,8 @@ LocalizationOptimizer::LocalizationOptimizer(
       // could also try GemanMcClure
       pointlaser_noise_(gtsam::noiseModel::Robust::Create(
           gtsam::noiseModel::mEstimator::Cauchy::Create(1),
-          gtsam::noiseModel::Diagonal::Sigmas(Vector1(pointlaser_noise_std)))),
+          gtsam::noiseModel::Diagonal::Sigmas(
+              gtsam::Vector1(pointlaser_noise_std)))),
       fix_retrieved_planes_(fix_retrieved_planes),
       only_optimize_translation_(only_optimize_translation) {
   // Initialize the optimizer with the pose that is measured by the state
@@ -102,10 +106,10 @@ kindr::minimal::QuatTransformation LocalizationOptimizer::optimize(
   // for debugging
   if (verbose) graph_.print("\nlocalisation graph:\n");
   if (verbose) initialization_.print("initializations:\n");
-  LevenbergMarquardtParams opt_params;
+  gtsam::LevenbergMarquardtParams opt_params;
   if (verbose) opt_params.setVerbosityLM("TRYLAMBDA");
-  Values result =
-      LevenbergMarquardtOptimizer(graph_, initialization_, opt_params)
+  gtsam::Values result =
+      gtsam::LevenbergMarquardtOptimizer(graph_, initialization_, opt_params)
           .optimize();
   if (only_optimize_translation_) {
     // the rotation is still somehow changed in the optimization, but for the
