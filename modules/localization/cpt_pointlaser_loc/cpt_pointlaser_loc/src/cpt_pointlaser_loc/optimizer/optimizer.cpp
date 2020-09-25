@@ -1,9 +1,10 @@
+#include "cpt_pointlaser_loc/optimizer/optimizer.h"
+
 #include <cpt_utils/cpt_utils.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
 #include "cpt_pointlaser_loc/optimizer/geometric_utils.h"
-#include "cpt_pointlaser_loc/optimizer/optimizer.h"
 
 namespace cad_percept {
 namespace pointlaser_loc {
