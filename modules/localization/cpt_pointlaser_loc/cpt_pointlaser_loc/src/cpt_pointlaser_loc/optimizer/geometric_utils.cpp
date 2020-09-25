@@ -19,7 +19,7 @@ Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
   response.head<3>() = i.point;
   response.tail<3>() = i.surface_normal;
   return response;
-};
+}
 
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
     ETransformation& sensor_pose,
@@ -28,7 +28,7 @@ gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
         model) {
   return gtsam::Expression<Eigen::Matrix<double, 6, 1>>(
       &getIntersectionPlaneImplementation, sensor_pose, model);
-};
+}
 
 // Get the expected distance for the retrieved plane and the laser pose.
 gtsam::Expression<double> expectedDistance(ETransformation& laser_in_map,
@@ -45,7 +45,7 @@ gtsam::Expression<double> expectedDistance(ETransformation& laser_in_map,
       multiplyVectors(plane_support - ray_origin, plane_normal);
   return checkPositive(
       divide(shortest_distance, multiplyVectors(ray_direction, plane_normal)));
-};
+}
 
 }  // namespace optimizer
 }  // namespace pointlaser_loc
