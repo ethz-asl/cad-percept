@@ -2,6 +2,7 @@
 #define CPT_POINTLASER_LOC_OPTIMIZER_COMMON_H_
 
 #include <gtsam/nonlinear/Expression.h>
+#include <kindr/minimal/quat-transformation-gtsam.h>
 #include <kindr/minimal/quat-transformation.h>
 
 #include <Eigen/Geometry>
