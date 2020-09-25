@@ -8,8 +8,8 @@
 
 #include <Eigen/Geometry>
 
+#include "cpt_pointlaser_loc/model/mesh-model-gtsam.h"
 #include "cpt_pointlaser_loc/optimizer/common.h"
-#include "cpt_pointlaser_loc/optimizer/mesh_model_fake_trait.h"
 
 namespace cad_percept {
 namespace pointlaser_loc {

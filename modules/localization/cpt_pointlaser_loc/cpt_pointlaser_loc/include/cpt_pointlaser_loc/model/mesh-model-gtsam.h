@@ -1,5 +1,5 @@
-#ifndef CGAL_DEFINITIONS_MESH_MODEL_FAKE_TRAIT_H_
-#define CGAL_DEFINITIONS_MESH_MODEL_FAKE_TRAIT_H_
+#ifndef CPT_POINTLASER_LOC_MODEL_MESH_MODEL_GTSAM_H_
+#define CPT_POINTLASER_LOC_MODEL_MESH_MODEL_GTSAM_H_
 
 #include <cgal_definitions/mesh_model.h>
 #include <glog/logging.h>
@@ -43,4 +43,4 @@ struct traits<cad_percept::cgal::MeshModel::Ptr> {
   static int GetDimension(const type& /* origin */) { return dimension; }
 };  // traits
 }  // namespace gtsam
-#endif  // CGAL_DEFINITIONS_MESH_MODEL_FAKE_TRAIT_H_
+#endif  // CPT_POINTLASER_LOC_MODEL_MESH_MODEL_GTSAM_H_
