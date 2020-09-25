@@ -1,7 +1,8 @@
 #include "cpt_pointlaser_loc/optimizer/optimizer.h"
 
 namespace cad_percept {
-namespace localization_optimizer {
+namespace pointlaser_loc {
+namespace localizer {
 
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
     const kindr::minimal::QuatTransformation& sensor_pose,
@@ -160,5 +161,6 @@ kindr::minimal::QuatTransformation LocalizationOptimizer::optimize(
   }
   return result.at<kindr::minimal::QuatTransformation>(0);
 };
-}  // namespace localization_optimizer
+}  // namespace localizer
+}  // namespace pointlaser_loc
 }  // namespace cad_percept

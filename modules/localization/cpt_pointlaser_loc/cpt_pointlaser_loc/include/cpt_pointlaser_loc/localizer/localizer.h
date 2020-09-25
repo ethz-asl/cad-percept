@@ -3,10 +3,12 @@
 
 namespace cad_percept {
 namespace pointlaser_loc {
+namespace localizer {
 class CptPointLaser {
  public:
   CptPointLaser();
 };
+}  // namespace localizer
 }  // namespace pointlaser_loc
 }  // namespace cad_percept
 
