@@ -1,3 +1,4 @@
+#include "cpt_pointlaser_loc/optimizer/geometric_utils.h"
 #include "cpt_pointlaser_loc/optimizer/optimizer.h"
 
 namespace cad_percept {
