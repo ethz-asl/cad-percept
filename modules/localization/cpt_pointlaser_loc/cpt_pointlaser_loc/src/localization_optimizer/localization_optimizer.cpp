@@ -1,4 +1,4 @@
-#include "pointlaser_loc/localization_optimizer.h"
+#include "localization_optimizer/localization_optimizer.h"
 
 namespace cad_percept {
 namespace localization_optimizer {

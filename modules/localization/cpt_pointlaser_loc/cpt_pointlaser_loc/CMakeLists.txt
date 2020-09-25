@@ -8,7 +8,7 @@ catkin_simple(ALL_DEPS_REQUIRED)
 
 cs_add_library(${PROJECT_NAME}
   src/cpt_pointlaser_loc/cpt_pointlaser_loc.cpp
-  src/location_optimizer/location_optimizer.cpp
+  src/localization_optimizer/localization_optimizer.cpp
 )
 
 cs_install()
