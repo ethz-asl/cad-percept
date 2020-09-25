@@ -9,13 +9,15 @@
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 
+#include <kindr/minimal/quat-transformation.h>
+
 #include "cpt_utils/pc_processing.h"
 
 namespace cad_percept {
 namespace cpt_utils {
 
-/*typedef kindr::minimal::QuatTransformationTemplate<double> SE3;
-typedef SE3::Rotation SO3;*/
+typedef kindr::minimal::QuatTransformationTemplate<double> SE3;
+// typedef SE3::Rotation SO3;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 struct Associations {
@@ -61,6 +63,15 @@ void bboxDiameters(const CGAL::Bbox_3 bbox, double *width, double *height);
  * Get the facet handle from the ID
  */
 cgal::Polyhedron::Facet_handle getFacetHandle(cgal::Polyhedron &P, const uint facet_id);
+
+/**
+ * Given an input pose, build a ray (to query for intersections with a model).
+ * The ray is defined by a ray origin (set to (0, 0, 0)) and a point on the ray.
+ * The point on the ray is set to (1, 0, 0) and the transformation given by the
+ * input pose is then applied to the ray points.
+ */
+cgal::Ray buildRayFromPose(const SE3& pose);
+
 }  // namespace cpt_utils
 }  // namespace cad_percept
 
