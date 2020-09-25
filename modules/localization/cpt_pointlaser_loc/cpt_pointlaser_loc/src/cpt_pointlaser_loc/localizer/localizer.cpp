@@ -3,7 +3,7 @@
 namespace cad_percept {
 namespace pointlaser_loc {
 namespace localizer {
-CptPointLaser::CptPointLaser() {}
+PointLaserLocalizer::PointLaserLocalizer() {}
 
 }  // namespace localizer
 }  // namespace pointlaser_loc
