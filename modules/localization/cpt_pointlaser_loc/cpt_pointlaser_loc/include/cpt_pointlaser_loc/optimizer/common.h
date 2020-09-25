@@ -1,5 +1,5 @@
-#ifndef POINTLASER_LOC_OPTIMIZER_COMMON_H_
-#define POINTLASER_LOC_OPTIMIZER_COMMON_H_
+#ifndef CPT_POINTLASER_LOC_OPTIMIZER_COMMON_H_
+#define CPT_POINTLASER_LOC_OPTIMIZER_COMMON_H_
 
 #include <gtsam/nonlinear/Expression.h>
 #include <kindr/minimal/quat-transformation.h>
@@ -17,4 +17,4 @@ typedef gtsam::Expression<Eigen::Vector3d> EVector3;
 }  // namespace pointlaser_loc
 }  // namespace cad_percept
 
-#endif  // POINTLASER_LOC_OPTIMIZER_COMMON_H_
+#endif  // CPT_POINTLASER_LOC_OPTIMIZER_COMMON_H_

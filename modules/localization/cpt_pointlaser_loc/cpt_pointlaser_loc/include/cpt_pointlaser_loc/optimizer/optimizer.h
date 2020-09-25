@@ -1,5 +1,5 @@
-#ifndef LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
-#define LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
+#ifndef CPT_POINTLASER_LOC_OPTIMIZER_OPTIMIZER_H_
+#define CPT_POINTLASER_LOC_OPTIMIZER_OPTIMIZER_H_
 
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/linear/NoiseModel.h>
@@ -128,4 +128,4 @@ class LocalizationOptimizer {
 }  // namespace optimizer
 }  // namespace pointlaser_loc
 }  // namespace cad_percept
-#endif  // LOCALIZATION_OPTIMIZER_LOCALIZATION_OPTIMIZER_H_
+#endif  // CPT_POINTLASER_LOC_OPTIMIZER_OPTIMIZER_H_
