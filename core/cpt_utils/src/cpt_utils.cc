@@ -91,10 +91,9 @@ void bboxDiameters(const CGAL::Bbox_3 bbox, double *width, double *height) {
   *height = sqrt(bbox.zmax() - bbox.zmin());
 }
 
-cgal::Ray buildRayFromPose(const SE3& pose) {
+cgal::Ray buildRayFromPose(const SE3 &pose) {
   // Point on the ray: origin (0, 0, 0), and (1, 0, 0).
-  Eigen::Matrix<double, 3, Eigen::Dynamic> ray_points =
-      Eigen::MatrixXd::Zero(3, 2);
+  Eigen::Matrix<double, 3, 2> ray_points = Eigen::MatrixXd::Zero(3, 2);
   ray_points(0, 1) = 1;
   // Apply the transformation on the ray points.
   ray_points = pose.transformVectorized(ray_points);
