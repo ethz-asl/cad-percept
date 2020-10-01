@@ -1,5 +1,6 @@
 #include "cpt_pointlaser_loc/optimizer/optimizer.h"
 
+#include <cpt_utils/cpt_utils.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
@@ -12,7 +13,7 @@ namespace optimizer {
 LocalizationOptimizer::LocalizationOptimizer(
     const kindr::minimal::QuatTransformation& architecture_offset,
     const kindr::minimal::QuatTransformation& initial_pose,
-    const std::shared_ptr<architect_model::ArchitectModel> arch_model,
+    const cad_percept::cgal::MeshModel::Ptr& arch_model,
     const Eigen::Matrix<double, 6, 1>& architecture_offset_std,
     const Eigen::Matrix<double, 6, 1>& odometry_noise_std, const double pointlaser_noise_std,
     const bool fix_retrieved_planes, const bool add_prior, const bool only_optimize_translation)
@@ -58,14 +59,17 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   if (fix_retrieved_planes_) {
     kindr::minimal::QuatTransformation slam_guess_laser_in_map =
         initial_architect_offset_ * current_arm_pose_ * joint2sensor;
-    architect_model::Intersection plane =
-        architect_model_->getIntersection(slam_guess_laser_in_map);
-    plane_support = std::make_shared<EVector3>(plane.point);
-    plane_normal = std::make_shared<EVector3>(plane.surface_normal);
+    // Build the ray to query for intersections.
+    cad_percept::cgal::Ray query_ray =
+        cad_percept::cpt_utils::buildRayFromPose(slam_guess_laser_in_map);
+    cad_percept::cgal::Intersection plane = architect_model_->getIntersection(query_ray);
+    plane_support = std::make_shared<EVector3>(Eigen::Vector3d(
+        plane.intersected_point.x(), plane.intersected_point.y(), plane.intersected_point.z()));
+    plane_normal = std::make_shared<EVector3>(Eigen::Vector3d(
+        plane.surface_normal.x(), plane.surface_normal.y(), plane.surface_normal.z()));
   } else {
     // make a constant from the architecture model
-    auto model =
-        gtsam::Expression<std::shared_ptr<architect_model::ArchitectModel>>(architect_model_);
+    auto model = gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>(architect_model_);
     auto intersection = getIntersectionPlane(*laser_in_map, model);
     plane_normal = std::make_shared<EVector3>(getIntersectionNormal(intersection));
     plane_support = std::make_shared<EVector3>(getIntersectionPoint(intersection));

@@ -1,12 +1,14 @@
 #ifndef CPT_POINTLASER_LOC_OPTIMIZER_GEOMETRIC_UTILS_H_
 #define CPT_POINTLASER_LOC_OPTIMIZER_GEOMETRIC_UTILS_H_
 
+#include <cgal_definitions/mesh_model.h>
 #include <gtsam/base/OptionalJacobian.h>
 #include <gtsam/nonlinear/Expression.h>
 #include <kindr/minimal/quat-transformation.h>
 
 #include <Eigen/Geometry>
 
+#include "cpt_pointlaser_loc/model/mesh-model-gtsam.h"
 #include "cpt_pointlaser_loc/optimizer/common.h"
 
 namespace cad_percept {
@@ -75,12 +77,12 @@ static EVector3 getIntersectionNormal(
 
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
     const kindr::minimal::QuatTransformation& sensor_pose,
-    const std::shared_ptr<architect_model::ArchitectModel> model, gtsam::OptionalJacobian<6, 6> H,
+    const cad_percept::cgal::MeshModel::Ptr model, gtsam::OptionalJacobian<6, 6> H,
     gtsam::OptionalJacobian<6, 1> H_ignored);
 
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
     const ETransformation& sensor_pose,
-    gtsam::Expression<std::shared_ptr<architect_model::ArchitectModel>>& model);
+    gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>& model);
 
 gtsam::Expression<double> expectedDistance(ETransformation& laser_in_map, EVector3& plane_support,
                                            EVector3& plane_normal);

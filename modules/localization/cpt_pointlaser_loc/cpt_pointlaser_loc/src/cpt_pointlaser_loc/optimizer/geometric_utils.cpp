@@ -1,12 +1,14 @@
 #include "cpt_pointlaser_loc/optimizer/geometric_utils.h"
 
+#include <cpt_utils/cpt_utils.h>
+
 namespace cad_percept {
 namespace pointlaser_loc {
 namespace optimizer {
 
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
     const kindr::minimal::QuatTransformation& sensor_pose,
-    const std::shared_ptr<architect_model::ArchitectModel> model, gtsam::OptionalJacobian<6, 6> H,
+    const cad_percept::cgal::MeshModel::Ptr model, gtsam::OptionalJacobian<6, 6> H,
     gtsam::OptionalJacobian<6, 1> H_ignored) {
   if (H) *H = Eigen::Matrix<double, 6, 6>::Zero();
   if (H_ignored) {
@@ -14,18 +16,19 @@ Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
     // if model is a constant.
     *H_ignored = Eigen::Matrix<double, 6, 1>::Zero();
   }
-  architect_model::Intersection i = model->getIntersection(sensor_pose);
+
+  cad_percept::cgal::Ray query_ray = cad_percept::cpt_utils::buildRayFromPose(sensor_pose);
+  cad_percept::cgal::Intersection i = model->getIntersection(query_ray);
   Eigen::Matrix<double, 6, 1> response;
-  response.head<3>() = i.point;
-  response.tail<3>() = i.surface_normal;
+  response.head<3>() =
+      Eigen::Vector3d(i.intersected_point.x(), i.intersected_point.y(), i.intersected_point.z());
+  response.tail<3>() =
+      Eigen::Vector3d(i.surface_normal.x(), i.surface_normal.y(), i.surface_normal.z());
   return response;
 }
 
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
-    ETransformation& sensor_pose,
-    gtsam::Expression<std::shared_ptr<architect_model::ArchitectModel>>&
-
-        model) {
+    ETransformation& sensor_pose, gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>& model) {
   return gtsam::Expression<Eigen::Matrix<double, 6, 1>>(&getIntersectionPlaneImplementation,
                                                         sensor_pose, model);
 }
