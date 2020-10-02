@@ -8,7 +8,9 @@ namespace cad_percept {
 namespace planning {
 
 class SurfacePlanner {
+
  public:
+  typedef SurfacePlanner* Ptr;
   typedef struct {
     bool success;
     std::chrono::steady_clock::duration duration;

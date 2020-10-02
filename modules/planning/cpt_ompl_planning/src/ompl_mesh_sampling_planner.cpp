@@ -1,7 +1,7 @@
 #include <cpt_ompl_planning/ompl_mesh_sampling_planner.h>
 
-OMPLMeshSamplingPlanner::OMPLMeshSamplingPlanner(std::string meshpath, bool connect)
-    : rrt_connect_(connect) {
+OMPLMeshSamplingPlanner::OMPLMeshSamplingPlanner(std::string meshpath, bool connect, double time)
+    : solve_time_(time), rrt_connect_(connect) {
   cad_percept::cgal::MeshModel::create(meshpath, &model_, true);
 }
 
@@ -53,6 +53,7 @@ const cad_percept::planning::SurfacePlanner::Result OMPLMeshSamplingPlanner::pla
     reached_criteria = true;
     // get path
     ompl::geometric::PathGeometric path = ss->getSolutionPath();
+    path.interpolate();
 
     for (auto state : path.getStates()) {
       Eigen::Vector3d pt;

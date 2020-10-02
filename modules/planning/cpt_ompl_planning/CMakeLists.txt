@@ -13,12 +13,19 @@ add_definitions(-std=c++17 -Wall -Wextra)
 # LIBRARIES #
 #############
 cs_add_library(${PROJECT_NAME}
-        src/ompl_mesh_sampling_planner.cpp)
-
+        src/ompl_mesh_sampling_planner.cpp
+        src/ompl_mesh_projecting_planner.cpp)
 
 target_link_libraries(${PROJECT_NAME} ${OMPL_LIBRARIES}
         cgal_definitions)
 
+
+cs_add_executable(evaluation_node
+        src/evaluation_node.cpp)
+target_link_libraries(evaluation_node
+        ${PROJECT_NAME}
+        ${OMPL_LIBRARIES}
+        cgal_definitions)
 ##########
 # EXPORT #
 ##########

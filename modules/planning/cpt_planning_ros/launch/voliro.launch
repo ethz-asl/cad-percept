@@ -28,7 +28,7 @@
       <param name="zero_x" value="0.0"/>
       <param name="zero_y" value="0.0"/>
       <param name="zero_z" value="1.75"/>
-   <param name="off_path" value="$(find cpt_planning_ros)/resources/half_sphere2_vicon.off" />-
+   <param name="off_path" value="/home/mpantic/ws/rmp/src/manifold_simulations/models/hilo_roof/meshes/hilo_reconstructed.off" />-
 </node>
    <!--<node name="spacenav_node" pkg="spacenav_node" type="spacenav_node">
         <remap from="/spacenav/joy" to="/joy" />

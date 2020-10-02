@@ -59,9 +59,9 @@ class MeshManifoldSampler : public ob::StateSampler {
   std::shared_ptr<CGAL::Random_points_in_triangle_mesh_3<cad_percept::cgal::Polyhedron>> rng_mesh_;
 };
 
-class OMPLMeshSamplingPlanner : cad_percept::planning::SurfacePlanner {
+class OMPLMeshSamplingPlanner : public cad_percept::planning::SurfacePlanner {
  public:
-  OMPLMeshSamplingPlanner(std::string meshpath, bool connect);
+  OMPLMeshSamplingPlanner(std::string meshpath, bool connect, double time);
 
   inline ob::StateSamplerPtr allocMeshManifoldSampler(const ob::StateSpace* space) {
     return std::make_shared<MeshManifoldSampler>(space, model_);
@@ -75,7 +75,9 @@ class OMPLMeshSamplingPlanner : cad_percept::planning::SurfacePlanner {
     return (model_->squaredDistance(pt) < 0.01 * 0.01);
   }
 
-  inline const std::string getName() const { return rrt_connect_ ?  "RRTConnect" : "RRTStar"; }
+  inline const std::string getName() const {
+    return (rrt_connect_ ? "RRTConnect" : "RRTStar") + std::to_string(solve_time_);
+  }
 
   const SurfacePlanner::Result plan(const Eigen::Vector3d start, const Eigen::Vector3d goal,
                                     std::vector<Eigen::Vector3d>* states_out);

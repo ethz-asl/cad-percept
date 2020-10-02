@@ -14,7 +14,7 @@
 #include <iostream>
 namespace cad_percept {
 namespace planning {
-class RMPMeshPlanner : SurfacePlanner {
+class RMPMeshPlanner : public SurfacePlanner {
  public:
   RMPMeshPlanner(std::string mesh_path);
 
