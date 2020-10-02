@@ -33,6 +33,9 @@
     local-name: minkindr_gtsam
     uri: git@github.com:ethz-asl/minkindr_gtsam.git
 - git:
+    local-name: minkindr_ros
+    uri: git@github.com:ethz-asl/minkindr_ros.git
+- git:
     local-name: libpointmatcher
     uri: https://github.com/ethz-asl/libpointmatcher.git
 - git:
