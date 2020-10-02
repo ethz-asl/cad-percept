@@ -1,6 +1,9 @@
-#include <pcl/common/pca.h>
-
 #include "cpt_object_detection/object_detection.h"
+
+#include <pcl/common/pca.h>
+#include <modelify/feature_toolbox/keypoint_toolbox_3d.h>
+#include <modelify/feature_toolbox/descriptor_toolbox_3d.h>
+#include <modelify/registration_toolbox/registration_toolbox.h>
 
 namespace cad_percept {
 namespace object_detection {
@@ -164,6 +167,190 @@ PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& poin
             << (std::chrono::steady_clock::now() - conversion_start).count() << " s";
 
   return PM::DataPoints(features, feature_labels);
+}
+
+Transformation computeTransformFromCorrespondences(
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const modelify::CorrespondencesTypePtr& correspondences) {
+  // Filter correspondences
+  modelify::registration_toolbox::RansacParams ransac_params;
+  modelify::CorrespondencesTypePtr filtered_correspondences(new modelify::CorrespondencesType());
+  if (!modelify::registration_toolbox::filterCorrespondences(detection_keypoints, object_keypoints,
+                                                             ransac_params, correspondences,
+                                                             filtered_correspondences)) {
+    // TODO(gasserl): error instead of warning?
+    LOG(WARNING) << "Filtering correspondences failed!";
+    *filtered_correspondences = *correspondences;
+  }
+  LOG(INFO) << "Filtered correspondences to " << filtered_correspondences->size();
+
+  // Align features
+  modelify::registration_toolbox::GeometricConsistencyParams consistency_params;
+  consistency_params.consensus_set_resolution_m = 0.05;
+  modelify::TransformationVector T_geometric_consistency;
+  std::vector<modelify::CorrespondencesType> clustered_correspondences;
+  if (!modelify::registration_toolbox::alignKeypointsGeometricConsistency(
+          detection_keypoints, object_keypoints, filtered_correspondences,
+          consistency_params.min_cluster_size, consistency_params.consensus_set_resolution_m,
+          &T_geometric_consistency, &clustered_correspondences)) {
+    LOG(ERROR) << "Keypoint alignment failed!";
+    return Transformation();
+  }
+  *correspondences = clustered_correspondences[0];
+  LOG(INFO) << "Aligned keypoints, best alignment found with "
+            << clustered_correspondences[0].size() << " correspondences and transform\n"
+            << T_geometric_consistency[0];
+
+  if (!Quaternion::isValidRotationMatrix(T_geometric_consistency[0].block<3, 3>(0, 0))) {
+    for (int i = 0; i < 3; ++i) {
+      T_geometric_consistency[0].block<3, 1>(0, i) =
+          T_geometric_consistency[0].block<3, 1>(0, i).normalized();
+    }
+    LOG(WARNING) << "Normalized rotation matrix, new transformation:\n"
+                 << T_geometric_consistency[0];
+  }
+  return Transformation(T_geometric_consistency[0]);
+}
+
+Transformation icpUsingModelify(const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+                                const modelify::PointSurfelCloudType::Ptr& object_surfels,
+                                const Transformation& transform_init) {
+  // Validate initial alignment
+  modelify::registration_toolbox::ICPParams icp_params;
+  double cloud_resolution = modelify::kInvalidCloudResolution;
+  double mean_squared_distance;
+  double inlier_ratio;
+  std::vector<size_t> outlier_indices;
+  modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+      detection_surfels, object_surfels, transform_init.getTransformationMatrix(), icp_params,
+      cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
+  LOG(INFO) << "Initial validation results: " << mean_squared_distance << " mean squared distance, "
+            << inlier_ratio << " inlier ratio";
+
+  // Refine transformation with modelify ICP
+  modelify::Transformation T_icp;
+  double mean_squared_distance_icp = 0;
+  double inlier_ratio_icp = mean_squared_distance;
+  if (!estimateTransformationPointToPoint(detection_surfels, object_surfels,
+                                          transform_init.getTransformationMatrix(), icp_params,
+                                          cloud_resolution, &T_icp, &mean_squared_distance_icp)) {
+    LOG(WARNING) << "Keypoint ICP refinement failed!";
+  } else {
+    if (!Quaternion::isValidRotationMatrix(T_icp.block<3, 3>(0, 0))) {
+      for (int i = 0; i < 3; ++i) {
+        T_icp.block<3, 1>(0, i) = T_icp.block<3, 1>(0, i).normalized();
+      }
+    }
+    Transformation transform_icp = Transformation(T_icp) * transform_init;
+
+    // Validate alignment ICP
+    modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+        detection_surfels, object_surfels, transform_icp.getTransformationMatrix(), icp_params,
+        cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
+    LOG(INFO) << "ICP validation results: " << mean_squared_distance_icp
+              << " mean squared distance, " << inlier_ratio_icp << " inlier ratio";
+
+    if (inlier_ratio_icp >= inlier_ratio) {
+      // && mean_squared_distance_icp < mean_squared_distance) {
+      return transform_icp;
+    } else {
+      LOG(WARNING) << "ICP didn't improve alignment!";
+    }
+  }
+  return transform_init;
+}
+
+bool getKeypoints(const KeypointType& keypoint_type,
+                  const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+                  const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  switch (keypoint_type) {
+    case kIss:
+      return getIssKeypoints(pointcloud_surfel_ptr, keypoints);
+    case kHarris:
+      return getHarrisKeypoints(pointcloud_surfel_ptr, keypoints);
+    case kUniform:
+      return getUniformKeypoints(pointcloud_surfel_ptr, keypoints);
+    default:
+      LOG(ERROR) << "Unknown keypoint type! " << keypoint_type;
+      return false;
+  }
+}
+
+bool getIssKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+                     const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  modelify::feature_toolbox::IssParams iss_params;
+  if (!modelify::feature_toolbox::detectKeypointsISS(pointcloud_surfel_ptr, iss_params,
+                                                     keypoints)) {
+    LOG(WARNING) << "Could not extract ISS keypoints!";
+    return false;
+  }
+  LOG(INFO) << "Extracted " << keypoints->size() << " ISS keypoints";
+  return true;
+}
+
+bool getHarrisKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+                        const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  // Get keypoints
+  modelify::feature_toolbox::Harris3dParams harris_params;
+  if (!modelify::feature_toolbox::extractHarrisKeypoints(harris_params, pointcloud_surfel_ptr,
+                                                         keypoints)) {
+    LOG(WARNING) << "Could not extract Harris keypoints!";
+    return false;
+  }
+  LOG(INFO) << "Extracted " << keypoints->size() << " Harris keypoints";
+
+  /*LOG(INFO) << "Harris params:" << harris_params.toString();
+  size_t num = 0;
+  float curvature = 0;
+  float min_curvature = 1e9;
+  float max_curvature = 0;
+  for (const auto& point : *pointcloud_surfel_ptr) {
+    ++num;
+    curvature += point.curvature;
+    min_curvature = std::min(min_curvature, point.curvature);
+    max_curvature = std::max(max_curvature, point.curvature);
+  }
+  LOG(INFO) << "Avg curvature: " << curvature / float(num);
+  LOG(INFO) << "Min curvature: " << min_curvature;
+  LOG(INFO) << "Max curvature: " << max_curvature;*/
+
+  return true;
+}
+
+bool getUniformKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+                         const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  // Get keypoints
+  modelify::feature_toolbox::UniformDownsamplingParams uniform_params;
+  if (!modelify::feature_toolbox::getKeypointsFromUniformDownsampling(pointcloud_surfel_ptr,
+                                                                      uniform_params, keypoints)) {
+    LOG(WARNING) << "Could not extract uniform keypoints!";
+    return false;
+  }
+  LOG(INFO) << "Extracted " << keypoints->size() << " uniform keypoints";
+  return true;
+}
+
+template <>
+void getDescriptors<modelify::DescriptorSHOT>(
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+    const modelify::PointSurfelCloudType::Ptr& keypoints,
+    const pcl::PointCloud<modelify::DescriptorSHOT>::Ptr& descriptors) {
+  modelify::feature_toolbox::SHOTParams shot_params;
+  modelify::feature_toolbox::describeKeypoints<modelify::DescriptorSHOT>(
+      pointcloud_surfel_ptr, modelify::kInvalidCloudResolution, shot_params, keypoints,
+      descriptors);
+}
+
+template <>
+void getDescriptors<modelify::DescriptorFPFH>(
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+    const modelify::PointSurfelCloudType::Ptr& keypoints,
+    const pcl::PointCloud<modelify::DescriptorFPFH>::Ptr& descriptors) {
+  modelify::feature_toolbox::FPFHParams fpfh_params;
+  modelify::feature_toolbox::describeKeypoints<modelify::DescriptorFPFH>(
+      pointcloud_surfel_ptr, modelify::kInvalidCloudResolution, fpfh_params, keypoints,
+      descriptors);
 }
 
 }  // namespace object_detection

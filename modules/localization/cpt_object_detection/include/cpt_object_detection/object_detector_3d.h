@@ -10,16 +10,13 @@ namespace cad_percept {
 namespace object_detection {
 
 class ObjectDetector3D {
-  enum KeypointType { kIss = 0, kHarris, kUniform, kNumKeypointTypes };
   std::map<size_t, std::string> KeypointNames = {
       {static_cast<size_t>(KeypointType::kIss), "ISS"},
       {static_cast<size_t>(KeypointType::kHarris), "Harris"},
       {static_cast<size_t>(KeypointType::kUniform), "uniform"}};
-  enum DescriptorType { kFpfh = 0, kShot, kNumDescriptorTypes };
   std::map<size_t, std::string> DescriptorNames = {
       {static_cast<size_t>(DescriptorType::kFpfh), "FPFH"},
       {static_cast<size_t>(DescriptorType::kShot), "SHOT"}};
-  enum MatchingMethod { kConventional = 0, kFastGlobalRegistration, kTeaser, kNumMatchingMethods };
   std::map<size_t, std::string> MatchingMethodNames = {
       {static_cast<size_t>(MatchingMethod::kConventional), "conventional"},
       {static_cast<size_t>(MatchingMethod::kFastGlobalRegistration), "FGR"},
@@ -31,6 +28,9 @@ class ObjectDetector3D {
 
   void objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
 
+  void processDetectionUsingPcaAndIcp();
+  void processDetectionUsing3dFeatures();
+
   static void visualizeMesh(const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,
                             const std::string& frame_id, const ros::Publisher& publisher);
   static void visualizePointcloud(const pcl::PointCloud<pcl::PointXYZ>& pointcloud,
@@ -39,69 +39,6 @@ class ObjectDetector3D {
   static void publishTransformation(const Transformation& transform, const ros::Time& stamp,
                                     const std::string& parent_frame_id,
                                     const std::string& child_frame_id);
-
-  void processDetectionUsingPcaAndIcp();
-  void processDetectionUsing3dFeatures();
-  template <typename descriptor_type>
-  static Transformation computeTransformUsing3dFeatures(
-      MatchingMethod matching_method, const modelify::PointSurfelCloudType::Ptr& detection_surfels,
-      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-      const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-      const modelify::PointSurfelCloudType::Ptr& object_surfels,
-      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-      const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-      double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences);
-  template <typename descriptor_type>
-  static Transformation computeTransformUsingFgr(
-      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
-      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-      const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-      const modelify::PointSurfelCloudType::Ptr& object_surfels,
-      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-      const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-      const modelify::CorrespondencesTypePtr& correspondences);
-  template <typename descriptor_type>
-  static Transformation computeTransformUsingModelify(
-      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-      const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-      const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-      double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences);
-  template <typename descriptor_type>
-  static Transformation computeTransformUsingTeaser(
-      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-      const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-      const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-      double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences);
-  static Transformation computeTransformFromCorrespondences(
-      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-      const modelify::CorrespondencesTypePtr& correspondences);
-  static Transformation icpUsingModelify(
-      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
-      const modelify::PointSurfelCloudType::Ptr& object_surfels,
-      const Transformation& transform_init);
-
-  template <typename descriptor_type>
-  bool get3dFeatures(const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz,
-                     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                     const modelify::PointSurfelCloudType::Ptr& keypoints,
-                     const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors);
-  bool getKeypoints(const KeypointType& keypoint_type,
-                    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                    const modelify::PointSurfelCloudType::Ptr& keypoints);
-  static bool getIssKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                              const modelify::PointSurfelCloudType::Ptr& keypoints);
-  static bool getHarrisKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                                 const modelify::PointSurfelCloudType::Ptr& keypoints);
-  static bool getUniformKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                                  const modelify::PointSurfelCloudType::Ptr& keypoints);
-  template <typename descriptor_type>
-  static void getDescriptors(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                             const modelify::PointSurfelCloudType::Ptr& keypoints,
-                             const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors);
-
   static void visualizeKeypoints(const modelify::PointSurfelCloudType::Ptr& keypoints,
                                  const ros::Time& timestamp, const std::string& frame_id,
                                  const ros::Publisher& publisher);
