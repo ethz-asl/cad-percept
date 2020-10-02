@@ -271,7 +271,6 @@ Transformation computeTransformFromCorrespondences(
 
   // Align features
   modelify::registration_toolbox::GeometricConsistencyParams consistency_params;
-  consistency_params.consensus_set_resolution_m = 0.05;
   modelify::TransformationVector T_geometric_consistency;
   std::vector<modelify::CorrespondencesType> clustered_correspondences;
   if (!modelify::registration_toolbox::alignKeypointsGeometricConsistency(
