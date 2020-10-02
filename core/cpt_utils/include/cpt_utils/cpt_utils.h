@@ -1,13 +1,12 @@
 #ifndef CPT_UTILS_H
 #define CPT_UTILS_H
 
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
-
 #include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
 
 #include "cpt_utils/pc_processing.h"
 
@@ -61,6 +60,13 @@ void bboxDiameters(const CGAL::Bbox_3 bbox, double *width, double *height);
  * Get the facet handle from the ID
  */
 cgal::Polyhedron::Facet_handle getFacetHandle(cgal::Polyhedron &P, const uint facet_id);
+
+/**
+ * Sample a vector of CGAL points from a mesh with a given number of points and noise.
+ */
+void samplePointsFromMesh(const cgal::Polyhedron &P, const int no_of_points, const double stddev,
+                          std::vector<cgal::Point> *points);
+
 }  // namespace cpt_utils
 }  // namespace cad_percept
 

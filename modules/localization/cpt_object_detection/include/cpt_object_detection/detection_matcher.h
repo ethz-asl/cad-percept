@@ -47,6 +47,8 @@ class ObjectDetector3D {
                             const Transformation& T_object_detection_init,
                             const std::string& config_file);
   static PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model);
+  static PM::DataPoints sampleDataPointsFromMesh(const cgal::MeshModel::Ptr& mesh_model,
+                                                 const int number_of_points);
 
   static void visualizeMesh(const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,
                             const std::string& frame_id, const ros::Publisher& publisher);

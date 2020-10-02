@@ -1,8 +1,10 @@
 #include "cpt_object_detection/detection_matcher.h"
 
+#include <CGAL/linear_least_squares_fitting_3.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/pc_processing.h>
+#include <cpt_utils/cpt_utils.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <pcl/common/pca.h>
@@ -193,6 +195,35 @@ ObjectDetector3D::Transformation ObjectDetector3D::pca(
   return Transformation(rotation, translation);
 }
 
+ObjectDetector3D::PM::DataPoints ObjectDetector3D::sampleDataPointsFromMesh(
+    const cgal::MeshModel::Ptr& mesh_model, const int number_of_points) {
+  CHECK(mesh_model);
+
+  // Sample points from mesh
+  std::vector<cgal::Point> points;
+  cpt_utils::samplePointsFromMesh(mesh_model->getMesh(), number_of_points, 0, &points);
+
+  // Define features and descriptors
+  PM::DataPoints::Labels feature_labels;
+  feature_labels.push_back(PM::DataPoints::Label("x", 1));
+  feature_labels.push_back(PM::DataPoints::Label("y", 1));
+  feature_labels.push_back(PM::DataPoints::Label("z", 1));
+  feature_labels.push_back(PM::DataPoints::Label("pad", 1));
+  PM::DataPoints::Labels descriptor_labels;
+  descriptor_labels.push_back(PM::DataPoints::Label("normals", 3));
+
+  PM::Matrix features(feature_labels.totalDim(), number_of_points);
+  PM::Matrix descriptors(descriptor_labels.totalDim(), number_of_points);
+  for (int i = 0; i < number_of_points; ++i) {
+    features.col(i) = Eigen::Vector4f(points[i].x(), points[i].y(), points[i].z(), 1);
+    cgal::PointAndPrimitiveId ppid = mesh_model->getClosestTriangle(points[i]);
+    cgal::Vector normal = mesh_model->getNormal(ppid);
+    descriptors.col(i) = Eigen::Vector3f(normal.x(), normal.y(), normal.z());
+  }
+
+  return PM::DataPoints(features, feature_labels, descriptors, descriptor_labels);
+}
+
 ObjectDetector3D::PM::DataPoints ObjectDetector3D::convertMeshToDataPoints(
     const cgal::MeshModel::Ptr& mesh_model) {
   CHECK(mesh_model);
@@ -237,7 +268,8 @@ ObjectDetector3D::Transformation ObjectDetector3D::icp(
   ros::WallTime time_start = ros::WallTime::now();
 
   // setup data points
-  PM::DataPoints points_object = convertMeshToDataPoints(mesh_model);
+  int n_points = detection_pointcloud.size();
+  PM::DataPoints points_object = sampleDataPointsFromMesh(mesh_model, n_points);
 
   sensor_msgs::PointCloud2 msg;
   pcl::toROSMsg(detection_pointcloud, msg);
@@ -264,12 +296,12 @@ ObjectDetector3D::Transformation ObjectDetector3D::icp(
     T_object_detection_icp = icp.compute(points_detection, points_object,
                                          T_object_detection_init.getTransformationMatrix());
   } catch (PM::ConvergenceError& error_msg) {
-    LOG(WARNING) << "ICP was not successful!";
+    LOG(ERROR) << "ICP was not successful!";
     return T_object_detection_init;
   }
 
   if (icp.getMaxNumIterationsReached()) {
-    LOG(ERROR) << "ICP reached maximum number of iterations!";
+    LOG(WARNING) << "ICP reached maximum number of iterations!";
   }
 
   if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {

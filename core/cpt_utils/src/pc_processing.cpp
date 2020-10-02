@@ -1,6 +1,6 @@
 #include "cpt_utils/pc_processing.h"
 
-#include <random>
+#include <cpt_utils/cpt_utils.h>
 
 namespace cad_percept {
 namespace cpt_utils {
@@ -110,29 +110,11 @@ void transformPointCloud(PointCloud *pointcloud, const Eigen::Affine3f &transfor
 
 void sample_pc_from_mesh(const cgal::Polyhedron &P, const int no_of_points, const double stddev,
                          PointCloud *pointcloud) {
-  // generate random point sets on triangle mesh
-  std::vector<cgal::Point> points;
-  // Create the generator, input is the Polyhedron P
-  CGAL::Random_points_in_triangle_mesh_3<cgal::Polyhedron> g(P);
-  // Get no_of_points random points in cdt
-  CGAL::cpp11::copy_n(g, no_of_points, std::back_inserter(points));
-  // Check that we have really created no_of_points points.
-  assert(points.size() == no_of_points);
-  // print the first point that was generated
-  // std::cout << points[0] << std::endl;
+  CHECK(pointcloud);
 
-  // add random noise with Gaussian distribution
-  const double mean = 0.0;
-  std::default_random_engine generator;
-  std::normal_distribution<double> dist(mean, stddev);
-
+  // Sample points from mesh
   std::vector<cgal::Point> points_noise;
-  for (auto point : points) {
-    cgal::Point p_noise;
-    p_noise = cgal::Point(point.x() + dist(generator), point.y() + dist(generator),
-                          point.z() + dist(generator));
-    points_noise.push_back(p_noise);
-  }
+  samplePointsFromMesh(P, no_of_points, stddev, &points_noise);
 
   // save as pcd
   pointcloud->width = points_noise.size();
