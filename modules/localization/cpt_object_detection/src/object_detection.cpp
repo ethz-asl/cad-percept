@@ -25,8 +25,7 @@ Transformation alignDetectionUsingPcaAndIcp(
   Transformation T_object_detection =
       icp(mesh_model, detection_pointcloud, *T_object_detection_init, config_file);
 
-  LOG(INFO) << "Total matching time: " << (std::chrono::steady_clock::now() - time_start).count()
-            << " s";
+  LOG(INFO) << "Time matching total: " << (std::chrono::steady_clock::now() - time_start).count() << " s";
   return T_object_detection;
 }
 
