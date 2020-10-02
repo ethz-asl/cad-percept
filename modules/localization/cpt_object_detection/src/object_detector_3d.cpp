@@ -17,11 +17,11 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       object_frame_id_("object_detection_mesh"),
       pointcloud_topic_("/camera/depth/color/points"),
       detection_frame_id_("camera_depth_optical_frame"),
-      keypoint_type_(kHarris),
-      descriptor_type_(kShot),
+      keypoint_type_(kIss),
+      descriptor_type_(kFpfh),
       matching_method_(kConventional),
       use_3d_features_(true),
-      refine_(true),
+      refine_using_icp_(true),
       correspondence_threshold_(0.1),
       downsampling_resolution_(0.001) {
   getParamsFromRos();
@@ -42,7 +42,7 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
   nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
-  nh_private_.param("refine", refine_, refine_);
+  nh_private_.param("refine_using_icp", refine_using_icp_, refine_using_icp_);
   nh_private_.param("icp_config_file", icp_config_file_, icp_config_file_);
   nh_private_.param("correspondence_threshold", correspondence_threshold_,
                     correspondence_threshold_);
@@ -219,18 +219,23 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
 
 // TODO(gasserl): another child class?
 void ObjectDetector3D::processDetectionUsing3dFeatures() {
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
   // Downsampling detection pointcloud
   if (downsampling_resolution_ > 0) {
-    pcl::PointCloud<pcl::PointXYZ> temp(detection_pointcloud_);
+    std::chrono::steady_clock::time_point start_sampling = std::chrono::steady_clock::now();
     pcl::PointCloud<pcl::PointXYZ>::Ptr detection_pointcloud_ptr =
-        boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(temp);
+        boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(detection_pointcloud_);
     pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter;
     voxel_grid_filter.setInputCloud(detection_pointcloud_ptr);
     voxel_grid_filter.setLeafSize(downsampling_resolution_, downsampling_resolution_,
                                   downsampling_resolution_);
-    voxel_grid_filter.filter(detection_pointcloud_);
+    pcl::PointCloud<pcl::PointXYZ> filtered_pointcloud;
+    voxel_grid_filter.filter(filtered_pointcloud);
+    detection_pointcloud_ = filtered_pointcloud;
     LOG(INFO) << "Detection pointcloud downsampled to resolution of " << downsampling_resolution_
               << " m, resulting in " << detection_pointcloud_.size() << " points";
+    LOG(INFO) << "Time downsampling: " << (std::chrono::steady_clock::now() - start_sampling).count();
   }
 
   // Compute transform between detection and object
@@ -276,18 +281,6 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     return;
   }
 
-  // Refine using ICP
-  Transformation T_icp = T_features;
-  if (refine_) {
-    T_icp = icpUsingModelify(detection_surfels, object_surfels_, T_features);
-  }
-
-  if (!T_icp.getTransformationMatrix().allFinite() ||
-      !Quaternion::isValidRotationMatrix(T_icp.getRotationMatrix())) {
-    LOG(ERROR) << "Transformation from ICP is not valid!\n" << T_icp;
-    return;
-  }
-
   // Visualizations
   visualizeNormals(detection_surfels, "detection", detection_frame_id_, normals_pub_);
   visualizeNormals(object_surfels_, "object", detection_frame_id_, normals_pub_);
@@ -297,13 +290,24 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
                      object_keypoint_pub_);
 
   // Visualize correspondences
-  visualizeCorrespondences(detection_keypoints, correspondences, detection_frame_id_,
-                           correspondences_pub_);
+  visualizeCorrespondences(detection_keypoints, object_keypoints_, correspondences,
+                           detection_frame_id_, correspondences_pub_);
 
   // Publish initial transform
   publishTransformation(T_features.inverse(), detection_stamp_, detection_frame_id_,
                         object_frame_id_ + "_init");
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
+
+  // Refine using ICP
+  Transformation T_icp = T_features;
+  if (refine_using_icp_) {
+    T_icp = icpUsingModelify(detection_surfels, object_surfels_, T_features);
+  }
+
+  if (!T_icp.getTransformationMatrix().allFinite()) {
+    LOG(ERROR) << "Transformation from ICP is not valid!\n" << T_icp;
+    return;
+  }
 
   // Publish results
   publishTransformation(T_icp.inverse(), detection_stamp_, detection_frame_id_, object_frame_id_);
@@ -311,6 +315,7 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
                       object_pointcloud_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
   LOG(INFO) << "Published results.";
+  LOG(INFO) << "Time aligning: " << (std::chrono::steady_clock::now() - start).count() << " s";
 }
 
 void ObjectDetector3D::publishTransformation(const Transformation& transform,
@@ -367,6 +372,7 @@ void ObjectDetector3D::visualizeKeypoints(const modelify::PointSurfelCloudType::
 
 void ObjectDetector3D::visualizeCorrespondences(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const modelify::CorrespondencesTypePtr& correspondences, const std::string& frame_id,
     const ros::Publisher& publisher) {
   visualization_msgs::MarkerArray marker_array;
@@ -382,7 +388,7 @@ void ObjectDetector3D::visualizeCorrespondences(
   geometry_msgs::Point point_msg;
   marker.points.clear();
   for (auto it = correspondences->begin(); it != correspondences->end(); it++) {
-    const auto& point_object = object_keypoints_->points[it->index_match];
+    const auto& point_object = object_keypoints->points[it->index_match];
     point_msg.x = point_object.x;
     point_msg.y = point_object.y;
     point_msg.z = point_object.z;

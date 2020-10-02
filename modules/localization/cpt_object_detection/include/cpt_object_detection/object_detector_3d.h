@@ -36,18 +36,20 @@ class ObjectDetector3D {
   static void visualizePointcloud(const pcl::PointCloud<pcl::PointXYZ>& pointcloud,
                                   const ros::Time& timestamp, const std::string& frame_id,
                                   const ros::Publisher& publisher);
-  static void publishTransformation(const Transformation& transform, const ros::Time& stamp,
-                                    const std::string& parent_frame_id,
-                                    const std::string& child_frame_id);
   static void visualizeKeypoints(const modelify::PointSurfelCloudType::Ptr& keypoints,
                                  const ros::Time& timestamp, const std::string& frame_id,
                                  const ros::Publisher& publisher);
-  void visualizeCorrespondences(const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-                                const modelify::CorrespondencesTypePtr& correspondences,
-                                const std::string& frame_id, const ros::Publisher& publisher);
+  static void visualizeCorrespondences(
+      const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+      const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+      const modelify::CorrespondencesTypePtr& correspondences, const std::string& frame_id,
+      const ros::Publisher& publisher);
   static void visualizeNormals(const modelify::PointSurfelCloudType::Ptr& surfels,
                                const std::string& marker_namespace, const std::string& frame_id,
                                const ros::Publisher& publisher);
+  static void publishTransformation(const Transformation& transform, const ros::Time& stamp,
+                                    const std::string& parent_frame_id,
+                                    const std::string& child_frame_id);
 
  private:
   void getParamsFromRos();
@@ -88,7 +90,7 @@ class ObjectDetector3D {
   MatchingMethod matching_method_;
 
   bool use_3d_features_;
-  bool refine_;
+  bool refine_using_icp_;
   std::string icp_config_file_;
   float correspondence_threshold_;
   float downsampling_resolution_;

@@ -29,7 +29,7 @@ Transformation computeTransformUsing3dFeatures(
   // Match features
   switch (matching_method) {
     case kConventional:
-      return computeTransformUsingModelify<descriptor_type>(
+      return computeTransformUsingGeometricConsistency<descriptor_type>(
           detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
           similarity_threshold, correspondences);
       break;
@@ -86,7 +86,7 @@ Transformation computeTransformUsingFgr(
 }
 
 template <typename descriptor_type>
-Transformation computeTransformUsingModelify(
+Transformation computeTransformUsingGeometricConsistency(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
@@ -167,8 +167,8 @@ Transformation computeTransformUsingTeaser(
   uint idx = 0;
   for (const auto& correspondence : *correspondences) {
     object_matrix.col(idx) << object_keypoints->points[correspondence.index_match].x,
-        detection_keypoints->points[correspondence.index_match].y,
-        detection_keypoints->points[correspondence.index_match].z;
+        object_keypoints->points[correspondence.index_match].y,
+        object_keypoints->points[correspondence.index_match].z;
     detection_matrix.col(idx) << detection_keypoints->points[correspondence.index_query].x,
         detection_keypoints->points[correspondence.index_query].y,
         detection_keypoints->points[correspondence.index_query].z;

@@ -57,7 +57,7 @@ Transformation computeTransformUsingFgr(
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
     const modelify::CorrespondencesTypePtr& correspondences);
 template <typename descriptor_type>
-Transformation computeTransformUsingModelify(
+Transformation computeTransformUsingGeometricConsistency(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
