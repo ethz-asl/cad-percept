@@ -20,23 +20,26 @@ enum DescriptorType { kFpfh = 0, kShot, kNumDescriptorTypes };
 enum MatchingMethod { kConventional = 0, kFastGlobalRegistration, kTeaser, kNumMatchingMethods };
 
 Transformation alignDetectionUsingPcaAndIcp(
-    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const cgal::MeshModel::Ptr& mesh_model,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
 Transformation alignDetectionUsingPcaAndIcp(
-    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const cgal::MeshModel::Ptr& mesh_model,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud, const std::string& config_file);
 Transformation alignDetectionUsingPcaAndIcp(
-    const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+    const cgal::MeshModel::Ptr& mesh_model,
     const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud, const std::string& config_file,
     Transformation* T_object_detection_init);
 
-Transformation pca(const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
-Transformation icp(const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
                    const Transformation& T_object_detection_init, const std::string& config_file);
 
 PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& pointcloud);
+PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model);
+PM::DataPoints sampleDataPointsFromMesh(const cgal::MeshModel::Ptr& mesh_model,
+                                        const int number_of_points);
 
 template <typename descriptor_type>
 Transformation computeTransformUsing3dFeatures(

@@ -202,7 +202,7 @@ void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& c
 void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   Transformation T_object_detection_init;
   Transformation T_object_detection = alignDetectionUsingPcaAndIcp(
-      object_pointcloud_, detection_pointcloud_, icp_config_file_, &T_object_detection_init);
+      mesh_model_, detection_pointcloud_, icp_config_file_, &T_object_detection_init);
 
   // Publish transformations to TF
   publishTransformation(T_object_detection_init.inverse(), detection_stamp_, detection_frame_id_,
