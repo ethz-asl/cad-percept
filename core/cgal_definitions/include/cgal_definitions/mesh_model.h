@@ -1,19 +1,19 @@
 #ifndef CGAL_DEFINITIONS_MESH_MODEL_H
 #define CGAL_DEFINITIONS_MESH_MODEL_H
 
+#include <CGAL/Polyhedron_incremental_builder_3.h>
 #include <math.h>
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <nlohmann/json.hpp>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
 
 #include "cgal_typedefs.h"
-
-#include <CGAL/Polyhedron_incremental_builder_3.h>
-#include <nlohmann/json.hpp>
 
 namespace cad_percept {
 namespace cgal {
@@ -102,9 +102,8 @@ class MeshModel {
    * Return mesh
    */
   Polyhedron getMesh() const;
-  Polyhedron& getMeshRef();
+  Polyhedron &getMeshRef();
   PolyhedronPtr getMeshPtr();
-
 
   /**
    * Check coplanarity of two facets described by halfedge handle h1 and h2
@@ -168,6 +167,8 @@ class MeshModel {
    * Compute squared distance from point to closest mesh facet.
    */
   double squaredDistance(const Point &point) const;
+
+  CGAL::Bbox_3 getBounds() const;
 
  private:
   Polyhedron P_;

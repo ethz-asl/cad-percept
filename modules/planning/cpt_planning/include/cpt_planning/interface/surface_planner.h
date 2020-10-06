@@ -2,14 +2,16 @@
 #define CPT_PLANNING_INTERFACE_SURFACE_PLANNER_H_
 #include <Eigen/Dense>
 #include <chrono>
+#include <vector>
 #include <iostream>
 
 namespace cad_percept {
 namespace planning {
 
 class SurfacePlanner {
-
  public:
+  typedef std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> EdgeList;
+
   typedef SurfacePlanner* Ptr;
   typedef struct {
     bool success;
@@ -19,8 +21,12 @@ class SurfacePlanner {
   virtual const Result plan(const Eigen::Vector3d start, const Eigen::Vector3d goal,
                             std::vector<Eigen::Vector3d>* states_out) = 0;
   virtual const std::string getName() const = 0;
+
+  virtual EdgeList getEdges() const {
+    return {};
+  }
 };
 
 }  // namespace planning
 }  // namespace cad_percept
-#endif //CPT_PLANNING_INTERFACE_SURFACE_PLANNER_H_
+#endif  // CPT_PLANNING_INTERFACE_SURFACE_PLANNER_H_

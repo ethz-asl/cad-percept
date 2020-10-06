@@ -9,10 +9,9 @@
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 #include <ompl/base/spaces/SE3StateSpace.h>
 #include <ompl/geometric/SimpleSetup.h>
-#include <ompl/geometric/planners/bitstar/BITstar.h>
-#include <ompl/geometric/planners/prm/PRM.h>
 #include <ompl/geometric/planners/rrt/InformedRRTstar.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
+#include <ompl/geometric/planners/rrt/BiTRRT.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -25,8 +24,6 @@ class MeshManifoldSampler : public ob::StateSampler {
  public:
   MeshManifoldSampler(const ob::StateSpace* space, cad_percept::cgal::MeshModel::Ptr model)
       : StateSampler(space), model_(model) {
-    model_->getArea();
-
     rng_mesh_ =
         std::make_shared<CGAL::Random_points_in_triangle_mesh_3<cad_percept::cgal::Polyhedron>>(
             model->getMeshRef());
@@ -71,7 +68,6 @@ class OMPLMeshSamplingPlanner : public cad_percept::planning::SurfacePlanner {
     const double* val = static_cast<const ob::RealVectorStateSpace::StateType*>(state)->values;
 
     cad_percept::cgal::Point pt(val[0], val[1], val[2]);
-
     return (model_->squaredDistance(pt) < 0.01 * 0.01);
   }
 
@@ -82,6 +78,9 @@ class OMPLMeshSamplingPlanner : public cad_percept::planning::SurfacePlanner {
   const SurfacePlanner::Result plan(const Eigen::Vector3d start, const Eigen::Vector3d goal,
                                     std::vector<Eigen::Vector3d>* states_out);
 
+  SurfacePlanner::EdgeList getEdges() const { return rrt_tree_; }
+
+  SurfacePlanner::EdgeList rrt_tree_;
   double solve_time_{1.0};
   bool rrt_connect_{false};
   cad_percept::cgal::MeshModel::Ptr model_;

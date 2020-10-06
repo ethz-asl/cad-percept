@@ -1,4 +1,5 @@
 #include <cpt_ompl_planning/ompl_mesh_sampling_planner.h>
+#include <ompl/base/PlannerDataGraph.h>
 
 OMPLMeshSamplingPlanner::OMPLMeshSamplingPlanner(std::string meshpath, bool connect, double time)
     : solve_time_(time), rrt_connect_(connect) {
@@ -9,15 +10,26 @@ const cad_percept::planning::SurfacePlanner::Result OMPLMeshSamplingPlanner::pla
     const Eigen::Vector3d start, const Eigen::Vector3d goal,
     std::vector<Eigen::Vector3d>* states_out) {
   ob::StateSpacePtr space(new ob::RealVectorStateSpace(3));
-  space->as<ob::RealVectorStateSpace>()->setBounds(-23.0, 23.0);
+
+  // get bounding box of mesh
+  auto bbox = model_->getBounds();
+  ob::RealVectorBounds bounds(3);
+  for (int i = 0; i < 3; i++) {
+    bounds.setLow(i, bbox.min_coord(i));
+    bounds.setHigh(i, bbox.max_coord(i));
+    std::cout << bbox.min_coord(i) << " "<<bbox.max_coord(i)<<std::endl;
+  }
+  space->as<ob::RealVectorStateSpace>()->setBounds(bounds);
+
 
   ob::SpaceInformationPtr si(new ob::SpaceInformation(space));
 
   si->setStateValidityChecker(
       std::bind(&OMPLMeshSamplingPlanner::meshStateValidityChecker, this, std::placeholders::_1));
-  si->setStateValidityCheckingResolution(0.01);  // 1%
+  si->setStateValidityCheckingResolution(0.03);  // 1%
 
   auto ss = std::make_shared<og::SimpleSetup>(si);
+
   space->setStateSamplerAllocator(
       std::bind(&OMPLMeshSamplingPlanner::allocMeshManifoldSampler, this, std::placeholders::_1));
 
@@ -65,6 +77,28 @@ const cad_percept::planning::SurfacePlanner::Result OMPLMeshSamplingPlanner::pla
   }
 
   std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+
+  ob::PlannerData intermediate_states(si);
+  optimizingPlanner->getPlannerData(intermediate_states);
+  auto graph = intermediate_states.toBoostGraph();
+  boost::graph_traits<ob::PlannerData::Graph>::edge_iterator ei, ei_end;
+  typedef boost::graph_traits<ob::PlannerData::Graph>::vertex_descriptor Vertex;
+  boost::property_map<ob::PlannerData::Graph::Type, vertex_type_t>::type vertices =
+      get(vertex_type_t(), graph);
+
+  rrt_tree_.clear();
+  for (boost::tie(ei, ei_end) = edges(graph); ei != ei_end; ++ei) {
+    auto source_vtx = vertices[source(*ei, graph)];
+    auto target_vtx = vertices[target(*ei, graph)];
+    double* data_source_vtx =
+        source_vtx->getState()->as<ob::RealVectorStateSpace::StateType>()->values;
+    double* data_target_vtx =
+        target_vtx->getState()->as<ob::RealVectorStateSpace::StateType>()->values;
+
+    // populate tree of edges
+    rrt_tree_.push_back({{data_source_vtx[0], data_source_vtx[1], data_source_vtx[2]},
+                         {data_target_vtx[0], data_target_vtx[1], data_target_vtx[2]}});
+  }
 
   SurfacePlanner::Result result;
   result.success = reached_criteria;

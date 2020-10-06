@@ -16,12 +16,22 @@ namespace cad_percept {
 namespace planning {
 class RMPMeshPlanner : public SurfacePlanner {
  public:
-  RMPMeshPlanner(std::string mesh_path);
+  RMPMeshPlanner(std::string mesh_path, Eigen::Vector3d tuning_1 = {0.6, 5.8, 0.56},
+                 Eigen::Vector3d tuning_2 = {6.0, 8.0, 0.14});
 
   const SurfacePlanner::Result plan(const Eigen::Vector3d start, const Eigen::Vector3d goal,
                                     std::vector<Eigen::Vector3d> *states_out);
 
   inline const std::string getName() const { return "RMP"; }
+
+  void setTuning(Eigen::Vector3d tuning_1, Eigen::Vector3d tuning_2, double dt = 0.01) {
+    tuning_1_ = tuning_1;
+    tuning_2_ = tuning_2;
+    dt_ = dt;
+  }
+
+  Eigen::Vector3d tuning_1_, tuning_2_;
+  double dt_{0.01};
 
   cad_percept::cgal::MeshModel::Ptr model_;
   cad_percept::planning::UVMapping *mapping_;

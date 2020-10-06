@@ -13,6 +13,7 @@
     <buildtool_depend>catkin_simple</buildtool_depend>
 
     <depend>cgal_definitions</depend>
+    <depend>dynamic_reconfigure</depend>
     <depend>cgal_conversions</depend>
     <depend>ompl</depend>
     <depend>rmpcpp</depend>

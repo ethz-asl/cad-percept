@@ -1,5 +1,6 @@
 #include "cgal_definitions/mesh_model.h"
 
+#include <CGAL/Polygon_mesh_processing/bbox.h>
 namespace cad_percept {
 namespace cgal {
 
@@ -405,6 +406,8 @@ double MeshModel::squaredDistance(const Point &point) const {
   FT sqd = tree_->squared_distance(point);
   return CGAL::to_double(sqd);
 }
+
+CGAL::Bbox_3 MeshModel::getBounds() const { return CGAL::Polygon_mesh_processing::bbox(P_); }
 
 }  // namespace cgal
 }  // namespace cad_percept

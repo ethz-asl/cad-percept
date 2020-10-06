@@ -3,7 +3,9 @@
 namespace cad_percept {
 namespace planning {
 
-RMPMeshPlanner::RMPMeshPlanner(std::string mesh_path) {
+RMPMeshPlanner::RMPMeshPlanner(std::string mesh_path, Eigen::Vector3d tuning_1,
+                               Eigen::Vector3d tuning_2)
+    : tuning_1_(tuning_1), tuning_2_(tuning_2) {
   cad_percept::cgal::MeshModel::create(mesh_path, &model_, true);
   Eigen::Vector3d zero(0.0, 0.0, 0.0);
   double zero_angle = 0;
@@ -32,8 +34,11 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
   Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
   A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
   B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
-  TargetPolicy pol2(target_uv, A, 0.6, 5.8, 0.56);  // goes to manifold as quick as possible
-  TargetPolicy pol3(Eigen::Vector3d::Zero(), B, 6.0, 8.0, 0.14);  // stays along it
+
+  TargetPolicy pol2(target_uv, A, tuning_1_[0], tuning_1_[1],
+                    tuning_1_[2]);  // goes to manifold as quick as possible
+  TargetPolicy pol3(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
+                    tuning_2_[2]);  // stays along it
   std::vector<TargetPolicy *> policies;
   policies.push_back(&pol2);
   policies.push_back(&pol3);
@@ -43,10 +48,9 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
   bool reached_criteria = false;
 
   integrator.resetTo(start_xyz);
-  double dt = 0.01;
-  for (double t = 0; t < 60.0; t += dt) {
+  for (double t = 0; t < 120.0; t += dt_) {
     Eigen::Vector3d current_pos;
-    current_pos = integrator.forwardIntegrate(policies, manifold_, dt);
+    current_pos = integrator.forwardIntegrate(policies, manifold_, dt_);
 
     states_out->push_back(current_pos);
 

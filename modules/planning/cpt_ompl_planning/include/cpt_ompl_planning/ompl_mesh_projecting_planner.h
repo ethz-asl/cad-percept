@@ -8,8 +8,6 @@
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 #include <ompl/base/spaces/SE3StateSpace.h>
 #include <ompl/geometric/SimpleSetup.h>
-#include <ompl/geometric/planners/bitstar/BITstar.h>
-#include <ompl/geometric/planners/prm/PRM.h>
 #include <ompl/geometric/planners/rrt/InformedRRTstar.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
@@ -29,29 +27,15 @@ class MeshConstraints : public ob::Constraint {
     out[0] = model_->squaredDistance(cad_percept::cgal::Point(x.x(), x.y(), x.z()));
   }
 
-  /*void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x,
+  void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x,
                 Eigen::Ref<Eigen::MatrixXd> out) const override {
-
     auto meshpoint = model_->getClosestTriangle(x.x(), x.y(), x.z());
-    auto normal_cgal = model_->getNormal(meshpoint);
     Eigen::Vector3d point(x.x(), x.y(), x.z());
     Eigen::Vector3d intersection(meshpoint.first.x(), meshpoint.first.y(), meshpoint.first.z());
-    Eigen::Vector3d normal(normal_cgal.x(), normal_cgal.y(), normal_cgal.z());
     Eigen::Vector3d direction = point - intersection;
 
-    // if vector from intersection to point is in the same direction as the normal,
-    // the point is in front of the surface
-    bool in_front = direction.dot(normal) > 0.0;
-
-    // direction to surface (invert normal if we are in front of surfac)
-
-    std::cout << point.x() << " " << point.y() << " " << point.z() << " " << std::endl;
-    std::cout << intersection.x() << " " << intersection.y() << " " << intersection.z() << " " << std::endl;
-    std::cout << direction.x() << " " << direction.y() << " " << direction.z() << " " << std::endl;
-    std::cout << std::endl;
-
-    out = -direction;
-  }*/
+    out.leftCols<3>(0) = direction.transpose();
+  }
 
   cad_percept::cgal::MeshModel::Ptr model_;
 };
@@ -65,6 +49,9 @@ class OMPLMeshProjectingPlanner : public cad_percept::planning::SurfacePlanner {
   const SurfacePlanner::Result plan(const Eigen::Vector3d start, const Eigen::Vector3d goal,
                                     std::vector<Eigen::Vector3d> *states_out);
 
+  SurfacePlanner::EdgeList getEdges() const { return rrt_tree_; }
+
+  SurfacePlanner::EdgeList rrt_tree_;
   double solve_time_{1.0};
   cad_percept::cgal::MeshModel::Ptr model_;
 };
