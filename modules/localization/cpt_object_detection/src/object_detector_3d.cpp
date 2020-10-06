@@ -235,7 +235,9 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     detection_pointcloud_ = filtered_pointcloud;
     LOG(INFO) << "Detection pointcloud downsampled to resolution of " << downsampling_resolution_
               << " m, resulting in " << detection_pointcloud_.size() << " points";
-    LOG(INFO) << "Time downsampling: " << (std::chrono::steady_clock::now() - start_sampling).count();
+    LOG(INFO)
+        << "Time downsampling: "
+        << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count();
   }
 
   // Compute transform between detection and object
@@ -315,7 +317,9 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
                       object_pointcloud_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
   LOG(INFO) << "Published results.";
-  LOG(INFO) << "Time aligning: " << (std::chrono::steady_clock::now() - start).count() << " s";
+  LOG(INFO) << "Time aligning: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+            << " s";
 }
 
 void ObjectDetector3D::publishTransformation(const Transformation& transform,
