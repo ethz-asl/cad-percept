@@ -149,28 +149,30 @@ void ObjectDetector3D::processMesh() {
             << " vertices to a pointcloud with " << object_pointcloud_.size() << " points";
 
   // Get 3D features of object pointcloud
-  object_surfels_.reset(new modelify::PointSurfelCloudType());
-  object_keypoints_.reset(new modelify::PointSurfelCloudType());
-  switch (descriptor_type_) {
-    case kFpfh:
-      object_descriptors_fpfh_.reset(new modelify::DescriptorFPFHCloudType());
-      get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                              object_keypoints_, object_descriptors_fpfh_);
-      break;
-    case kShot:
-      object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
-      get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                              object_keypoints_, object_descriptors_shot_);
-      break;
-    default:
-      LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
-      LOG(INFO) << "Descriptor types:";
-      for (int i = 0; i < DescriptorType::kNumDescriptorTypes; ++i) {
-        LOG(INFO) << i << " (" << DescriptorNames[i] << ")";
-      }
-      break;
+  if (use_3d_features_) {
+    object_surfels_.reset(new modelify::PointSurfelCloudType());
+    object_keypoints_.reset(new modelify::PointSurfelCloudType());
+    switch (descriptor_type_) {
+      case kFpfh:
+        object_descriptors_fpfh_.reset(new modelify::DescriptorFPFHCloudType());
+        get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, object_pointcloud_, object_surfels_,
+                                                object_keypoints_, object_descriptors_fpfh_);
+        break;
+      case kShot:
+        object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
+        get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_pointcloud_, object_surfels_,
+                                                object_keypoints_, object_descriptors_shot_);
+        break;
+      default:
+        LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
+        LOG(INFO) << "Descriptor types:";
+        for (int i = 0; i < DescriptorType::kNumDescriptorTypes; ++i) {
+          LOG(INFO) << i << " (" << DescriptorNames[i] << ")";
+        }
+        break;
+    }
+    LOG(INFO) << "Obtained 3D features of object pointcloud";
   }
-  LOG(INFO) << "Obtained 3D features of object pointcloud";
 
   // Visualize object
   bool visualize_object_on_startup = false;
@@ -180,8 +182,10 @@ void ObjectDetector3D::processMesh() {
     visualizePointcloud(object_pointcloud_, ros::Time::now(), detection_frame_id_,
                         object_pointcloud_pub_);
     visualizeMesh(mesh_model_, ros::Time::now(), detection_frame_id_, object_mesh_init_pub_);
-    visualizeKeypoints(object_keypoints_, ros::Time::now(), detection_frame_id_,
-                       object_keypoint_pub_);
+    if (use_3d_features_) {
+      visualizeKeypoints(object_keypoints_, ros::Time::now(), detection_frame_id_,
+                         object_keypoint_pub_);
+    }
     LOG(INFO) << "Visualizing object";
   }
 }
