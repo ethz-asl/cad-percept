@@ -73,7 +73,8 @@ Transformation computeTransformUsingFgr(
     LOG(ERROR) << "Fast global registration was not successful!";
     return Transformation();
   }
-  LOG(INFO) << "Time FGR: " << (std::chrono::steady_clock::now() - start).count();
+  LOG(INFO) << "Time FGR: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
 
   for (const modelify::CorrespondencePair& correspondence : corrs) {
     pcl::Correspondence corr;
@@ -112,8 +113,7 @@ Transformation computeTransformUsingGeometricConsistency(
   modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
       detection_descriptors, object_descriptors, flann_params, correspondences);
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Time correspondences: "
-            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+  LOG(INFO) << "Time correspondences: " << std::chrono::duration<float>(end - begin).count();
   if (correspondences->empty()) {
     LOG(ERROR) << "No correspondences found!";
     return Transformation();
@@ -152,8 +152,7 @@ Transformation computeTransformUsingTeaser(
   modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
       detection_descriptors, object_descriptors, flann_params, correspondences);
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Time correspondences: "
-            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+  LOG(INFO) << "Time correspondences: " << std::chrono::duration<float>(end - begin).count();
   if (correspondences->empty()) {
     LOG(ERROR) << "No correspondences found!";
     return Transformation();
@@ -175,8 +174,7 @@ Transformation computeTransformUsingTeaser(
     ++idx;
   }
   end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Time conversion: "
-            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+  LOG(INFO) << "Time conversion: " << std::chrono::duration<float>(end - begin).count();
 
   // Solve with TEASER++
   teaser::RobustRegistrationSolver::Params params;
@@ -186,8 +184,7 @@ Transformation computeTransformUsingTeaser(
   begin = std::chrono::steady_clock::now();
   teaser::RegistrationSolution solution = solver.solve(detection_matrix, object_matrix);
   end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Time teaser: "
-            << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1e6;
+  LOG(INFO) << "Time teaser: " << std::chrono::duration<float>(end - begin).count();
 
   if (!solution.valid) {
     LOG(ERROR) << "Registration using Teaser failed!";
@@ -245,19 +242,24 @@ bool get3dFeatures(const KeypointType& keypoint_type,
     LOG(INFO) << "Filtered " << size_before - pointcloud_surfel_ptr->size()
               << " points with NaN points or normals";
   }
-  LOG(INFO) << "Time normals: " << (std::chrono::steady_clock::now() - start).count();
+  LOG(INFO) << "Time normals: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
 
   std::chrono::steady_clock::time_point start_keypoints = std::chrono::steady_clock::now();
   if (!getKeypoints(keypoint_type, pointcloud_surfel_ptr, keypoints)) {
     return false;
   }
-  LOG(INFO) << "Time keypoints: " << (std::chrono::steady_clock::now() - start_keypoints).count();
+  LOG(INFO)
+      << "Time keypoints: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_keypoints).count();
 
   std::chrono::steady_clock::time_point start_descriptors = std::chrono::steady_clock::now();
   getDescriptors<descriptor_type>(pointcloud_surfel_ptr, keypoints, descriptors);
-  LOG(INFO) << "Time descriptors: "
-            << (std::chrono::steady_clock::now() - start_descriptors).count();
-  LOG(INFO) << "Time 3D features: " << (std::chrono::steady_clock::now() - start).count();
+  LOG(INFO)
+      << "Time descriptors: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_descriptors).count();
+  LOG(INFO) << "Time 3D features: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
   return true;
 }
 

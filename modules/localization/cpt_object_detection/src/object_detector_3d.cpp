@@ -2,6 +2,7 @@
 
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
+#include <cpt_object_detection/learned_descriptor.h>
 #include <cpt_utils/pc_processing.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <pcl/filters/voxel_grid.h>
@@ -149,28 +150,35 @@ void ObjectDetector3D::processMesh() {
             << " vertices to a pointcloud with " << object_pointcloud_.size() << " points";
 
   // Get 3D features of object pointcloud
-  object_surfels_.reset(new modelify::PointSurfelCloudType());
-  object_keypoints_.reset(new modelify::PointSurfelCloudType());
-  switch (descriptor_type_) {
-    case kFpfh:
-      object_descriptors_fpfh_.reset(new modelify::DescriptorFPFHCloudType());
-      get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                              object_keypoints_, object_descriptors_fpfh_);
-      break;
-    case kShot:
-      object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
-      get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                              object_keypoints_, object_descriptors_shot_);
-      break;
-    default:
-      LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
-      LOG(INFO) << "Descriptor types:";
-      for (int i = 0; i < DescriptorType::kNumDescriptorTypes; ++i) {
-        LOG(INFO) << i << " (" << DescriptorNames[i] << ")";
-      }
-      break;
+  if (use_3d_features_) {
+    object_surfels_.reset(new modelify::PointSurfelCloudType());
+    object_keypoints_.reset(new modelify::PointSurfelCloudType());
+    switch (descriptor_type_) {
+      case kFpfh:
+        object_descriptors_fpfh_.reset(new modelify::DescriptorFPFHCloudType());
+        get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, object_pointcloud_, object_surfels_,
+                                                object_keypoints_, object_descriptors_fpfh_);
+        break;
+      case kShot:
+        object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
+        get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_pointcloud_, object_surfels_,
+                                                object_keypoints_, object_descriptors_shot_);
+        break;
+      case k3dSmoothNet:
+        object_descriptors_learned_.reset(new pcl::PointCloud<LearnedDescriptor>());
+        get3dFeatures<LearnedDescriptor>(keypoint_type_, object_pointcloud_, object_surfels_,
+                                         object_keypoints_, object_descriptors_learned_);
+        break;
+      default:
+        LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
+        LOG(INFO) << "Descriptor types:";
+        for (int i = 0; i < DescriptorType::kNumDescriptorTypes; ++i) {
+          LOG(INFO) << i << " (" << DescriptorNames[i] << ")";
+        }
+        break;
+    }
+    LOG(INFO) << "Obtained 3D features of object pointcloud";
   }
-  LOG(INFO) << "Obtained 3D features of object pointcloud";
 
   // Visualize object
   bool visualize_object_on_startup = false;
@@ -180,8 +188,10 @@ void ObjectDetector3D::processMesh() {
     visualizePointcloud(object_pointcloud_, ros::Time::now(), detection_frame_id_,
                         object_pointcloud_pub_);
     visualizeMesh(mesh_model_, ros::Time::now(), detection_frame_id_, object_mesh_init_pub_);
-    visualizeKeypoints(object_keypoints_, ros::Time::now(), detection_frame_id_,
-                       object_keypoint_pub_);
+    if (use_3d_features_) {
+      visualizeKeypoints(object_keypoints_, ros::Time::now(), detection_frame_id_,
+                         object_keypoint_pub_);
+    }
     LOG(INFO) << "Visualizing object";
   }
 }
@@ -235,7 +245,9 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     detection_pointcloud_ = filtered_pointcloud;
     LOG(INFO) << "Detection pointcloud downsampled to resolution of " << downsampling_resolution_
               << " m, resulting in " << detection_pointcloud_.size() << " points";
-    LOG(INFO) << "Time downsampling: " << (std::chrono::steady_clock::now() - start_sampling).count();
+    LOG(INFO)
+        << "Time downsampling: "
+        << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count();
   }
 
   // Compute transform between detection and object
@@ -246,6 +258,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
       new pcl::PointCloud<modelify::DescriptorFPFH>());
   typename pcl::PointCloud<modelify::DescriptorSHOT>::Ptr detection_descriptors_shot(
       new pcl::PointCloud<modelify::DescriptorSHOT>());
+  typename pcl::PointCloud<LearnedDescriptor>::Ptr detection_descriptors_learned(
+      new pcl::PointCloud<LearnedDescriptor>());
   modelify::CorrespondencesTypePtr correspondences(new modelify::CorrespondencesType());
   switch (descriptor_type_) {
     case kFpfh:
@@ -265,6 +279,14 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_shot,
           object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
           correspondences);
+      break;
+    case k3dSmoothNet:
+      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_pointcloud_, detection_surfels,
+                                       detection_keypoints, detection_descriptors_learned);
+      T_features = computeTransformUsing3dFeatures<LearnedDescriptor>(
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_learned,
+          object_surfels_, object_keypoints_, object_descriptors_learned_,
+          correspondence_threshold_, correspondences);
       break;
     default:
       LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
@@ -315,7 +337,9 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
                       object_pointcloud_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
   LOG(INFO) << "Published results.";
-  LOG(INFO) << "Time aligning: " << (std::chrono::steady_clock::now() - start).count() << " s";
+  LOG(INFO) << "Time aligning: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+            << " s";
 }
 
 void ObjectDetector3D::publishTransformation(const Transformation& transform,

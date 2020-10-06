@@ -1,10 +1,11 @@
 #ifndef CPT_OBJECT_DETECTION_MODULES_LOCALIZATION_CPT_OBJECT_DETECTION_INCLUDE_CPT_OBJECT_DETECTION_OBJECT_DETECTOR_3D_H_
 #define CPT_OBJECT_DETECTION_MODULES_LOCALIZATION_CPT_OBJECT_DETECTION_INCLUDE_CPT_OBJECT_DETECTION_OBJECT_DETECTOR_3D_H_
 
+#include <cpt_object_detection/learned_descriptor.h>
+#include <cpt_object_detection/object_detection.h>
+#include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
-
-#include "cpt_object_detection/object_detection.h"
 
 namespace cad_percept {
 namespace object_detection {
@@ -16,7 +17,8 @@ class ObjectDetector3D {
       {static_cast<size_t>(KeypointType::kUniform), "uniform"}};
   std::map<size_t, std::string> DescriptorNames = {
       {static_cast<size_t>(DescriptorType::kFpfh), "FPFH"},
-      {static_cast<size_t>(DescriptorType::kShot), "SHOT"}};
+      {static_cast<size_t>(DescriptorType::kShot), "SHOT"},
+      {static_cast<size_t>(DescriptorType::k3dSmoothNet), "3DSmoothNet"}};
   std::map<size_t, std::string> MatchingMethodNames = {
       {static_cast<size_t>(MatchingMethod::kConventional), "conventional"},
       {static_cast<size_t>(MatchingMethod::kFastGlobalRegistration), "FGR"},
@@ -77,6 +79,7 @@ class ObjectDetector3D {
   modelify::PointSurfelCloudType::Ptr object_keypoints_;
   modelify::DescriptorFPFHCloudType::Ptr object_descriptors_fpfh_;
   modelify::DescriptorSHOTCloudType::Ptr object_descriptors_shot_;
+  pcl::PointCloud<LearnedDescriptor>::Ptr object_descriptors_learned_;
 
   // Detection
   std::string pointcloud_topic_;
