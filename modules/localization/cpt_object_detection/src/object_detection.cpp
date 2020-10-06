@@ -25,7 +25,9 @@ Transformation alignDetectionUsingPcaAndIcp(
   Transformation T_object_detection =
       icp(mesh_model, detection_pointcloud, *T_object_detection_init, config_file);
 
-  LOG(INFO) << "Time matching total: " << (std::chrono::steady_clock::now() - time_start).count() << " s";
+  LOG(INFO) << "Time matching total: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+            << " s";
   return T_object_detection;
 }
 
@@ -114,7 +116,9 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
     return Transformation();
   }
 
-  LOG(INFO) << "Time PCA: " << (std::chrono::steady_clock::now() - time_start).count() << " s";
+  LOG(INFO) << "Time PCA: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+            << " s";
   return Transformation(rotation, translation);
 }
 
@@ -227,7 +231,9 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
   }
   Transformation::TransformationMatrix Tmatrix(T_object_detection_icp);
 
-  LOG(INFO) << "Time ICP: " << (std::chrono::steady_clock::now() - time_start).count() << " s";
+  LOG(INFO) << "Time ICP: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+            << " s";
   LOG(INFO) << "ICP on detection pointcloud and object mesh vertices successful!";
   return Transformation(Tmatrix);
 }
@@ -247,8 +253,10 @@ PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& poin
     features.col(i) =
         Eigen::Vector4f(pointcloud.points[i].x, pointcloud.points[i].y, pointcloud.points[i].z, 1);
   }
-  LOG(INFO) << "Time conversion PCL  to pointmatcher: "
-            << (std::chrono::steady_clock::now() - conversion_start).count() << " s";
+  LOG(INFO)
+      << "Time conversion PCL  to pointmatcher: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - conversion_start).count()
+      << " s";
 
   return PM::DataPoints(features, feature_labels);
 }
