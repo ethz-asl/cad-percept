@@ -1,11 +1,14 @@
 #include "cpt_object_detection/object_detection.h"
 
 #include <CGAL/linear_least_squares_fitting_3.h>
+#include <cpt_object_detection/learned_descriptor.h>
 #include <cpt_utils/cpt_utils.h>
 #include <modelify/feature_toolbox/descriptor_toolbox_3d.h>
 #include <modelify/feature_toolbox/keypoint_toolbox_3d.h>
 #include <modelify/registration_toolbox/registration_toolbox.h>
 #include <pcl/common/pca.h>
+
+#include <thread>
 
 namespace cad_percept::object_detection {
 
@@ -368,6 +371,107 @@ pcl::PointCloud<modelify::DescriptorFPFH> computeDescriptors<modelify::Descripto
       pointcloud_surfel_ptr, modelify::kInvalidCloudResolution, fpfh_params, keypoints,
       descriptors);
   return *descriptors;
+}
+
+template <>
+void getDescriptors<LearnedDescriptor>(
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+    const modelify::PointSurfelCloudType::Ptr& keypoints,
+    const pcl::PointCloud<LearnedDescriptor>::Ptr& descriptors) {
+  // Write to file
+  std::string filename_pointcloud = "/home/laura/bags/matching/pointcloud.ply";
+  LOG(INFO) << "Writing pointcloud to file " << filename_pointcloud;
+  pcl::PLYWriter ply_writer;
+  ply_writer.write(filename_pointcloud, *pointcloud_surfel_ptr);
+
+  std::string filename_keypoints = "/home/laura/bags/matching/keypoints.txt";
+  LOG(INFO) << "Writing keypoints to file " << filename_keypoints;
+  std::ofstream keypoint_file;
+  keypoint_file.open(filename_keypoints);
+  for (const auto& keypoint : keypoints->points) {
+    for (size_t idx = 0; idx < pointcloud_surfel_ptr->points.size(); ++idx) {
+      if ((keypoint.x - pointcloud_surfel_ptr->points[idx].x) < 1e-6 &&
+          (keypoint.y - pointcloud_surfel_ptr->points[idx].y) < 1e-6 &&
+          (keypoint.z - pointcloud_surfel_ptr->points[idx].z) < 1e-6) {
+        keypoint_file << idx << "\n";
+        break;
+      }
+    }
+  }
+  keypoint_file.close();
+
+  // Prep input
+  //  system("cd /home/laura/pilot_ws/src/3DSmoothNet");
+  float radius = 0.002;
+  char radius_char[100];
+  std::sprintf(radius_char, "%.6f", radius);
+  std::string radius_str(radius_char);
+  std::string filepath_input = "/home/laura/bags/matching/sdv/";
+  std::string args_parametrize = "./3DSmoothNet -r " + radius_str + " -f " + filename_pointcloud +
+                                 " -k " + filename_keypoints + " -o " + filepath_input;
+  std::string command_parametrize = "gnome-terminal -x sh -c '" + args_parametrize + "'";
+  command_parametrize = args_parametrize;
+  //  system(command_parametrize.c_str());
+  //  LOG(INFO) << "Executed command \"" << command_parametrize << "\"";
+
+  // Get Descriptors by inference
+  std::string filepath_output = "/home/laura/bags/matching";
+  std::string args_inference =
+      "python3 ./main_cnn.py --run_mode=test "
+      "--evaluate_input_folder=" +
+      filepath_input + " --evaluate_output_folder=" + filepath_output;
+  std::string command_inference = "gnome-terminal -x sh -c '" + args_inference + "'";
+  command_inference = args_inference;
+  //  system(command_inference.c_str());
+  //  LOG(INFO) << "Executed command \"" << command_inference << "\"";
+
+  std::string command = ("gnome-terminal -x sh -c 'cd /home/laura/pilot_ws/src/3DSmoothNet ; " +
+                         args_parametrize + " ; " + args_inference + "'");
+  system(command.c_str());
+  LOG(INFO) << "Executed command: " << command;
+
+  // Wait until done in 0.5 s steps
+  std::string filename_descriptor =
+      filepath_output + "/32_dim/pointcloud_" + radius_str + "_16_1.750000_3DSmoothNet.txt";
+  std::fstream descriptor_file;
+  descriptor_file.open(filename_descriptor);
+  int count = 0;
+  float dt = 0.5;
+  int max_count = std::ceil(30 / dt);
+  while (count < max_count && !descriptor_file.is_open()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(int(std::round(dt * 1000))));
+    descriptor_file.open(filename_descriptor);
+    ++count;
+  }
+  if (count > 0) {
+    LOG(INFO) << "Waited " << dt * count << " seconds.";
+  }
+
+  if (descriptor_file.is_open()) {
+    std::string line_str;
+    while (std::getline(descriptor_file, line_str)) {
+      LearnedDescriptor point{};
+      int i = 0;
+      while (!line_str.empty() && i < LearnedDescriptor::descriptorSize()) {
+        size_t idx = line_str.find_first_of(",");
+        point.learned_descriptor[i] = std::stof(line_str.substr(0, idx));
+        line_str.erase(0, idx + 1);
+        ++i;
+      }
+      if (i != 32) {
+        LOG(ERROR) << "Descriptor length " << i << " instead of 32!";
+      }
+      descriptors->emplace_back(point);
+    }
+  } else {
+    LOG(ERROR) << "Could not open file " << filename_descriptor;
+  }
+  LOG(INFO) << "Got " << descriptors->size() << " descriptors.";
+
+  // Clean files
+  std::remove(filename_pointcloud.c_str());
+  std::remove(filename_keypoints.c_str());
+  std::remove(filename_descriptor.c_str());
 }
 
 }  // namespace cad_percept::object_detection

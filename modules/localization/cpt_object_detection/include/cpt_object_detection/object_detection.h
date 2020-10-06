@@ -15,7 +15,7 @@ typedef kindr::minimal::RotationQuaternionTemplate<float> Quaternion;
 typedef PointMatcher<float> PM;
 
 enum KeypointType { kIss = 0, kHarris, kUniform, kNumKeypointTypes };
-enum DescriptorType { kFpfh = 0, kShot, kNumDescriptorTypes };
+enum DescriptorType { kFpfh = 0, kShot, k3dSmoothNet, kNumDescriptorTypes };
 enum MatchingMethod {
   kGeometricConsistency = 0,
   kFastGlobalRegistration,

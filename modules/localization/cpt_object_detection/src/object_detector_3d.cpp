@@ -2,6 +2,7 @@
 
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
+#include <cpt_object_detection/learned_descriptor.h>
 #include <cpt_utils/pc_processing.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <pcl/filters/voxel_grid.h>
@@ -101,6 +102,11 @@ bool ObjectDetector3D::initializeObject() {
         object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
         success = compute3dFeatures<modelify::DescriptorSHOT>(
             keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_shot_);
+        break;
+      case k3dSmoothNet:
+        object_descriptors_learned_.reset(new pcl::PointCloud<LearnedDescriptor>());
+        get3dFeatures<LearnedDescriptor>(keypoint_type_, object_surfels_, object_keypoints_,
+                                         object_descriptors_learned_);
         break;
       default:
         LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
@@ -329,6 +335,17 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_shot,
           object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
           correspondences);
+      break;
+    }
+    case k3dSmoothNet: {
+      typename pcl::PointCloud<LearnedDescriptor>::Ptr detection_descriptors_learned(
+          new pcl::PointCloud<LearnedDescriptor>());
+      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
+                                       detection_descriptors_learned);
+      T_features = computeTransformUsing3dFeatures<LearnedDescriptor>(
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_learned,
+          object_surfels_, object_keypoints_, object_descriptors_learned_,
+          correspondence_threshold_, correspondences);
       break;
     }
     default: {
