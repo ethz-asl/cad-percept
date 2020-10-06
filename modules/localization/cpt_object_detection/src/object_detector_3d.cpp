@@ -2,6 +2,7 @@
 
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
+#include <cpt_object_detection/learned_descriptor.h>
 #include <cpt_utils/pc_processing.h>
 #include <pcl/filters/voxel_grid.h>
 #include <minkindr_conversions/kindr_msg.h>
@@ -163,6 +164,11 @@ void ObjectDetector3D::processMesh() {
         get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_pointcloud_, object_surfels_,
                                                 object_keypoints_, object_descriptors_shot_);
         break;
+      case k3dSmoothNet:
+        object_descriptors_learned_.reset(new pcl::PointCloud<LearnedDescriptor>());
+        get3dFeatures<LearnedDescriptor>(keypoint_type_, object_pointcloud_, object_surfels_,
+                                         object_keypoints_, object_descriptors_learned_);
+        break;
       default:
         LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
         LOG(INFO) << "Descriptor types:";
@@ -252,6 +258,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
       new pcl::PointCloud<modelify::DescriptorFPFH>());
   typename pcl::PointCloud<modelify::DescriptorSHOT>::Ptr detection_descriptors_shot(
       new pcl::PointCloud<modelify::DescriptorSHOT>());
+  typename pcl::PointCloud<LearnedDescriptor>::Ptr detection_descriptors_learned(
+      new pcl::PointCloud<LearnedDescriptor>());
   modelify::CorrespondencesTypePtr correspondences(new modelify::CorrespondencesType());
   switch (descriptor_type_) {
     case kFpfh:
@@ -271,6 +279,14 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_shot,
           object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
           correspondences);
+      break;
+    case k3dSmoothNet:
+      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_pointcloud_, detection_surfels,
+                                       detection_keypoints, detection_descriptors_learned);
+      T_features = computeTransformUsing3dFeatures<LearnedDescriptor>(
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_learned,
+          object_surfels_, object_keypoints_, object_descriptors_learned_,
+          correspondence_threshold_, correspondences);
       break;
     default:
       LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
