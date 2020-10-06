@@ -30,7 +30,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
 
   const std::string& off_file = nh_private_.param<std::string>("off_model", "fail");
   if (!cgal::MeshModel::create(off_file, &mesh_model_)) {
-    LOG(ERROR) << "Could not get mesh model from off file at " << off_file << "!";
+    LOG(FATAL) << "Could not get mesh model from off file at " << off_file << "!";
   }
   LOG(INFO) << "Object mesh with " << mesh_model_->getMesh().size_of_facets() << " facets and "
             << mesh_model_->getMesh().size_of_vertices() << " vertices";
