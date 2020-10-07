@@ -32,24 +32,21 @@ frame of the detection pointcloud to the local frame of the object mesh
 ``object_detection_mesh`` to the TF tree.
 The object mesh is also published in its local frame and can be visualized 
 using rviz.
+The name of the object mesh frame can be set using the parameter 
+`object_frame_id` in the launch file.
 
 ### Algorithm
-All initial processing of the object mesh is performed in the function 
-``processMesh``, called by the constructor of the node. 
 The object mesh can be visualized upon startup of the node using the 
 parameter ``visualize_object_on_startup``.
 
 The function ``processDetectionUsingPcaAndIcp`` contains all processing steps for each 
 pointcloud received by the node.
 The PCA-ICP pipeline aims to find the transformation by performing ICP on an 
-initial guess obtained by a PCA on the detection pointcloud and the a pointcloud 
-sampled from the object mesh. 
-The number of sampled points is given as the parameter 
-`num_points_object_pointcloud`.
+initial guess obtained by a PCA on the detection pointcloud and the object mesh. 
 
-The initial guess is obtained in the function ```findInitialGuessUsingPCA```.
-After performing PCA on both the detection and the object pointcloud, we find 
-the transform using the  translation between the centroids of the pointclouds and
+The initial guess is obtained in the function ```pca```.
+After performing PCA on both the detection pointcloud and the object mesh, we find 
+the transform using the translation between the centroids and
 the rotation between the coordinate systems defined by the eigen vectors, 
 oriented to form a right-handed system. 
 The resulting transform is additionally published to the TF tree as 
@@ -57,7 +54,33 @@ The resulting transform is additionally published to the TF tree as
 
 The more precise alignment is found using ICP in the function ``icp``.
 We use the implementation of the library ``libpointmatcher``.
-In order to speed up the process, both the detection and the object pointclouds
-are uniformly sampled to contain a maximum number of points, defined in the 
-parameter ``num_points_icp``.
+The object mesh is transformed to a set of data points used in libpointmatcher,
+also containing the normals of the mesh. 
+The ICP parameters are loaded from a yaml file, whose file path is given by
+the argument ``icp_config_file``.
 The results are then published as described previously.
+
+### Parameters
+The following list summarizes the parameters that can be set in the launch file:
+- `off_model`  
+  The filepath where the object mesh is stored as a `.off` file.
+  No default value.
+- `pointcloud_topic`  
+  The name of the topic we subscribe to containing the 
+  preprocessed pointclouds of the object detection.  
+  Default value: `/camera/depth/color/points`
+- `icp_config_file`  
+  The filepath of the config file for ICP used by 
+  `libpointmatcher`.  
+  No default value. 
+- `object_frame_id`  
+  The frame of the aligned object mesh published to the TF 
+  tree, connected by a transformation from the frame of the pointcloud.  
+  Default value: `object_detection_mesh`
+- `visualize_object_on_startup`  
+  Visualizes the loaded object mesh in the frame 
+  of the pointcloud.  
+  Default value: `false`  
+- `queue_size`  
+  The queue size of the ROS subscriber to the pointcloud.  
+  Default value: `1`

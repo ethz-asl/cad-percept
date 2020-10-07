@@ -118,6 +118,7 @@ class MeshModel {
   /**
    * Facet Handle <-> Facet ID
    */
+  std::vector<std::string> getFacetIds() const;
   Polyhedron::Facet_handle getFacetHandleFromId(const std::string facet_id) const;
   std::string getIdFromFacetHandle(const Polyhedron::Facet_handle &handle) const;
 

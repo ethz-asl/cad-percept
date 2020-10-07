@@ -16,7 +16,7 @@
   <arg name="matching_method" default="conventional"/> <!-- conventional or FGR -->
   <arg name="num_points_object_pointcloud" default="5000"/>
   <arg name="icp_config_file"
-       default="$(find cpt_object_detection)/resources/icp_config.yaml"/>
+       default="$(find cpt_object_detection)/config/icp_config.yaml"/>
 
   <node name="object_detection_matcher"
         pkg="cpt_object_detection" type="cpt_object_detection_node"
@@ -37,6 +37,6 @@
   <node if="$(arg play_rosbag)" name="rosbag_player" pkg="rosbag" type="play"
         args="--clock -q $(arg rosbag_file)"/>
 
-	<node if="$(arg visualize)" name="rviz" pkg="rviz" type="rviz"
-	    args="-d $(find cpt_object_detection)/resources/object_detection_matching.rviz" />
+  <node if="$(arg visualize)" name="rviz" pkg="rviz" type="rviz"
+        args="-d $(find cpt_object_detection)/config/object_detection_matching.rviz"/>
 </launch>

@@ -1,5 +1,7 @@
 #include "cpt_utils/cpt_utils.h"
 
+#include <random>
+
 namespace cad_percept {
 namespace cpt_utils {
 
@@ -89,6 +91,35 @@ cgal::Point centerOfBbox(const PointCloud &pointcloud) {
 void bboxDiameters(const CGAL::Bbox_3 bbox, double *width, double *height) {
   *width = sqrt(pow(bbox.xmax() - bbox.xmin(), 2) + pow(bbox.ymax() - bbox.ymin(), 2));
   *height = sqrt(bbox.zmax() - bbox.zmin());
+}
+
+void samplePointsFromMesh(const cgal::Polyhedron &P, const int no_of_points, const double stddev,
+                          std::vector<cgal::Point> *points) {
+  CHECK(points);
+
+  // generate random point sets on triangle mesh
+  std::vector<cgal::Point> points_mesh;
+  // Create the generator, input is the Polyhedron P
+  CGAL::Random_points_in_triangle_mesh_3<cgal::Polyhedron> g(P);
+  // Get no_of_points random points in cdt
+  CGAL::cpp11::copy_n(g, no_of_points, std::back_inserter(points_mesh));
+  // Check that we have really created no_of_points points.
+  assert(points_mesh.size() == no_of_points);
+  // print the first point that was generated
+  // std::cout << points[0] << std::endl;
+
+  // add random noise with Gaussian distribution
+  const double mean = 0.0;
+  std::default_random_engine generator;
+  std::normal_distribution<double> dist(mean, stddev);
+
+  points->reserve(no_of_points);
+  for (auto point : points_mesh) {
+    cgal::Point p_noise;
+    p_noise = cgal::Point(point.x() + dist(generator), point.y() + dist(generator),
+                          point.z() + dist(generator));
+    points->push_back(p_noise);
+  }
 }
 
 }  // namespace cpt_utils
