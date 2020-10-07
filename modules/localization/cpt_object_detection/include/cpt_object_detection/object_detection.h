@@ -36,10 +36,12 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
                    const Transformation& T_object_detection_init, const std::string& config_file);
 
-PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& pointcloud);
-PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model);
 PM::DataPoints sampleDataPointsFromMesh(const cgal::MeshModel::Ptr& mesh_model,
                                         const int number_of_points);
+PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model);
+PM::DataPoints convertMeshPointsToDataPoints(const cgal::MeshModel::Ptr& mesh_model,
+                                             const std::vector<cgal::Point>& points);
+PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& pointcloud);
 
 template <typename descriptor_type>
 Transformation computeTransformUsing3dFeatures(

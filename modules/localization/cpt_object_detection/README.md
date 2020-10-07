@@ -32,6 +32,8 @@ frame of the detection pointcloud to the local frame of the object mesh
 ``object_detection_mesh`` to the TF tree.
 The object mesh is also published in its local frame and can be visualized 
 using rviz.
+The name of the object mesh frame can be set using the parameter 
+`object_frame_id` in the launch file.
 
 ### Algorithm
 The object mesh can be visualized upon startup of the node using the 
@@ -57,3 +59,28 @@ also containing the normals of the mesh.
 The ICP parameters are loaded from a yaml file, whose file path is given by
 the argument ``icp_config_file``.
 The results are then published as described previously.
+
+### Parameters
+The following list summarizes the parameters that can be set in the launch file:
+- `off_model`  
+  The filepath where the object mesh is stored as a `.off` file.
+  No default value.
+- `pointcloud_topic`  
+  The name of the topic we subscribe to containing the 
+  preprocessed pointclouds of the object detection.  
+  Default value: `/camera/depth/color/points`
+- `icp_config_file`  
+  The filepath of the config file for ICP used by 
+  `libpointmatcher`.  
+  No default value. 
+- `object_frame_id`  
+  The frame of the aligned object mesh published to the TF 
+  tree, connected by a transformation from the frame of the pointcloud.  
+  Default value: `object_detection_mesh`
+- `visualize_object_on_startup`  
+  Visualizes the loaded object mesh in the frame 
+  of the pointcloud.  
+  Default value: `false`  
+- `queue_size`  
+  The queue size of the ROS subscriber to the pointcloud.  
+  Default value: `1`

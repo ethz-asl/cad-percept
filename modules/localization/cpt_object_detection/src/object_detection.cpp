@@ -1,7 +1,7 @@
 #include "cpt_object_detection/object_detection.h"
 
-#include <cpt_object_detection/learned_descriptor.h>
 #include <CGAL/linear_least_squares_fitting_3.h>
+#include <cpt_object_detection/learned_descriptor.h>
 #include <cpt_utils/cpt_utils.h>
 #include <modelify/feature_toolbox/descriptor_toolbox_3d.h>
 #include <modelify/feature_toolbox/keypoint_toolbox_3d.h>
@@ -125,73 +125,10 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
   return Transformation(rotation, translation);
 }
 
-PM::DataPoints sampleDataPointsFromMesh(const cgal::MeshModel::Ptr& mesh_model,
-                                        const int number_of_points) {
-  CHECK(mesh_model);
-
-  // Sample points from mesh
-  std::vector<cgal::Point> points;
-  cpt_utils::samplePointsFromMesh(mesh_model->getMesh(), number_of_points, 0, &points);
-
-  // Define features and descriptors
-  PM::DataPoints::Labels feature_labels;
-  feature_labels.push_back(PM::DataPoints::Label("x", 1));
-  feature_labels.push_back(PM::DataPoints::Label("y", 1));
-  feature_labels.push_back(PM::DataPoints::Label("z", 1));
-  feature_labels.push_back(PM::DataPoints::Label("pad", 1));
-  PM::DataPoints::Labels descriptor_labels;
-  descriptor_labels.push_back(PM::DataPoints::Label("normals", 3));
-
-  PM::Matrix features(feature_labels.totalDim(), number_of_points);
-  PM::Matrix descriptors(descriptor_labels.totalDim(), number_of_points);
-  for (int i = 0; i < number_of_points; ++i) {
-    features.col(i) = Eigen::Vector4f(points[i].x(), points[i].y(), points[i].z(), 1);
-    cgal::PointAndPrimitiveId ppid = mesh_model->getClosestTriangle(points[i]);
-    cgal::Vector normal = mesh_model->getNormal(ppid);
-    descriptors.col(i) = Eigen::Vector3f(normal.x(), normal.y(), normal.z());
-  }
-
-  return PM::DataPoints(features, feature_labels, descriptors, descriptor_labels);
-}
-
-PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model) {
-  CHECK(mesh_model);
-
-  // Define feature and descriptor labels
-  PM::DataPoints::Labels feature_labels;
-  feature_labels.push_back(PM::DataPoints::Label("x", 1));
-  feature_labels.push_back(PM::DataPoints::Label("y", 1));
-  feature_labels.push_back(PM::DataPoints::Label("z", 1));
-  feature_labels.push_back(PM::DataPoints::Label("pad", 1));
-
-  PM::DataPoints::Labels descriptor_labels;
-  descriptor_labels.push_back(PM::DataPoints::Label("normals", 3));
-
-  // Get data from mesh
-  PM::Matrix features(feature_labels.totalDim(), mesh_model->size());
-  PM::Matrix descriptors(descriptor_labels.totalDim(), mesh_model->size());
-  size_t i = 0;
-  std::chrono::steady_clock::time_point conversion_start = std::chrono::steady_clock ::now();
-  for (const auto& id : mesh_model->getFacetIds()) {
-    CGAL::Simple_cartesian<double>::Triangle_3 triangle = mesh_model->getTriangle(id);
-    CGAL::Simple_cartesian<double>::Point_3 centroid =
-        CGAL::centroid(triangle);  // TODO(gasserl): replace with just a vertex?
-    CGAL::Simple_cartesian<double>::Vector_3 normal =
-        triangle.supporting_plane().orthogonal_vector();
-
-    features.col(i) = Eigen::Vector4f(centroid.x(), centroid.y(), centroid.z(), 1);
-    descriptors.col(i) = Eigen::Vector3f(normal.x(), normal.y(), normal.z());
-    ++i;
-  }
-  LOG(INFO) << "Time conversion mesh to pointmatcher: "
-            << (std::chrono::steady_clock ::now() - conversion_start).count() << " s";
-
-  return PM::DataPoints(features, feature_labels, descriptors, descriptor_labels);
-}
-
 Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
                    const Transformation& T_object_detection_init, const std::string& config_file) {
+  CHECK(mesh_model);
   std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
 
   // setup data points
@@ -237,8 +174,79 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
   LOG(INFO) << "Time ICP: "
             << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
             << " s";
-  LOG(INFO) << "ICP on detection pointcloud and object mesh vertices successful!";
   return Transformation(Tmatrix);
+}
+
+PM::DataPoints sampleDataPointsFromMesh(const cgal::MeshModel::Ptr& mesh_model,
+                                        const int number_of_points) {
+  CHECK(mesh_model);
+
+  // Sample points from mesh
+  std::vector<cgal::Point> points;
+  cpt_utils::samplePointsFromMesh(mesh_model->getMesh(), number_of_points, 0, &points);
+  return convertMeshPointsToDataPoints(mesh_model, points);
+}
+
+PM::DataPoints convertMeshPointsToDataPoints(const cgal::MeshModel::Ptr& mesh_model,
+                                             const std::vector<cgal::Point>& points) {
+  CHECK(mesh_model);
+
+  // Define features and descriptors
+  PM::DataPoints::Labels feature_labels;
+  feature_labels.push_back(PM::DataPoints::Label("x", 1));
+  feature_labels.push_back(PM::DataPoints::Label("y", 1));
+  feature_labels.push_back(PM::DataPoints::Label("z", 1));
+  feature_labels.push_back(PM::DataPoints::Label("pad", 1));
+  PM::DataPoints::Labels descriptor_labels;
+  descriptor_labels.push_back(PM::DataPoints::Label("normals", 3));
+
+  PM::Matrix features(feature_labels.totalDim(), points.size());
+  PM::Matrix descriptors(descriptor_labels.totalDim(), points.size());
+  for (int i = 0; i < points.size(); ++i) {
+    features.col(i) = Eigen::Vector4f(points[i].x(), points[i].y(), points[i].z(), 1);
+    cgal::PointAndPrimitiveId ppid = mesh_model->getClosestTriangle(points[i]);
+    cgal::Vector normal = mesh_model->getNormal(ppid);
+    descriptors.col(i) = Eigen::Vector3f(normal.x(), normal.y(), normal.z());
+  }
+
+  return PM::DataPoints(features, feature_labels, descriptors, descriptor_labels);
+}
+
+PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model) {
+  CHECK(mesh_model);
+
+  // Define feature and descriptor labels
+  PM::DataPoints::Labels feature_labels;
+  feature_labels.push_back(PM::DataPoints::Label("x", 1));
+  feature_labels.push_back(PM::DataPoints::Label("y", 1));
+  feature_labels.push_back(PM::DataPoints::Label("z", 1));
+  feature_labels.push_back(PM::DataPoints::Label("pad", 1));
+
+  PM::DataPoints::Labels descriptor_labels;
+  descriptor_labels.push_back(PM::DataPoints::Label("normals", 3));
+
+  // Get data from mesh
+  PM::Matrix features(feature_labels.totalDim(), mesh_model->size());
+  PM::Matrix descriptors(descriptor_labels.totalDim(), mesh_model->size());
+  size_t i = 0;
+  std::chrono::steady_clock::time_point conversion_start = std::chrono::steady_clock::now();
+  for (const auto& id : mesh_model->getFacetIds()) {
+    CGAL::Simple_cartesian<double>::Triangle_3 triangle = mesh_model->getTriangle(id);
+    CGAL::Simple_cartesian<double>::Point_3 centroid =
+        CGAL::centroid(triangle);  // TODO(gasserl): replace with just a vertex?
+    CGAL::Simple_cartesian<double>::Vector_3 normal =
+        triangle.supporting_plane().orthogonal_vector();
+
+    features.col(i) = Eigen::Vector4f(centroid.x(), centroid.y(), centroid.z(), 1);
+    descriptors.col(i) = Eigen::Vector3f(normal.x(), normal.y(), normal.z());
+    ++i;
+  }
+  LOG(INFO)
+      << "Time conversion mesh to pointmatcher: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - conversion_start).count()
+      << " s";
+
+  return PM::DataPoints(features, feature_labels, descriptors, descriptor_labels);
 }
 
 PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& pointcloud) {
