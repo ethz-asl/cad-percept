@@ -223,7 +223,7 @@ PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model) {
   PM::Matrix features(feature_labels.totalDim(), mesh_model->size());
   PM::Matrix descriptors(descriptor_labels.totalDim(), mesh_model->size());
   size_t i = 0;
-  ros::WallTime conversion_start = ros::WallTime::now();
+  std::chrono::steady_clock::time_point conversion_start = std::chrono::steady_clock::now();
   for (const auto& id : mesh_model->getFacetIds()) {
     CGAL::Simple_cartesian<double>::Triangle_3 triangle = mesh_model->getTriangle(id);
     CGAL::Simple_cartesian<double>::Point_3 centroid =
@@ -235,8 +235,10 @@ PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model) {
     descriptors.col(i) = Eigen::Vector3f(normal.x(), normal.y(), normal.z());
     ++i;
   }
-  LOG(INFO) << "Time conversion mesh to pointmatcher: "
-            << (ros::WallTime::now() - conversion_start).toSec() << " s";
+  LOG(INFO)
+      << "Time conversion mesh to pointmatcher: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - conversion_start).count()
+      << " s";
 
   return PM::DataPoints(features, feature_labels, descriptors, descriptor_labels);
 }
