@@ -110,10 +110,11 @@ class EvaluationNode {
   }
 
   void logResult(int id, SurfacePlanner::Result result, std::string name,
-                 std::vector<Eigen::Vector3d> path) {
-    std::cout << "DATA\t" << name << "\t =\t " << result.success << "\t"
+                 std::vector<Eigen::Vector3d> path, PathKPICalcuator::QualityIndicator quality) {
+    std::cout << "DATA\t" << name << "\t" << result.success << "\t"
               << std::chrono::duration_cast<std::chrono::microseconds>(result.duration).count()
-              << "[µs]" << std::endl;
+              << "\t" << quality.length << "\t" << quality.surface_dist.avg << "\t"
+              << quality.smoothness.avg << "\t" << quality.segments << std::endl;
   }
 
   void getRandomPos(Eigen::Vector3d* pos_out) {
@@ -137,7 +138,8 @@ class EvaluationNode {
 
       // run planner
       auto result = planner.instance->plan(start_, goal_, &path);
-      logResult(planner.id, result, planner.instance->getName(), path);
+      auto kpis = kpi_calculator_.calculate(path);
+      logResult(planner.id, result, planner.instance->getName(), path, kpis);
       if (result.success) {
         visualizePath(path, planner.color, planner.id);
       }
@@ -145,13 +147,6 @@ class EvaluationNode {
       if (edgelist.size() > 0) {
         visualizeEdgeList(edgelist, planner.color, planner.instance->getName());
       }
-      std::cout << std::endl;
-      std::cout << "------------------" << std::endl;
-      std::cout << planner.instance->getName() << std::endl;
-      std::cout << "------------------" << std::endl;
-      std::cout << kpi_calculator_.calculate(path);
-      std::cout << "------------------" << std::endl;
-      std::cout << std::endl;
     }
   }
   Eigen::Vector3d start_, goal_;

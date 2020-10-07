@@ -44,7 +44,8 @@ class OMPLMeshProjectingPlanner : public cad_percept::planning::SurfacePlanner {
  public:
   OMPLMeshProjectingPlanner(std::string meshpath, double time);
 
-  inline const std::string getName() const { return "RRTMeshProj" + std::to_string(solve_time_); }
+  inline const std::string getName() const { return "RRTMeshProj" + std::to_string((int)(solve_time_*1000.0));
+  }
 
   const SurfacePlanner::Result plan(const Eigen::Vector3d start, const Eigen::Vector3d goal,
                                     std::vector<Eigen::Vector3d> *states_out);

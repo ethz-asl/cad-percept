@@ -9,9 +9,9 @@
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 #include <ompl/base/spaces/SE3StateSpace.h>
 #include <ompl/geometric/SimpleSetup.h>
+#include <ompl/geometric/planners/rrt/BiTRRT.h>
 #include <ompl/geometric/planners/rrt/InformedRRTstar.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
-#include <ompl/geometric/planners/rrt/BiTRRT.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -72,7 +72,7 @@ class OMPLMeshSamplingPlanner : public cad_percept::planning::SurfacePlanner {
   }
 
   inline const std::string getName() const {
-    return (rrt_connect_ ? "RRTConnect" : "RRTStar") + std::to_string(solve_time_);
+    return (rrt_connect_ ? "RRTConnect" : "RRTStar") + std::to_string((int)(solve_time_ * 1000.0));
   }
 
   const SurfacePlanner::Result plan(const Eigen::Vector3d start, const Eigen::Vector3d goal,

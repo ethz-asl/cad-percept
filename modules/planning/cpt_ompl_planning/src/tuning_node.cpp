@@ -23,8 +23,7 @@ int main(int argc, char *argv[]) {
        "curve.off";
  */
   std::string mesh_path =
-      "/home/mpantic/ws/rmp/src/manifold_simulations/models/rhone_mesh/meshes/"
-      "rhone_enu.off";
+  "/home/mpantic/ws/rmp/src/manifold_simulations/models/hilo_roof/meshes/hilo_reconstructed.off";
 
   evaluationNode = new EvaluationNode(node_handle, mesh_path);
   double debug_factor = 3;

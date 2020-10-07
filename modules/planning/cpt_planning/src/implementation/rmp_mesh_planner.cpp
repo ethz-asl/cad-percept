@@ -48,7 +48,7 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
   bool reached_criteria = false;
 
   integrator.resetTo(start_xyz);
-  for (double t = 0; t < 120.0; t += dt_) {
+  for (double t = 0; t < 500.0; t += dt_) {
     Eigen::Vector3d current_pos;
     current_pos = integrator.forwardIntegrate(policies, manifold_, dt_);
 
