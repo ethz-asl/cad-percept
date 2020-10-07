@@ -57,7 +57,6 @@ class ObjectDetector3D {
   void getParamsFromRos();
   void subscribeToTopics();
   void advertiseTopics();
-  void processMesh();
 
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;

@@ -4,8 +4,8 @@
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_object_detection/learned_descriptor.h>
 #include <cpt_utils/pc_processing.h>
-#include <pcl/filters/voxel_grid.h>
 #include <minkindr_conversions/kindr_msg.h>
+#include <pcl/filters/voxel_grid.h>
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -36,7 +36,60 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
   LOG(INFO) << "Object mesh with " << mesh_model_->getMesh().size_of_facets() << " facets and "
             << mesh_model_->getMesh().size_of_vertices() << " vertices";
 
-  processMesh();
+  // Sample pointcloud from object mesh
+  int num_points_object_pointcloud = 1e3;
+  nh_private_.param("num_points_object_pointcloud", num_points_object_pointcloud,
+                    num_points_object_pointcloud);
+  cpt_utils::sample_pc_from_mesh(mesh_model_->getMesh(), num_points_object_pointcloud, 0.0,
+                                 &object_pointcloud_);
+  LOG(INFO) << "Converted object mesh to a pointcloud with " << object_pointcloud_.size()
+            << " points";
+
+  // Get 3D features of object pointcloud
+  if (use_3d_features_) {
+    object_surfels_.reset(new modelify::PointSurfelCloudType());
+    object_keypoints_.reset(new modelify::PointSurfelCloudType());
+    switch (descriptor_type_) {
+      case kFpfh:
+        object_descriptors_fpfh_.reset(new modelify::DescriptorFPFHCloudType());
+        get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, object_pointcloud_, object_surfels_,
+                                                object_keypoints_, object_descriptors_fpfh_);
+        break;
+      case kShot:
+        object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
+        get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_pointcloud_, object_surfels_,
+                                                object_keypoints_, object_descriptors_shot_);
+        break;
+      case k3dSmoothNet:
+        object_descriptors_learned_.reset(new pcl::PointCloud<LearnedDescriptor>());
+        get3dFeatures<LearnedDescriptor>(keypoint_type_, object_pointcloud_, object_surfels_,
+                                         object_keypoints_, object_descriptors_learned_);
+        break;
+      default:
+        LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
+        LOG(INFO) << "Descriptor types:";
+        for (int i = 0; i < DescriptorType::kNumDescriptorTypes; ++i) {
+          LOG(INFO) << i << " (" << DescriptorNames[i] << ")";
+        }
+        break;
+    }
+    LOG(INFO) << "Obtained 3D features of object pointcloud";
+  }
+
+  // Visualize object
+  bool visualize_object_on_startup = false;
+  nh_private_.param("visualize_object_on_startup", visualize_object_on_startup,
+                    visualize_object_on_startup);
+  if (visualize_object_on_startup) {
+    visualizeMesh(mesh_model_, ros::Time::now(), detection_frame_id_, object_mesh_init_pub_);
+    if (use_3d_features_) {
+      visualizePointcloud(object_pointcloud_, ros::Time::now(), detection_frame_id_,
+                          object_pointcloud_pub_);
+      visualizeKeypoints(object_keypoints_, ros::Time::now(), detection_frame_id_,
+                         object_keypoint_pub_);
+    }
+    LOG(INFO) << "Visualizing object";
+  }
 }
 
 void ObjectDetector3D::getParamsFromRos() {
@@ -138,64 +191,6 @@ void ObjectDetector3D::advertiseTopics() {
   normals_pub_ = nh_private_.advertise<visualization_msgs::MarkerArray>("surface_normals", 1, true);
 }
 
-void ObjectDetector3D::processMesh() {
-  // Sample pointcloud from object mesh
-  int num_points_object_pointcloud = 1e3;
-  nh_private_.param("num_points_object_pointcloud", num_points_object_pointcloud,
-                    num_points_object_pointcloud);
-  cpt_utils::sample_pc_from_mesh(mesh_model_->getMesh(), num_points_object_pointcloud, 0.0,
-                                 &object_pointcloud_);
-  LOG(INFO) << "Converted object mesh with " << mesh_model_->getMesh().size_of_facets()
-            << " facets and " << mesh_model_->getMesh().size_of_vertices()
-            << " vertices to a pointcloud with " << object_pointcloud_.size() << " points";
-
-  // Get 3D features of object pointcloud
-  if (use_3d_features_) {
-    object_surfels_.reset(new modelify::PointSurfelCloudType());
-    object_keypoints_.reset(new modelify::PointSurfelCloudType());
-    switch (descriptor_type_) {
-      case kFpfh:
-        object_descriptors_fpfh_.reset(new modelify::DescriptorFPFHCloudType());
-        get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                                object_keypoints_, object_descriptors_fpfh_);
-        break;
-      case kShot:
-        object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
-        get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                                object_keypoints_, object_descriptors_shot_);
-        break;
-      case k3dSmoothNet:
-        object_descriptors_learned_.reset(new pcl::PointCloud<LearnedDescriptor>());
-        get3dFeatures<LearnedDescriptor>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                         object_keypoints_, object_descriptors_learned_);
-        break;
-      default:
-        LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
-        LOG(INFO) << "Descriptor types:";
-        for (int i = 0; i < DescriptorType::kNumDescriptorTypes; ++i) {
-          LOG(INFO) << i << " (" << DescriptorNames[i] << ")";
-        }
-        break;
-    }
-    LOG(INFO) << "Obtained 3D features of object pointcloud";
-  }
-
-  // Visualize object
-  bool visualize_object_on_startup = false;
-  nh_private_.param("visualize_object_on_startup", visualize_object_on_startup,
-                    visualize_object_on_startup);
-  if (visualize_object_on_startup) {
-    visualizePointcloud(object_pointcloud_, ros::Time::now(), detection_frame_id_,
-                        object_pointcloud_pub_);
-    visualizeMesh(mesh_model_, ros::Time::now(), detection_frame_id_, object_mesh_init_pub_);
-    if (use_3d_features_) {
-      visualizeKeypoints(object_keypoints_, ros::Time::now(), detection_frame_id_,
-                         object_keypoint_pub_);
-    }
-    LOG(INFO) << "Visualizing object";
-  }
-}
-
 void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in) {
   detection_frame_id_ = cloud_msg_in.header.frame_id;
   detection_stamp_ = cloud_msg_in.header.stamp;
@@ -212,7 +207,7 @@ void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& c
 void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   Transformation T_object_detection_init;
   Transformation T_object_detection = alignDetectionUsingPcaAndIcp(
-      object_pointcloud_, detection_pointcloud_, icp_config_file_, &T_object_detection_init);
+      mesh_model_, detection_pointcloud_, icp_config_file_, &T_object_detection_init);
 
   // Publish transformations to TF
   publishTransformation(T_object_detection_init.inverse(), detection_stamp_, detection_frame_id_,
@@ -223,8 +218,6 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   // Visualize object
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
-  visualizePointcloud(object_pointcloud_, detection_stamp_, detection_frame_id_,
-                      object_pointcloud_pub_);
 }
 
 // TODO(gasserl): another child class?
