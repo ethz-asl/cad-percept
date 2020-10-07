@@ -228,6 +228,15 @@ int MeshModel::size() const { return P_.size_of_facets(); }
 
 Polyhedron MeshModel::getMesh() const { return P_; }
 
+std::vector<std::string> MeshModel::getFacetIds() const {
+  std::vector<std::string> keys;
+  keys.reserve(facetToHandle_.size());
+  for (const auto &kv : facetToHandle_) {
+    keys.push_back(kv.first);
+  }
+  return keys;
+}
+
 std::string MeshModel::getIdFromFacetHandle(const Polyhedron::Facet_handle &handle) const {
   return facetIdxToId_.at(handle->id());
 }

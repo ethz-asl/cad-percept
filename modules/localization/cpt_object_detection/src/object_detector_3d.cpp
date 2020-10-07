@@ -25,7 +25,14 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
   LOG(INFO) << "Object mesh with " << mesh_model_->getMesh().size_of_facets() << " facets and "
             << mesh_model_->getMesh().size_of_vertices() << " vertices";
 
-  processMesh();
+  // Visualize object
+  bool visualize_object_on_startup = false;
+  nh_private_.param("visualize_object_on_startup", visualize_object_on_startup,
+                    visualize_object_on_startup);
+  if (visualize_object_on_startup) {
+    visualizeMesh(mesh_model_, ros::Time::now(), detection_frame_id_, object_mesh_init_pub_);
+    LOG(INFO) << "Visualizing object";
+  }
 }
 
 void ObjectDetector3D::getParamsFromRos() {
@@ -43,36 +50,11 @@ void ObjectDetector3D::subscribeToTopics() {
 }
 
 void ObjectDetector3D::advertiseTopics() {
-  object_pointcloud_pub_ = nh_private_.advertise<sensor_msgs::PointCloud2>("object_pcl", 1, true);
-  LOG(INFO) << "Publishing object poincloud to topic [" << object_pointcloud_pub_.getTopic() << "]";
   object_mesh_pub_ = nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh", 1, true);
   LOG(INFO) << "Publishing object mesh to topic [" << object_mesh_pub_.getTopic() << "]";
   object_mesh_init_pub_ =
       nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh_init", 1, true);
   LOG(INFO) << "Publishing init object mesh to topic [" << object_mesh_init_pub_.getTopic() << "]";
-}
-
-void ObjectDetector3D::processMesh() {
-  // Sample pointcloud from object mesh
-  int num_points_object_pointcloud = 1e3;
-  nh_private_.param("num_points_object_pointcloud", num_points_object_pointcloud,
-                    num_points_object_pointcloud);
-  cpt_utils::sample_pc_from_mesh(mesh_model_->getMesh(), num_points_object_pointcloud, 0.0,
-                                 &object_pointcloud_);
-  LOG(INFO) << "Converted object mesh with " << mesh_model_->getMesh().size_of_facets()
-            << " facets and " << mesh_model_->getMesh().size_of_vertices()
-            << " vertices to a pointcloud with " << object_pointcloud_.size() << " points";
-
-  // Visualize object
-  bool visualize_object_on_startup = false;
-  nh_private_.param("visualize_object_on_startup", visualize_object_on_startup,
-                    visualize_object_on_startup);
-  if (visualize_object_on_startup) {
-    visualizePointcloud(object_pointcloud_, ros::Time::now(), detection_frame_id_,
-                        object_pointcloud_pub_);
-    visualizeMesh(mesh_model_, ros::Time::now(), detection_frame_id_, object_mesh_init_pub_);
-    LOG(INFO) << "Visualizing object";
-  }
 }
 
 void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in) {
@@ -86,7 +68,7 @@ void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& c
 void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   Transformation T_object_detection_init;
   Transformation T_object_detection = alignDetectionUsingPcaAndIcp(
-      object_pointcloud_, detection_pointcloud_, icp_config_file_, &T_object_detection_init);
+      mesh_model_, detection_pointcloud_, icp_config_file_, &T_object_detection_init);
 
   // Publish transformations to TF
   publishTransformation(T_object_detection_init.inverse(), detection_stamp_, detection_frame_id_,
@@ -97,8 +79,6 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   // Visualize object
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
-  visualizePointcloud(object_pointcloud_, detection_stamp_, detection_frame_id_,
-                      object_pointcloud_pub_);
 }
 
 void ObjectDetector3D::publishTransformation(const Transformation& transform,

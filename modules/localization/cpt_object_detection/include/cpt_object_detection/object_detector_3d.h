@@ -16,6 +16,8 @@ class ObjectDetector3D {
 
   void objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
 
+  void processDetectionUsingPcaAndIcp();
+
   static void visualizeMesh(const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,
                             const std::string& frame_id, const ros::Publisher& publisher);
   static void visualizePointcloud(const pcl::PointCloud<pcl::PointXYZ>& pointcloud,
@@ -29,21 +31,17 @@ class ObjectDetector3D {
   void getParamsFromRos();
   void subscribeToTopics();
   void advertiseTopics();
-  void processMesh();
 
-  void processDetectionUsingPcaAndIcp();
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
 
   ros::Subscriber detection_pointcloud_sub_;
-  ros::Publisher object_pointcloud_pub_;
   ros::Publisher object_mesh_pub_;
   ros::Publisher object_mesh_init_pub_;
 
   // Object
   cgal::MeshModel::Ptr mesh_model_;
   std::string object_frame_id_;
-  pcl::PointCloud<pcl::PointXYZ> object_pointcloud_;
 
   // Detection
   std::string pointcloud_topic_;
