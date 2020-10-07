@@ -3,8 +3,8 @@
 #include <CGAL/linear_least_squares_fitting_3.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
-#include <cpt_utils/pc_processing.h>
 #include <cpt_utils/cpt_utils.h>
+#include <cpt_utils/pc_processing.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <pcl/common/pca.h>
@@ -202,6 +202,12 @@ ObjectDetector3D::PM::DataPoints ObjectDetector3D::sampleDataPointsFromMesh(
   // Sample points from mesh
   std::vector<cgal::Point> points;
   cpt_utils::samplePointsFromMesh(mesh_model->getMesh(), number_of_points, 0, &points);
+  return convertMeshPointsToDataPoints(mesh_model, points);
+}
+
+ObjectDetector3D::PM::DataPoints ObjectDetector3D::convertMeshPointsToDataPoints(
+    const cgal::MeshModel::Ptr& mesh_model, const std::vector<cgal::Point>& points) {
+  CHECK(mesh_model);
 
   // Define features and descriptors
   PM::DataPoints::Labels feature_labels;
@@ -212,9 +218,9 @@ ObjectDetector3D::PM::DataPoints ObjectDetector3D::sampleDataPointsFromMesh(
   PM::DataPoints::Labels descriptor_labels;
   descriptor_labels.push_back(PM::DataPoints::Label("normals", 3));
 
-  PM::Matrix features(feature_labels.totalDim(), number_of_points);
-  PM::Matrix descriptors(descriptor_labels.totalDim(), number_of_points);
-  for (int i = 0; i < number_of_points; ++i) {
+  PM::Matrix features(feature_labels.totalDim(), points.size());
+  PM::Matrix descriptors(descriptor_labels.totalDim(), points.size());
+  for (int i = 0; i < points.size(); ++i) {
     features.col(i) = Eigen::Vector4f(points[i].x(), points[i].y(), points[i].z(), 1);
     cgal::PointAndPrimitiveId ppid = mesh_model->getClosestTriangle(points[i]);
     cgal::Vector normal = mesh_model->getNormal(ppid);
