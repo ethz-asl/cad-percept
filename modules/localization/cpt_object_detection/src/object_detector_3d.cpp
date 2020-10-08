@@ -3,8 +3,8 @@
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/pc_processing.h>
-#include <pcl/filters/voxel_grid.h>
 #include <minkindr_conversions/kindr_msg.h>
+#include <pcl/filters/voxel_grid.h>
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -19,7 +19,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       detection_frame_id_("camera_depth_optical_frame"),
       keypoint_type_(kIss),
       descriptor_type_(kFpfh),
-      matching_method_(kConventional),
+      matching_method_(kGeometricConsistency),
       use_3d_features_(true),
       refine_using_icp_(true),
       correspondence_threshold_(0.1),
@@ -41,7 +41,8 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
                     num_points_object_pointcloud);
   cpt_utils::sample_pc_from_mesh(mesh_model_->getMesh(), num_points_object_pointcloud, 0.0,
                                  &object_pointcloud_);
-  LOG(INFO) << "Converted object mesh to a pointcloud with " << object_pointcloud_.size() << " points";
+  LOG(INFO) << "Converted object mesh to a pointcloud with " << object_pointcloud_.size()
+            << " points";
 
   // Get 3D features of object pointcloud
   if (use_3d_features_) {
@@ -196,7 +197,6 @@ void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& c
   }
 }
 
-// TODO(gasserl): make child classes for each thing?
 void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   Transformation T_object_detection_init;
   Transformation T_object_detection = alignDetectionUsingPcaAndIcp(
@@ -213,7 +213,6 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
 }
 
-// TODO(gasserl): another child class?
 void ObjectDetector3D::processDetectionUsing3dFeatures() {
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
@@ -233,7 +232,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
               << " m, resulting in " << detection_pointcloud_.size() << " points";
     LOG(INFO)
         << "Time downsampling: "
-        << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count();
+        << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count()
+        << " s";
   }
 
   // Compute transform between detection and object

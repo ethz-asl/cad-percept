@@ -17,7 +17,12 @@ typedef PointMatcher<float> PM;
 
 enum KeypointType { kIss = 0, kHarris, kUniform, kNumKeypointTypes };
 enum DescriptorType { kFpfh = 0, kShot, kNumDescriptorTypes };
-enum MatchingMethod { kConventional = 0, kFastGlobalRegistration, kTeaser, kNumMatchingMethods };
+enum MatchingMethod {
+  kGeometricConsistency = 0,
+  kFastGlobalRegistration,
+  kTeaser,
+  kNumMatchingMethods
+};
 
 Transformation alignDetectionUsingPcaAndIcp(
     const cgal::MeshModel::Ptr& mesh_model,

@@ -230,7 +230,7 @@ PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model) {
   for (const auto& id : mesh_model->getFacetIds()) {
     CGAL::Simple_cartesian<double>::Triangle_3 triangle = mesh_model->getTriangle(id);
     CGAL::Simple_cartesian<double>::Point_3 centroid =
-        CGAL::centroid(triangle);  // TODO(gasserl): replace with just a vertex?
+        CGAL::centroid(triangle);
     CGAL::Simple_cartesian<double>::Vector_3 normal =
         triangle.supporting_plane().orthogonal_vector();
 
@@ -283,8 +283,9 @@ Transformation refineUsingICP(const cgal::MeshModel::Ptr& mesh_model,
   modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
       detection_pointcloud, object_pointcloud, transform_init.getTransformationMatrix(), icp_params,
       cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
-  LOG(INFO) << "Initial validation results: \n" << mean_squared_distance << " mean squared distance, "
-            << inlier_ratio << " inlier ratio";
+  LOG(INFO) << "Initial validation results: \n"
+            << mean_squared_distance << " mean squared distance, " << inlier_ratio
+            << " inlier ratio";
 
   // Refine transformation with ICP
   pcl::PointCloud<pcl::PointXYZ> detection_xyz;
@@ -297,8 +298,9 @@ Transformation refineUsingICP(const cgal::MeshModel::Ptr& mesh_model,
   modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
       detection_pointcloud, object_pointcloud, transform_icp.getTransformationMatrix(), icp_params,
       cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
-  LOG(INFO) << "ICP validation results: \n" << mean_squared_distance_icp << " mean squared distance, "
-            << inlier_ratio_icp << " inlier ratio";
+  LOG(INFO) << "ICP validation results: \n"
+            << mean_squared_distance_icp << " mean squared distance, " << inlier_ratio_icp
+            << " inlier ratio";
 
   if (inlier_ratio_icp >= inlier_ratio) {
     // && mean_squared_distance_icp < mean_squared_distance) {
