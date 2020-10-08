@@ -269,52 +269,11 @@ PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& poin
   return PM::DataPoints(features, feature_labels);
 }
 
-Transformation computeTransformFromCorrespondences(
-    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-    const modelify::CorrespondencesTypePtr& correspondences) {
-  // Filter correspondences
-  modelify::registration_toolbox::RansacParams ransac_params;
-  modelify::CorrespondencesTypePtr filtered_correspondences(new modelify::CorrespondencesType());
-  if (!modelify::registration_toolbox::filterCorrespondences(detection_keypoints, object_keypoints,
-                                                             ransac_params, correspondences,
-                                                             filtered_correspondences)) {
-    // TODO(gasserl): error instead of warning?
-    LOG(WARNING) << "Filtering correspondences failed!";
-    *filtered_correspondences = *correspondences;
-  }
-  LOG(INFO) << "Filtered correspondences to " << filtered_correspondences->size();
-
-  // Align features
-  modelify::registration_toolbox::GeometricConsistencyParams consistency_params;
-  modelify::TransformationVector T_geometric_consistency;
-  std::vector<modelify::CorrespondencesType> clustered_correspondences;
-  if (!modelify::registration_toolbox::alignKeypointsGeometricConsistency(
-          detection_keypoints, object_keypoints, filtered_correspondences,
-          consistency_params.min_cluster_size, consistency_params.consensus_set_resolution_m,
-          &T_geometric_consistency, &clustered_correspondences)) {
-    LOG(ERROR) << "Keypoint alignment failed!";
-    return Transformation();
-  }
-  *correspondences = clustered_correspondences[0];
-  LOG(INFO) << "Aligned keypoints, best alignment found with "
-            << clustered_correspondences[0].size() << " correspondences and transform\n"
-            << T_geometric_consistency[0];
-
-  if (!Quaternion::isValidRotationMatrix(T_geometric_consistency[0].block<3, 3>(0, 0))) {
-    for (int i = 0; i < 3; ++i) {
-      T_geometric_consistency[0].block<3, 1>(0, i) =
-          T_geometric_consistency[0].block<3, 1>(0, i).normalized();
-    }
-    LOG(WARNING) << "Normalized rotation matrix, new transformation:\n"
-                 << T_geometric_consistency[0];
-  }
-  return Transformation(T_geometric_consistency[0]);
-}
-
-Transformation icpUsingModelify(const modelify::PointSurfelCloudType::Ptr& detection_surfels,
-                                const modelify::PointSurfelCloudType::Ptr& object_surfels,
-                                const Transformation& transform_init) {
+Transformation refineUsingICP(const cgal::MeshModel::Ptr& mesh_model,
+                              const modelify::PointSurfelCloudType::Ptr& detection_pointcloud,
+                              const modelify::PointSurfelCloudType::Ptr& object_pointcloud,
+                              const Transformation& transform_init,
+                              const std::string& config_file) {
   // Validate initial alignment
   modelify::registration_toolbox::ICPParams icp_params;
   double cloud_resolution = modelify::kInvalidCloudResolution;
@@ -322,41 +281,32 @@ Transformation icpUsingModelify(const modelify::PointSurfelCloudType::Ptr& detec
   double inlier_ratio;
   std::vector<size_t> outlier_indices;
   modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-      detection_surfels, object_surfels, transform_init.getTransformationMatrix(), icp_params,
+      detection_pointcloud, object_pointcloud, transform_init.getTransformationMatrix(), icp_params,
       cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
-  LOG(INFO) << "Initial validation results: " << mean_squared_distance << " mean squared distance, "
+  LOG(INFO) << "Initial validation results: \n" << mean_squared_distance << " mean squared distance, "
             << inlier_ratio << " inlier ratio";
 
-  // Refine transformation with modelify ICP
-  modelify::Transformation T_icp;
+  // Refine transformation with ICP
+  pcl::PointCloud<pcl::PointXYZ> detection_xyz;
+  pcl::copyPointCloud(*detection_pointcloud, detection_xyz);
+  Transformation transform_icp = icp(mesh_model, detection_xyz, transform_init, config_file);
+
+  // Validate alignment ICP
   double mean_squared_distance_icp = 0;
   double inlier_ratio_icp = mean_squared_distance;
-  if (!estimateTransformationPointToPoint(detection_surfels, object_surfels,
-                                          transform_init.getTransformationMatrix(), icp_params,
-                                          cloud_resolution, &T_icp, &mean_squared_distance_icp)) {
-    LOG(WARNING) << "Keypoint ICP refinement failed!";
+  modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+      detection_pointcloud, object_pointcloud, transform_icp.getTransformationMatrix(), icp_params,
+      cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
+  LOG(INFO) << "ICP validation results: \n" << mean_squared_distance_icp << " mean squared distance, "
+            << inlier_ratio_icp << " inlier ratio";
+
+  if (inlier_ratio_icp >= inlier_ratio) {
+    // && mean_squared_distance_icp < mean_squared_distance) {
+    return transform_icp;
   } else {
-    if (!Quaternion::isValidRotationMatrix(T_icp.block<3, 3>(0, 0))) {
-      for (int i = 0; i < 3; ++i) {
-        T_icp.block<3, 1>(0, i) = T_icp.block<3, 1>(0, i).normalized();
-      }
-    }
-    Transformation transform_icp = Transformation(T_icp) * transform_init;
-
-    // Validate alignment ICP
-    modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-        detection_surfels, object_surfels, transform_icp.getTransformationMatrix(), icp_params,
-        cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
-    LOG(INFO) << "ICP validation results: " << mean_squared_distance_icp
-              << " mean squared distance, " << inlier_ratio_icp << " inlier ratio";
-
-    if (inlier_ratio_icp >= inlier_ratio) {
-      // && mean_squared_distance_icp < mean_squared_distance) {
-      return transform_icp;
-    } else {
-      LOG(WARNING) << "ICP didn't improve alignment!";
-    }
+    LOG(WARNING) << "ICP didn't improve alignment!";
   }
+
   return transform_init;
 }
 

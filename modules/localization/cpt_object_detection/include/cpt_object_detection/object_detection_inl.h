@@ -50,6 +50,97 @@ Transformation computeTransformUsing3dFeatures(
 }
 
 template <typename descriptor_type>
+void computeCorrespondences(
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+  // Find correspondences
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
+  flann_params.num_of_correspondences = 3;
+  if (object_descriptors->size() < flann_params.num_of_correspondences ||
+      detection_descriptors->size() < flann_params.num_of_correspondences) {
+    LOG(ERROR) << "Too few features found! Object: " << object_descriptors->size() << "/"
+               << flann_params.num_of_correspondences
+               << ", Detection: " << detection_descriptors->size() << "/"
+               << flann_params.num_of_correspondences;
+    return;
+  }
+  flann_params.similarity_threshold = similarity_threshold;
+  if (similarity_threshold == 0) {
+    flann_params.prefilter = false;
+  }
+  flann_params.keep_statistics = true;
+  modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
+      detection_descriptors, object_descriptors, flann_params, correspondences);
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  if (correspondences->empty()) {
+    LOG(ERROR) << "No correspondences found!";
+    return;
+  }
+  LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
+
+  // Filter correspondences
+  modelify::registration_toolbox::RansacParams ransac_params;
+  modelify::CorrespondencesTypePtr filtered_correspondences(new modelify::CorrespondencesType());
+  if (!modelify::registration_toolbox::filterCorrespondences(detection_keypoints, object_keypoints,
+                                                             ransac_params, correspondences,
+                                                             filtered_correspondences)) {
+    LOG(WARNING) << "Filtering correspondences failed!";
+  } else {
+    *correspondences = *filtered_correspondences;
+    LOG(INFO) << "Filtered correspondences to " << correspondences->size();
+  }
+  LOG(INFO) << "Time correspondences: " << std::chrono::duration<float>(end - begin).count()
+            << " s";
+}
+
+template <typename descriptor_type>
+Transformation computeTransformUsingGeometricConsistency(
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+  // Get correspondences
+  computeCorrespondences<descriptor_type>(detection_keypoints, detection_descriptors,
+                                          object_keypoints, object_descriptors,
+                                          similarity_threshold, correspondences);
+
+  // Align features
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  modelify::registration_toolbox::GeometricConsistencyParams consistency_params;
+  modelify::TransformationVector T_geometric_consistency;
+  std::vector<modelify::CorrespondencesType> clustered_correspondences;
+  if (!modelify::registration_toolbox::alignKeypointsGeometricConsistency(
+          detection_keypoints, object_keypoints, correspondences,
+          consistency_params.min_cluster_size, consistency_params.consensus_set_resolution_m,
+          &T_geometric_consistency, &clustered_correspondences)) {
+    LOG(ERROR) << "Keypoint alignment failed!";
+    return Transformation();
+  }
+  *correspondences = clustered_correspondences[0];
+  LOG(INFO) << "Found transformation based on " << clustered_correspondences[0].size()
+            << " correspondences";
+
+  if (!Quaternion::isValidRotationMatrix(T_geometric_consistency[0].block<3, 3>(0, 0))) {
+    for (int i = 0; i < 3; ++i) {
+      T_geometric_consistency[0].block<3, 1>(0, i) =
+          T_geometric_consistency[0].block<3, 1>(0, i).normalized();
+    }
+    LOG(WARNING) << "Normalized rotation matrix, new transformation:\n"
+                 << T_geometric_consistency[0];
+  }
+
+  LOG(INFO) << "Time geometric consistency: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+            << " s";
+  return Transformation(T_geometric_consistency[0]);
+}
+
+template <typename descriptor_type>
 Transformation computeTransformUsingFgr(
     const modelify::PointSurfelCloudType::Ptr& detection_surfels,
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
@@ -87,80 +178,19 @@ Transformation computeTransformUsingFgr(
 }
 
 template <typename descriptor_type>
-Transformation computeTransformUsingGeometricConsistency(
-    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
-    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
-  // Find correspondences
-  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-  modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
-  flann_params.num_of_correspondences = 3;
-  if (object_descriptors->size() < flann_params.num_of_correspondences ||
-      detection_descriptors->size() < flann_params.num_of_correspondences) {
-    LOG(ERROR) << "Too few features found! Object: " << object_descriptors->size() << "/"
-               << flann_params.num_of_correspondences
-               << ", Detection: " << detection_descriptors->size() << "/"
-               << flann_params.num_of_correspondences;
-    return Transformation();
-  }
-  flann_params.similarity_threshold = correspondence_threshold;
-  if (correspondence_threshold == 0) {
-    flann_params.prefilter = false;
-  }
-  flann_params.keep_statistics = true;
-  modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
-      detection_descriptors, object_descriptors, flann_params, correspondences);
-  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Time correspondences: " << std::chrono::duration<float>(end - begin).count();
-  if (correspondences->empty()) {
-    LOG(ERROR) << "No correspondences found!";
-    return Transformation();
-  }
-  LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
-
-  // Get transformation between detection and object pointcloud
-  return computeTransformFromCorrespondences(detection_keypoints, object_keypoints,
-                                             correspondences);
-}
-
-template <typename descriptor_type>
 Transformation computeTransformUsingTeaser(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
-  // Find correspondences
-  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-  modelify::registration_toolbox::FlannSearchMatchingParams flann_params;
-  flann_params.num_of_correspondences = 3;
-  if (object_descriptors->size() < flann_params.num_of_correspondences ||
-      detection_descriptors->size() < flann_params.num_of_correspondences) {
-    LOG(ERROR) << "Too few features found! Object: " << object_descriptors->size() << "/"
-               << flann_params.num_of_correspondences
-               << ", Detection: " << detection_descriptors->size() << "/"
-               << flann_params.num_of_correspondences;
-    return Transformation();
-  }
-  flann_params.similarity_threshold = correspondence_threshold;
-  if (correspondence_threshold == 0) {
-    flann_params.prefilter = false;
-  }
-  flann_params.keep_statistics = true;
-  modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
-      detection_descriptors, object_descriptors, flann_params, correspondences);
-  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Time correspondences: " << std::chrono::duration<float>(end - begin).count();
-  if (correspondences->empty()) {
-    LOG(ERROR) << "No correspondences found!";
-    return Transformation();
-  }
-  LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+  // Get correspondences
+  computeCorrespondences<descriptor_type>(detection_keypoints, detection_descriptors,
+                                          object_keypoints, object_descriptors,
+                                          similarity_threshold, correspondences);
 
   // Convert keypoints into matrix
-  begin = std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   Eigen::Matrix<double, 3, Eigen::Dynamic> object_matrix(3, correspondences->size());
   Eigen::Matrix<double, 3, Eigen::Dynamic> detection_matrix(3, correspondences->size());
   uint idx = 0;
@@ -174,7 +204,7 @@ Transformation computeTransformUsingTeaser(
     ++idx;
   }
   end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Time conversion: " << std::chrono::duration<float>(end - begin).count();
+  LOG(INFO) << "Time conversion: " << std::chrono::duration<float>(end - begin).count() << " s";
 
   // Solve with TEASER++
   teaser::RobustRegistrationSolver::Params params;

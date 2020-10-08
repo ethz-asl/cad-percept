@@ -299,7 +299,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
   // Refine using ICP
   Transformation T_icp = T_features;
   if (refine_using_icp_) {
-    T_icp = icpUsingModelify(detection_surfels, object_surfels_, T_features);
+    T_icp = refineUsingICP(mesh_model_, detection_surfels, object_surfels_, T_features,
+                           icp_config_file_);
   }
 
   if (!T_icp.getTransformationMatrix().allFinite()) {

@@ -53,6 +53,13 @@ Transformation computeTransformUsing3dFeatures(
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
     double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences);
 template <typename descriptor_type>
+void computeCorrespondences(
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences);
+template <typename descriptor_type>
 Transformation computeTransformUsingFgr(
     const modelify::PointSurfelCloudType::Ptr& detection_surfels,
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
@@ -67,21 +74,18 @@ Transformation computeTransformUsingGeometricConsistency(
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences);
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences);
 template <typename descriptor_type>
 Transformation computeTransformUsingTeaser(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences);
-Transformation computeTransformFromCorrespondences(
-    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-    const modelify::CorrespondencesTypePtr& correspondences);
-Transformation icpUsingModelify(const modelify::PointSurfelCloudType::Ptr& detection_surfels,
-                                const modelify::PointSurfelCloudType::Ptr& object_surfels,
-                                const Transformation& transform_init);
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences);
+Transformation refineUsingICP(const cgal::MeshModel::Ptr& mesh_model,
+                              const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+                              const modelify::PointSurfelCloudType::Ptr& object_surfels,
+                              const Transformation& transform_init, const std::string& config_file);
 
 template <typename descriptor_type>
 bool get3dFeatures(const KeypointType& keypoint_type,
