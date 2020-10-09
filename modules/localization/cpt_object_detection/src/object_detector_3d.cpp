@@ -20,7 +20,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       detection_frame_id_("camera_depth_optical_frame"),
       keypoint_type_(kIss),
       descriptor_type_(kFpfh),
-      matching_method_(kConventional),
+      matching_method_(kGeometricConsistency),
       use_3d_features_(true),
       refine_using_icp_(true),
       correspondence_threshold_(0.1),
@@ -47,23 +47,24 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
 
   // Get 3D features of object pointcloud
   if (use_3d_features_) {
-    object_surfels_.reset(new modelify::PointSurfelCloudType());
+    object_surfels_ =
+        boost::make_shared<modelify::PointSurfelCloudType>(estimateNormals(object_pointcloud_));
     object_keypoints_.reset(new modelify::PointSurfelCloudType());
     switch (descriptor_type_) {
       case kFpfh:
         object_descriptors_fpfh_.reset(new modelify::DescriptorFPFHCloudType());
-        get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                                object_keypoints_, object_descriptors_fpfh_);
+        get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, object_surfels_, object_keypoints_,
+                                                object_descriptors_fpfh_);
         break;
       case kShot:
         object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
-        get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                                object_keypoints_, object_descriptors_shot_);
+        get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_surfels_, object_keypoints_,
+                                                object_descriptors_shot_);
         break;
       case k3dSmoothNet:
         object_descriptors_learned_.reset(new pcl::PointCloud<LearnedDescriptor>());
-        get3dFeatures<LearnedDescriptor>(keypoint_type_, object_pointcloud_, object_surfels_,
-                                         object_keypoints_, object_descriptors_learned_);
+        get3dFeatures<LearnedDescriptor>(keypoint_type_, object_surfels_, object_keypoints_,
+                                         object_descriptors_learned_);
         break;
       default:
         LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
@@ -203,7 +204,6 @@ void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& c
   }
 }
 
-// TODO(gasserl): make child classes for each thing?
 void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   Transformation T_object_detection_init;
   Transformation T_object_detection = alignDetectionUsingPcaAndIcp(
@@ -220,7 +220,6 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
 }
 
-// TODO(gasserl): another child class?
 void ObjectDetector3D::processDetectionUsing3dFeatures() {
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
@@ -240,47 +239,50 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
               << " m, resulting in " << detection_pointcloud_.size() << " points";
     LOG(INFO)
         << "Time downsampling: "
-        << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count();
+        << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count()
+        << " s";
   }
 
   // Compute transform between detection and object
   Transformation T_features;
-  modelify::PointSurfelCloudType::Ptr detection_surfels(new modelify::PointSurfelCloudType());
+  modelify::PointSurfelCloudType::Ptr detection_surfels =
+      boost::make_shared<modelify::PointSurfelCloudType>(estimateNormals(detection_pointcloud_));
   modelify::PointSurfelCloudType::Ptr detection_keypoints(new modelify::PointSurfelCloudType());
-  typename pcl::PointCloud<modelify::DescriptorFPFH>::Ptr detection_descriptors_fpfh(
-      new pcl::PointCloud<modelify::DescriptorFPFH>());
-  typename pcl::PointCloud<modelify::DescriptorSHOT>::Ptr detection_descriptors_shot(
-      new pcl::PointCloud<modelify::DescriptorSHOT>());
-  typename pcl::PointCloud<LearnedDescriptor>::Ptr detection_descriptors_learned(
-      new pcl::PointCloud<LearnedDescriptor>());
   modelify::CorrespondencesTypePtr correspondences(new modelify::CorrespondencesType());
   switch (descriptor_type_) {
-    case kFpfh:
-      get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, detection_pointcloud_,
-                                              detection_surfels, detection_keypoints,
-                                              detection_descriptors_fpfh);
+    case kFpfh: {
+      typename pcl::PointCloud<modelify::DescriptorFPFH>::Ptr detection_descriptors_fpfh(
+          new pcl::PointCloud<modelify::DescriptorFPFH>());
+      get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, detection_surfels,
+                                              detection_keypoints, detection_descriptors_fpfh);
       T_features = computeTransformUsing3dFeatures<modelify::DescriptorFPFH>(
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_fpfh,
           object_surfels_, object_keypoints_, object_descriptors_fpfh_, correspondence_threshold_,
           correspondences);
       break;
-    case kShot:
-      get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, detection_pointcloud_,
-                                              detection_surfels, detection_keypoints,
-                                              detection_descriptors_shot);
+    }
+    case kShot: {
+      typename pcl::PointCloud<modelify::DescriptorSHOT>::Ptr detection_descriptors_shot(
+          new pcl::PointCloud<modelify::DescriptorSHOT>());
+      get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, detection_surfels,
+                                              detection_keypoints, detection_descriptors_shot);
       T_features = computeTransformUsing3dFeatures<modelify::DescriptorSHOT>(
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_shot,
           object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
           correspondences);
       break;
-    case k3dSmoothNet:
-      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_pointcloud_, detection_surfels,
+    }
+    case k3dSmoothNet: {
+      typename pcl::PointCloud<LearnedDescriptor>::Ptr detection_descriptors_learned(
+          new pcl::PointCloud<LearnedDescriptor>());
+      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_surfels,
                                        detection_keypoints, detection_descriptors_learned);
       T_features = computeTransformUsing3dFeatures<LearnedDescriptor>(
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_learned,
           object_surfels_, object_keypoints_, object_descriptors_learned_,
           correspondence_threshold_, correspondences);
       break;
+    }
     default:
       LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
       LOG(INFO) << "Descriptor types:";
@@ -316,7 +318,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
   // Refine using ICP
   Transformation T_icp = T_features;
   if (refine_using_icp_) {
-    T_icp = icpUsingModelify(detection_surfels, object_surfels_, T_features);
+    T_icp = refineUsingICP(mesh_model_, detection_surfels, object_surfels_, T_features,
+                           icp_config_file_);
   }
 
   if (!T_icp.getTransformationMatrix().allFinite()) {

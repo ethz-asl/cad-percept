@@ -20,7 +20,7 @@ class ObjectDetector3D {
       {static_cast<size_t>(DescriptorType::kShot), "SHOT"},
       {static_cast<size_t>(DescriptorType::k3dSmoothNet), "3DSmoothNet"}};
   std::map<size_t, std::string> MatchingMethodNames = {
-      {static_cast<size_t>(MatchingMethod::kConventional), "conventional"},
+      {static_cast<size_t>(MatchingMethod::kGeometricConsistency), "geometric_consistency"},
       {static_cast<size_t>(MatchingMethod::kFastGlobalRegistration), "FGR"},
       {static_cast<size_t>(MatchingMethod::kTeaser), "Teaser"}};
 
