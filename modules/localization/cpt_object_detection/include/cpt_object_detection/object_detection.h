@@ -17,7 +17,12 @@ typedef PointMatcher<float> PM;
 
 enum KeypointType { kIss = 0, kHarris, kUniform, kNumKeypointTypes };
 enum DescriptorType { kFpfh = 0, kShot, k3dSmoothNet, kNumDescriptorTypes };
-enum MatchingMethod { kConventional = 0, kFastGlobalRegistration, kTeaser, kNumMatchingMethods };
+enum MatchingMethod {
+  kGeometricConsistency = 0,
+  kFastGlobalRegistration,
+  kTeaser,
+  kNumMatchingMethods
+};
 
 Transformation alignDetectionUsingPcaAndIcp(
     const cgal::MeshModel::Ptr& mesh_model,
@@ -53,6 +58,13 @@ Transformation computeTransformUsing3dFeatures(
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
     double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences);
 template <typename descriptor_type>
+modelify::CorrespondencesType computeCorrespondences(
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
+    double similarity_threshold);
+template <typename descriptor_type>
 Transformation computeTransformUsingFgr(
     const modelify::PointSurfelCloudType::Ptr& detection_surfels,
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
@@ -67,41 +79,33 @@ Transformation computeTransformUsingGeometricConsistency(
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences);
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences);
 template <typename descriptor_type>
 Transformation computeTransformUsingTeaser(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double correspondence_threshold, const modelify::CorrespondencesTypePtr& correspondences);
-Transformation computeTransformFromCorrespondences(
-    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-    const modelify::CorrespondencesTypePtr& correspondences);
-Transformation icpUsingModelify(const modelify::PointSurfelCloudType::Ptr& detection_surfels,
-                                const modelify::PointSurfelCloudType::Ptr& object_surfels,
-                                const Transformation& transform_init);
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences);
+Transformation refineUsingICP(const cgal::MeshModel::Ptr& mesh_model,
+                              const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+                              const modelify::PointSurfelCloudType::Ptr& object_surfels,
+                              const Transformation& transform_init, const std::string& config_file);
 
 template <typename descriptor_type>
 bool get3dFeatures(const KeypointType& keypoint_type,
-                   const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz,
                    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
                    const modelify::PointSurfelCloudType::Ptr& keypoints,
                    const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors);
-bool getKeypoints(const KeypointType& keypoint_type,
-                  const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                  const modelify::PointSurfelCloudType::Ptr& keypoints);
-bool getIssKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                     const modelify::PointSurfelCloudType::Ptr& keypoints);
-bool getHarrisKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                        const modelify::PointSurfelCloudType::Ptr& keypoints);
-bool getUniformKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                         const modelify::PointSurfelCloudType::Ptr& keypoints);
+modelify::PointSurfelCloudType estimateNormals(
+    const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz);
+modelify::PointSurfelCloudType getKeypoints(
+    const KeypointType& keypoint_type,
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr);
 template <typename descriptor_type>
-void getDescriptors(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                    const modelify::PointSurfelCloudType::Ptr& keypoints,
-                    const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors);
+typename pcl::PointCloud<descriptor_type> getDescriptors(
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+    const modelify::PointSurfelCloudType::Ptr& keypoints);
 
 }  // namespace object_detection
 }  // namespace cad_percept
