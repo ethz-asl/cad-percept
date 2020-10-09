@@ -520,6 +520,7 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
   std::remove(filename_pointcloud.c_str());
   std::remove(filename_keypoints.c_str());
   std::remove(filename_descriptor.c_str());
+  return descriptors;
 }
 
 }  // namespace object_detection
