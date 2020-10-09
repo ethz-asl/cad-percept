@@ -229,8 +229,7 @@ PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model) {
   std::chrono::steady_clock::time_point conversion_start = std::chrono::steady_clock::now();
   for (const auto& id : mesh_model->getFacetIds()) {
     CGAL::Simple_cartesian<double>::Triangle_3 triangle = mesh_model->getTriangle(id);
-    CGAL::Simple_cartesian<double>::Point_3 centroid =
-        CGAL::centroid(triangle);
+    CGAL::Simple_cartesian<double>::Point_3 centroid = CGAL::centroid(triangle);
     CGAL::Simple_cartesian<double>::Vector_3 normal =
         triangle.supporting_plane().orthogonal_vector();
 
@@ -303,7 +302,7 @@ Transformation refineUsingICP(const cgal::MeshModel::Ptr& mesh_model,
             << " inlier ratio";
 
   if (inlier_ratio_icp >= inlier_ratio) {
-    // && mean_squared_distance_icp < mean_squared_distance) {
+    // TODO(gasserl): include mean_squared_distance_icp < mean_squared_distance
     return transform_icp;
   } else {
     LOG(WARNING) << "ICP didn't improve alignment!";
@@ -312,96 +311,111 @@ Transformation refineUsingICP(const cgal::MeshModel::Ptr& mesh_model,
   return transform_init;
 }
 
-bool getKeypoints(const KeypointType& keypoint_type,
-                  const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                  const modelify::PointSurfelCloudType::Ptr& keypoints) {
+modelify::PointSurfelCloudType estimateNormals(
+    const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz) {
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  // Get surfels
+  pcl::NormalEstimation<pcl::PointXYZ, modelify::PointSurfelType> normal_estimator;
+  pcl::PointCloud<pcl::PointXYZ>::ConstPtr pcl_ptr =
+      boost::make_shared<const pcl::PointCloud<pcl::PointXYZ>>(pointcloud_xyz);
+  normal_estimator.setInputCloud(pcl_ptr);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(new pcl::search::KdTree<pcl::PointXYZ>());
+  normal_estimator.setSearchMethod(kd_tree);
+  constexpr int k_radius = 4;
+  normal_estimator.setKSearch(k_radius);
+
+  modelify::PointSurfelCloudType pointcloud_surfels;
+  normal_estimator.compute(pointcloud_surfels);
+  for (size_t i = 0; i < pointcloud_xyz.size(); ++i) {
+    pointcloud_surfels.points[i].x = pointcloud_xyz.points[i].x;
+    pointcloud_surfels.points[i].y = pointcloud_xyz.points[i].y;
+    pointcloud_surfels.points[i].z = pointcloud_xyz.points[i].z;
+  }
+
+  size_t size_before = pointcloud_surfels.size();
+  size_t i = 0;
+  while (i < pointcloud_surfels.size()) {
+    if (std::isnan(pointcloud_surfels.points[i].normal_x) ||
+        std::isnan(pointcloud_surfels.points[i].normal_y) ||
+        std::isnan(pointcloud_surfels.points[i].normal_z) ||
+        std::isnan(pointcloud_surfels.points[i].x) || std::isnan(pointcloud_surfels.points[i].y) ||
+        std::isnan(pointcloud_surfels.points[i].z)) {
+      pointcloud_surfels.points.erase(pointcloud_surfels.points.begin() + i);
+    } else {
+      ++i;
+    }
+  }
+  if (size_before > pointcloud_surfels.size()) {
+    LOG(INFO) << "Filtered " << size_before - pointcloud_surfels.size()
+              << " points with NaN points or normals";
+  }
+  LOG(INFO) << "Time normals: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+            << " s";
+  return pointcloud_surfels;
+}
+
+modelify::PointSurfelCloudType getKeypoints(
+    const KeypointType& keypoint_type,
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr) {
+  modelify::PointSurfelCloudType::Ptr keypoints(new modelify::PointSurfelCloudType());
   switch (keypoint_type) {
-    case kIss:
-      return getIssKeypoints(pointcloud_surfel_ptr, keypoints);
-    case kHarris:
-      return getHarrisKeypoints(pointcloud_surfel_ptr, keypoints);
-    case kUniform:
-      return getUniformKeypoints(pointcloud_surfel_ptr, keypoints);
+    case kIss: {
+      modelify::feature_toolbox::IssParams iss_params;
+      if (!modelify::feature_toolbox::detectKeypointsISS(pointcloud_surfel_ptr, iss_params,
+                                                         keypoints)) {
+        LOG(WARNING) << "Could not extract ISS keypoints!";
+      }
+      break;
+    }
+    case kHarris: {
+      modelify::feature_toolbox::Harris3dParams harris_params;
+      if (!modelify::feature_toolbox::extractHarrisKeypoints(harris_params, pointcloud_surfel_ptr,
+                                                             keypoints)) {
+        LOG(WARNING) << "Could not extract Harris keypoints!";
+      }
+      break;
+    }
+    case kUniform: {
+      modelify::feature_toolbox::UniformDownsamplingParams uniform_params;
+      if (!modelify::feature_toolbox::getKeypointsFromUniformDownsampling(
+              pointcloud_surfel_ptr, uniform_params, keypoints)) {
+        LOG(WARNING) << "Could not extract uniform keypoints!";
+      }
+      break;
+    }
     default:
       LOG(ERROR) << "Unknown keypoint type! " << keypoint_type;
-      return false;
+      return *keypoints;
   }
-}
-
-bool getIssKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                     const modelify::PointSurfelCloudType::Ptr& keypoints) {
-  modelify::feature_toolbox::IssParams iss_params;
-  if (!modelify::feature_toolbox::detectKeypointsISS(pointcloud_surfel_ptr, iss_params,
-                                                     keypoints)) {
-    LOG(WARNING) << "Could not extract ISS keypoints!";
-    return false;
-  }
-  LOG(INFO) << "Extracted " << keypoints->size() << " ISS keypoints";
-  return true;
-}
-
-bool getHarrisKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                        const modelify::PointSurfelCloudType::Ptr& keypoints) {
-  // Get keypoints
-  modelify::feature_toolbox::Harris3dParams harris_params;
-  if (!modelify::feature_toolbox::extractHarrisKeypoints(harris_params, pointcloud_surfel_ptr,
-                                                         keypoints)) {
-    LOG(WARNING) << "Could not extract Harris keypoints!";
-    return false;
-  }
-  LOG(INFO) << "Extracted " << keypoints->size() << " Harris keypoints";
-
-  /*LOG(INFO) << "Harris params:" << harris_params.toString();
-  size_t num = 0;
-  float curvature = 0;
-  float min_curvature = 1e9;
-  float max_curvature = 0;
-  for (const auto& point : *pointcloud_surfel_ptr) {
-    ++num;
-    curvature += point.curvature;
-    min_curvature = std::min(min_curvature, point.curvature);
-    max_curvature = std::max(max_curvature, point.curvature);
-  }
-  LOG(INFO) << "Avg curvature: " << curvature / float(num);
-  LOG(INFO) << "Min curvature: " << min_curvature;
-  LOG(INFO) << "Max curvature: " << max_curvature;*/
-
-  return true;
-}
-
-bool getUniformKeypoints(const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                         const modelify::PointSurfelCloudType::Ptr& keypoints) {
-  // Get keypoints
-  modelify::feature_toolbox::UniformDownsamplingParams uniform_params;
-  if (!modelify::feature_toolbox::getKeypointsFromUniformDownsampling(pointcloud_surfel_ptr,
-                                                                      uniform_params, keypoints)) {
-    LOG(WARNING) << "Could not extract uniform keypoints!";
-    return false;
-  }
-  LOG(INFO) << "Extracted " << keypoints->size() << " uniform keypoints";
-  return true;
+  LOG(INFO) << "Extracted " << keypoints->size() << " keypoints";
+  return *keypoints;
 }
 
 template <>
-void getDescriptors<modelify::DescriptorSHOT>(
+pcl::PointCloud<modelify::DescriptorSHOT> getDescriptors<modelify::DescriptorSHOT>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-    const modelify::PointSurfelCloudType::Ptr& keypoints,
-    const pcl::PointCloud<modelify::DescriptorSHOT>::Ptr& descriptors) {
+    const modelify::PointSurfelCloudType::Ptr& keypoints) {
   modelify::feature_toolbox::SHOTParams shot_params;
+  const pcl::PointCloud<modelify::DescriptorSHOT>::Ptr descriptors(
+      new pcl::PointCloud<modelify::DescriptorSHOT>());
   modelify::feature_toolbox::describeKeypoints<modelify::DescriptorSHOT>(
       pointcloud_surfel_ptr, modelify::kInvalidCloudResolution, shot_params, keypoints,
       descriptors);
+  return *descriptors;
 }
 
 template <>
-void getDescriptors<modelify::DescriptorFPFH>(
+pcl::PointCloud<modelify::DescriptorFPFH> getDescriptors<modelify::DescriptorFPFH>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-    const modelify::PointSurfelCloudType::Ptr& keypoints,
-    const pcl::PointCloud<modelify::DescriptorFPFH>::Ptr& descriptors) {
+    const modelify::PointSurfelCloudType::Ptr& keypoints) {
   modelify::feature_toolbox::FPFHParams fpfh_params;
+  const pcl::PointCloud<modelify::DescriptorFPFH>::Ptr descriptors(
+      new pcl::PointCloud<modelify::DescriptorFPFH>());
   modelify::feature_toolbox::describeKeypoints<modelify::DescriptorFPFH>(
       pointcloud_surfel_ptr, modelify::kInvalidCloudResolution, fpfh_params, keypoints,
       descriptors);
+  return *descriptors;
 }
 
 }  // namespace object_detection
