@@ -72,6 +72,15 @@ class PointLaserLocalizer {
   /// \return None.
   void addOdometry(const kindr::minimal::QuatTransformation &odometry_transform);
 
+  /// \brief Adds laser measurements to the optimization.
+  ///
+  /// \param distance_A  Distance measured by laser A.
+  /// \param distance_B  Distance measured by laser B.
+  /// \param distance_C  Distance measured by laser C.
+  ///
+  /// \return None.
+  void addLaserMeasurements(uint32_t distance_A, uint32_t distance_B, uint32_t distance_C);
+
  private:
   // Optimizer.
   std::unique_ptr<cad_percept::pointlaser_loc::optimizer::LocalizationOptimizer> optimizer_;
@@ -82,6 +91,10 @@ class PointLaserLocalizer {
   double pointlaser_noise_std_;
   // Initial pose between arm base and Kinova link.
   std::unique_ptr<kindr::minimal::QuatTransformation> initial_pose_;
+  // Offsets between the Kinova link and the lasers.
+  std::unique_ptr<kindr::minimal::QuatTransformation> laser_a_offset_;
+  std::unique_ptr<kindr::minimal::QuatTransformation> laser_b_offset_;
+  std::unique_ptr<kindr::minimal::QuatTransformation> laser_c_offset_;
   // Goal pose of the arm.
   std::unique_ptr<kindr::minimal::QuatTransformation> arm_goal_pose_;
 };

@@ -34,6 +34,11 @@ bool PointLaserLocalizer::setUpOptimizer(
   // Store the initial pose, required when adding measurements.
   initial_pose_.reset(new kindr::minimal::QuatTransformation(initial_pose));
 
+  // Store the laser offsets.
+  laser_a_offset_.reset(new kindr::minimal::QuatTransformation(laser_a_offset));
+  laser_b_offset_.reset(new kindr::minimal::QuatTransformation(laser_b_offset));
+  laser_c_offset_.reset(new kindr::minimal::QuatTransformation(laser_c_offset));
+
   // Store the initial goal pose of the arm.
   arm_goal_pose_.reset(new kindr::minimal::QuatTransformation(arm_base_to_base.inverse() *
                                                               initial_pose * endeffector_offset));
@@ -59,6 +64,16 @@ void PointLaserLocalizer::addOdometry(
     const kindr::minimal::QuatTransformation &odometry_transform) {
   CHECK(optimizer_ != nullptr) << "Must set up optimizer before adding odometry transform.";
   optimizer_->addOdometry(odometry_transform);
+}
+
+void PointLaserLocalizer::addLaserMeasurements(uint32_t distance_A, uint32_t distance_B,
+                                               uint32_t distance_C) {
+  CHECK(optimizer_ != nullptr && laser_a_offset_ != nullptr && laser_b_offset_ != nullptr &&
+        laser_c_offset_ != nullptr)
+      << "Must set up optimizer before adding laser measurements.";
+  optimizer_->addRelativeMeasurement(distance_A / 10000.0, *laser_a_offset_);
+  optimizer_->addRelativeMeasurement(distance_B / 10000.0, *laser_b_offset_);
+  optimizer_->addRelativeMeasurement(distance_C / 10000.0, *laser_c_offset_);
 }
 
 }  // namespace localizer
