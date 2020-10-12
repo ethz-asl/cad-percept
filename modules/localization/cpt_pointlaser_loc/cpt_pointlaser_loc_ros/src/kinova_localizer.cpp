@@ -8,8 +8,6 @@
 #include <std_srvs/Empty.h>
 #include <std_srvs/Trigger.h>
 
-#include <iostream>
-
 #include "any_msgs/SetPose.h"
 #include "cpt_pointlaser_comm/GetDistance.h"
 
@@ -24,25 +22,26 @@ KinovaLocalizer::KinovaLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_privat
       task_type_(0),
       processing_(false),
       transform_received_(false) {
-  if (!nh_private_.hasParam("off_model"))
-    std::cerr << "ERROR 'off_model' not set as parameter." << std::endl;
+  if (!nh_private_.hasParam("off_model")) {
+    ROS_ERROR("'off_model' not set as parameter.\n");
+  }
   cad_percept::cgal::MeshModel::create(nh_private_.param<std::string>("off_model", "fail"), &model_,
                                        nh_private_.param("verbose", false));
 
   if (!nh_private_.hasParam("initial_pose_std"))
-    std::cerr << "ERROR 'initial_pose_std' not set as parameter." << std::endl;
+    ROS_ERROR("'initial_pose_std' not set as parameter.\n");
   initial_pose_std_ = Eigen::Matrix<double, 6, 1>(
       nh_private_
           .param<std::vector<double>>("initial_pose_std", std::vector<double>{1, 1, 1, 1, 1, 1})
           .data());
   if (!nh_private_.hasParam("arm_odometry_std"))
-    std::cerr << "ERROR 'arm_odometry_std' not set as parameter." << std::endl;
+    ROS_ERROR("'arm_odometry_std' not set as parameter.\n");
   odometry_noise_std_ = Eigen::Matrix<double, 6, 1>(
       nh_private_
           .param<std::vector<double>>("arm_odometry_std", std::vector<double>{1, 1, 1, 1, 1, 1})
           .data());
   if (!nh_private_.hasParam("pointlaser_noise_std"))
-    std::cerr << "ERROR 'pointlaser_noise_std' not set as parameter." << std::endl;
+    ROS_ERROR("'pointlaser_noise_std' not set as parameter.\n");
   pointlaser_noise_std_ = nh_private_.param<double>("pointlaser_noise_std", 1.0);
   advertiseTopics();
 };
@@ -102,8 +101,8 @@ bool KinovaLocalizer::highAccuracyLocalization(
   leica_client_["laserOn"].call(empty_srvs.request, empty_srvs.response);
 
   if (!nh_private_.hasParam("movement_type_" + std::to_string(task_type_))) {
-    std::cerr << "Could not find specific movement type for task-type " << task_type_
-              << ", using default movement" << std::endl;
+    ROS_WARN_STREAM("Could not find specific movement type for task-type "
+                    << task_type_ << ", using default movement\n");
   }
   std::vector<std::string> default_movement = {
       "0 0 0 0.988 0.009 -0.025 0.05", "0 0 0 0.988 0.009 -0.025 0.05",
@@ -122,8 +121,8 @@ bool KinovaLocalizer::highAccuracyLocalization(
     std::vector<std::string> strings((std::istream_iterator<std::string>(iss)),
                                      std::istream_iterator<std::string>());
     if (strings.size() != 7) {
-      std::cerr << "Movement has wrong number of parameters, should be 7 for: " << string_cmd
-                << std::endl;
+      ROS_ERROR_STREAM("Movement has wrong number of parameters, should be 7 for: " << string_cmd
+                                                                                    << "\n");
       return false;
     }
     // Convert strings to doubles.
@@ -146,7 +145,7 @@ bool KinovaLocalizer::highAccuracyLocalization(
     cpt_pointlaser_comm::GetDistance::Request req;
     cpt_pointlaser_comm::GetDistance::Response resp;
     while (!leica_client_["distance"].call(req, resp)) {
-      std::cerr << "ERROR could not get distance measurement." << std::endl;
+      ROS_ERROR("could not get distance measurement.\n");
       ros::Duration(0.1).sleep();
     }
 
@@ -191,26 +190,26 @@ bool KinovaLocalizer::highAccuracyLocalization(
   pub_endeffector_pose_.publish(pose_sent);
 
   // write pose to terminal.
-  // TODO(fmilano): Replace cout with ROS(INFO).
-  std::cout << "arm base in marker frame" << std::endl;
-  std::cout << base_pose_in_map.getPosition().transpose() << std::endl;
-  std::cout << "initial pose from slam" << std::endl;
-  std::cout << marker_to_armbase.getPosition().transpose() << std::endl;
-  std::cout << "arm base in world frame" << std::endl;
-  std::cout << world_to_armbase.getPosition().transpose() << std::endl;
+  ROS_INFO("arm base in marker frame\n");
+  ROS_INFO_STREAM(base_pose_in_map.getPosition().transpose() << "\n");
+  ROS_INFO("initial pose from slam\n");
+  ROS_INFO_STREAM(marker_to_armbase.getPosition().transpose() << "\n");
+  ROS_INFO("arm base in world frame\n");
+  ROS_INFO_STREAM(world_to_armbase.getPosition().transpose() << "\n");
   // Send pose of the base (not arm base) to controller.
   kindr::minimal::QuatTransformation base_pose_in_world = world_to_armbase * arm_base_to_base;
-  std::cout << "Updated base pose in world, t: " << base_pose_in_world.getPosition().transpose()
-            << ", o: " << base_pose_in_world.getRotation().vector().transpose() << std::endl;
+  ROS_INFO_STREAM("Updated base pose in world, t: "
+                  << base_pose_in_world.getPosition().transpose()
+                  << ", o: " << base_pose_in_world.getRotation().vector().transpose() << "\n");
   any_msgs::SetPose send_pose;
   tf::poseKindrToMsg(base_pose_in_world, &send_pose.request.data);
   waco_client_["send_pose"].call(send_pose.request, send_pose.response);
 
   if (send_pose.response.success == false) {
-    std::cout << "Calling updating of base pose FAILED. NOT going to goal pose." << std::endl;
+    ROS_ERROR("Calling updating of base pose FAILED. NOT going to goal pose.\n");
     response.successful = false;
   } else {
-    std::cout << "Successfully called updating of base pose." << std::endl;
+    ROS_INFO("Successfully called updating of base pose.\n");
 
     // Debug service to check whether base pose was updated correctly.
     any_msgs::SetPose check_pose;
@@ -222,7 +221,7 @@ bool KinovaLocalizer::highAccuracyLocalization(
     do {
       waco_client_["execute_task"].call(exec_task.request, exec_task.response);
     } while (!exec_task.response.success);
-    std::cout << "success for go_to_goal_pose" << std::endl;
+    ROS_INFO("success for go_to_goal_pose\n");
     response.successful = true;
   }
   return true;
