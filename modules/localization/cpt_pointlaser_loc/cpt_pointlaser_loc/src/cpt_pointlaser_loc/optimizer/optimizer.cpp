@@ -11,11 +11,11 @@ namespace pointlaser_loc {
 namespace optimizer {
 
 LocalizationOptimizer::LocalizationOptimizer(
-    const kindr::minimal::QuatTransformation& architecture_offset,
-    const kindr::minimal::QuatTransformation& initial_pose,
-    const cad_percept::cgal::MeshModel::Ptr& arch_model,
-    const Eigen::Matrix<double, 6, 1>& architecture_offset_std,
-    const Eigen::Matrix<double, 6, 1>& odometry_noise_std, const double pointlaser_noise_std,
+    const kindr::minimal::QuatTransformation &architecture_offset,
+    const kindr::minimal::QuatTransformation &initial_pose,
+    const cad_percept::cgal::MeshModel::Ptr &arch_model,
+    const Eigen::Matrix<double, 6, 1> &architecture_offset_std,
+    const Eigen::Matrix<double, 6, 1> &odometry_noise_std, const double pointlaser_noise_std,
     const bool fix_retrieved_planes, const bool add_prior, const bool only_optimize_translation)
     : initialization_(),
       graph_(),
@@ -41,7 +41,7 @@ LocalizationOptimizer::LocalizationOptimizer(
 };
 
 Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
-    const double distance, const kindr::minimal::QuatTransformation joint2sensor) {
+    const double distance, const kindr::minimal::QuatTransformation &joint2sensor) {
   ETransformation armbase2sensor(current_arm_pose_ * joint2sensor);
   // TODO once cpp14 is supported, change to unique pointers
   std::shared_ptr<ETransformation> laser_in_map;
@@ -90,7 +90,7 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   return plane_support->value(initialization_);
 };
 
-void LocalizationOptimizer::addOdometry(const kindr::minimal::QuatTransformation transform) {
+void LocalizationOptimizer::addOdometry(const kindr::minimal::QuatTransformation &transform) {
   current_arm_pose_ = current_arm_pose_ * transform;
 };
 

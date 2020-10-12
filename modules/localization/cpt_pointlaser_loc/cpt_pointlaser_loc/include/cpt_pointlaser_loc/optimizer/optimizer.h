@@ -17,16 +17,16 @@ namespace optimizer {
 
 class LocalizationOptimizer {
  public:
-  LocalizationOptimizer(const kindr::minimal::QuatTransformation& architecture_offset,
-                        const kindr::minimal::QuatTransformation& initial_pose,
-                        const cad_percept::cgal::MeshModel::Ptr& arch_model,
-                        const Eigen::Matrix<double, 6, 1>& architecture_offset_std,
-                        const Eigen::Matrix<double, 6, 1>& odometry_noise_std,
+  LocalizationOptimizer(const kindr::minimal::QuatTransformation &architecture_offset,
+                        const kindr::minimal::QuatTransformation &initial_pose,
+                        const cad_percept::cgal::MeshModel::Ptr &arch_model,
+                        const Eigen::Matrix<double, 6, 1> &architecture_offset_std,
+                        const Eigen::Matrix<double, 6, 1> &odometry_noise_std,
                         const double pointlaser_noise_std, const bool fix_retrieved_planes,
                         const bool add_prior, const bool only_optimize_translation);
   Eigen::Vector3d addRelativeMeasurement(const double distance,
-                                         const kindr::minimal::QuatTransformation joint2sensor);
-  void addOdometry(const kindr::minimal::QuatTransformation odometry);
+                                         const kindr::minimal::QuatTransformation &joint2sensor);
+  void addOdometry(const kindr::minimal::QuatTransformation &odometry);
   kindr::minimal::QuatTransformation optimize(const bool verbose = false);
 
  private:
