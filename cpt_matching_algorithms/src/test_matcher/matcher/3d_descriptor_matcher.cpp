@@ -24,18 +24,15 @@ visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
   std::string downsample_points = nh_private.param<std::string>("GoICPdownsample", "1000");
   std::string goicp_location = nh_private.param<std::string>("goicp_folder", "fail");
 
-  pcl::PointCloud<pcl::PointSurfel>::Ptr strude_lidar(new pcl::PointCloud<pcl::PointSurfel>);
-//  pcl::copyPointCloud(lidar_scan, *strude_lidar);
-  pcl::PointCloud<pcl::PointSurfel>::Ptr strude_map(new pcl::PointCloud<pcl::PointSurfel>);
-//  pcl::copyPointCloud(sampled_map, *strude_map);
-
   // Preprocess data
+  pcl::PointCloud<pcl::PointSurfel>::Ptr strude_lidar(new pcl::PointCloud<pcl::PointSurfel>);
+  pcl::PointCloud<pcl::PointSurfel>::Ptr strude_map(new pcl::PointCloud<pcl::PointSurfel>);
   pcl::PCLPointCloud2::Ptr lidar_scan_pc2(new pcl::PCLPointCloud2);
   pcl::toPCLPointCloud2(lidar_scan, *lidar_scan_pc2);
   pcl::PCLPointCloud2::Ptr sampled_map_pc2(new pcl::PCLPointCloud2);
   pcl::toPCLPointCloud2(sampled_map, *sampled_map_pc2);
-//
-//  // Fitler map with voxel grid filter to equalize density.
+
+  // Fitler map with voxel grid filter to equalize density.
   pcl::VoxelGrid<pcl::PCLPointCloud2> filter;
   filter.setLeafSize(0.05f, 0.05f, 0.05f);
   filter.setInputCloud(sampled_map_pc2);
@@ -46,20 +43,19 @@ visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
   pcl::fromPCLPointCloud2(*sampled_map_pc2, *strude_map);
 
   // Compute Normals on pointcloud.
-
   pcl::NormalEstimation<pcl::PointSurfel, pcl::PointSurfel> ne;
   ne.setKSearch(10);
   ne.setInputCloud(strude_lidar);
   ne.compute(*strude_lidar);
-  std::vector<int> ind;
-  pcl::removeNaNFromPointCloud(*strude_lidar, *strude_lidar, ind);
-
   ne.setInputCloud(strude_map);
   ne.compute(*strude_map);
+
+  // Remove NaNs.
+  std::vector<int> ind;
+  pcl::removeNaNFromPointCloud(*strude_lidar, *strude_lidar, ind);
   pcl::removeNaNFromPointCloud(*strude_map, *strude_map, ind);
 
   // Detect ISS keypoints in data.
-
   typename pcl::search::KdTree<pcl::PointSurfel>::Ptr tree(
       new pcl::search::KdTree<pcl::PointSurfel>());
   pcl::PointCloud<pcl::PointSurfel>::Ptr keypoints_lidar(new pcl::PointCloud<pcl::PointSurfel>());
@@ -70,7 +66,7 @@ visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
   iss_detector.setNonMaxRadius(4 * model_resolution);
   iss_detector.setThreshold21(0.975);
   iss_detector.setThreshold32(0.975);
-  iss_detector.setMinNeighbors(5);
+  iss_detector.setMinNeighbors(10);
   iss_detector.setNumberOfThreads(4);
   iss_detector.setInputCloud(strude_lidar);
   iss_detector.compute(*keypoints_lidar);
@@ -108,7 +104,6 @@ visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
   pcl::GeometricConsistencyGrouping<pcl::PointSurfel, pcl::PointSurfel> grouping;
   std::vector<size_t> vote_size;
   std::vector<size_t> unsorted_vote_size;
-
   grouping.setSceneCloud(keypoints_map_);
   grouping.setInputCloud(keypoints_lidar);
   grouping.setModelSceneCorrespondences(correspondences);
@@ -142,10 +137,7 @@ visualization_msgs::Marker StruDe::matchesToRosMsg(
   marker.ns = "matches";
   marker.type = visualization_msgs::Marker::LINE_LIST;
   marker.action = visualization_msgs::Marker::ADD;
-  //  marker->id = id_++;
-
   marker.scale.x = 0.2f;
-
   marker.color.r = 0.0f;
   marker.color.g = 0.0f;
   marker.color.b = 1.0f;
