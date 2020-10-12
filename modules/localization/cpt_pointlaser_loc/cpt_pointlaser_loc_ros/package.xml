@@ -12,7 +12,7 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>any_msgs</depend>
-  <depend>cpt_pointlaser_comm</depend>
+  <depend>cpt_pointlaser_comm_ros</depend>
   <depend>cpt_pointlaser_loc</depend>
   <depend>minkindr</depend>
   <depend>minkindr_conversions</depend>

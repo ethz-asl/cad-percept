@@ -9,7 +9,7 @@
        doc="Path of the USB port that the distobox is connected at."/>
   <arg name="move_arm_manually" default="false"/>
   <!-- pointlaser_comm node and pointlaser_calibration node -->
-  <include file="$(find cpt_pointlaser_comm)/launch/pointlaser_comm.launch">
+  <include file="$(find cpt_pointlaser_comm_ros)/launch/pointlaser_comm.launch">
     <arg name="distobox_usb_port" value="$(arg distobox_usb_port)" />
   </include>
   <!-- pointlaser_loc node -->

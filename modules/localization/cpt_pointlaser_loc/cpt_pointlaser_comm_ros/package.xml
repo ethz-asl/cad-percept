@@ -1,11 +1,12 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>cpt_pointlaser_comm</name>
+  <name>cpt_pointlaser_comm_ros</name>
   <version>0.1.1</version>
   <description>
-    Interface for the Leica Laser Distance Sensor Disto.
+    ROS interface for the Leica Laser Distance Sensor Disto.
   </description>
 
+  <author email="fmilano@ethz.ch">Francesco Milano</author>
   <author email="blumh@ethz.ch">Hermann Blum</author>
   <maintainer email="fmilano@ethz.ch">Francesco Milano</maintainer>
   <maintainer email="blumh@ethz.ch">Hermann Blum</maintainer>
@@ -15,6 +16,8 @@
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
 
-  <depend>glog_catkin</depend>
-  <depend>serial</depend>
+  <depend>cpt_pointlaser_comm</depend>
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
+  <depend>roscpp</depend>
 </package>
