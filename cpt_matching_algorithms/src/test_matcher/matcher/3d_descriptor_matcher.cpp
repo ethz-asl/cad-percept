@@ -1,5 +1,6 @@
 #include "test_matcher/3d_descriptor_matcher.h"
 
+#include <geometry_msgs/Point.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/recognition/cg/geometric_consistency.h>
 #include <pcl/registration/correspondence_estimation.h>
@@ -12,9 +13,9 @@ StruDe::StruDe()
     : map_computed_(false),
       keypoints_map_(new pcl::PointCloud<pcl::PointSurfel>()),
       descriptors_map_(new pcl::PointCloud<pcl::SHOT352>) {}
-void StruDe::strudeMatch(Eigen::Matrix4d &res_transform,
-                         const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
-                         const pcl::PointCloud<pcl::PointXYZ> &sampled_map) {
+visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
+                                               const pcl::PointCloud<pcl::PointXYZ>& lidar_scan,
+                                               const pcl::PointCloud<pcl::PointXYZ>& sampled_map) {
   std::cout << "///////////////////////////////////////////////" << std::endl;
   std::cout << "     Structural Descriptors matcher started    " << std::endl;
   std::cout << "///////////////////////////////////////////////" << std::endl;
@@ -58,8 +59,7 @@ void StruDe::strudeMatch(Eigen::Matrix4d &res_transform,
   typename pcl::search::KdTree<pcl::PointSurfel>::Ptr tree(
       new pcl::search::KdTree<pcl::PointSurfel>());
   pcl::PointCloud<pcl::PointSurfel>::Ptr keypoints_lidar(new pcl::PointCloud<pcl::PointSurfel>());
-  //  pcl::PointCloud<pcl::PointSurfel>::Ptr keypoints_map(new pcl::PointCloud<pcl::PointSurfel>());
-  double model_resolution = 0.2;
+  double model_resolution = 0.1;
   pcl::ISSKeypoint3D<pcl::PointSurfel, pcl::PointSurfel> iss_detector;
   iss_detector.setSearchMethod(tree);
   iss_detector.setSalientRadius(6 * model_resolution);
@@ -78,7 +78,6 @@ void StruDe::strudeMatch(Eigen::Matrix4d &res_transform,
   // Compute Descriptors at keypoints (SHOT)
   pcl::SHOTEstimation<pcl::PointSurfel, pcl::PointSurfel, pcl::SHOT352> shotEstimation;
   shotEstimation.setSearchMethod(tree);
-  //  shotEstimation.setKSearch(10);
   shotEstimation.setRadiusSearch(2.0);
   shotEstimation.setInputCloud(keypoints_lidar);
   shotEstimation.setSearchSurface(strude_lidar);
@@ -89,7 +88,6 @@ void StruDe::strudeMatch(Eigen::Matrix4d &res_transform,
     shotEstimation.setInputCloud(keypoints_map_);
     shotEstimation.setSearchSurface(strude_map);
     shotEstimation.setInputNormals(strude_map);
-    //    pcl::PointCloud<pcl::SHOT352>::Ptr descriptors_map(new pcl::PointCloud<pcl::SHOT352>);
     shotEstimation.compute(*descriptors_map_);
   } else {
     std::cout << "Skipping map features." << std::endl;
@@ -116,14 +114,58 @@ void StruDe::strudeMatch(Eigen::Matrix4d &res_transform,
   TransformationVector transforms;
   std::vector<pcl::Correspondences> clustered_correspondences;
   grouping.recognize(transforms, clustered_correspondences);
-
+  map_computed_ = true;
   if (transforms.size() == 0) {
     std::cout << "Cannot find transformation, assigning identity." << std::endl;
     res_transform = Eigen::Matrix4d::Identity();
+    pcl::Correspondences empty_correspondence;
+    return matchesToRosMsg(keypoints_lidar, keypoints_map_, empty_correspondence);
   } else {
     res_transform = transforms[0].cast<double>();
+    // Publish the matches
+    std::cout << "Transform:" << std::endl << transforms[0] << std::endl;
+    pcl::transformPointCloud(*keypoints_lidar, *keypoints_lidar, transforms[0]);
+    return matchesToRosMsg(keypoints_lidar, keypoints_map_, clustered_correspondences[0]);
   }
-  map_computed_ = true;
+}
+
+visualization_msgs::Marker StruDe::matchesToRosMsg(
+    const pcl::PointCloud<pcl::PointSurfel>::Ptr& keypoints_scan,
+    const pcl::PointCloud<pcl::PointSurfel>::Ptr& keypoints_map,
+    const pcl::Correspondences& correspondences) const {
+  visualization_msgs::Marker marker;
+  // Create marker properties which are the same for all lines.
+  marker.header.frame_id = "/map";
+  marker.ns = "matches";
+  marker.type = visualization_msgs::Marker::LINE_LIST;
+  marker.action = visualization_msgs::Marker::ADD;
+  //  marker->id = id_++;
+
+  marker.scale.x = 0.2f;
+
+  marker.color.r = 0.0f;
+  marker.color.g = 0.0f;
+  marker.color.b = 1.0f;
+  marker.color.a = 0.7f;
+  marker.lifetime = ros::Duration(1);
+
+  // Iterate over all matches and publish edge between local graph and database
+  // graph if there is a valid match.
+  for (auto correspondence : correspondences) {
+    geometry_msgs::Point p_from;
+    p_from.x = keypoints_scan->points[correspondence.index_query].x;
+    p_from.y = keypoints_scan->points[correspondence.index_query].y;
+    p_from.z = keypoints_scan->points[correspondence.index_query].z;
+
+    geometry_msgs::Point p_to;
+    p_to.x = keypoints_map->points[correspondence.index_match].x;
+    p_to.y = keypoints_map->points[correspondence.index_match].y;
+    p_to.z = keypoints_map->points[correspondence.index_match].z;
+
+    marker.points.push_back(p_from);
+    marker.points.push_back(p_to);
+  }
+  return marker;
 }
 
 }  // namespace matching_algorithms

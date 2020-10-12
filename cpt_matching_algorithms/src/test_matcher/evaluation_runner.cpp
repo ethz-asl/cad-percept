@@ -1,17 +1,18 @@
-#include <ros/ros.h>
-
 #include <cgal_conversions/tf_conversions.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
+#include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
+
 #include <chrono>
 #include <random>
 
 #include "cloud_filter/cloud_filter.h"
 #include "plane_extraction/plane_extraction.h"
 #include "plane_matching/plane_matching.h"
-#include "test_matcher/bounded_planes.h"
 #include "test_matcher/3d_descriptor_matcher.h"
+#include "test_matcher/bounded_planes.h"
 #include "test_matcher/go_icp_matcher.h"
 
 using namespace cad_percept;
@@ -32,6 +33,7 @@ bool use_filters;
 ros::Publisher scan_pub;
 ros::Publisher plane_pub;
 ros::Publisher map_pub;
+ros::Publisher matches_pub;
 ros::Subscriber map_sub;
 cad_percept::cgal::MeshModel::Ptr reference_mesh;
 bool map_ready = false;
@@ -84,6 +86,7 @@ int main(int argc, char **argv) {
   scan_pub = nh.advertise<sensor_msgs::PointCloud2>("matched_point_cloud", 1);
   plane_pub = nh.advertise<sensor_msgs::PointCloud2>("matched_extracted_planes", 1, true);
   map_pub = nh.advertise<sensor_msgs::PointCloud2>("map_point_cloud", 1, true);
+  matches_pub = nh.advertise<visualization_msgs::Marker>("matches", 1, true);
 
   std::cout << "Wait for setup... Tab Enter to start tests" << std::endl;
   std::cin.ignore();
@@ -295,8 +298,10 @@ void runTestIterations() {
       GoIcp::goIcpMatch(res_transform, lidar_scan, sampled_map);
       transform_error = 0;
     } else if (matcher == 5) {
-      strude.strudeMatch(res_transform, lidar_scan, sampled_map);
-        transform_error = 0;
+      visualization_msgs::Marker marker =
+          strude.strudeMatch(res_transform, lidar_scan, sampled_map);
+      matches_pub.publish(marker);
+      transform_error = 0;
     } else if (0 < matcher && matcher < 6) {
       // Detect planes
       // Filtering / Preprocessing Point Cloud

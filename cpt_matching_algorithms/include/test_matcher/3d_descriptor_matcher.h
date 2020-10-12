@@ -10,6 +10,7 @@
 #include <pcl/point_types.h>
 #include <ros/package.h>
 #include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
 
 #include <fstream>
 #include <random>
@@ -24,8 +25,14 @@ class StruDe {
  public:
   StruDe();
   // Returns transformation for alignment using Structural Descriptors
-  void strudeMatch(Eigen::Matrix4d &res_transform, const pcl::PointCloud<pcl::PointXYZ> &lidar_scan,
-                   const pcl::PointCloud<pcl::PointXYZ> &sampled_map);
+  visualization_msgs::Marker strudeMatch(Eigen::Matrix4d& res_transform,
+                                         const pcl::PointCloud<pcl::PointXYZ>& lidar_scan,
+                                         const pcl::PointCloud<pcl::PointXYZ>& sampled_map);
+
+  visualization_msgs::Marker matchesToRosMsg(
+      const pcl::PointCloud<pcl::PointSurfel>::Ptr& keypoints_scan,
+      const pcl::PointCloud<pcl::PointSurfel>::Ptr& keypoints_map,
+      const pcl::Correspondences& correspondences) const;
 
   bool map_computed_;
   pcl::PointCloud<pcl::PointSurfel>::Ptr keypoints_map_;
