@@ -25,35 +25,39 @@ visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
   std::string goicp_location = nh_private.param<std::string>("goicp_folder", "fail");
 
   pcl::PointCloud<pcl::PointSurfel>::Ptr strude_lidar(new pcl::PointCloud<pcl::PointSurfel>);
-  pcl::copyPointCloud(lidar_scan, *strude_lidar);
+//  pcl::copyPointCloud(lidar_scan, *strude_lidar);
   pcl::PointCloud<pcl::PointSurfel>::Ptr strude_map(new pcl::PointCloud<pcl::PointSurfel>);
-  pcl::copyPointCloud(sampled_map, *strude_map);
+//  pcl::copyPointCloud(sampled_map, *strude_map);
 
   // Preprocess data
-  //  pcl::PCLPointCloud2::Ptr lidar_scan_pc2(new pcl::PCLPointCloud2);
-  //  pcl::toPCLPointCloud2(*lidar_scan, *lidar_scan_pc2);
-  //  pcl::PCLPointCloud2::Ptr sampled_map_pc2(new pcl::PCLPointCloud2);
-  //  pcl::toPCLPointCloud2(*sampled_map, *sampled_map_pc2);
-  //
-  //  // Fitler map with voxel grid filter to equalize density.
-  //  pcl::VoxelGrid<pcl::PCLPointCloud2> filter;
-  //  filter.setLeafSize (0.1f, 0.1f, 0.1f);
-  //  filter.setInputCloud (sampled_map_pc2);
-  //  filter.filter (*sampled_map_pc2);
-  //  filter.setInputCloud (lidar_scan_pc2);
-  //  filter.filter (*lidar_scan_pc2);
+  pcl::PCLPointCloud2::Ptr lidar_scan_pc2(new pcl::PCLPointCloud2);
+  pcl::toPCLPointCloud2(lidar_scan, *lidar_scan_pc2);
+  pcl::PCLPointCloud2::Ptr sampled_map_pc2(new pcl::PCLPointCloud2);
+  pcl::toPCLPointCloud2(sampled_map, *sampled_map_pc2);
+//
+//  // Fitler map with voxel grid filter to equalize density.
+  pcl::VoxelGrid<pcl::PCLPointCloud2> filter;
+  filter.setLeafSize(0.05f, 0.05f, 0.05f);
+  filter.setInputCloud(sampled_map_pc2);
+  filter.filter(*sampled_map_pc2);
+  filter.setInputCloud(lidar_scan_pc2);
+  filter.filter(*lidar_scan_pc2);
+  pcl::fromPCLPointCloud2(*lidar_scan_pc2, *strude_lidar);
+  pcl::fromPCLPointCloud2(*sampled_map_pc2, *strude_map);
 
   // Compute Normals on pointcloud.
-  //  pcl::PointCloud<pcl::PointXYZ>::Ptr surfel_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-  //  pcl::copyPointCloud(*filtered_cloud, *surfel_filtered);
 
   pcl::NormalEstimation<pcl::PointSurfel, pcl::PointSurfel> ne;
   ne.setKSearch(10);
   ne.setInputCloud(strude_lidar);
   ne.compute(*strude_lidar);
+  std::vector<int> ind;
+  pcl::removeNaNFromPointCloud(*strude_lidar, *strude_lidar, ind);
 
   ne.setInputCloud(strude_map);
   ne.compute(*strude_map);
+  pcl::removeNaNFromPointCloud(*strude_map, *strude_map, ind);
+
   // Detect ISS keypoints in data.
 
   typename pcl::search::KdTree<pcl::PointSurfel>::Ptr tree(
@@ -78,7 +82,7 @@ visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
   // Compute Descriptors at keypoints (SHOT)
   pcl::SHOTEstimation<pcl::PointSurfel, pcl::PointSurfel, pcl::SHOT352> shotEstimation;
   shotEstimation.setSearchMethod(tree);
-  shotEstimation.setRadiusSearch(2.0);
+  shotEstimation.setRadiusSearch(3.0);
   shotEstimation.setInputCloud(keypoints_lidar);
   shotEstimation.setSearchSurface(strude_lidar);
   shotEstimation.setInputNormals(strude_lidar);
@@ -123,7 +127,6 @@ visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
   } else {
     res_transform = transforms[0].cast<double>();
     // Publish the matches
-    std::cout << "Transform:" << std::endl << transforms[0] << std::endl;
     pcl::transformPointCloud(*keypoints_lidar, *keypoints_lidar, transforms[0]);
     return matchesToRosMsg(keypoints_lidar, keypoints_map_, clustered_correspondences[0]);
   }
