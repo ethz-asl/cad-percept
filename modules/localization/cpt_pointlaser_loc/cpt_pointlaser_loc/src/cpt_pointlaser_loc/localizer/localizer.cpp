@@ -71,40 +71,40 @@ void PointLaserLocalizer::addOdometry(
   optimizer_->addOdometry(odometry_transform);
 }
 
-void PointLaserLocalizer::addLaserMeasurements(uint32_t distance_A, uint32_t distance_B,
-                                               uint32_t distance_C) {
+void PointLaserLocalizer::addLaserMeasurements(uint32_t distance_a, uint32_t distance_b,
+                                               uint32_t distance_c) {
   CHECK(optimizer_ != nullptr && laser_a_offset_ != nullptr && laser_b_offset_ != nullptr &&
         laser_c_offset_ != nullptr)
       << "Must set up optimizer before adding laser measurements.";
-  optimizer_->addRelativeMeasurement(distance_A / 10000.0, *laser_a_offset_);
-  optimizer_->addRelativeMeasurement(distance_B / 10000.0, *laser_b_offset_);
-  optimizer_->addRelativeMeasurement(distance_C / 10000.0, *laser_c_offset_);
+  optimizer_->addRelativeMeasurement(distance_a / 10000.0, *laser_a_offset_);
+  optimizer_->addRelativeMeasurement(distance_b / 10000.0, *laser_b_offset_);
+  optimizer_->addRelativeMeasurement(distance_c / 10000.0, *laser_c_offset_);
 }
 
 void PointLaserLocalizer::getIntersectionsLasersWithModel(
     const kindr::minimal::QuatTransformation &current_arm_pose,
-    cad_percept::cgal::Intersection *intersection_A,
-    cad_percept::cgal::Intersection *intersection_B,
-    cad_percept::cgal::Intersection *intersection_C) {
-  CHECK_NOTNULL(intersection_A);
-  CHECK_NOTNULL(intersection_B);
-  CHECK_NOTNULL(intersection_C);
+    cad_percept::cgal::Intersection *intersection_a,
+    cad_percept::cgal::Intersection *intersection_b,
+    cad_percept::cgal::Intersection *intersection_c) {
+  CHECK_NOTNULL(intersection_a);
+  CHECK_NOTNULL(intersection_b);
+  CHECK_NOTNULL(intersection_c);
 
   CHECK(marker_to_armbase_ != nullptr && laser_a_offset_ != nullptr && laser_b_offset_ != nullptr &&
         laser_c_offset_ != nullptr)
       << "Must set up optimizer before getting intersections of lasers with model.";
 
-  cad_percept::cgal::Ray query_ray_A = cad_percept::cpt_utils::buildRayFromPose(
+  cad_percept::cgal::Ray query_ray_a = cad_percept::cpt_utils::buildRayFromPose(
       *marker_to_armbase_ * current_arm_pose * *laser_a_offset_);
-  *intersection_A = model_->getIntersection(query_ray_A);
+  *intersection_a = model_->getIntersection(query_ray_a);
 
-  cad_percept::cgal::Ray query_ray_B = cad_percept::cpt_utils::buildRayFromPose(
+  cad_percept::cgal::Ray query_ray_b = cad_percept::cpt_utils::buildRayFromPose(
       *marker_to_armbase_ * current_arm_pose * *laser_b_offset_);
-  *intersection_B = model_->getIntersection(query_ray_B);
+  *intersection_b = model_->getIntersection(query_ray_b);
 
-  cad_percept::cgal::Ray query_ray_C = cad_percept::cpt_utils::buildRayFromPose(
+  cad_percept::cgal::Ray query_ray_c = cad_percept::cpt_utils::buildRayFromPose(
       *marker_to_armbase_ * current_arm_pose * *laser_c_offset_);
-  *intersection_C = model_->getIntersection(query_ray_C);
+  *intersection_c = model_->getIntersection(query_ray_c);
 }
 }  // namespace localizer
 }  // namespace pointlaser_loc

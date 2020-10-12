@@ -74,25 +74,25 @@ class PointLaserLocalizer {
 
   /// \brief Adds laser measurements to the optimization.
   ///
-  /// \param distance_A  Distance measured by laser A.
-  /// \param distance_B  Distance measured by laser B.
-  /// \param distance_C  Distance measured by laser C.
+  /// \param distance_a  Distance measured by laser A.
+  /// \param distance_b  Distance measured by laser B.
+  /// \param distance_c  Distance measured by laser C.
   ///
   /// \return None.
-  void addLaserMeasurements(uint32_t distance_A, uint32_t distance_B, uint32_t distance_C);
+  void addLaserMeasurements(uint32_t distance_a, uint32_t distance_b, uint32_t distance_c);
 
   /// \brief Returns the intersections of the 3 lasers with the model.
   ///
   /// \param[in] current_arm_pose  Current pose of the arm (Kinova link) w.r.t. the arm base.
-  /// \param[out] intersection_A   Intersection of laser A with the model.
-  /// \param[out] intersection_B   Intersection of laser B with the model.
-  /// \param[out] intersection_C   Intersection of laser C with the model.
+  /// \param[out] intersection_a   Intersection of laser A with the model.
+  /// \param[out] intersection_b   Intersection of laser B with the model.
+  /// \param[out] intersection_c   Intersection of laser C with the model.
   ///
   /// \return None.
   void getIntersectionsLasersWithModel(const kindr::minimal::QuatTransformation &current_arm_pose,
-                                       cad_percept::cgal::Intersection *intersection_A,
-                                       cad_percept::cgal::Intersection *intersection_B,
-                                       cad_percept::cgal::Intersection *intersection_C);
+                                       cad_percept::cgal::Intersection *intersection_a,
+                                       cad_percept::cgal::Intersection *intersection_b,
+                                       cad_percept::cgal::Intersection *intersection_c);
 
  private:
   // Optimizer.
