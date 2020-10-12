@@ -80,6 +80,7 @@ void PointLaserLocalizer::addLaserMeasurements(uint32_t distance_a, uint32_t dis
   CHECK(optimizer_ != nullptr && laser_a_offset_ != nullptr && laser_b_offset_ != nullptr &&
         laser_c_offset_ != nullptr)
       << "Must set up optimizer before adding laser measurements.";
+  // It is assumed that the sensors measure distance in 1/10 mm.
   optimizer_->addRelativeMeasurement(distance_a / 10000.0, *laser_a_offset_);
   optimizer_->addRelativeMeasurement(distance_b / 10000.0, *laser_b_offset_);
   optimizer_->addRelativeMeasurement(distance_c / 10000.0, *laser_c_offset_);
