@@ -11,6 +11,7 @@
 #include "plane_extraction/plane_extraction.h"
 #include "plane_matching/plane_matching.h"
 #include "test_matcher/bounded_planes.h"
+#include "test_matcher/3d_descriptor_matcher.h"
 #include "test_matcher/go_icp_matcher.h"
 
 using namespace cad_percept;
@@ -48,6 +49,7 @@ PointCloud sampled_map;
 bool uniform_sampling;
 DP ref_dp_map;
 DP ref_dp_scan;
+StruDe strude;
 
 void samplePose();
 void simulateLidar(cad_percept::cgal::Transformation ctransformation,
@@ -280,6 +282,7 @@ void runTestIterations() {
                 << std::endl;
       gt_file.close();
       lidar_scan_file = data_set_folder + "/scan_" + std::to_string(scan_nr) + ".pcd";
+      std::cout << "file: " << lidar_scan_file << std::endl;
       pcl::io::loadPCDFile<pcl::PointXYZI>(lidar_scan_file, static_structure_cloud);
       pcl::removeNaNFromPointCloud(static_structure_cloud, static_structure_cloud, nan_indices);
       pcl::copyPointCloud(static_structure_cloud, lidar_scan);
@@ -291,7 +294,10 @@ void runTestIterations() {
     if (matcher == 0) {
       GoIcp::goIcpMatch(res_transform, lidar_scan, sampled_map);
       transform_error = 0;
-    } else if (0 < matcher && matcher < 5) {
+    } else if (matcher == 5) {
+      strude.strudeMatch(res_transform, lidar_scan, sampled_map);
+        transform_error = 0;
+    } else if (0 < matcher && matcher < 6) {
       // Detect planes
       // Filtering / Preprocessing Point Cloud
       if (use_filters) {
