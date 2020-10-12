@@ -55,6 +55,12 @@ kindr::minimal::QuatTransformation PointLaserLocalizer::getArmGoalPose(
   return *arm_goal_pose_;
 }
 
+void PointLaserLocalizer::addOdometry(
+    const kindr::minimal::QuatTransformation &odometry_transform) {
+  CHECK(optimizer_ != nullptr) << "Must set up optimizer before adding odometry transform.";
+  optimizer_->addOdometry(odometry_transform);
+}
+
 }  // namespace localizer
 }  // namespace pointlaser_loc
 }  // namespace cad_percept

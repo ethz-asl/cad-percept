@@ -65,6 +65,13 @@ class PointLaserLocalizer {
       Eigen::Quaternion<double> rotation_quat,
       kindr::minimal::PositionTemplate<double> translation);
 
+  /// \brief Adds an odometry transform to the optimization.
+  ///
+  /// \param odometry_transform  Odometry transformation to add to the optimization.
+  ///
+  /// \return None.
+  void addOdometry(const kindr::minimal::QuatTransformation &odometry_transform);
+
  private:
   // Optimizer.
   std::unique_ptr<cad_percept::pointlaser_loc::optimizer::LocalizationOptimizer> optimizer_;
