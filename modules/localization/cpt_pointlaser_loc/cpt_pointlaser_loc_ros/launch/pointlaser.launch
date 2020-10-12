@@ -1,0 +1,9 @@
+unch>
+<!-- Launch pointlaser comm -->
+    <include file="$(find cpt_pointlaser_comm)/launch/pointlaser_comm.launch">
+    </include>
+<!-- Launch pointlaser localization -->
+    <include file="$(find cpt_pointlaser_loc_ros)/launch/high_accuracy_localization.launch">
+    </include>
+
+</launch>
