@@ -2,6 +2,7 @@
 #define CPT_POINTLASER_LOC_LOCALIZER_LOCALIZER_H_
 
 #include <cgal_definitions/mesh_model.h>
+#include <kindr/minimal/position.h>
 #include <kindr/minimal/quat-transformation.h>
 
 #include <Eigen/Geometry>
@@ -54,6 +55,16 @@ class PointLaserLocalizer {
                       bool fix_cad_planes = false, bool add_initial_pose_prior = false,
                       bool only_optimize_translation = false);
 
+  /// \brief Updates and returns the goal pose of the arm, given an input movement.
+  ///
+  /// \param rotation_quat  Rotation component of the movement (quaternion format).
+  /// \param translation    Translation component of the movement.
+  ///
+  /// \return Goal pose of the arm.
+  kindr::minimal::QuatTransformation getArmGoalPose(
+      Eigen::Quaternion<double> rotation_quat,
+      kindr::minimal::PositionTemplate<double> translation);
+
  private:
   // Optimizer.
   std::unique_ptr<cad_percept::pointlaser_loc::optimizer::LocalizationOptimizer> optimizer_;
@@ -64,6 +75,8 @@ class PointLaserLocalizer {
   double pointlaser_noise_std_;
   // Initial pose between arm base and Kinova link.
   std::unique_ptr<kindr::minimal::QuatTransformation> initial_pose_;
+  // Goal pose of the arm.
+  std::unique_ptr<kindr::minimal::QuatTransformation> arm_goal_pose_;
 };
 }  // namespace localizer
 }  // namespace pointlaser_loc
