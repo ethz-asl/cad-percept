@@ -74,9 +74,9 @@ class PointLaserLocalizer {
 
   /// \brief Adds laser measurements to the optimization.
   ///
-  /// \param distance_a  Distance measured by laser A.
-  /// \param distance_b  Distance measured by laser B.
-  /// \param distance_c  Distance measured by laser C.
+  /// \param distance_a  Distance measured by laser A (in 1/10 mm).
+  /// \param distance_b  Distance measured by laser B (in 1/10 mm).
+  /// \param distance_c  Distance measured by laser C (in 1/10 mm).
   ///
   /// \return None.
   void addLaserMeasurements(uint32_t distance_a, uint32_t distance_b, uint32_t distance_c);
