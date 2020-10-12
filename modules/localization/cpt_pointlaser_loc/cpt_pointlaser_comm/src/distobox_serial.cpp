@@ -30,22 +30,22 @@ Distobox::Distobox(const std::string& port, const unsigned int num_sensors)
   for (unsigned int sensor = 0; sensor < num_sensors_; sensor++) {
     if (!sendCommand(sensor, "$ON\r\n", "?\r\n")) {
       std::cerr << "Error when switching on sensor " << sensor << std::endl;
-    };
+    }
     // after switching on, the first command is always returning an error. We therefore simply run
     // some first commands.
     distobox_.flush();
     distobox_.write("a\r\n");
     distobox_.readline();
     distobox_.flush();
-  };
-};
+  }
+}
 
 Distobox::~Distobox() {
   for (unsigned int sensor = 0; sensor < num_sensors_; sensor++) {
     sendCommand(sensor, "$OFF\r\n");
-  };
+  }
   distobox_.close();
-};
+}
 
 std::string Distobox::sendCommand(unsigned int sensor, std::string command) {
   distobox_.flush();
@@ -55,13 +55,13 @@ std::string Distobox::sendCommand(unsigned int sensor, std::string command) {
     std::string switchAnswer = distobox_.readline();
     success = switchAnswer == "?\r\n";
     if (!success) std::cerr << "Distobox error: " << switchAnswer;
-  };
+  }
   distobox_.flush();
   distobox_.write(command);
   std::string answer = distobox_.readline();
   distobox_.flush();
   return answer;
-};
+}
 
 bool Distobox::sendCommand(unsigned int sensor, std::string command, std::string expectedAnswer) {
   std::string answer = sendCommand(sensor, command);
@@ -70,7 +70,7 @@ bool Distobox::sendCommand(unsigned int sensor, std::string command, std::string
     return false;
   }
   return true;
-};
+}
 
 bool Distobox::getDistance(cpt_pointlaser_comm::GetDistance::Request& request,
                            cpt_pointlaser_comm::GetDistance::Response& response) {
@@ -88,7 +88,7 @@ bool Distobox::getDistance(cpt_pointlaser_comm::GetDistance::Request& request,
   response.distanceB = distances[1];
   response.distanceC = distances[2];
   return true;
-};
+}
 
 bool Distobox::laserOn(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
   for (unsigned int sensor = 0; sensor < num_sensors_; sensor++) {
@@ -96,15 +96,15 @@ bool Distobox::laserOn(std_srvs::Empty::Request& request, std_srvs::Empty::Respo
     // second 'o' will switch on the laser.
     sendCommand(sensor, "o\r\n", "?\r\n");
     if (!sendCommand(sensor, "o\r\n", "?\r\n")) return false;
-  };
+  }
   return true;
-};
+}
 
 bool Distobox::laserOff(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
   for (unsigned int sensor = 0; sensor < num_sensors_; sensor++) {
     if (!sendCommand(sensor, "b\r\n", "?\r\n")) return false;
-  };
+  }
   return true;
-};
+}
 }  // namespace pointlaser_comm
 }  // namespace cad_percept
