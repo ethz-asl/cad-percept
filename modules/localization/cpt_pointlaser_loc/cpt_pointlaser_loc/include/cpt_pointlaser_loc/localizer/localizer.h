@@ -70,7 +70,7 @@ class PointLaserLocalizer {
   /// \param odometry_transform  Odometry transformation to add to the optimization.
   ///
   /// \return None.
-  void addOdometry(const kindr::minimal::QuatTransformation &odometry_transform);
+  void addOdometry(const kindr::minimal::QuatTransformation& odometry_transform);
 
   /// \brief Adds laser measurements to the optimization.
   ///
@@ -89,10 +89,10 @@ class PointLaserLocalizer {
   /// \param[out] intersection_c   Intersection of laser C with the model.
   ///
   /// \return None.
-  void getIntersectionsLasersWithModel(const kindr::minimal::QuatTransformation &current_arm_pose,
-                                       cad_percept::cgal::Intersection *intersection_a,
-                                       cad_percept::cgal::Intersection *intersection_b,
-                                       cad_percept::cgal::Intersection *intersection_c);
+  void getIntersectionsLasersWithModel(const kindr::minimal::QuatTransformation& current_arm_pose,
+                                       cad_percept::cgal::Intersection* intersection_a,
+                                       cad_percept::cgal::Intersection* intersection_b,
+                                       cad_percept::cgal::Intersection* intersection_c);
 
   /// \brief Performs optimization and returns the pose of the base in the map.
   ///

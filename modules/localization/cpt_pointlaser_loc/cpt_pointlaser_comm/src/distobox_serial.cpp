@@ -24,7 +24,7 @@
 namespace cad_percept {
 namespace pointlaser_comm {
 
-Distobox::Distobox(const std::string& port, const unsigned int num_sensors)
+Distobox::Distobox(const std::string &port, const unsigned int num_sensors)
     : distobox_(port, 115200, serial::Timeout::simpleTimeout(1000)), num_sensors_(num_sensors) {
   if (!distobox_.isOpen()) {
     LOG(WARNING) << "failed to open serial port" << std::endl;
