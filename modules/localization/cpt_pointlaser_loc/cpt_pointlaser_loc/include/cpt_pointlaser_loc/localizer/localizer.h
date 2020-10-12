@@ -2,6 +2,7 @@
 #define CPT_POINTLASER_LOC_LOCALIZER_LOCALIZER_H_
 
 #include <cgal_definitions/mesh_model.h>
+#include <kindr/minimal/quat-transformation.h>
 
 #include <Eigen/Geometry>
 
