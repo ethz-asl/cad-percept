@@ -85,7 +85,6 @@ void StruDe::strudeMatch(Eigen::Matrix4d &res_transform,
   shotEstimation.setInputNormals(strude_lidar);
   pcl::PointCloud<pcl::SHOT352>::Ptr descriptors_lidar(new pcl::PointCloud<pcl::SHOT352>);
   shotEstimation.compute(*descriptors_lidar);
-  std::cout << __LINE__ << __FILE__ << std::endl;
   if (!map_computed_) {
     shotEstimation.setInputCloud(keypoints_map_);
     shotEstimation.setSearchSurface(strude_map);
@@ -96,14 +95,12 @@ void StruDe::strudeMatch(Eigen::Matrix4d &res_transform,
     std::cout << "Skipping map features." << std::endl;
   }
 
-  std::cout << __LINE__ << __FILE__ << std::endl;
   // Calculate matches between data
   pcl::registration::CorrespondenceEstimation<pcl::SHOT352, pcl::SHOT352> est;
   pcl::CorrespondencesPtr correspondences(new pcl::Correspondences());
   est.setInputSource(descriptors_lidar);
   est.setInputTarget(descriptors_map_);
   est.determineCorrespondences(*correspondences);
-  std::cout << __LINE__ << __FILE__ << std::endl;
 
   // Perform correspondence clustering
   pcl::GeometricConsistencyGrouping<pcl::PointSurfel, pcl::PointSurfel> grouping;
@@ -116,17 +113,12 @@ void StruDe::strudeMatch(Eigen::Matrix4d &res_transform,
   grouping.setGCThreshold(6.0);
   grouping.setGCSize(3.0);
 
-  std::cout << __LINE__ << __FILE__ << std::endl;
   TransformationVector transforms;
   std::vector<pcl::Correspondences> clustered_correspondences;
   grouping.recognize(transforms, clustered_correspondences);
 
-  std::cout << __LINE__ << __FILE__ << std::endl;
-  std::cout << "size: " << transforms.size() << std::endl;
-  std::cout << "size: " << clustered_correspondences.size() << std::endl;
-
   if (transforms.size() == 0) {
-    std::cout << "Cannot find transformation." << std::endl;
+    std::cout << "Cannot find transformation, assigning identity." << std::endl;
     res_transform = Eigen::Matrix4d::Identity();
   } else {
     res_transform = transforms[0].cast<double>();
