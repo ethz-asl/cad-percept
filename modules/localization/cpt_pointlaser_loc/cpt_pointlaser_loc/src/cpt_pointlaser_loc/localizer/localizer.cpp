@@ -8,14 +8,16 @@
 namespace cad_percept {
 namespace pointlaser_loc {
 namespace localizer {
-PointLaserLocalizer::PointLaserLocalizer(const cad_percept::cgal::MeshModel::Ptr& model,
-                                         const Eigen::Matrix<double, 6, 1>& initial_pose_std,
-                                         const Eigen::Matrix<double, 6, 1>& odometry_noise_std,
+PointLaserLocalizer::PointLaserLocalizer(const cad_percept::cgal::MeshModel::Ptr &model,
+                                         const Eigen::Matrix<double, 6, 1> &initial_pose_std,
+                                         const Eigen::Matrix<double, 6, 1> &odometry_noise_std,
                                          double pointlaser_noise_std)
     : model_(model),
       initial_pose_std_(initial_pose_std),
       odometry_noise_std_(odometry_noise_std),
-      pointlaser_noise_std_(pointlaser_noise_std) {}
+      pointlaser_noise_std_(pointlaser_noise_std),
+      was_new_odometry_received_(false),
+      were_new_laser_measurements_received_(false) {}
 
 bool PointLaserLocalizer::setUpOptimizer(
     const kindr::minimal::QuatTransformation& marker_to_armbase,
@@ -69,6 +71,8 @@ void PointLaserLocalizer::addOdometry(
     const kindr::minimal::QuatTransformation &odometry_transform) {
   CHECK(optimizer_ != nullptr) << "Must set up optimizer before adding odometry transform.";
   optimizer_->addOdometry(odometry_transform);
+
+  was_new_odometry_received_ = true;
 }
 
 void PointLaserLocalizer::addLaserMeasurements(uint32_t distance_a, uint32_t distance_b,
@@ -105,7 +109,24 @@ void PointLaserLocalizer::getIntersectionsLasersWithModel(
   cad_percept::cgal::Ray query_ray_c = cad_percept::cpt_utils::buildRayFromPose(
       *marker_to_armbase_ * current_arm_pose * *laser_c_offset_);
   *intersection_c = model_->getIntersection(query_ray_c);
+
+  were_new_laser_measurements_received_ = true;
 }
+
+kindr::minimal::QuatTransformation PointLaserLocalizer::optimizeForBasePoseInMap(bool verbose) {
+  CHECK(optimizer_ != nullptr) << "Optimizer is not set up.";
+  CHECK(was_new_odometry_received_ && were_new_laser_measurements_received_)
+      << "Did not receive new odometry and/or laser measurements since initialization/last "
+         "optimization.";
+
+  // Reset the flags about the reception of measurements, in case a new optimization was to be
+  // performed.
+  was_new_odometry_received_ = false;
+  were_new_laser_measurements_received_ = false;
+
+  return optimizer_->optimize(verbose);
+}
+
 }  // namespace localizer
 }  // namespace pointlaser_loc
 }  // namespace cad_percept

@@ -94,6 +94,13 @@ class PointLaserLocalizer {
                                        cad_percept::cgal::Intersection *intersection_b,
                                        cad_percept::cgal::Intersection *intersection_c);
 
+  /// \brief Performs optimization and returns the pose of the base in the map.
+  ///
+  /// \param verbose  If True, the optimizer will show verbose prints.
+  ///
+  /// \return Pose of the base in the map.
+  kindr::minimal::QuatTransformation optimizeForBasePoseInMap(bool verbose = false);
+
  private:
   // Optimizer.
   std::unique_ptr<cad_percept::pointlaser_loc::optimizer::LocalizationOptimizer> optimizer_;
@@ -112,6 +119,9 @@ class PointLaserLocalizer {
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_c_offset_;
   // Goal pose of the arm.
   std::unique_ptr<kindr::minimal::QuatTransformation> arm_goal_pose_;
+  // Flags to track the reception of measurements.
+  bool was_new_odometry_received_;
+  bool were_new_laser_measurements_received_;
 };
 }  // namespace localizer
 }  // namespace pointlaser_loc
