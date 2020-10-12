@@ -57,3 +57,6 @@
 - git:
    local-name: serial
    uri: git@github.com:wjwwood/serial.git
+- git:
+    local-name: any_tools
+    uri: git@bitbucket.org:leggedrobotics/any_tools.git
