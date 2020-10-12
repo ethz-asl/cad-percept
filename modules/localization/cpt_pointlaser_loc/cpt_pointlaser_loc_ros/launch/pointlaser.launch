@@ -1,4 +1,4 @@
-unch>
+<launch>
 <!-- Launch pointlaser comm -->
     <include file="$(find cpt_pointlaser_comm)/launch/pointlaser_comm.launch">
     </include>
