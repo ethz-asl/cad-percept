@@ -38,7 +38,7 @@ LocalizationOptimizer::LocalizationOptimizer(
     graph_.addExpressionFactor(architect_offset_, architecture_offset,
                                gtsam::noiseModel::Diagonal::Sigmas(architecture_offset_std));
   }
-};
+}
 
 Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
     const double distance, const kindr::minimal::QuatTransformation &joint2sensor) {
@@ -88,11 +88,11 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   // Return the intersection point for debugging / visualization.
   // Caution: for constant expressions, argument of value function is ignored.
   return plane_support->value(initialization_);
-};
+}
 
 void LocalizationOptimizer::addOdometry(const kindr::minimal::QuatTransformation &transform) {
   current_arm_pose_ = current_arm_pose_ * transform;
-};
+}
 
 kindr::minimal::QuatTransformation LocalizationOptimizer::optimize(const bool verbose) {
   // for debugging
@@ -112,7 +112,7 @@ kindr::minimal::QuatTransformation LocalizationOptimizer::optimize(const bool ve
     return ret;
   }
   return result.at<kindr::minimal::QuatTransformation>(0);
-};
+}
 
 }  // namespace optimizer
 }  // namespace pointlaser_loc
