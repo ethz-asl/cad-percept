@@ -24,7 +24,7 @@ visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
   std::string downsample_points = nh_private.param<std::string>("GoICPdownsample", "1000");
   std::string goicp_location = nh_private.param<std::string>("goicp_folder", "fail");
 
-  // Preprocess data
+  // Preprocess data.
   pcl::PointCloud<pcl::PointSurfel>::Ptr strude_lidar(new pcl::PointCloud<pcl::PointSurfel>);
   pcl::PointCloud<pcl::PointSurfel>::Ptr strude_map(new pcl::PointCloud<pcl::PointSurfel>);
   pcl::PCLPointCloud2::Ptr lidar_scan_pc2(new pcl::PCLPointCloud2);
@@ -144,8 +144,7 @@ visualization_msgs::Marker StruDe::matchesToRosMsg(
   marker.color.a = 0.7f;
   marker.lifetime = ros::Duration(1);
 
-  // Iterate over all matches and publish edge between local graph and database
-  // graph if there is a valid match.
+  // Iterate over correspondences.
   for (auto correspondence : correspondences) {
     geometry_msgs::Point p_from;
     p_from.x = keypoints_scan->points[correspondence.index_query].x;
