@@ -28,7 +28,7 @@ class PointLaserLocalizer {
                       const Eigen::Matrix<double, 6, 1>& odometry_noise_std,
                       double pointlaser_noise_std);
 
-  /// \brief Performs localization w.r.t. the mesh model.
+  /// \brief Sets up the optimizer for a new high-accuracy localization query.
   /// NOTE: it is assumed that the arm was already moved to the initial pose.
   //  TODO(fmilano): Check for initial pose.
   /// TODO(fmilano): Check for exact meaning of poses.
