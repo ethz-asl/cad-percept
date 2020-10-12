@@ -11,11 +11,11 @@ namespace pointlaser_loc {
 namespace optimizer {
 
 LocalizationOptimizer::LocalizationOptimizer(
-    const kindr::minimal::QuatTransformation& architecture_offset,
-    const kindr::minimal::QuatTransformation& initial_pose,
-    const cad_percept::cgal::MeshModel::Ptr& arch_model,
-    const Eigen::Matrix<double, 6, 1>& architecture_offset_std,
-    const Eigen::Matrix<double, 6, 1>& odometry_noise_std, const double pointlaser_noise_std,
+    const kindr::minimal::QuatTransformation &architecture_offset,
+    const kindr::minimal::QuatTransformation &initial_pose,
+    const cad_percept::cgal::MeshModel::Ptr &arch_model,
+    const Eigen::Matrix<double, 6, 1> &architecture_offset_std,
+    const Eigen::Matrix<double, 6, 1> &odometry_noise_std, const double pointlaser_noise_std,
     const bool fix_retrieved_planes, const bool add_prior, const bool only_optimize_translation)
     : initialization_(),
       graph_(),

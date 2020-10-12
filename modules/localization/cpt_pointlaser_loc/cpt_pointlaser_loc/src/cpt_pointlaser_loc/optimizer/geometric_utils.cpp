@@ -7,7 +7,7 @@ namespace pointlaser_loc {
 namespace optimizer {
 
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
-    const kindr::minimal::QuatTransformation& sensor_pose,
+    const kindr::minimal::QuatTransformation &sensor_pose,
     const cad_percept::cgal::MeshModel::Ptr model, gtsam::OptionalJacobian<6, 6> H,
     gtsam::OptionalJacobian<6, 1> H_ignored) {
   if (H) *H = Eigen::Matrix<double, 6, 6>::Zero();
@@ -28,14 +28,14 @@ Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
 }
 
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
-    ETransformation& sensor_pose, gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>& model) {
+    ETransformation &sensor_pose, gtsam::Expression<cad_percept::cgal::MeshModel::Ptr> &model) {
   return gtsam::Expression<Eigen::Matrix<double, 6, 1>>(&getIntersectionPlaneImplementation,
                                                         sensor_pose, model);
 }
 
 // Get the expected distance for the retrieved plane and the laser pose.
-gtsam::Expression<double> expectedDistance(ETransformation& laser_in_map, EVector3& plane_support,
-                                           EVector3& plane_normal) {
+gtsam::Expression<double> expectedDistance(ETransformation &laser_in_map, EVector3 &plane_support,
+                                           EVector3 &plane_normal) {
   EVector3 unit_dir(Eigen::Vector3d(1, 0, 0));
   EVector3 origin(Eigen::Vector3d(0, 0, 0));
   // construct ray

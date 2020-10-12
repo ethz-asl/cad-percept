@@ -23,8 +23,8 @@ static double multiplyVectorsImplementation(Eigen::Vector3d a, Eigen::Vector3d b
   return a.transpose() * b;
 }
 
-static gtsam::Expression<double> multiplyVectors(const gtsam::Expression<Eigen::Vector3d>& C1,
-                                                 const gtsam::Expression<Eigen::Vector3d>& C2) {
+static gtsam::Expression<double> multiplyVectors(const gtsam::Expression<Eigen::Vector3d> &C1,
+                                                 const gtsam::Expression<Eigen::Vector3d> &C2) {
   return gtsam::Expression<double>(&multiplyVectorsImplementation, C1, C2);
 }
 
@@ -34,7 +34,7 @@ static double checkPositiveImplementation(double a, gtsam::OptionalJacobian<1, 1
   return a;
 }
 
-static gtsam::Expression<double> checkPositive(const gtsam::Expression<double>& C) {
+static gtsam::Expression<double> checkPositive(const gtsam::Expression<double> &C) {
   return gtsam::Expression<double>(&checkPositiveImplementation, C);
 }
 
@@ -45,24 +45,24 @@ static double divideImplementation(double a, double b, gtsam::OptionalJacobian<1
   return a / b;
 }
 
-static gtsam::Expression<double> divide(const gtsam::Expression<double>& a,
-                                        const gtsam::Expression<double>& b) {
+static gtsam::Expression<double> divide(const gtsam::Expression<double> &a,
+                                        const gtsam::Expression<double> &b) {
   return gtsam::Expression<double>(&divideImplementation, a, b);
 }
 
 static Eigen::Vector3d getIntersectionPointImplementation(
-    const Eigen::Matrix<double, 6, 1>& intersection, gtsam::OptionalJacobian<3, 6> H) {
+    const Eigen::Matrix<double, 6, 1> &intersection, gtsam::OptionalJacobian<3, 6> H) {
   if (H) *H = Eigen::Matrix<double, 3, 6>::Identity();
   return intersection.head<3>();
 }
 
 static EVector3 getIntersectionPoint(
-    const gtsam::Expression<Eigen::Matrix<double, 6, 1>>& intersection) {
+    const gtsam::Expression<Eigen::Matrix<double, 6, 1>> &intersection) {
   return EVector3(&getIntersectionPointImplementation, intersection);
 }
 
 static Eigen::Vector3d getIntersectionNormalImplementation(
-    const Eigen::Matrix<double, 6, 1>& intersection, gtsam::OptionalJacobian<3, 6> H) {
+    const Eigen::Matrix<double, 6, 1> &intersection, gtsam::OptionalJacobian<3, 6> H) {
   if (H) {
     H->leftCols<3>().setZero();
     H->rightCols<3>().setIdentity();
@@ -71,21 +71,21 @@ static Eigen::Vector3d getIntersectionNormalImplementation(
 }
 
 static EVector3 getIntersectionNormal(
-    const gtsam::Expression<Eigen::Matrix<double, 6, 1>>& intersection) {
+    const gtsam::Expression<Eigen::Matrix<double, 6, 1>> &intersection) {
   return EVector3(&getIntersectionNormalImplementation, intersection);
 }
 
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
-    const kindr::minimal::QuatTransformation& sensor_pose,
+    const kindr::minimal::QuatTransformation &sensor_pose,
     const cad_percept::cgal::MeshModel::Ptr model, gtsam::OptionalJacobian<6, 6> H,
     gtsam::OptionalJacobian<6, 1> H_ignored);
 
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
-    const ETransformation& sensor_pose,
-    gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>& model);
+    const ETransformation &sensor_pose,
+    gtsam::Expression<cad_percept::cgal::MeshModel::Ptr> &model);
 
-gtsam::Expression<double> expectedDistance(ETransformation& laser_in_map, EVector3& plane_support,
-                                           EVector3& plane_normal);
+gtsam::Expression<double> expectedDistance(ETransformation &laser_in_map, EVector3 &plane_support,
+                                           EVector3 &plane_normal);
 
 }  // namespace optimizer
 }  // namespace pointlaser_loc

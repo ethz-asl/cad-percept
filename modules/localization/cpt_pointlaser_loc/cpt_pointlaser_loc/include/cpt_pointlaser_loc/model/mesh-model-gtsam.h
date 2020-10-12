@@ -15,32 +15,32 @@ struct traits<cad_percept::cgal::MeshModel::Ptr> {
   typedef Eigen::Matrix<double, dimension, 1> vector;
 
   // Print the type.
-  static void Print(const type& T, const std::string& str) {
+  static void Print(const type &T, const std::string &str) {
     std::cout << "MeshModel Expression Fake," << str << std::endl;
   }
 
-  static void Print(const type& T) { Print(T, ""); }
+  static void Print(const type &T) { Print(T, ""); }
 
   // Check the equality of two values.
-  static bool Equals(const type& T1, const type& T2, double tol) {
+  static bool Equals(const type &T1, const type &T2, double tol) {
     CHECK(false) << "MeshModel Equals not implemented.";
     return false;
   }
 
-  static bool Equals(const type& T1, const type& T2) {
+  static bool Equals(const type &T1, const type &T2) {
     CHECK(false) << "MeshModel Equals not implemented.";
     return false;
   }
 
-  static vector Local(const type& origin, const type& other) {
+  static vector Local(const type &origin, const type &other) {
     CHECK(false) << "MeshModel Local not implemented.";
     return vector::Zero();
   }
-  static type Retract(const type& origin, const vector& d) {
+  static type Retract(const type &origin, const vector &d) {
     CHECK(false) << "MeshModel Retract not implemented.";
     return origin;
   }
-  static int GetDimension(const type& /* origin */) { return dimension; }
+  static int GetDimension(const type & /* origin */) { return dimension; }
 };  // traits
 }  // namespace gtsam
 #endif  // CPT_POINTLASER_LOC_MODEL_MESH_MODEL_GTSAM_H_
