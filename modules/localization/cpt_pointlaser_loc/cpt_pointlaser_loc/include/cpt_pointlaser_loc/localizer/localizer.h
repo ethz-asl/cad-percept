@@ -6,6 +6,8 @@
 
 #include <Eigen/Geometry>
 
+#include "cpt_pointlaser_loc/optimizer/optimizer.h"
+
 namespace cad_percept {
 namespace pointlaser_loc {
 namespace localizer {
@@ -26,6 +28,8 @@ class PointLaserLocalizer {
                       double pointlaser_noise_std);
 
   /// \brief Performs localization w.r.t. the mesh model.
+  /// NOTE: it is assumed that the arm was already moved to the initial pose.
+  //  TODO(fmilano): Check for initial pose.
   /// TODO(fmilano): Check for exact meaning of poses.
   ///
   /// \param marker_to_armbase          Pose between the marker and the arm base.
@@ -40,22 +44,26 @@ class PointLaserLocalizer {
   ///                                   to the optimization graph.
   /// \param only_optimize_translation  If True, only optimizes translation.
   /// \return True if localization can be successfully performed, False otherwise.
-  bool localize(const kindr::minimal::QuatTransformation& marker_to_armbase,
-                const kindr::minimal::QuatTransformation& initial_pose,
-                const kindr::minimal::QuatTransformation& laser_a_offset,
-                const kindr::minimal::QuatTransformation& laser_b_offset,
-                const kindr::minimal::QuatTransformation& laser_c_offset,
-                const kindr::minimal::QuatTransformation& endeffector_offset,
-                const kindr::minimal::QuatTransformation& arm_base_to_base,
-                bool fix_cad_planes = false, bool add_initial_pose_prior = false,
-                bool only_optimize_translation = false);
+  bool setUpOptimizer(const kindr::minimal::QuatTransformation& marker_to_armbase,
+                      const kindr::minimal::QuatTransformation& initial_pose,
+                      const kindr::minimal::QuatTransformation& laser_a_offset,
+                      const kindr::minimal::QuatTransformation& laser_b_offset,
+                      const kindr::minimal::QuatTransformation& laser_c_offset,
+                      const kindr::minimal::QuatTransformation& endeffector_offset,
+                      const kindr::minimal::QuatTransformation& arm_base_to_base,
+                      bool fix_cad_planes = false, bool add_initial_pose_prior = false,
+                      bool only_optimize_translation = false);
 
  private:
+  // Optimizer.
+  std::unique_ptr<cad_percept::pointlaser_loc::optimizer::LocalizationOptimizer> optimizer_;
   // Mesh model w.r.t. which localization should be performed.
   cad_percept::cgal::MeshModel::Ptr model_;
   // Noise statistics.
   Eigen::Matrix<double, 6, 1> initial_pose_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
+  // Initial pose between arm base and Kinova link.
+  std::unique_ptr<kindr::minimal::QuatTransformation> initial_pose_;
 };
 }  // namespace localizer
 }  // namespace pointlaser_loc
