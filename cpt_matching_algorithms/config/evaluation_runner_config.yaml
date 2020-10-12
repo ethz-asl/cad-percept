@@ -27,6 +27,7 @@ Matcher: 0 # 0: GoICP
            # 2: PlaneMatcher with iter RHT
            # 3: PlaneMatcher with PCL RANSAC
            # 4: PlaneMatcher with Cgal RG
+           # 5: 3D feature matching
 
 # Plane Matching
 # PRRUS
