@@ -6,8 +6,8 @@
        doc="Path of the USB port that the distobox is connected at."/>
   <!-- pointlaser_comm node -->
   <node name="pointlaser_comm"
-        pkg="cpt_pointlaser_comm"
-        type="cpt_pointlaser_comm"
+        pkg="cpt_pointlaser_comm_ros"
+        type="distobox_comm_node"
         output="screen"
         respawn="true">
     <param name="port" value="$(arg distobox_usb_port)"/>

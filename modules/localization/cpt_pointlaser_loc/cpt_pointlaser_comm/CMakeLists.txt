@@ -10,18 +10,9 @@ add_definitions(-std=c++11)
 # LIBRARIES #
 #############
 
-cs_add_library(cpt_pointlaser_comm_lib
+cs_add_library(cpt_pointlaser_comm
   src/distobox_serial.cpp
 )
-
-############
-# BINARIES #
-############
-
-cs_add_executable(cpt_pointlaser_comm
-  src/pointlaser_comm_node.cpp
-)
-target_link_libraries(cpt_pointlaser_comm cpt_pointlaser_comm_lib)
 
 ##########
 # EXPORT #

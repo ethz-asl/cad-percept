@@ -9,7 +9,7 @@
 #include <std_srvs/Trigger.h>
 
 #include "any_msgs/SetPose.h"
-#include "cpt_pointlaser_comm/GetDistance.h"
+#include "cpt_pointlaser_comm_ros/GetDistance.h"
 
 namespace cad_percept {
 namespace pointlaser_loc_ros {
@@ -142,8 +142,8 @@ bool KinovaLocalizer::highAccuracyLocalization(
     current_pose = new_arm_pose;
 
     // Take measurement.
-    cpt_pointlaser_comm::GetDistance::Request req;
-    cpt_pointlaser_comm::GetDistance::Response resp;
+    cpt_pointlaser_comm_ros::GetDistance::Request req;
+    cpt_pointlaser_comm_ros::GetDistance::Response resp;
     while (!leica_client_["distance"].call(req, resp)) {
       ROS_ERROR("could not get distance measurement.\n");
       ros::Duration(0.1).sleep();
@@ -240,7 +240,7 @@ void KinovaLocalizer::advertiseTopics() {
       nh_private_.advertise<geometry_msgs::PoseStamped>("high_accuracy_end_effector_pose", 1);
 
   leica_client_["distance"] =
-      nh_.serviceClient<cpt_pointlaser_comm::GetDistance>("/pointlaser_comm/distance");
+      nh_.serviceClient<cpt_pointlaser_comm_ros::GetDistance>("/pointlaser_comm/distance");
   leica_client_["laserOn"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOn");
   leica_client_["laserOff"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOff");
 
