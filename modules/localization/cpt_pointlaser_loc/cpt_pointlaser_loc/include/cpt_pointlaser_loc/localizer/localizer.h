@@ -81,6 +81,19 @@ class PointLaserLocalizer {
   /// \return None.
   void addLaserMeasurements(uint32_t distance_A, uint32_t distance_B, uint32_t distance_C);
 
+  /// \brief Returns the intersections of the 3 lasers with the model.
+  ///
+  /// \param[in] current_arm_pose  Current pose of the arm (Kinova link) w.r.t. the arm base.
+  /// \param[out] intersection_A   Intersection of laser A with the model.
+  /// \param[out] intersection_B   Intersection of laser B with the model.
+  /// \param[out] intersection_C   Intersection of laser C with the model.
+  ///
+  /// \return None.
+  void getIntersectionsLasersWithModel(const kindr::minimal::QuatTransformation &current_arm_pose,
+                                       cad_percept::cgal::Intersection *intersection_A,
+                                       cad_percept::cgal::Intersection *intersection_B,
+                                       cad_percept::cgal::Intersection *intersection_C);
+
  private:
   // Optimizer.
   std::unique_ptr<cad_percept::pointlaser_loc::optimizer::LocalizationOptimizer> optimizer_;
@@ -91,6 +104,8 @@ class PointLaserLocalizer {
   double pointlaser_noise_std_;
   // Initial pose between arm base and Kinova link.
   std::unique_ptr<kindr::minimal::QuatTransformation> initial_pose_;
+  // Offset between the marker and the arm base.
+  std::unique_ptr<kindr::minimal::QuatTransformation> marker_to_armbase_;
   // Offsets between the Kinova link and the lasers.
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_a_offset_;
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_b_offset_;

@@ -1,5 +1,7 @@
 #include "cpt_pointlaser_loc/localizer/localizer.h"
 
+#include <cgal_definitions/cgal_typedefs.h>
+#include <cpt_utils/cpt_utils.h>
 #include <glog/logging.h>
 #include <kindr/minimal/rotation-quaternion.h>
 
@@ -33,6 +35,9 @@ bool PointLaserLocalizer::setUpOptimizer(
 
   // Store the initial pose, required when adding measurements.
   initial_pose_.reset(new kindr::minimal::QuatTransformation(initial_pose));
+
+  // Store the offset between the marker and the arm base.
+  marker_to_armbase_.reset(new kindr::minimal::QuatTransformation(marker_to_armbase));
 
   // Store the laser offsets.
   laser_a_offset_.reset(new kindr::minimal::QuatTransformation(laser_a_offset));
@@ -76,6 +81,31 @@ void PointLaserLocalizer::addLaserMeasurements(uint32_t distance_A, uint32_t dis
   optimizer_->addRelativeMeasurement(distance_C / 10000.0, *laser_c_offset_);
 }
 
+void PointLaserLocalizer::getIntersectionsLasersWithModel(
+    const kindr::minimal::QuatTransformation &current_arm_pose,
+    cad_percept::cgal::Intersection *intersection_A,
+    cad_percept::cgal::Intersection *intersection_B,
+    cad_percept::cgal::Intersection *intersection_C) {
+  CHECK_NOTNULL(intersection_A);
+  CHECK_NOTNULL(intersection_B);
+  CHECK_NOTNULL(intersection_C);
+
+  CHECK(marker_to_armbase_ != nullptr && laser_a_offset_ != nullptr && laser_b_offset_ != nullptr &&
+        laser_c_offset_ != nullptr)
+      << "Must set up optimizer before getting intersections of lasers with model.";
+
+  cad_percept::cgal::Ray query_ray_A = cad_percept::cpt_utils::buildRayFromPose(
+      *marker_to_armbase_ * current_arm_pose * *laser_a_offset_);
+  *intersection_A = model_->getIntersection(query_ray_A);
+
+  cad_percept::cgal::Ray query_ray_B = cad_percept::cpt_utils::buildRayFromPose(
+      *marker_to_armbase_ * current_arm_pose * *laser_b_offset_);
+  *intersection_B = model_->getIntersection(query_ray_B);
+
+  cad_percept::cgal::Ray query_ray_C = cad_percept::cpt_utils::buildRayFromPose(
+      *marker_to_armbase_ * current_arm_pose * *laser_c_offset_);
+  *intersection_C = model_->getIntersection(query_ray_C);
+}
 }  // namespace localizer
 }  // namespace pointlaser_loc
 }  // namespace cad_percept
