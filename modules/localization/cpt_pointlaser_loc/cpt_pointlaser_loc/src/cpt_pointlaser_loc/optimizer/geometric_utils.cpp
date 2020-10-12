@@ -28,7 +28,8 @@ Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
 }
 
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
-    ETransformation &sensor_pose, gtsam::Expression<cad_percept::cgal::MeshModel::Ptr> &model) {
+    const ETransformation &sensor_pose,
+    gtsam::Expression<cad_percept::cgal::MeshModel::Ptr> &model) {
   return gtsam::Expression<Eigen::Matrix<double, 6, 1>>(&getIntersectionPlaneImplementation,
                                                         sensor_pose, model);
 }
