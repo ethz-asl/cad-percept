@@ -1,6 +1,5 @@
 #include "cpt_pointlaser_loc_ros/kinova_localizer.h"
 
-#include <cpt_pointlaser_loc/localizer/localizer.h>
 #include <geometry_msgs/PointStamped.h>
 #include <kindr/minimal/position.h>
 #include <minkindr_conversions/kindr_msg.h>
@@ -43,6 +42,11 @@ KinovaLocalizer::KinovaLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_privat
   if (!nh_private_.hasParam("pointlaser_noise_std"))
     ROS_ERROR("'pointlaser_noise_std' not set as parameter.\n");
   pointlaser_noise_std_ = nh_private_.param<double>("pointlaser_noise_std", 1.0);
+
+  // Initialize localizer.
+  localizer_.reset(new cad_percept::pointlaser_loc::localizer::PointLaserLocalizer(
+      model_, initial_pose_std_, odometry_noise_std_, pointlaser_noise_std_));
+
   advertiseTopics();
 };
 
@@ -85,14 +89,12 @@ bool KinovaLocalizer::highAccuracyLocalization(
       getTF("kinova_link_6", "kinova_end_effector");
   kindr::minimal::QuatTransformation arm_base_to_base = getTF("arm_base", "base");
 
-  // Initialize localizer.
-  cad_percept::pointlaser_loc::localizer::PointLaserLocalizer localizer(
-      model_, initial_pose_std_, odometry_noise_std_, pointlaser_noise_std_);
-  localizer.setUpOptimizer(marker_to_armbase, initial_pose, laser_a_offset, laser_b_offset,
-                           laser_c_offset, endeffector_offset, arm_base_to_base,
-                           nh_private_.param("fix_cad_planes", false),
-                           nh_private_.param("initial_pose_prior", false),
-                           nh_private_.param("only_optimize_translation", false));
+  // Set up the optimizer for a new high-accuracy localization query.
+  localizer_->setUpOptimizer(marker_to_armbase, initial_pose, laser_a_offset, laser_b_offset,
+                             laser_c_offset, endeffector_offset, arm_base_to_base,
+                             nh_private_.param("fix_cad_planes", false),
+                             nh_private_.param("initial_pose_prior", false),
+                             nh_private_.param("only_optimize_translation", false));
   // We measure over different poses of the end effector and optimize for the pose of the arm base.
   kindr::minimal::QuatTransformation current_pose(initial_pose);
 
@@ -133,12 +135,12 @@ bool KinovaLocalizer::highAccuracyLocalization(
     Eigen::Quaternion<double> rot_quat(arm_cmd[3], arm_cmd[4], arm_cmd[5], arm_cmd[6]);
     kindr::minimal::PositionTemplate<double> translation(arm_cmd[0], arm_cmd[1], arm_cmd[2]);
     kindr::minimal::QuatTransformation arm_goal_pose =
-        localizer.getArmGoalPose(rot_quat, translation);
+        localizer_->getArmGoalPose(rot_quat, translation);
     setArmTo(arm_goal_pose);
 
     // Add odometry measurement.
     kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", "kinova_link_6");
-    localizer.addOdometry(current_pose.inverse() * new_arm_pose);
+    localizer_->addOdometry(current_pose.inverse() * new_arm_pose);
     current_pose = new_arm_pose;
 
     // Take measurement.
@@ -149,13 +151,13 @@ bool KinovaLocalizer::highAccuracyLocalization(
       ros::Duration(0.1).sleep();
     }
 
-    localizer.addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC);
+    localizer_->addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC);
 
     // For debugging, also publish the intersection as seen from the current state.
     cad_percept::cgal::Intersection model_intersection_a, model_intersection_b,
         model_intersection_c;
-    localizer.getIntersectionsLasersWithModel(current_pose, &model_intersection_a,
-                                              &model_intersection_b, &model_intersection_c);
+    localizer_->getIntersectionsLasersWithModel(current_pose, &model_intersection_a,
+                                                &model_intersection_b, &model_intersection_c);
     geometry_msgs::PointStamped intersection_msg;
     intersection_msg.header.stamp = ros::Time::now();
     intersection_msg.header.frame_id = "marker";
@@ -176,7 +178,7 @@ bool KinovaLocalizer::highAccuracyLocalization(
 
   // Optimize for the pose of the base in the map.
   kindr::minimal::QuatTransformation base_pose_in_map =
-      localizer.optimizeForBasePoseInMap(nh_private_.param<bool>("verbose", false));
+      localizer_->optimizeForBasePoseInMap(nh_private_.param<bool>("verbose", false));
   // Translate the pose in the map into a pose in the world frame.
   kindr::minimal::QuatTransformation world_to_armbase = getTF("world", "marker") * base_pose_in_map;
 
