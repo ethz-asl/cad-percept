@@ -17,7 +17,6 @@ namespace cad_percept {
 namespace cpt_utils {
 
 typedef kindr::minimal::QuatTransformationTemplate<double> SE3;
-// typedef SE3::Rotation SO3;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 struct Associations {
@@ -70,7 +69,7 @@ cgal::Polyhedron::Facet_handle getFacetHandle(cgal::Polyhedron &P, const uint fa
  * The point on the ray is set to (1, 0, 0) and the transformation given by the
  * input pose is then applied to the ray points.
  */
-cgal::Ray buildRayFromPose(const SE3& pose);
+cgal::Ray buildRayFromPose(const SE3 &pose);
 
 }  // namespace cpt_utils
 }  // namespace cad_percept
