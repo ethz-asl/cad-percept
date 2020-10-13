@@ -34,7 +34,7 @@ visualization_msgs::Marker StruDe::strudeMatch(Eigen::Matrix4d& res_transform,
 
   // Fitler map with voxel grid filter to equalize density.
   pcl::VoxelGrid<pcl::PCLPointCloud2> filter;
-  filter.setLeafSize(0.05f, 0.05f, 0.05f);
+  filter.setLeafSize(0.1f, 0.1f, 0.1f);
   filter.setInputCloud(sampled_map_pc2);
   filter.filter(*sampled_map_pc2);
   filter.setInputCloud(lidar_scan_pc2);
