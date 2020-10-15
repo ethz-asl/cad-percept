@@ -9,20 +9,39 @@ import copy
 
 columns = [2, 3]
 scenarios = ["curve", "hilo", "rhone"]
-planners = ["RMP", "DGEO", "RRTConnect1000", "RRTStar1000", "RRTMeshProj1000", "RRTStar250", "RRTMeshProj250"]
+planners = ["RMP8", "DGEO", "RRTConnect1000", "RRTStar1000", "RRTMeshProj1000", "RRTStar250", "RRTMeshProj250"]
 planners_latex = ["\\textbf{Ours}", "DGEO", "\shortstack{RRT$^{*}$ \\\\ Con-$1$}",
                   "\shortstack{RRT$^{*}$ \\\\ Sam-$1$}",
                   "\shortstack{RRT$^{*}$ \\\\ Pro-$1$}", "\shortstack{RRT$^{*}$ \\\\ Sam-$\\sfrac{1}{4}$}",
                   "\shortstack{RRT$^{*}$ \\\\ Pro-$\\sfrac{1}{4}$}"]
 data = []
 for scenario in scenarios:
-    df = read_csv(scenario + "_filtered.csv", delimiter="\t")
-    df.columns = ["scenario", "planner", "success", "duration", "length", "dist_surf", "smoothness", "segments"]
+    df = read_csv(scenario + "_data.log", delimiter="\t")
+    df.columns = ["scenario", "planner", "success", "duration", "length", "dist_surf", "smoothness", "segments", "rowid", "runid"]
     df["scenario"] = scenario
     df["duration"] = df["duration"] / 1000.0
     data.append(df)
 
 all_data = pd.concat(data)
+
+
+# calculate relative length for all rows!
+rel_length = []
+for index, row in all_data.iterrows():
+    if row["success"] == 0:
+        rel_length.append(0)
+    else:
+        length = row["length"]
+        dgeo_length_rows = all_data[(all_data["planner"] == "DGEO") & (all_data["scenario"] == row["scenario"]) &
+                                    (all_data["rowid"] == row["rowid"])]["length"]
+        assert(len(dgeo_length_rows) == 1)
+        dgeo_length = dgeo_length_rows.values[0]
+        length_ratio = length/dgeo_length
+        rel_length.append(length_ratio)
+
+all_data = all_data.assign(len_ratio = rel_length)
+alpha_stripplot = 0.25
+
 success_rates = all_data.groupby(["planner", "scenario"], as_index=False).agg(
     {"success": [lambda x: np.count_nonzero(x) / np.alen(x)],
      "duration": [np.average]})
@@ -68,7 +87,7 @@ success_rate_plot.set(xlabel=None, ylabel='Success Rate $[\%]$')
 # success_rate_plot.set(title="Planning Success Rate")
 # plt.show()
 figure = success_rate_plot.get_figure()
-figure.savefig('/tmp/success_rate.pdf', dpi=300)
+figure.savefig('success_rate.pdf', dpi=300)
 plt.clf()
 
 # generate latex table
@@ -108,7 +127,10 @@ print(tabulate(table, tablefmt="latex_raw"))
 # plt.clf()
 
 all_data = all_data[all_data["success"] == 1]
-rmp_data = all_data[all_data["planner"] == "RMP"]
+
+rmp_data = all_data[all_data["planner"] == "RMP8"]
+
+
 
 dist_scatter_rc = copy.deepcopy(default_rc)
 dist_scatter_rc['figure.figsize'] = (4, 1.0)
@@ -122,10 +144,13 @@ bplot = sns.scatterplot(y='dist_surf', x='length',
                         alpha=0.8,
                         data=rmp_data,
                         linewidth=0.0)
+
+bplot.set(yscale="log", xscale="log")
+
 bplot.set(xlabel='Path length [m]', ylabel='Avg. Dist to Surface [m]')
 bplot.legend().remove()
 
-bplot.get_figure().savefig('/tmp/dist_scatter.pdf', dpi=300)
+bplot.get_figure().savefig('dist_scatter.pdf', dpi=300)
 
 # plt.clf()
 
@@ -142,7 +167,7 @@ bplot = sns.stripplot(y='smoothness', x='planner',
                       jitter=True,
                       marker='o',
                       dodge=True,
-                      alpha=0.3,
+                      alpha=alpha_stripplot,
                       hue='scenario')
 bplot.set(xlabel=None, ylabel='Smoothness')
 
@@ -150,9 +175,35 @@ bplot.set(ylim=(0.84, 1.02))
 bplot.set_xticklabels(planners_latex, rotation=90)
 bplot.legend().remove()
 
-bplot.get_figure().savefig('/tmp/smoothness.pdf', dpi=300)
+bplot.get_figure().savefig('smoothness.pdf', dpi=300)
 
 plt.clf()
+
+
+lengthratio_rc = copy.deepcopy(default_rc)
+lengthratio_rc['figure.figsize'] = (4, 4.0)
+lengthratio_rc['figure.constrained_layout.h_pad'] = 0.05
+lengthratio_rc['figure.constrained_layout.w_pad'] = 0.2
+sns.set(rc=lengthratio_rc)
+sns.set_palette("tab10")
+bplot = sns.stripplot(y='len_ratio', x='planner',
+                      data=all_data,
+                      order=planners,
+                      jitter=True,
+                      marker='o',
+                      dodge=True,
+                      alpha=alpha_stripplot,
+                      hue='scenario')
+bplot.set(xlabel=None, ylabel='Length ratio')
+
+bplot.set(ylim=(0.85, 1.45))
+bplot.set_xticklabels(planners_latex, rotation=90)
+bplot.legend().remove()
+
+bplot.get_figure().savefig('lengthratio.pdf', dpi=300)
+
+plt.clf()
+
 
 duration_rc = copy.deepcopy(default_rc)
 duration_rc['figure.figsize'] = (4, 3.0)
@@ -166,14 +217,18 @@ bplot = sns.stripplot(y='duration', x='planner',
                       jitter=True,
                       marker='o',
                       dodge=True,
-                      alpha=0.3,
+                      alpha=alpha_stripplot,
                       hue='scenario')
+bplot.set(yscale="log")
+
 bplot.set(xlabel=None, ylabel='Duration [ms]')
 bplot.legend().remove()
 
 bplot.set_xticklabels(planners_latex, rotation=90)
-bplot.get_figure().savefig('/tmp/duration.pdf', dpi=300)
+bplot.get_figure().savefig('duration.pdf', dpi=300)
 plt.clf()
+
+print(all_data)
 
 dist_rc = copy.deepcopy(default_rc)
 dist_rc['figure.figsize'] = (4, 3.0)
@@ -187,31 +242,14 @@ bplot = sns.stripplot(y='dist_surf', x='planner',
                       jitter=True,
                       marker='o',
                       dodge=True,
-                      alpha=0.5,
+                      alpha=alpha_stripplot,
                       hue='scenario')
 bplot.set_xticklabels(planners_latex, rotation=90)
+bplot.set(ylim=(-0.01, 0.25))
 
 bplot.set(xlabel=None, ylabel='Avg Surface Dist [m]')
 bplot.legend().remove()
-bplot.get_figure().savefig('/tmp/dist_surf.pdf', dpi=300)
+bplot.get_figure().savefig('dist_surf.pdf', dpi=300)
 plt.clf()
 
-sns.scatterplot(y='smoothness', x='duration',
-                hue='planner',
-                marker='.',
-                alpha=1.0,
-                data=all_data).get_figure().savefig('/tmp/duration_smoothness.png', dpi=300)
-plt.clf()
 
-#
-# plt.show()
-
-# plt.show()
-
-# print(all_data.groupby(["planner", "scenario"])["duration"].mean() / 1000.0)
-
-# print(all_data.groupby(["planner", "scenario"])["smoothness"].mean())
-
-# print(all_data.groupby(["planner", "scenario"])["dist_surf"].mean())
-
-# print(all_data.groupby(["planner", "scenario"])["length"].mean())

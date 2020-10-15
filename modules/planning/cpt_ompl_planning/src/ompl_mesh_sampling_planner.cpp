@@ -26,7 +26,7 @@ const cad_percept::planning::SurfacePlanner::Result OMPLMeshSamplingPlanner::pla
 
   si->setStateValidityChecker(
       std::bind(&OMPLMeshSamplingPlanner::meshStateValidityChecker, this, std::placeholders::_1));
-  si->setStateValidityCheckingResolution(0.01);  // 1%
+  si->setStateValidityCheckingResolution(0.03);  // 3%
 
   auto ss = std::make_shared<og::SimpleSetup>(si);
 

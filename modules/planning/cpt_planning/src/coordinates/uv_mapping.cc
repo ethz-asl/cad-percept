@@ -1,3 +1,5 @@
+#include <CGAL/Surface_mesh_parameterization/Barycentric_mapping_parameterizer_3.h>
+#include <CGAL/Surface_mesh_parameterization/Discrete_authalic_parameterizer_3.h>
 #include <cpt_planning/coordinates/face_coords.h>
 #include <cpt_planning/coordinates/uv_mapping.h>
 namespace cad_percept {
@@ -45,13 +47,7 @@ void UVMapping::CoordinateMeshBuilder::operator()(cgal::HalfedgeDS &hds) {
   B.end_surface();
 }
 
-void UVMapping::createUVParametrization() {
-  namespace SMP = CGAL::Surface_mesh_parameterization;
 
-  // A halfedge on the (possibly virtual) border
-  auto bhd = CGAL::Polygon_mesh_processing::longest_border(mesh_3d_->getMeshRef()).first;
-  SMP::parameterize(mesh_3d_->getMeshRef(), bhd, uv_pmap_);
-}
 
 void UVMapping::determineTransformation() {
   // precondition: UVParametrization has been called.
@@ -67,7 +63,8 @@ void UVMapping::determineTransformation() {
   // adjust 2d for construction
   Eigen::Vector2d nominal_zero_uv = face_3d_.translateTo(face_2d_, ppid.first);
 
-  uv_transform_.linear() = Eigen::AngleAxisd(zero_angle_, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+  uv_transform_.linear() =
+      Eigen::AngleAxisd(zero_angle_, Eigen::Vector3d::UnitZ()).toRotationMatrix();
   uv_transform_.translation().topRows<2>() = -nominal_zero_uv;
   uv_transform_.translation() = uv_transform_.linear() * uv_transform_.translation();
 
@@ -88,12 +85,14 @@ void UVMapping::createMappings() {
                        mesh_2d_->getMeshRef().facets_begin());
 };
 
-std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(cad_percept::cgal::Vector3In vec_in) const {
+std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(
+    cad_percept::cgal::Vector3In vec_in) const {
   FaceCoords3d nearest_3d = nearestFace3D(vec_in);
   return {toUV(nearest_3d), nearest_3d};
 }
 
-std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(cad_percept::cgal::Vector2In vec_in) const {
+std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(
+    cad_percept::cgal::Vector2In vec_in) const {
   FaceCoords2d nearest_2d = nearestFaceUV(vec_in);
   return {nearest_2d, to3D(nearest_2d)};
 }
@@ -128,7 +127,8 @@ Eigen::Vector3d UVMapping::pointUVHto3D(const Eigen::Vector3d &pointuvh) const {
 
 Eigen::Vector3d UVMapping::point3DtoUVH(const Eigen::Vector3d &point3d) const {
   // get point that is on the manifold
-  cgal::PointAndPrimitiveId ppid = mesh_3d_->getClosestTriangle(point3d.x(), point3d.y(), point3d.z());
+  cgal::PointAndPrimitiveId ppid =
+      mesh_3d_->getClosestTriangle(point3d.x(), point3d.y(), point3d.z());
   Eigen::Vector3d closest_on_manifold{ppid.first.x(), ppid.first.y(), ppid.first.z()};
 
   // get Facecoords for this point

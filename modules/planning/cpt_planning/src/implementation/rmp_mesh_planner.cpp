@@ -4,12 +4,12 @@ namespace cad_percept {
 namespace planning {
 
 RMPMeshPlanner::RMPMeshPlanner(std::string mesh_path, Eigen::Vector3d tuning_1,
-                               Eigen::Vector3d tuning_2)
-    : tuning_1_(tuning_1), tuning_2_(tuning_2) {
+                               Eigen::Vector3d tuning_2, int mapping)
+    : tuning_1_(tuning_1), tuning_2_(tuning_2), mapping_id_(mapping) {
   cad_percept::cgal::MeshModel::create(mesh_path, &model_, true);
   Eigen::Vector3d zero(0.0, 0.0, 0.0);
   double zero_angle = 0;
-  mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle);
+  mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle, mapping_id_);
   manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero, zero_angle);
 }
 
@@ -36,9 +36,9 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
   B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
 
   TargetPolicy pol2(target_uv, A, tuning_1_[0], tuning_1_[1],
-                    tuning_1_[2]);  // goes to manifold as quick as possible
+                    tuning_1_[2]);  // goes to target
   TargetPolicy pol3(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
-                    tuning_2_[2]);  // stays along it
+                    tuning_2_[2]);  // stays on surface
   std::vector<TargetPolicy *> policies;
   policies.push_back(&pol2);
   policies.push_back(&pol3);
@@ -50,14 +50,32 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
   integrator.resetTo(start_xyz);
   for (double t = 0; t < 500.0; t += dt_) {
     Eigen::Vector3d current_pos;
+    std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+
     current_pos = integrator.forwardIntegrate(policies, manifold_, dt_);
 
+    std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+    std::cout << "Integrate TIME = "
+              << std::chrono::duration_cast<std::chrono::microseconds>(
+                  (end_time - start_time))
+                  .count()
+              << std::endl;
     states_out->push_back(current_pos);
 
-    if ((current_pos - target_xyz).norm() < 0.01) {
+    if(integrator.isDone()) {
       reached_criteria = true;
+      std::cout << (current_pos - target_xyz).norm() << std::endl;
+
       break;
     }
+    /*if ((current_pos - target_xyz).norm() < 0.005) {
+      Eigen::Vector3d bli, bla, blub;
+      integrator.getState(&bli, &bla, &blub);
+      std::cout << bla << std::endl;
+      std::cout << blub << std::endl;
+      reached_criteria = true;
+      break;
+    }*/
   }
   std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
 

@@ -8,7 +8,11 @@
 #include <cpt_planning/interface/surface_planner.h>
 #include <cpt_ros/mesh_model_publisher.h>
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <chrono>
+#include <fstream>
 #include <vector>
 using cad_percept::planning::SurfacePlanner;
 
@@ -50,7 +54,7 @@ class EvaluationNode {
     marker.pose.orientation.y = 0.0;
     marker.pose.orientation.z = 0.0;
     marker.pose.orientation.w = 1.0;
-    marker.scale.x = 0.05;
+    marker.scale.x = 0.1;
     marker.scale.y = 0.0;
     marker.scale.z = 0.0;
     marker.color.a = 1.0;  // Don't forget to set the alpha!
@@ -110,11 +114,32 @@ class EvaluationNode {
   }
 
   void logResult(int id, SurfacePlanner::Result result, std::string name,
-                 std::vector<Eigen::Vector3d> path, PathKPICalcuator::QualityIndicator quality) {
+                 std::vector<Eigen::Vector3d> path, PathKPICalcuator::QualityIndicator quality,
+                 std::string run_id) {
     std::cout << "DATA\t" << name << "\t" << result.success << "\t"
               << std::chrono::duration_cast<std::chrono::microseconds>(result.duration).count()
               << "\t" << quality.length << "\t" << quality.surface_dist.avg << "\t"
-              << quality.smoothness.avg << "\t" << quality.segments << std::endl;
+              << quality.smoothness.avg << "\t" << quality.segments << "\t" << rowid << "\t"
+              << run_id << std::endl;
+  }
+
+  void logPath(std::string run_id, std::vector<Eigen::Vector3d> path) {
+    std::ofstream logfile;
+    logfile.open("path_" + run_id + ".log");
+    for (auto node : path) {
+      logfile << node.x() << "\t" << node.y() << "\t" << node.z() << std::endl;
+    }
+    logfile.close();
+  }
+
+  void logEdges(std::string run_id, SurfacePlanner::EdgeList list) {
+    std::ofstream logfile;
+    logfile.open("edges_" + run_id + ".log");
+    for (auto edge : list) {
+      logfile << edge.first.x() << "\t" << edge.first.y() << "\t" << edge.first.z()
+              << edge.second.x() << "\t" << edge.second.y() << "\t" << edge.second.z() << std::endl;
+    }
+    logfile.close();
   }
 
   void getRandomPos(Eigen::Vector3d* pos_out) {
@@ -127,28 +152,43 @@ class EvaluationNode {
     pos_out->z() = points[1].z();
   }
 
-  void plan(bool new_random = true) {
+  void plan(bool new_random = true, bool write= true, Eigen::Vector3d start = {0,0,0}, Eigen::Vector3d goal = {0,0,0}) {
     if (new_random) {
       getRandomPos(&start_);
       getRandomPos(&goal_);
+    }
+    else{
+      start_ = start;
+      goal_ = goal;
     }
 
     for (auto planner : planners_) {
       std::vector<Eigen::Vector3d> path;
 
       // run planner
+      // create id for this run
+      std::string run_id = boost::uuids::to_string(uuid_gen_());
+
       auto result = planner.instance->plan(start_, goal_, &path);
       auto kpis = kpi_calculator_.calculate(path);
-      logResult(planner.id, result, planner.instance->getName(), path, kpis);
+      logResult(planner.id, result, planner.instance->getName(), path, kpis, run_id);
+
       if (result.success) {
         visualizePath(path, planner.color, planner.id);
+        if(write){
+        logPath(run_id, path);}
+
       }
       auto edgelist = planner.instance->getEdges();
       if (edgelist.size() > 0) {
         visualizeEdgeList(edgelist, planner.color, planner.instance->getName());
+        logEdges(run_id, edgelist);
       }
     }
+    rowid++;
   }
+
+  int rowid{0};
   Eigen::Vector3d start_, goal_;
   int last_id_{0};
   ros::NodeHandle nh_;
@@ -161,6 +201,7 @@ class EvaluationNode {
   cad_percept::MeshModelPublisher pub_model_;
   ros::Publisher pub_marker_;
   PathKPICalcuator kpi_calculator_;
+  boost::uuids::random_generator uuid_gen_;
 };
 
 #endif  // CPT_OMPL_PLANNING_EVALUATION_NODE_H

@@ -26,6 +26,13 @@ target_link_libraries(evaluation_node
         ${OMPL_LIBRARIES}
         cgal_definitions)
 
+cs_add_executable(mapping_eval_node
+        src/mapping_eval_node.cpp)
+target_link_libraries(mapping_eval_node
+        ${PROJECT_NAME}
+        ${OMPL_LIBRARIES}
+        cgal_definitions)
+
 
 
 cs_add_executable(tuning_node
@@ -40,6 +47,14 @@ cs_add_executable(kpi_test_node
         src/kpi_test.cpp)
 
 target_link_libraries(kpi_test_node
+        ${PROJECT_NAME}
+        ${OMPL_LIBRARIES}
+        cgal_definitions)
+
+cs_add_executable(param_grid_node
+        src/param_grid_node.cpp)
+
+target_link_libraries(param_grid_node
         ${PROJECT_NAME}
         ${OMPL_LIBRARIES}
         cgal_definitions)

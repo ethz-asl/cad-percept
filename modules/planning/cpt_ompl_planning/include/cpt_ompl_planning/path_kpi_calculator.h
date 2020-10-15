@@ -71,8 +71,8 @@ class PathKPICalcuator {
     for (size_t i = 1; i < path.size() - 1; i++) {
       Eigen::Vector3d last_segment = path.at(i - 1) - path.at(i);
       Eigen::Vector3d segment = path.at(i) - path.at(i + 1);
-      if(last_segment.norm() < 1e-10 || segment.norm() < 1e-10){
-        continue; // ignore too small segments
+      if (last_segment.norm() < 1e-10 || segment.norm() < 1e-10) {
+        continue;  // ignore too small segments
       }
 
       double cosine_similarity = last_segment.dot(segment) / (last_segment.norm() * segment.norm());
@@ -100,18 +100,26 @@ class PathKPICalcuator {
     for (size_t i = 1; i < path.size(); i++) {
       Eigen::Vector3d segment = path.at(i) - path.at(i - 1);
       double segment_length = segment.norm();
-      size_t increments = floor(segment_length / quality_sampling_dist_);
+      // we check at least one point per segment (starting point)
+      size_t increments = std::max((int)floor(segment_length / quality_sampling_dist_), 1);
+
+      if (std::abs(increments * quality_sampling_dist_ - segment_length) < 1e-5) {
+        // in case the segment is an even divisor, we substract one increment, as we do not want
+        // to test a point twice (this end point is the next start point)
+        --increments;
+      }
 
       // go along segment in defined increments
-      //for (size_t j = 0; j < increments; j++) {
-        Eigen::Vector3d position = path.at(i - 1) ;//+ segment * j * quality_sampling_dist_;
+      Eigen::Vector3d sampling_dist_along_segment = segment.normalized() * quality_sampling_dist_;
+      for (size_t j = 0; j < increments; j++) {
+        Eigen::Vector3d position = path.at(i - 1) + sampling_dist_along_segment * j;
 
         // query distance to mesh ..
         // ( query)
         cad_percept::cgal::Point pt(position.x(), position.y(), position.z());
         double dist = sqrt(model_->squaredDistance(pt));
         acc(dist);
-      //}
+      }
     }
     surface_dist_out->fromAccumulator(acc);
   }
@@ -150,7 +158,7 @@ class PathKPICalcuator {
   void setModel(cad_percept::cgal::MeshModel::Ptr model) { model_ = model; }
 
   cad_percept::cgal::MeshModel::Ptr model_{nullptr};
-  double quality_sampling_dist_{0.1};  // default 10 cm
+  double quality_sampling_dist_{0.01};  // default 1 cm
 };
 
 #endif  // CPT_OMPL_PLANNING_PATH_KPI_CALCULATOR_H
