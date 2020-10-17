@@ -10,8 +10,15 @@ typedef PM::DataPoints DP;
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 namespace utils {
+
+/*
+ * Convert a DP to a PointCloud
+ */
 DP pointCloudToDP(const PointCloud &pointcloud);
 
+/*
+ * Convert a PointCloud to a DP
+ */
 PointCloud dpToPointCloud(const DP &dppointcloud);
 
 }  // namespace utils
