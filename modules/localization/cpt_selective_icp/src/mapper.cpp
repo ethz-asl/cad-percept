@@ -1,4 +1,5 @@
 #include "cpt_selective_icp/mapper.h"
+#include"cpt_selective_icp/utils.h"
 
 namespace cad_percept {
 namespace selective_icp {
@@ -102,7 +103,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     PointCloud pointcloud;
     sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
 
-    ref_dp = cpt_utils::pointCloudToDP(pointcloud);
+    ref_dp = utils::pointCloudToDP(pointcloud);
     processCloud(&ref_dp, ros::Time(0));
 
     // set the map
@@ -410,7 +411,7 @@ bool Mapper::fullICP(const DP &cloud, PM::TransformationParameters *T_updated_sc
 }
 
 double Mapper::getICPErrorToRef(const DP &aligned_dp) {
-  PointCloud aligned_pc = cpt_utils::dpToPointCloud(aligned_dp);
+  PointCloud aligned_pc = utils::dpToPointCloud(aligned_dp);
   int point_count = 0;
   double result = 0;
   for (auto point : aligned_pc) {
@@ -430,7 +431,7 @@ double Mapper::getICPErrorToRef(const DP &aligned_dp) {
 }
 
 double Mapper::getICPError(const DP &aligned_dp) {
-  PointCloud aligned_pc = cpt_utils::dpToPointCloud(aligned_dp);
+  PointCloud aligned_pc = utils::dpToPointCloud(aligned_dp);
   int point_count = 0;
   double result = 0;
   for (auto point : aligned_pc) {
@@ -625,7 +626,7 @@ bool Mapper::setReferenceFacets(cpt_selective_icp::References::Request &req,
   PointCloud pointcloud;
   sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
 
-  selective_ref_dp = cpt_utils::pointCloudToDP(pointcloud);
+  selective_ref_dp = utils::pointCloudToDP(pointcloud);
   processCloud(&selective_ref_dp, ros::Time(0));
 
   // set the map
@@ -659,7 +660,7 @@ bool Mapper::setReferenceTask(cpt_selective_icp::BuildingTask::Request &req,
   PointCloud pointcloud;
   sampleFromReferenceFacets(parameters_.map_sampling_density, references, &pointcloud);
 
-  selective_ref_dp = cpt_utils::pointCloudToDP(pointcloud);
+  selective_ref_dp = utils::pointCloudToDP(pointcloud);
   processCloud(&selective_ref_dp, ros::Time(0));
 
   // set the map

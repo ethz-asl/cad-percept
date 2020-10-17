@@ -14,6 +14,7 @@ add_definitions(-std=c++14 -Wall -Wextra)
 #############
 cs_add_library(${PROJECT_NAME}
         src/mapper.cpp
+        src/utils.cpp
         src/mapper_parameters.cpp
         )
 
