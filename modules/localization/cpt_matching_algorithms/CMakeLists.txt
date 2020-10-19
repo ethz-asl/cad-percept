@@ -4,7 +4,7 @@ project(cpt_matching_algorithms)
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 
-add_definitions(-std=c++14 -Wall -Wextra)
+add_definitions(-std=c++17 -Wall -Wextra)
 
 ###########
 ## LIBRARIES ##
