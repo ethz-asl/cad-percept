@@ -28,13 +28,10 @@
 #include "cpt_selective_icp/BuildingTask.h"
 #include "cpt_selective_icp/References.h"
 #include "cpt_selective_icp/mapper_parameters.h"
+#include "utils.h"
 
 namespace cad_percept {
 namespace selective_icp {
-
-typedef PointMatcher<float> PM;
-typedef PM::DataPoints DP;
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 class Mapper {
  public:
