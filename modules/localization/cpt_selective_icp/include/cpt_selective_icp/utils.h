@@ -1,3 +1,6 @@
+#ifndef CPT_SELECTIVE_ICP_UTILS_H_
+#define CPT_SELECTIVE_ICP_UTILS_H_
+
 #include <cgal_definitions/cgal_typedefs.h>
 #include <pcl_ros/point_cloud.h>
 #include "pointmatcher/PointMatcher.h"
@@ -24,3 +27,4 @@ PointCloud dpToPointCloud(const DP &dppointcloud);
 }  // namespace utils
 }  // namespace selective_icp
 }  // namespace cad_percept
+#endif
