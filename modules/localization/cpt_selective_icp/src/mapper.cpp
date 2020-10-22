@@ -375,6 +375,7 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
     ROS_DEBUG_STREAM("[Selective ICP] Computing - reading: "
                      << cloud.getNbPoints()
                      << ", reference: " << selective_icp_.getInternalMap().getNbPoints());
+
     // Do ICP
     *T_updated_scanner_to_map = selective_icp_(cloud, *T_updated_scanner_to_map);
 
@@ -572,7 +573,6 @@ void Mapper::getError(DP ref, DP aligned_dp, bool selective) {
    */
   matcher->init(aligned_dp);
   matches = matcher->findClosests(ref);
-
   float maxDist2 = matches.getDistsQuantile(1.0);
   float maxDistRobust2 = matches.getDistsQuantile(0.85);
 
