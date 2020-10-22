@@ -24,6 +24,7 @@ struct MapperParameters {
   bool standalone_icp;
   std::string path;
   bool output;
+  bool publish_distance;
 };
 
 }  // namespace selective_icp

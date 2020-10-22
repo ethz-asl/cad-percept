@@ -99,6 +99,7 @@ class Mapper {
   ros::Publisher selective_icp_scan_pub_;
   ros::Publisher point_pub_;
   ros::Publisher map_pub_;
+  ros::Publisher distance_pc_pub_;
 
   // Services
   ros::ServiceServer load_published_map_srv_;
@@ -191,6 +192,11 @@ class Mapper {
    * Add a new aligned scan to the map.
    */
   void addScanToMap(DP &corrected_cloud, ros::Time &stamp);
+
+  /**
+   * Calculates the distance to the closest point of the reference mesh and publishes all points
+   */
+  void publishDistanceToMeshAsPC(const DP &aligned_cloud, const ros::Publisher &pub);
 };
 
 }  // namespace selective_icp
