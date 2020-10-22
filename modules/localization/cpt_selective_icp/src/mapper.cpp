@@ -37,7 +37,6 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   selective_icp_scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("ref_corrected_scan", 2, true);
   point_pub_ = nh_.advertise<geometry_msgs::PointStamped>("point_pub_", 2, true);
   map_pub_ = nh_.advertise<PointCloud>("map", 1, true);
-
   distance_pc_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZI>>("distance_pc", 2, true);
 
   // TODO (Hermann) What is this???
@@ -344,8 +343,8 @@ void Mapper::publishDistanceToMeshAsPC(const DP &aligned_cloud, const ros::Publi
   for (uint i = 0; i < aligned_pc.points.size(); ++i) {
     cgal::PointAndPrimitiveId ppid =
         reference_mesh_->getClosestTriangle(aligned_pc[i].x, aligned_pc[i].y, aligned_pc[i].z);
-    float squared_distance = (float)reference_mesh_->squaredDistance(
-        cgal::Point(aligned_pc[i].x, aligned_pc[i].y, aligned_pc[i].z));
+    float squared_distance = (float)sqrt(reference_mesh_->squaredDistance(
+        cgal::Point(aligned_pc[i].x, aligned_pc[i].y, aligned_pc[i].z)));
     feat(0, i) = aligned_pc[i].x;
     feat(1, i) = aligned_pc[i].y;
     feat(2, i) = aligned_pc[i].z;
