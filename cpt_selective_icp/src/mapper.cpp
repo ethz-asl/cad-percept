@@ -102,7 +102,7 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     icp_.clearMap();
     icp_.setMap(ref_dp);
 
-    cad_trigger = false;
+    // cad_trigger = false;
   }
 }
 
@@ -366,6 +366,24 @@ bool Mapper::fullICP(const DP &cloud, PM::TransformationParameters *T_updated_sc
     if (estimated_overlap < parameters_.min_overlap) {
       ROS_ERROR_STREAM("[ICP] Estimated overlap too small, ignoring ICP correction!");
       return false;
+    }
+    // Publish the selective ICP exclusive transformed cloud for deviation analysis
+    DP pc = transformation_->compute(cloud, *T_updated_scanner_to_map);
+
+    if (parameters_.mapping_trigger == true) {
+      map_thread = boost::thread(&Mapper::addScanToMap, this, pc, stamp);
+    }
+
+    // TODO (Hermann) It would make more sense to just publish the transform for the corresponding
+    // scan sequence number
+    if (selective_icp_scan_pub_.getNumSubscribers()) {
+      std::cout << "FULL ICP scan publishing " << pc.getNbPoints() << " points" << std::endl;
+      selective_icp_scan_pub_.publish(
+          PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc, parameters_.tf_map_frame, stamp));
+    }
+
+    if (parameters_.output) {
+      getError(selective_ref_dp, pc, 1);
     }
 
     return true;

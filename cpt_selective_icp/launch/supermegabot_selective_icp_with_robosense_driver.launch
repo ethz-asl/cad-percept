@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Launch file for Selective ICP with rviz
+-->
+
+<launch>
+
+	<include file="$(find cpt_selective_icp)/launch/supermegabot_mapper_only.launch"
+	         pass_all_args="true" />
+
+	<include file="$(find ethzasl_icp_mapper)/launch/supermegabot/supermegabot_robosense_drivers_only.launch"
+	         pass_all_args="true" />
+
+</launch>
