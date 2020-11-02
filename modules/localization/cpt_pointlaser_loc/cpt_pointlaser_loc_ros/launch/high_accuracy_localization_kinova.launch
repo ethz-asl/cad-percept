@@ -15,11 +15,10 @@
   <!-- pointlaser_loc node -->
   <node name="pointlaser_loc"
         pkg="cpt_pointlaser_loc_ros"
-        type="cpt_pointlaser_loc_ros_node"
+        type="kinova_localizer_node"
         output="screen"
         respawn="true">
     <rosparam command="load" file="$(find cpt_pointlaser_loc_ros)/$(arg pointlaser_config_file)" />
-    <param name="off_model" value="/home/hilteth/181022_286_cla_c_vf_20150815_SE_nonunified.off" />
     <param name="move_arm_manually" value="$(arg move_arm_manually)" />
   </node>
 </launch>

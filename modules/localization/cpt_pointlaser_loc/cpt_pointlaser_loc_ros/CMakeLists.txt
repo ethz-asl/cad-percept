@@ -10,9 +10,9 @@ cs_add_library(${PROJECT_NAME}
   src/kinova_localizer.cpp
 )
 
-cs_add_executable(${PROJECT_NAME}_node src/cpt_pointlaser_loc_node.cpp)
+cs_add_executable(kinova_localizer_node src/kinova_localizer_node.cpp)
 
-target_link_libraries(${PROJECT_NAME}_node
+target_link_libraries(kinova_localizer_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
 )
