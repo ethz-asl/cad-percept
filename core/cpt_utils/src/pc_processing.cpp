@@ -159,13 +159,6 @@ void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3
   }
 }
 */
-void projectToPlane(const PointCloud &cloud_in, const cgal::Plane &plane, PointCloud *cloud_out) {
-  for (auto point : cloud_in) {
-    cgal::Point p_proj;
-    p_proj = plane.projection(cgal::Point(point.x, point.y, point.z));
-    cloud_out->push_back(pcl::PointXYZ(p_proj.x(), p_proj.y(), p_proj.z()));
-  }
-}
 
 void projectToPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in,
                     const pcl::ModelCoefficients::Ptr coefficients,

@@ -52,12 +52,21 @@ void sample_pc_from_mesh(const cgal::Polyhedron &P, const int no_of_points, cons
 
 /**
  *  Projecting a PointCloud on a cgal::Plane using a cgal method.
+ *  Templated with the cgal Kernel used.
  */
-/*
- Removed, as shapekernels were removed from cgal_definitions
- void projectToPlane(const PointCloud &cloud_in, const cgal::ShapeKernel::Plane_3 &plane,
-                    PointCloud *cloud_out);*/
-void projectToPlane(const PointCloud &cloud_in, const cgal::Plane &plane, PointCloud *cloud_out);
+template <typename K>
+struct planeProjector {
+  typedef typename K::Plane_3 Plane;
+  typedef typename K::Point_3 Point;
+
+  void operator()(const PointCloud &cloud_in, const Plane &plane, PointCloud *cloud_out) {
+    for (auto point : cloud_in) {
+      Point p_proj;
+      p_proj = plane.projection(Point(point.x, point.y, point.z));
+      cloud_out->push_back(pcl::PointXYZ(p_proj.x(), p_proj.y(), p_proj.z()));
+    }
+  };
+};
 
 /**
  *  The PCL method for projecting a PointCloud to a plane given by ModelCoefficients
