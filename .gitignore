@@ -42,3 +42,5 @@
 
 # ignore marker state
 cpt_selective_icp/state
+
+*.bag
