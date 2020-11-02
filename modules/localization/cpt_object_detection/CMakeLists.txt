@@ -11,14 +11,15 @@ set(CMAKE_CXX_STANDARD 17)
 # LIBRARIES #
 #############
 cs_add_library(${PROJECT_NAME}
-    src/detection_matcher.cpp
+    src/object_detection.cpp
+    src/object_detector_3d.cpp
     )
 
 ############
 # BINARIES #
 ############
 cs_add_executable(${PROJECT_NAME}_node
-    src/detection_matcher_node.cpp
+    src/object_detector_3d_node.cpp
     )
 
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
