@@ -48,7 +48,7 @@ KinovaLocalizer::KinovaLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_privat
       model_, initial_pose_std_, odometry_noise_std_, pointlaser_noise_std_));
 
   advertiseTopics();
-};
+}
 
 kindr::minimal::QuatTransformation KinovaLocalizer::getTF(std::string from, std::string to) {
   tf::StampedTransform transform;
@@ -227,7 +227,7 @@ bool KinovaLocalizer::highAccuracyLocalization(
     response.successful = true;
   }
   return true;
-};
+}
 
 void KinovaLocalizer::advertiseTopics() {
   sub_mode_ = nh_private_.subscribe("/waco_task_mode", 10, &KinovaLocalizer::setMode, this);
@@ -253,7 +253,7 @@ void KinovaLocalizer::advertiseTopics() {
   waco_client_["execute_task"] = nh_.serviceClient<std_srvs::Trigger>("/go_to_goal_pose");
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_acc_localize", &KinovaLocalizer::highAccuracyLocalization, this);
-};
+}
 
 void KinovaLocalizer::setMode(const std_msgs::Int16 &mode_msg) {
   mode_ = mode_msg.data;
@@ -265,15 +265,15 @@ void KinovaLocalizer::setMode(const std_msgs::Int16 &mode_msg) {
     // Allow to switch back to different mode to perform localization again later.
     processing_ = false;
   }
-};
+}
 
 void KinovaLocalizer::setTaskType(const std_msgs::Int16 &task_type_msg) {
   task_type_ = task_type_msg.data;
-};
+}
 
 void KinovaLocalizer::getOffsetPose(const geometry_msgs::PoseStamped::ConstPtr &msg) {
   tf::poseMsgToKindr(msg->pose, &initial_arm_pose_);
   transform_received_ = true;
-};
+}
 }  // namespace pointlaser_loc_ros
 }  // namespace cad_percept
