@@ -1,0 +1,5 @@
+# empty request
+---
+uint32 distanceA
+uint32 distanceB
+uint32 distanceC

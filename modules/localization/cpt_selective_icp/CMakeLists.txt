@@ -6,7 +6,7 @@ catkin_python_setup()
 catkin_simple(ALL_DEPS_REQUIRED)
 
 
-add_definitions(-std=c++11 -Wall -Wextra)
+add_definitions(-std=c++14 -Wall -Wextra)
 
 
 #############
@@ -14,6 +14,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 #############
 cs_add_library(${PROJECT_NAME}
         src/mapper.cpp
+        src/utils.cpp
         src/mapper_parameters.cpp
         )
 

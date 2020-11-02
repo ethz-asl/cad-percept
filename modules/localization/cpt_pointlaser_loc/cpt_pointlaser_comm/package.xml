@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>cpt_pointlaser_comm</name>
+  <version>0.1.1</version>
+  <description>
+    Interface for the Leica Laser Distance Sensor Disto.
+  </description>
+
+  <author email="blumh@ethz.ch">Hermann Blum</author>
+  <maintainer email="fmilano@ethz.ch">Francesco Milano</maintainer>
+  <maintainer email="blumh@ethz.ch">Hermann Blum</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>glog_catkin</depend>
+  <depend>serial</depend>
+</package>
