@@ -37,6 +37,7 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   selective_icp_scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("ref_corrected_scan", 2, true);
   point_pub_ = nh_.advertise<geometry_msgs::PointStamped>("point_pub_", 2, true);
   map_pub_ = nh_.advertise<PointCloud>("map", 1, true);
+  distance_pc_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZI>>("distance_pc", 2, true);
 
   // TODO (Hermann) What is this???
   std::cout << "Wait for start-up" << std::endl;
@@ -299,6 +300,17 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       }
     }
 
+    if (parameters_.publish_distance) {
+      if (icp_.hasMap()) {
+        publishDistanceToMeshAsPC(pc, distance_pc_pub_);
+        std::cout << "published pc with distance information" << std::endl;
+      } else {
+        ROS_ERROR_STREAM("[Selective ICP] Can't publish distance to mesh. No map found");
+      }
+    }
+
+    // namespace selective_icp
+
     map_thread.join();  // join thread before finishing callback
 
     /**
@@ -316,6 +328,43 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     last_point_cloud_time_ = stamp;
     last_point_cloud_seq_ = seq;
   }
+}  // namespace selective_icp
+
+void Mapper::publishDistanceToMeshAsPC(const DP &aligned_cloud, const ros::Publisher &pub) {
+  // Convert DP to PC
+  PointCloud aligned_pc = utils::dpToPointCloud(aligned_cloud);
+
+  // 5 attributes in PC
+  const int dimFeatures = 5;
+
+  PM::Matrix feat(dimFeatures, aligned_pc.points.size());
+
+  // Calculate distance to closes triangle for each point of the pointcloud
+  for (uint i = 0; i < aligned_pc.points.size(); ++i) {
+    cgal::PointAndPrimitiveId ppid =
+        reference_mesh_->getClosestTriangle(aligned_pc[i].x, aligned_pc[i].y, aligned_pc[i].z);
+    float squared_distance = (float)sqrt(reference_mesh_->squaredDistance(
+        cgal::Point(aligned_pc[i].x, aligned_pc[i].y, aligned_pc[i].z)));
+    feat(0, i) = aligned_pc[i].x;
+    feat(1, i) = aligned_pc[i].y;
+    feat(2, i) = aligned_pc[i].z;
+    feat(3, i) = squared_distance;
+    feat(4, i) = 1.0;
+  }
+
+  DP::Labels featLabels;
+  featLabels.push_back(DP::Label("x", 1));
+  featLabels.push_back(DP::Label("y", 1));
+  featLabels.push_back(DP::Label("z", 1));
+  featLabels.push_back(DP::Label("intensity", 1));
+  featLabels.push_back(DP::Label("pad", 1));
+
+  // Create pointcloud from matrix
+  DP dppointcloud = DP(feat, featLabels);
+
+  // publish pointcloud
+  pub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(dppointcloud,
+                                                                 parameters_.tf_map_frame, stamp));
 }
 
 bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updated_scanner_to_map,
