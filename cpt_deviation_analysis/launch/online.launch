@@ -27,6 +27,12 @@
     <param name="map_topic" value="$(arg map_topic)" />
   </node>
 
+  <node name="message_translator"
+        pkg="cpt_selective_icp"
+        type="selens_message_hacker.py"
+        respawn="true"
+        output="screen" />
+
   <node name="mesh_positioning"
         pkg="cpt_selective_icp"
         type="position_cad_with_marker.py"
