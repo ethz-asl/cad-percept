@@ -8,12 +8,12 @@
 namespace cad_percept {
 namespace pointlaser_loc {
 namespace localizer {
-PointLaserLocalizer::PointLaserLocalizer(const cad_percept::cgal::MeshModel::Ptr &model,
-                                         const Eigen::Matrix<double, 6, 1> &initial_pose_std,
-                                         const Eigen::Matrix<double, 6, 1> &odometry_noise_std,
-                                         double pointlaser_noise_std)
+PointLaserLocalizer::PointLaserLocalizer(
+    const cad_percept::cgal::MeshModel::Ptr &model,
+    const Eigen::Matrix<double, 6, 1> &initial_armbase_to_ref_link_std,
+    const Eigen::Matrix<double, 6, 1> &odometry_noise_std, double pointlaser_noise_std)
     : model_(model),
-      initial_pose_std_(initial_pose_std),
+      initial_armbase_to_ref_link_std_(initial_armbase_to_ref_link_std),
       odometry_noise_std_(odometry_noise_std),
       pointlaser_noise_std_(pointlaser_noise_std),
       was_new_odometry_received_(false),
@@ -21,22 +21,24 @@ PointLaserLocalizer::PointLaserLocalizer(const cad_percept::cgal::MeshModel::Ptr
 
 bool PointLaserLocalizer::setUpOptimizer(
     const kindr::minimal::QuatTransformation &marker_to_armbase,
-    const kindr::minimal::QuatTransformation &initial_pose,
+    const kindr::minimal::QuatTransformation &initial_armbase_to_ref_link,
     const kindr::minimal::QuatTransformation &laser_a_offset,
     const kindr::minimal::QuatTransformation &laser_b_offset,
     const kindr::minimal::QuatTransformation &laser_c_offset,
     const kindr::minimal::QuatTransformation &endeffector_offset,
     const kindr::minimal::QuatTransformation &arm_base_to_base, bool fix_cad_planes,
-    bool add_initial_pose_prior, bool only_optimize_translation) {
+    bool add_marker_pose_prior, bool only_optimize_translation) {
   // NOTE: we assume that the arm was already moved to the initial pose.
 
   // Instantiate an optimizer with the initial poses.
   optimizer_.reset(new cad_percept::pointlaser_loc::optimizer::LocalizationOptimizer(
-      marker_to_armbase, initial_pose, model_, initial_pose_std_, odometry_noise_std_,
-      pointlaser_noise_std_, fix_cad_planes, add_initial_pose_prior, only_optimize_translation));
+      marker_to_armbase, initial_armbase_to_ref_link, model_, initial_armbase_to_ref_link_std_,
+      odometry_noise_std_, pointlaser_noise_std_, fix_cad_planes, add_marker_pose_prior,
+      only_optimize_translation));
 
   // Store the initial pose, required when adding measurements.
-  initial_pose_.reset(new kindr::minimal::QuatTransformation(initial_pose));
+  initial_armbase_to_ref_link_.reset(
+      new kindr::minimal::QuatTransformation(initial_armbase_to_ref_link));
 
   // Store the offset between the marker and the arm base.
   marker_to_armbase_.reset(new kindr::minimal::QuatTransformation(marker_to_armbase));
@@ -47,8 +49,8 @@ bool PointLaserLocalizer::setUpOptimizer(
   laser_c_offset_.reset(new kindr::minimal::QuatTransformation(laser_c_offset));
 
   // Store the initial goal pose of the arm.
-  arm_goal_pose_.reset(new kindr::minimal::QuatTransformation(arm_base_to_base.inverse() *
-                                                              initial_pose * endeffector_offset));
+  arm_goal_pose_.reset(new kindr::minimal::QuatTransformation(
+      arm_base_to_base.inverse() * initial_armbase_to_ref_link * endeffector_offset));
 }
 
 kindr::minimal::QuatTransformation PointLaserLocalizer::getArmGoalPose(

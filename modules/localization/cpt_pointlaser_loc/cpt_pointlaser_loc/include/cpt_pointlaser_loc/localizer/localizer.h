@@ -18,13 +18,15 @@ class PointLaserLocalizer {
  public:
   /// \brief Construct a new PointLaserLocalizer object.
   ///
-  /// \param model                The mesh model w.r.t. which localization should be performed.
-  /// \param initial_pose_std     Standard deviation of the initial pose.
-  /// \param odometry_noise_std   Standard deviation of the odometry.
+  /// \param model                            The mesh model w.r.t. which localization should be
+  ///   performed.
+  /// \param initial_armbase_to_ref_link_std  Standard deviation of the initial pose from arm base
+  ///   to reference link.
+  /// \param odometry_noise_std               Standard deviation of the odometry.
   /// TODO(fmilano): Check, the `odometry_noise_std` is not used internally by optimizer.
-  /// \param pointlaser_noise_std Standard deviation of the point-laser noise.
+  /// \param pointlaser_noise_std             Standard deviation of the point-laser noise.
   PointLaserLocalizer(const cad_percept::cgal::MeshModel::Ptr& model,
-                      const Eigen::Matrix<double, 6, 1>& initial_pose_std,
+                      const Eigen::Matrix<double, 6, 1>& initial_armbase_to_ref_link_std,
                       const Eigen::Matrix<double, 6, 1>& odometry_noise_std,
                       double pointlaser_noise_std);
 
@@ -33,26 +35,28 @@ class PointLaserLocalizer {
   /// the arm, with a fixed pose w.r.t. to the lasers, is used: the pose to optimize for is the one
   /// from the arm base to this reference link.
   ///
-  /// \param marker_to_armbase          Pose from the marker to the arm base.
-  /// \param initial_pose               Initial pose from the arm base to the reference link.
-  /// \param laser_a_offset             Pose from the reference link to the point laser A.
-  /// \param laser_b_offset             Pose from the reference link to the point laser B.
-  /// \param laser_c_offset             Pose from the reference link to the point laser C.
-  /// \param endeffector_offset         Pose from the reference link to the arm end effector.
-  /// \param arm_base_to_base           Pose from the arm base to the base.
-  /// \param fix_cad_planes             If True, the planes retrieved by the optimizer are fixed.
-  ///  \param add_initial_pose_prior    If True, a factor for the prior of the model offset is added
-  ///                                   to the optimization graph.
-  /// \param only_optimize_translation  If True, only optimizes translation.
+  /// \param marker_to_armbase            (Fixed) pose from the marker to the arm base.
+  /// \param initial_armbase_to_ref_link  Initial pose from the arm base to the reference
+  ///   link.
+  /// \param laser_a_offset               (Fixed) pose from the reference link to the point laser A.
+  /// \param laser_b_offset               (Fixed) pose from the reference link to the point laser B.
+  /// \param laser_c_offset               (Fixed) pose from the reference link to the point laser C.
+  /// \param endeffector_offset           (Fixed) pose from the reference link to the arm end
+  ///   effector.
+  /// \param arm_base_to_base             (Fixed) pose from the arm base to the base.
+  /// \param fix_cad_planes               If True, the planes retrieved by the optimizer are fixed.
+  /// \param add_marker_pose_prior        If True, a factor for the prior of the model offset (from
+  ///   arm base to marker) is added to the optimization graph.
+  /// \param only_optimize_translation    If True, only optimizes translation.
   /// \return True if localization can be successfully performed, False otherwise.
   bool setUpOptimizer(const kindr::minimal::QuatTransformation& marker_to_armbase,
-                      const kindr::minimal::QuatTransformation& initial_pose,
+                      const kindr::minimal::QuatTransformation& initial_armbase_to_ref_link,
                       const kindr::minimal::QuatTransformation& laser_a_offset,
                       const kindr::minimal::QuatTransformation& laser_b_offset,
                       const kindr::minimal::QuatTransformation& laser_c_offset,
                       const kindr::minimal::QuatTransformation& endeffector_offset,
                       const kindr::minimal::QuatTransformation& arm_base_to_base,
-                      bool fix_cad_planes = false, bool add_initial_pose_prior = false,
+                      bool fix_cad_planes = false, bool add_marker_pose_prior = false,
                       bool only_optimize_translation = false);
 
   /// \brief Updates and returns the goal pose of the arm, given an input movement.
@@ -107,10 +111,10 @@ class PointLaserLocalizer {
   // Mesh model w.r.t. which localization should be performed.
   cad_percept::cgal::MeshModel::Ptr model_;
   // Noise statistics.
-  Eigen::Matrix<double, 6, 1> initial_pose_std_, odometry_noise_std_;
+  Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
   // Initial pose from arm base to reference link.
-  std::unique_ptr<kindr::minimal::QuatTransformation> initial_pose_;
+  std::unique_ptr<kindr::minimal::QuatTransformation> initial_armbase_to_ref_link_;
   // Offset from the marker to the arm base.
   std::unique_ptr<kindr::minimal::QuatTransformation> marker_to_armbase_;
   // Offsets from the reference link to the lasers.
