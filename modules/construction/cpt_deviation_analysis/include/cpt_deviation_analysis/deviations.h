@@ -36,6 +36,7 @@
 // CGAL:
 #include <CGAL/Point_with_normal_3.h>
 #include <CGAL/Polygon_mesh_processing/bbox.h>
+#include <CGAL/Shape_detection_3.h>
 #include <CGAL/Timer.h>
 #include <CGAL/mst_orient_normals.h>
 #include <CGAL/number_utils.h>
@@ -44,7 +45,18 @@
 namespace cad_percept {
 namespace deviations {
 
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel ShapeKernel;
+typedef ShapeKernel::FT FT;
+typedef std::pair<ShapeKernel::Point_3, ShapeKernel::Vector_3> Point_with_normal;
+typedef std::vector<Point_with_normal> Pwn_vector;
+typedef CGAL::First_of_pair_property_map<Point_with_normal> Point_map;
+typedef CGAL::Second_of_pair_property_map<Point_with_normal> Normal_map;
+typedef CGAL::Shape_detection_3::Shape_detection_traits<ShapeKernel, Pwn_vector, Point_map,
+                                                        Normal_map>
+    Traits;
+typedef CGAL::Shape_detection_3::Efficient_RANSAC<Traits> Efficient_RANSAC;
+typedef CGAL::Shape_detection_3::Region_growing<Traits> Region_growing;
+typedef CGAL::Shape_detection_3::Plane<Traits> ShapePlane;
 
 // Concurrency
 #ifdef CGAL_LINKED_WITH_TBB
@@ -94,7 +106,7 @@ struct transformation {
 struct reconstructed_plane {
   Eigen::Vector3d pc_normal;
   std::vector<float> coefficients;
-  PointCloud pointcloud;
+  cad_percept::cpt_utils::PointCloud pointcloud;
 };
 
 /**
@@ -142,14 +154,15 @@ class Deviations {
    * Read-in reading pc and execute detection on current scan.
    */
   void detectChanges(std::vector<reconstructed_plane> *rec_planes_publish,
-                     const PointCloud &reading_cloud,
+                     const cad_percept::cpt_utils::PointCloud &reading_cloud,
                      std::vector<reconstructed_plane> *remaining_plane_cloud_vector);
 
   /**
    * Read-in map pc and execute detection on complete map. Slow!
    */
   void detectMapChanges(
-      std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
+      std::vector<reconstructed_plane> *rec_planes,
+      const cad_percept::cpt_utils::PointCloud &map_cloud,
       std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
       std::unordered_map<std::string, transformation> *current_transformation_map);
 
@@ -164,18 +177,20 @@ class Deviations {
   /**
    * Planar segmentation using PCL.
    */
-  void planarSegmentationPCL(const PointCloud &cloud_in,
+  void planarSegmentationPCL(const cad_percept::cpt_utils::PointCloud &cloud_in,
                              std::vector<reconstructed_plane> *rec_planes,
-                             PointCloud *remaining_cloud) const;
+                             cad_percept::cpt_utils::PointCloud *remaining_cloud) const;
 
   /**
    * Planar segmentation using CGAL.
    */
-  void planarSegmentationCGAL(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes,
-                              PointCloud *remaining_cloud) const;
+  void planarSegmentationCGAL(const cad_percept::cpt_utils::PointCloud &cloud,
+                              std::vector<reconstructed_plane> *rec_planes,
+                              cad_percept::cpt_utils::PointCloud *remaining_cloud) const;
   template <typename ShapeDetection>
-  void runShapeDetection(const PointCloud &cloud, std::vector<reconstructed_plane> *rec_planes,
-                         PointCloud *remaining_cloud) const;
+  void runShapeDetection(const cad_percept::cpt_utils::PointCloud &cloud,
+                         std::vector<reconstructed_plane> *rec_planes,
+                         cad_percept::cpt_utils::PointCloud *remaining_cloud) const;
 
   /**
    * Segmented plane (point cloud) is being associated to a polyhedron plane.

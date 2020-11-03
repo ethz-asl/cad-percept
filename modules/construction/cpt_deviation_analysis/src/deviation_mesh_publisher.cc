@@ -36,6 +36,7 @@ bool DeviationMeshPublisher::publishMesh(nlohmann::json &j) {
       ref_call.request.data.push_back(key);
     }
   }
+  ROS_INFO("Setting %d references from JSON.", ref_call.request.data.size());
   if (!set_references_.call(ref_call.request, ref_call.response)) return false;
 
   // set the deviation target

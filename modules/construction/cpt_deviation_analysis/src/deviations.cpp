@@ -36,7 +36,7 @@ void Deviations::init(cgal::MeshModel::Ptr &model_ptr, const tf::StampedTransfor
 }
 
 void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
-                               const PointCloud &reading_cloud,
+                               const cad_percept::cpt_utils::PointCloud &reading_cloud,
                                std::vector<reconstructed_plane> *remaining_plane_cloud_vector) {
   // remaining_cloud contains a P.C. with non-segmented points, whereas remaining_plane_cloud_vector
   // a vector of P.C.s of non-associated planes
@@ -44,7 +44,7 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
   /**
    *  Planar Segmentation
    */
-  PointCloud remaining_cloud;
+  cad_percept::cpt_utils::PointCloud remaining_cloud;
   if (params.planarSegmentation == "CGAL") {
     planarSegmentationCGAL(reading_cloud, rec_planes, &remaining_cloud);
 
@@ -70,10 +70,11 @@ void Deviations::detectChanges(std::vector<reconstructed_plane> *rec_planes,
  *  This function does basically the same as detectChanges but for the latest map.
  */
 void Deviations::detectMapChanges(
-    std::vector<reconstructed_plane> *rec_planes, const PointCloud &map_cloud,
+    std::vector<reconstructed_plane> *rec_planes,
+    const cad_percept::cpt_utils::PointCloud &map_cloud,
     std::vector<reconstructed_plane> *remaining_plane_cloud_vector,
     std::unordered_map<std::string, transformation> *current_transformation_map) {
-  PointCloud remaining_cloud;
+  cad_percept::cpt_utils::PointCloud remaining_cloud;
 
   if (params.planarSegmentation == "CGAL") {
     planarSegmentationCGAL(map_cloud, rec_planes, &remaining_cloud);
@@ -84,9 +85,9 @@ void Deviations::detectMapChanges(
   findPlaneDeviation(current_transformation_map, 1);
 }
 
-void Deviations::planarSegmentationPCL(const PointCloud &cloud_in,
+void Deviations::planarSegmentationPCL(const cad_percept::cpt_utils::PointCloud &cloud_in,
                                        std::vector<reconstructed_plane> *rec_planes,
-                                       PointCloud *remaining_cloud) const {
+                                       cad_percept::cpt_utils::PointCloud *remaining_cloud) const {
   // PCL solution
   // http://pointclouds.org/documentation/tutorials/extract_indices.php#extract-indices
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>(cloud_in)),
@@ -172,9 +173,9 @@ void Deviations::planarSegmentationPCL(const PointCloud &cloud_in,
   *remaining_cloud = *cloud_filtered;
 }
 
-void Deviations::planarSegmentationCGAL(const PointCloud &cloud,
+void Deviations::planarSegmentationCGAL(const cad_percept::cpt_utils::PointCloud &cloud,
                                         std::vector<reconstructed_plane> *rec_planes,
-                                        PointCloud *remaining_cloud) const {
+                                        cad_percept::cpt_utils::PointCloud *remaining_cloud) const {
   // CGAL plane segmentation solution
   // https://doc.cgal.org/latest/Point_set_shape_detection_3/index.html
 
@@ -183,29 +184,29 @@ void Deviations::planarSegmentationCGAL(const PointCloud &cloud,
 
   if (params.planarSegmentationMethod == "RANSAC") {
     std::cout << "Efficient RANSAC" << std::endl;
-    runShapeDetection<cgal::Efficient_RANSAC>(cloud, rec_planes, remaining_cloud);
+    runShapeDetection<Efficient_RANSAC>(cloud, rec_planes, remaining_cloud);
   } else if (params.planarSegmentationMethod == "REGION_GROWING") {
     std::cout << "Region Growing" << std::endl;
-    runShapeDetection<cgal::Region_growing>(cloud, rec_planes, remaining_cloud);
+    runShapeDetection<Region_growing>(cloud, rec_planes, remaining_cloud);
   }
 }
 
 // This works for RANSAC and Region Growing
 template <typename ShapeDetection>
-void Deviations::runShapeDetection(const PointCloud &cloud,
+void Deviations::runShapeDetection(const cad_percept::cpt_utils::PointCloud &cloud,
                                    std::vector<reconstructed_plane> *rec_planes,
-                                   PointCloud *remaining_cloud) const {
+                                   cad_percept::cpt_utils::PointCloud *remaining_cloud) const {
   // https://doc.cgal.org/4.13.1/Point_set_shape_detection_3/index.html#title7
 
   // More about Region Growing
   // https://cgal.geometryfactory.com/CGAL/doc/master/Shape_detection/index.html
 
-  cgal::Pwn_vector points;  // Points with normals.
+  Pwn_vector points;  // Points with normals.
 
   // load points from pcl cloud
   for (auto point : cloud.points) {
-    cgal::Point_with_normal pwn;
-    pwn.first = cgal::ShapeKernel::Point_3(point.x, point.y, point.z);
+    Point_with_normal pwn;
+    pwn.first = ShapeKernel::Point_3(point.x, point.y, point.z);
     points.push_back(pwn);
   }
 
@@ -215,14 +216,13 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
   // Estimate normals direction
   const int nb_neighbors = 20;
   CGAL::pca_estimate_normals<Concurrency_tag>(
-      points, nb_neighbors,
-      CGAL::parameters::point_map(cgal::Point_map()).normal_map(cgal::Normal_map()));
+      points, nb_neighbors, CGAL::parameters::point_map(Point_map()).normal_map(Normal_map()));
 
   // Instantiate shape detection engine.
   ShapeDetection shape_detection;
   shape_detection.set_input(points);
   // Registers planar shapes via template method (could also register other shapes)
-  shape_detection.template add_shape_factory<cgal::ShapePlane>();
+  shape_detection.template add_shape_factory<ShapePlane>();
   // Build internal data structures.
   shape_detection.preprocess();
 
@@ -244,7 +244,7 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
   parameters.normal_threshold = params.segmentationNormalThreshold;
   // Perform detection several times and choose result with highest coverage
   typename ShapeDetection::Shape_range shapes = shape_detection.shapes();
-  cgal::FT best_coverage = 0;
+  FT best_coverage = 0;
 
   // TODO (Hermann) Simplify to only use one iteration
   int number_of_iterations = 1;  // these iteration give almost the same estimates
@@ -254,8 +254,8 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
     shape_detection.detect(parameters);
 
     // Compute coverage, i.e. ratio of the points assigned to a shape
-    cgal::FT coverage = cgal::FT(points.size() - shape_detection.number_of_unassigned_points()) /
-                        cgal::FT(points.size());
+    FT coverage =
+        FT(points.size() - shape_detection.number_of_unassigned_points()) / FT(points.size());
 
     // Prints number of assigned shapes and unassigned points
     std::cout << shape_detection.shapes().end() - shape_detection.shapes().begin()
@@ -283,23 +283,23 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
   // Characterize shapes
   typename ShapeDetection::Shape_range::iterator shapeIt = shapes.begin();
   while (shapeIt != shapes.end()) {
-    cgal::ShapePlane *plane = dynamic_cast<cgal::ShapePlane *>(shapeIt->get());
-    cgal::ShapeKernel::Vector_3 normal = plane->plane_normal();
+    ShapePlane *plane = dynamic_cast<ShapePlane *>(shapeIt->get());
+    ShapeKernel::Vector_3 normal = plane->plane_normal();
     // std::cout << (*it)->info() << std::endl; // parameters of detected shape
     // std::cout << "Plane with normal " << normal << std::endl;
-    const cgal::ShapeKernel::Plane_3 pl3 = static_cast<cgal::ShapeKernel::Plane_3>(*plane);
+    const ShapeKernel::Plane_3 pl3 = static_cast<ShapeKernel::Plane_3>(*plane);
     // std::cout << "Kernel::Plane_3: " << pl3 << std::endl;
 
-    cgal::FT sum_distances = 0;
+    FT sum_distances = 0;
     reconstructed_plane rec_plane;
     // Iterates through point indices assigned to each detected shape
     std::vector<std::size_t>::const_iterator index_it =
         (*shapeIt)->indices_of_assigned_points().begin();
-    PointCloud pointcloud;
+    cad_percept::cpt_utils::PointCloud pointcloud;
     while (index_it != (*shapeIt)->indices_of_assigned_points().end()) {
       // Retrieve point
       // TODO (Hermann)  DANGEROUS POINTER MAGIC
-      const cgal::Point_with_normal &p = *(points.begin() + (*index_it));
+      const Point_with_normal &p = *(points.begin() + (*index_it));
       // Adds Euclidean distance between point and shape
       sum_distances += CGAL::sqrt((*shapeIt)->squared_distance(p.first));
 
@@ -310,10 +310,11 @@ void Deviations::runShapeDetection(const PointCloud &cloud,
       index_it++;
     }
     // Project PointCloud to Plane, this is optional
-    cpt_utils::projectToPlane(pointcloud, pl3, &pointcloud);
+    cpt_utils::planeProjector<ShapeKernel> projector;
+    projector(pointcloud, pl3, &pointcloud);
 
     rec_plane.pointcloud = pointcloud;
-    cgal::FT average_distance = sum_distances / plane->indices_of_assigned_points().size();
+    FT average_distance = sum_distances / plane->indices_of_assigned_points().size();
     // std::cout << " average distance: " << average_distance << std::endl;
     rec_plane.coefficients.push_back(pl3.a());
     rec_plane.coefficients.push_back(pl3.b());
@@ -334,7 +335,7 @@ bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
                                 const reconstructed_plane &rec_plane, std::string *id,
                                 double *match_score) {
   bool success = false;
-  PointCloud cloud = rec_plane.pointcloud;
+  cad_percept::cpt_utils::PointCloud cloud = rec_plane.pointcloud;
   double pc_area = cpt_utils::getArea(cloud);
 
   // Parameters of best fit
@@ -373,7 +374,7 @@ bool Deviations::associatePlane(cgal::MeshModel::Ptr &model_ptr,
      * Should capture rotational deviations or shifts along the normal direction.
      */
     std::string facet_id = planeToFacets.find(plane_id)->second;
-    cgal::FT d = 0;
+    FT d = 0;
     cgal::Plane plane_of_current_facet = model_ptr->getPlane(facet_id);
 
     for (auto point : cloud.points) {
