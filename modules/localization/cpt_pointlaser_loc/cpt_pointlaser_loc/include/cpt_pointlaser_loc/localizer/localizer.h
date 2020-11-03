@@ -31,15 +31,15 @@ class PointLaserLocalizer {
   /// \brief Sets up the optimizer for a new high-accuracy localization query.
   /// NOTE: it is assumed that the arm was already moved to the initial pose. A reference link in
   /// the arm, with a fixed pose w.r.t. to the lasers, is used: the pose to optimize for is the one
-  /// between the arm base and this reference link.
+  /// from the arm base to this reference link.
   ///
-  /// \param marker_to_armbase          Pose between the marker and the arm base.
-  /// \param initial_pose               Initial pose between the arm base and the reference link.
-  /// \param laser_a_offset             Pose between the reference link and the point laser A.
-  /// \param laser_b_offset             Pose between the reference link and the point laser B.
-  /// \param laser_c_offset             Pose between the reference link and the point laser C.
-  /// \param endeffector_offset         Pose between the reference link and the arm end effector.
-  /// \param arm_base_to_base           Pose between the arm base and the base.
+  /// \param marker_to_armbase          Pose from the marker to the arm base.
+  /// \param initial_pose               Initial pose from the arm base to the reference link.
+  /// \param laser_a_offset             Pose from the reference link to the point laser A.
+  /// \param laser_b_offset             Pose from the reference link to the point laser B.
+  /// \param laser_c_offset             Pose from the reference link to the point laser C.
+  /// \param endeffector_offset         Pose from the reference link to the arm end effector.
+  /// \param arm_base_to_base           Pose from the arm base to the base.
   /// \param fix_cad_planes             If True, the planes retrieved by the optimizer are fixed.
   ///  \param add_initial_pose_prior    If True, a factor for the prior of the model offset is added
   ///                                   to the optimization graph.
@@ -109,11 +109,11 @@ class PointLaserLocalizer {
   // Noise statistics.
   Eigen::Matrix<double, 6, 1> initial_pose_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
-  // Initial pose between arm base and reference link.
+  // Initial pose from arm base to reference link.
   std::unique_ptr<kindr::minimal::QuatTransformation> initial_pose_;
-  // Offset between the marker and the arm base.
+  // Offset from the marker to the arm base.
   std::unique_ptr<kindr::minimal::QuatTransformation> marker_to_armbase_;
-  // Offsets between the reference link and the lasers.
+  // Offsets from the reference link to the lasers.
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_a_offset_;
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_b_offset_;
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_c_offset_;
