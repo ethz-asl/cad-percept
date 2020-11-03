@@ -220,7 +220,7 @@ bool MabiLocalizer::highAccuracyLocalization(
   tf::poseKindrToMsg(base_pose_in_world, &send_pose.request.data);
 
   // TODO(fmilano): Implement!
-  ROS_WARNING("Service to send the pose to the controller is not implemented yet.")
+  ROS_WARN("Service to send the pose to the controller is not implemented yet.");
 
   if (send_pose.response.success == false) {
     ROS_ERROR("Calling updating of base pose FAILED. NOT going to goal pose.\n");
@@ -232,13 +232,13 @@ bool MabiLocalizer::highAccuracyLocalization(
     any_msgs::SetPose check_pose;
     tf::poseKindrToMsg(world_to_armbase * armbase_to_endeffector, &check_pose.request.data);
     // TODO(fmilano): Implement!
-    ROS_WARNING("Service to check that the pose was correctly updated is not implemented yet.")
+    ROS_WARN("Service to check that the pose was correctly updated is not implemented yet.");
 
     // Now trigger the task execution.
     std_srvs::Trigger exec_task;
     do {
       // TODO(fmilano): Implement!
-      ROS_WARNING("Service to trigger the task execution is not implemented yet.")
+      ROS_WARN("Service to trigger the task execution is not implemented yet.");
     } while (!exec_task.response.success);
     ROS_INFO("success for go_to_goal_pose\n");
     response.successful = true;
