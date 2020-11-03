@@ -74,6 +74,7 @@ class MabiLocalizer {
   ros::ServiceServer high_acc_localisation_service_;
   // Internal parameters.
   std::string reference_link_topic_name_, end_effector_topic_name_;
+  Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
   int mode_, task_type_;
   bool processing_, transform_received_;

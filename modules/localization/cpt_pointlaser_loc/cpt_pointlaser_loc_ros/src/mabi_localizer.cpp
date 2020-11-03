@@ -33,7 +33,7 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
 
   if (!nh_private_.hasParam("initial_pose_std"))
     ROS_ERROR("'initial_pose_std' not set as parameter.\n");
-  initial_pose_std_ = Eigen::Matrix<double, 6, 1>(
+  initial_armbase_to_ref_link_std_ = Eigen::Matrix<double, 6, 1>(
       nh_private_
           .param<std::vector<double>>("initial_pose_std", std::vector<double>{1, 1, 1, 1, 1, 1})
           .data());
@@ -49,7 +49,7 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
 
   // Initialize localizer.
   localizer_.reset(new cad_percept::pointlaser_loc::localizer::PointLaserLocalizer(
-      model_, initial_pose_std_, odometry_noise_std_, pointlaser_noise_std_));
+      model_, initial_armbase_to_ref_link_std_, odometry_noise_std_, pointlaser_noise_std_));
 
   advertiseTopics();
 }
