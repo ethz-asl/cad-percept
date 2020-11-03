@@ -116,7 +116,7 @@ void PointLaserLocalizer::getIntersectionsLasersWithModel(
   were_new_laser_measurements_received_ = true;
 }
 
-kindr::minimal::QuatTransformation PointLaserLocalizer::optimizeForBasePoseInMap(bool verbose) {
+kindr::minimal::QuatTransformation PointLaserLocalizer::optimizeForArmBasePoseInMap(bool verbose) {
   CHECK(optimizer_ != nullptr) << "Optimizer is not set up.";
   CHECK(was_new_odometry_received_ && were_new_laser_measurements_received_)
       << "Did not receive new odometry and/or laser measurements since initialization/last "

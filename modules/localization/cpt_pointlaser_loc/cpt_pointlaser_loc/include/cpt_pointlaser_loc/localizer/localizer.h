@@ -32,8 +32,9 @@ class PointLaserLocalizer {
 
   /// \brief Sets up the optimizer for a new high-accuracy localization query.
   /// NOTE: it is assumed that the arm was already moved to the initial pose. A reference link in
-  /// the arm, with a fixed pose w.r.t. to the lasers, is used: the pose to optimize for is the one
-  /// from the arm base to this reference link.
+  /// the arm, with a fixed pose w.r.t. to the lasers, is used: its initial pose w.r.t. to the arm
+  /// base must be provided as input to the optimizer, which optimizes for the pose from the marker
+  /// to the arm base (cf. `optimizeForArmBasePoseInMap`).
   ///
   /// \param marker_to_armbase            (Fixed) pose from the marker to the arm base.
   /// \param initial_armbase_to_ref_link  Initial pose from the arm base to the reference
@@ -98,12 +99,13 @@ class PointLaserLocalizer {
                                        cad_percept::cgal::Intersection* intersection_b,
                                        cad_percept::cgal::Intersection* intersection_c);
 
-  /// \brief Performs optimization and returns the pose of the base in the map.
+  /// \brief Performs optimization and returns the pose of the arm base in the map, i.e., the pose
+  /// from marker to arm base.
   ///
   /// \param verbose  If True, the optimizer will show verbose prints.
   ///
   /// \return Pose of the base in the map.
-  kindr::minimal::QuatTransformation optimizeForBasePoseInMap(bool verbose = false);
+  kindr::minimal::QuatTransformation optimizeForArmBasePoseInMap(bool verbose = false);
 
  private:
   // Optimizer.

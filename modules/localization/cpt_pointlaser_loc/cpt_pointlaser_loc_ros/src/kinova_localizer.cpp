@@ -178,7 +178,7 @@ bool KinovaLocalizer::highAccuracyLocalization(
 
   // Optimize for the pose of the base in the map.
   kindr::minimal::QuatTransformation base_pose_in_map =
-      localizer_->optimizeForBasePoseInMap(nh_private_.param<bool>("verbose", false));
+      localizer_->optimizeForArmBasePoseInMap(nh_private_.param<bool>("verbose", false));
   // Translate the pose in the map into a pose in the world frame.
   kindr::minimal::QuatTransformation world_to_armbase = getTF("world", "marker") * base_pose_in_map;
 
