@@ -29,16 +29,16 @@ class PointLaserLocalizer {
                       double pointlaser_noise_std);
 
   /// \brief Sets up the optimizer for a new high-accuracy localization query.
-  /// NOTE: it is assumed that the arm was already moved to the initial pose.
-  //  TODO(fmilano): Check for initial pose.
-  /// TODO(fmilano): Check for exact meaning of poses.
+  /// NOTE: it is assumed that the arm was already moved to the initial pose. A reference link in
+  /// the arm, with a fixed pose w.r.t. to the lasers, is used: the pose to optimize for is the one
+  /// between the arm base and this reference link.
   ///
   /// \param marker_to_armbase          Pose between the marker and the arm base.
-  /// \param initial_pose               Pose between the arm base and the arm link.
-  /// \param laser_a_offset             Pose between the arm link and the point laser A.
-  /// \param laser_b_offset             Pose between the arm link and the point laser B.
-  /// \param laser_c_offset             Pose between the arm link and the point laser C.
-  /// \param endeffector_offset         Pose between the arm link and the arm end effector.
+  /// \param initial_pose               Initial pose between the arm base and the reference link.
+  /// \param laser_a_offset             Pose between the reference link and the point laser A.
+  /// \param laser_b_offset             Pose between the reference link and the point laser B.
+  /// \param laser_c_offset             Pose between the reference link and the point laser C.
+  /// \param endeffector_offset         Pose between the reference link and the arm end effector.
   /// \param arm_base_to_base           Pose between the arm base and the base.
   /// \param fix_cad_planes             If True, the planes retrieved by the optimizer are fixed.
   ///  \param add_initial_pose_prior    If True, a factor for the prior of the model offset is added
@@ -65,7 +65,7 @@ class PointLaserLocalizer {
       Eigen::Quaternion<double> rotation_quat,
       kindr::minimal::PositionTemplate<double> translation);
 
-  /// \brief Adds an odometry transform to the optimization.
+  /// \brief Adds an odometry transform (on the reference link) to the optimization.
   ///
   /// \param odometry_transform  Odometry transformation to add to the optimization.
   ///
@@ -83,7 +83,7 @@ class PointLaserLocalizer {
 
   /// \brief Returns the intersections of the 3 lasers with the model.
   ///
-  /// \param[in] current_arm_pose  Current pose of the arm link w.r.t. the arm base.
+  /// \param[in] current_arm_pose  Current pose of the reference link w.r.t. the arm base.
   /// \param[out] intersection_a   Intersection of laser A with the model.
   /// \param[out] intersection_b   Intersection of laser B with the model.
   /// \param[out] intersection_c   Intersection of laser C with the model.
@@ -109,11 +109,11 @@ class PointLaserLocalizer {
   // Noise statistics.
   Eigen::Matrix<double, 6, 1> initial_pose_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
-  // Initial pose between arm base and arm link.
+  // Initial pose between arm base and reference link.
   std::unique_ptr<kindr::minimal::QuatTransformation> initial_pose_;
   // Offset between the marker and the arm base.
   std::unique_ptr<kindr::minimal::QuatTransformation> marker_to_armbase_;
-  // Offsets between the arm link and the lasers.
+  // Offsets between the reference link and the lasers.
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_a_offset_;
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_b_offset_;
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_c_offset_;
