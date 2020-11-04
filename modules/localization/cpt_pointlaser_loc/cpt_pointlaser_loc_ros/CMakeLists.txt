@@ -12,7 +12,7 @@ cs_add_library(${PROJECT_NAME}
 )
 
 cs_add_executable(kinova_localizer_node src/kinova_localizer_node.cpp)
-cs_add_executable(mabi_localizer_node src/kinova_localizer_node.cpp)
+cs_add_executable(mabi_localizer_node src/mabi_localizer_node.cpp)
 
 target_link_libraries(kinova_localizer_node
   ${PROJECT_NAME}
