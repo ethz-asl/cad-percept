@@ -27,7 +27,7 @@ class MabiLocalizer {
   ///    the lasers.
   /// \param end_effector_topic_name    Topic name of the end effector.
   MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
-                std::string reference_link_topic_name = "gripper",
+                std::string reference_link_topic_name = "grinder",
                 std::string end_effector_topic_name = "end_effector");
   bool highAccuracyLocalization(
       cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
