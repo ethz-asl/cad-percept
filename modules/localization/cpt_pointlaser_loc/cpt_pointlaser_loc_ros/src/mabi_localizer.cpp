@@ -57,6 +57,7 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
 kindr::minimal::QuatTransformation MabiLocalizer::getTF(std::string from, std::string to) {
   tf::StampedTransform transform;
   kindr::minimal::QuatTransformation ret;
+  // TODO(fmilano): verify time!
   transform_listener_.lookupTransform(from, to, ros::Time(0), transform);
   tf::transformTFToKindr(transform, &ret);
   return ret;
