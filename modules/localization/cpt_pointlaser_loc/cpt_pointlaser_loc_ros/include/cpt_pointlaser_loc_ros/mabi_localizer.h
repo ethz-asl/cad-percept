@@ -58,9 +58,6 @@ class MabiLocalizer {
   ros::Publisher pub_intersection_a_, pub_intersection_b_, pub_intersection_c_;
   // - Publisher of the pose from marker to end-effector.
   ros::Publisher pub_endeffector_pose_;
-  // - Subscriber to task mode:
-  //   - Task mode 3 = HAL.
-  ros::Subscriber sub_mode_;
   // - Subscriber to task type: each valid task type is associated to a movement defined as
   //   "movement_type_<task_type>" on the parameter server.
   ros::Subscriber sub_task_type_;
