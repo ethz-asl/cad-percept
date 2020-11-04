@@ -21,9 +21,7 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
       reference_link_topic_name_(reference_link_topic_name),
       end_effector_topic_name_(end_effector_topic_name),
       transform_listener_(nh_),
-      mode_(0),
       task_type_(0),
-      processing_(false),
       transform_received_(false) {
   if (!nh_private_.hasParam("off_model")) {
     ROS_ERROR("'off_model' not set as parameter.\n");
@@ -73,11 +71,11 @@ void MabiLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goal_
 bool MabiLocalizer::highAccuracyLocalization(
     cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
     cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
-  // TODO(fmilano): Check mode!
-  if (mode_ != 3) {
+  if (!transform_received_) {
+    ROS_WARN(
+        "Did not receive the initial pose to which the arm should be set. Skipping HAL routine.");
     return false;
   }
-
   // Move arm to initial pose.
   // TODO(fmilano): Check that a "base" is published to the TF!
   kindr::minimal::QuatTransformation world_to_base = getTF("world", "base");
@@ -125,9 +123,6 @@ bool MabiLocalizer::highAccuracyLocalization(
   for (auto string_cmd : nh_private_.param<std::vector<std::string>>(
            "movement_type_" + std::to_string(task_type_), default_movement)) {
     // Move arm.
-    if (mode_ != 3) {
-      return false;
-    }
     // Split the string at the spaces
     // (https://www.fluentcpp.com/2017/04/21/how-to-split-a-string-in-c/).
     std::istringstream iss(string_cmd);
@@ -188,7 +183,6 @@ bool MabiLocalizer::highAccuracyLocalization(
   leica_client_["laserOff"].call(empty_srvs.request, empty_srvs.response);
 
   // Optimize for the pose from the marker to the arm base.
-  // TODO(fmilano): change function name!
   kindr::minimal::QuatTransformation marker_to_armbase_optimized =
       localizer_->optimizeForArmBasePoseInMap(nh_private_.param<bool>("verbose", false));
   // Translate the pose in the map into a pose in the world frame.
@@ -248,7 +242,6 @@ bool MabiLocalizer::highAccuracyLocalization(
 
 void MabiLocalizer::advertiseTopics() {
   // TODO(fmilano): Check these topic names!
-  sub_mode_ = nh_private_.subscribe("/task_mode", 10, &MabiLocalizer::setMode, this);
   sub_task_type_ = nh_private_.subscribe("/task_type", 10, &MabiLocalizer::setTaskType, this);
   sub_offset_pose_ = nh_private_.subscribe("/building_task_manager/task_offset_target_pose", 10,
                                            &MabiLocalizer::getOffsetPose, this);
@@ -271,18 +264,6 @@ void MabiLocalizer::advertiseTopics() {
   mabi_client_["execute_task"] = nh_.serviceClient<std_srvs::Trigger>("/go_to_goal_pose");
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_acc_localize", &MabiLocalizer::highAccuracyLocalization, this);
-}
-
-void MabiLocalizer::setMode(const std_msgs::Int16 &mode_msg) {
-  mode_ = mode_msg.data;
-  if (mode_ == 3 && !processing_ && transform_received_) {
-    processing_ = true;
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization srv;
-    highAccuracyLocalization(srv.request, srv.response);
-  } else if (mode_ != 3 && processing_) {
-    // Allow to switch back to different mode to perform localization again later.
-    processing_ = false;
-  }
 }
 
 void MabiLocalizer::setTaskType(const std_msgs::Int16 &task_type_msg) {

@@ -41,7 +41,6 @@ class MabiLocalizer {
   ///
   /// \param arm_goal_pose  Goal pose of the arm end effector w.r.t. robot base.
   void setArmTo(const kindr::minimal::QuatTransformation &arm_goal_pose);
-  void setMode(const std_msgs::Int16 &mode_msg);
   void setTaskType(const std_msgs::Int16 &task_type_msg);
   ///
   /// \brief Reads from an input message the offset pose - w.r.t. the world frame - to which the arm
@@ -76,8 +75,8 @@ class MabiLocalizer {
   std::string reference_link_topic_name_, end_effector_topic_name_;
   Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
-  int mode_, task_type_;
-  bool processing_, transform_received_;
+  int task_type_;
+  bool transform_received_;
   kindr::minimal::QuatTransformation initial_world_to_arm_pose_;
   // Localizer that performs the high-accuracy localization task.
   std::unique_ptr<cad_percept::pointlaser_loc::localizer::PointLaserLocalizer> localizer_;
