@@ -66,7 +66,7 @@ class MabiLocalizer {
   // Transform listener.
   tf::TransformListener transform_listener_;
   // Service clients and server.
-  std::map<std::string, ros::ServiceClient> leica_client_, mabi_client_;
+  std::map<std::string, ros::ServiceClient> leica_client_;
   ros::ServiceServer high_acc_localisation_service_;
   // Internal parameters.
   std::string reference_link_topic_name_, end_effector_topic_name_;

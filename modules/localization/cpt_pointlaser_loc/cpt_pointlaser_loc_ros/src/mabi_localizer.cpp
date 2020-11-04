@@ -222,19 +222,16 @@ void MabiLocalizer::advertiseTopics() {
   sub_task_type_ = nh_private_.subscribe("/task_type", 10, &MabiLocalizer::setTaskType, this);
   sub_offset_pose_ = nh_private_.subscribe("/building_task_manager/task_offset_target_pose", 10,
                                            &MabiLocalizer::getOffsetPose, this);
-  pub_intersection_a_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_a", 1);
-  pub_intersection_b_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_b", 1);
-  pub_intersection_c_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_c", 1);
-  pub_endeffector_pose_ =
-      nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
-
   leica_client_["distance"] =
       nh_.serviceClient<cpt_pointlaser_comm_ros::GetDistance>("/pointlaser_comm/distance");
   leica_client_["laserOn"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOn");
   leica_client_["laserOff"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOff");
 
-  // TODO(fmilano): Properly set topics.
-  mabi_client_["ee_control"] = nh_.serviceClient<any_msgs::SetPose>("/hal_go_to_ee_pose");
+  pub_intersection_a_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_a", 1);
+  pub_intersection_b_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_b", 1);
+  pub_intersection_c_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_c", 1);
+  pub_endeffector_pose_ =
+      nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_acc_localize", &MabiLocalizer::highAccuracyLocalization, this);
 }
