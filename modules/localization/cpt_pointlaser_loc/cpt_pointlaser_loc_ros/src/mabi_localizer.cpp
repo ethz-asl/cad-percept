@@ -22,7 +22,7 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
       end_effector_topic_name_(end_effector_topic_name),
       transform_listener_(nh_),
       task_type_(0),
-      transform_received_(false) {
+      initial_arm_pose_received_(false) {
   if (!nh_private_.hasParam("off_model")) {
     ROS_ERROR("'off_model' not set as parameter.\n");
   }
@@ -71,7 +71,7 @@ void MabiLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goal_
 bool MabiLocalizer::highAccuracyLocalization(
     cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
     cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
-  if (!transform_received_) {
+  if (!initial_arm_pose_received_) {
     ROS_WARN(
         "Did not receive the initial pose to which the arm should be set. Skipping HAL routine.");
     return false;
@@ -272,7 +272,7 @@ void MabiLocalizer::setTaskType(const std_msgs::Int16 &task_type_msg) {
 
 void MabiLocalizer::getOffsetPose(const geometry_msgs::PoseStamped::ConstPtr &msg) {
   tf::poseMsgToKindr(msg->pose, &initial_world_to_arm_pose_);
-  transform_received_ = true;
+  initial_arm_pose_received_ = true;
 }
 
 }  // namespace pointlaser_loc_ros
