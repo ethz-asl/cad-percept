@@ -228,13 +228,6 @@ bool MabiLocalizer::highAccuracyLocalization(
     // TODO(fmilano): Implement!
     ROS_WARN("Service to check that the pose was correctly updated is not implemented yet.");
 
-    // Now trigger the task execution.
-    std_srvs::Trigger exec_task;
-    do {
-      // TODO(fmilano): Implement!
-      ROS_WARN("Service to trigger the task execution is not implemented yet.");
-    } while (!exec_task.response.success);
-    ROS_INFO("success for go_to_goal_pose\n");
     response.successful = true;
   }
   return true;
@@ -261,7 +254,6 @@ void MabiLocalizer::advertiseTopics() {
   mabi_client_["send_pose"] = nh_.serviceClient<any_msgs::SetPose>("/hal_base_pose_update");
   mabi_client_["check_pose"] =
       nh_.serviceClient<any_msgs::SetPose>("/hal_compare_ee_poses_in_world");
-  mabi_client_["execute_task"] = nh_.serviceClient<std_srvs::Trigger>("/go_to_goal_pose");
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_acc_localize", &MabiLocalizer::highAccuracyLocalization, this);
 }
