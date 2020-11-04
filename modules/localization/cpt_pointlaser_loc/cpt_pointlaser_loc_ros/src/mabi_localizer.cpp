@@ -206,31 +206,14 @@ bool MabiLocalizer::highAccuracyLocalization(
   ROS_INFO_STREAM(marker_to_armbase.getPosition().transpose() << "\n");
   ROS_INFO("arm base in world frame\n");
   ROS_INFO_STREAM(world_to_armbase.getPosition().transpose() << "\n");
-  // Send pose of the base (not arm base) to controller.
+
+  // Send corrected pose of the robot base to the controller.
   kindr::minimal::QuatTransformation base_pose_in_world = world_to_armbase * arm_base_to_base;
   ROS_INFO_STREAM("Updated base pose in world, t: "
                   << base_pose_in_world.getPosition().transpose()
                   << ", o: " << base_pose_in_world.getRotation().vector().transpose() << "\n");
-  any_msgs::SetPose send_pose;
-  tf::poseKindrToMsg(base_pose_in_world, &send_pose.request.data);
+  tf::poseKindrToMsg(base_pose_in_world, &response.corrected_base_pose_in_world);
 
-  // TODO(fmilano): Implement!
-  ROS_WARN("Service to send the pose to the controller is not implemented yet.");
-
-  if (send_pose.response.success == false) {
-    ROS_ERROR("Calling updating of base pose FAILED. NOT going to goal pose.\n");
-    response.successful = false;
-  } else {
-    ROS_INFO("Successfully called updating of base pose.\n");
-
-    // Debug service to check whether base pose was updated correctly.
-    geometry_msgs::Pose world_to_endeffector_to_check;
-    tf::poseKindrToMsg(world_to_armbase * armbase_to_endeffector, &world_to_endeffector_to_check);
-    // TODO(fmilano): Implement!
-    ROS_WARN("Service to check that the pose was correctly updated is not implemented yet.");
-
-    response.successful = true;
-  }
   return true;
 }
 
@@ -252,7 +235,6 @@ void MabiLocalizer::advertiseTopics() {
 
   // TODO(fmilano): Properly set topics.
   mabi_client_["ee_control"] = nh_.serviceClient<any_msgs::SetPose>("/hal_go_to_ee_pose");
-  mabi_client_["send_pose"] = nh_.serviceClient<any_msgs::SetPose>("/hal_base_pose_update");
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_acc_localize", &MabiLocalizer::highAccuracyLocalization, this);
 }
