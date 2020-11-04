@@ -10,7 +10,7 @@
 
 #include <Eigen/Geometry>
 
-#include "cpt_pointlaser_loc_ros/HighAccuracyLocalization.h"
+#include "cpt_pointlaser_loc_ros/HighAccuracyLocalizationKinova.h"
 
 namespace cad_percept {
 namespace pointlaser_loc_ros {
@@ -20,8 +20,8 @@ class KinovaLocalizer {
  public:
   KinovaLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
   bool highAccuracyLocalization(
-      cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
-      cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response);
+      cpt_pointlaser_loc_ros::HighAccuracyLocalizationKinova::Request &request,
+      cpt_pointlaser_loc_ros::HighAccuracyLocalizationKinova::Response &response);
 
  private:
   void advertiseTopics();
