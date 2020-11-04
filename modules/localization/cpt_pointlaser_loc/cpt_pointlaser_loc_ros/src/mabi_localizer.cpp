@@ -2,14 +2,11 @@
 
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <kindr/minimal/position.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
 #include <std_srvs/Empty.h>
-#include <std_srvs/Trigger.h>
 
-#include "any_msgs/SetPose.h"
 #include "cpt_pointlaser_comm_ros/GetDistance.h"
 
 namespace cad_percept {
@@ -64,8 +61,6 @@ kindr::minimal::QuatTransformation MabiLocalizer::getTF(std::string from, std::s
 }
 
 void MabiLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goal_pose) {
-  any_msgs::SetPose arm_ctrl;
-  tf::poseKindrToMsg(arm_goal_pose, &arm_ctrl.request.data);
   ROS_WARN(
       "Please be careful: since no topic/service signaling the end of the arm movement is "
       "available yet, the routine is hard-coded to wait for %f seconds after publishing the "
