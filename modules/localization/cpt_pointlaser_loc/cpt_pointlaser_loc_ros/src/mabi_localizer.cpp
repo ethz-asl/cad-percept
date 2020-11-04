@@ -71,6 +71,7 @@ void MabiLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goal_
   path_msg.header.stamp = ros::Time::now();
   path_msg.header.frame_id = "base";
   // Retrieve current pose from tf and add it to the path.
+  // TODO(fmilano): Check that this is the correct way to do this.
   geometry_msgs::PoseStamped current_pose_msg;
   tf::StampedTransform current_pose_tf;
   kindr::minimal::QuatTransformation current_pose;
