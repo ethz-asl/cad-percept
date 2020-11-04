@@ -1,10 +1,11 @@
 #include "cpt_pointlaser_loc_ros/mabi_localizer.h"
 
 #include <geometry_msgs/PointStamped.h>
-#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <kindr/minimal/position.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
+#include <nav_msgs/Path.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/Trigger.h>
 
@@ -64,9 +65,31 @@ kindr::minimal::QuatTransformation MabiLocalizer::getTF(std::string from, std::s
 void MabiLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goal_pose) {
   any_msgs::SetPose arm_ctrl;
   tf::poseKindrToMsg(arm_goal_pose, &arm_ctrl.request.data);
+  ROS_WARN(
+      "Please be careful: since no topic/service signaling the end of the arm movement is "
+      "available yet, the routine is hard-coded to wait for %f seconds after publishing the "
+      "message with the desired goal state.",
+      wait_time_arm_movement_);
 
-  ROS_ERROR("Not implemented.");
-  // TODO(fmilano): implement.
+  nav_msgs::Path path_msg;
+  path_msg.header.stamp = ros::Time::now();
+  path_msg.header.frame_id = "base";
+  // Retrieve current pose from tf and add it to the path.
+  geometry_msgs::PoseStamped current_pose_msg;
+  tf::StampedTransform current_pose_tf;
+  kindr::minimal::QuatTransformation current_pose;
+  transform_listener_.lookupTransform("base", end_effector_topic_name_, ros::Time::now(),
+                                      current_pose_tf);
+  tf::transformTFToKindr(current_pose_tf, &current_pose);
+  tf::poseStampedKindrToMsg(current_pose, ros::Time(0.0), "base", &current_pose_msg);
+  path_msg.poses.push_back(current_pose_msg);
+  // Add target pose to the path.
+  geometry_msgs::PoseStamped target_pose_msg;
+  tf::poseStampedKindrToMsg(arm_goal_pose, ros::Time(motion_duration_), "base", &target_pose_msg);
+  path_msg.poses.push_back(target_pose_msg);
+  pub_arm_movement_path_.publish(path_msg);
+  // TODO(fmilano): Implement an alternative once a proper communication mechanism is available.
+  ros::Duration(wait_time_arm_movement_).sleep();
 }
 
 bool MabiLocalizer::highAccuracyLocalization(
@@ -230,6 +253,7 @@ void MabiLocalizer::advertiseTopics() {
   pub_intersection_a_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_a", 1);
   pub_intersection_b_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_b", 1);
   pub_intersection_c_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_c", 1);
+  pub_arm_movement_path_ = nh_private_.advertise<nav_msgs::Path>("hal_base_to_ee_target_pose", 1);
   pub_endeffector_pose_ =
       nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
   high_acc_localisation_service_ = nh_private_.advertiseService(

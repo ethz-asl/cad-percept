@@ -56,6 +56,9 @@ class MabiLocalizer {
   // Publisher, subscribers.
   // - Publishers of the intersections of the lasers with the model, for debug purposes.
   ros::Publisher pub_intersection_a_, pub_intersection_b_, pub_intersection_c_;
+  // - Publisher of the path that the controller should interpolate to move the arm. The poses are
+  //   referred to the end effector and defined in the robot-base frame.
+  ros::Publisher pub_arm_movement_path_;
   // - Publisher of the pose from marker to end-effector.
   ros::Publisher pub_endeffector_pose_;
   // - Subscriber to task type: each valid task type is associated to a movement defined as
@@ -77,6 +80,18 @@ class MabiLocalizer {
   kindr::minimal::QuatTransformation initial_world_to_arm_pose_;
   // Localizer that performs the high-accuracy localization task.
   std::unique_ptr<cad_percept::pointlaser_loc::localizer::PointLaserLocalizer> localizer_;
+
+  // Time (in seconds) that the routine waits after triggering the arm movement (i.e., sending the
+  // message containing the path that the controller should execute).
+  // NOTE: be very careful when setting this value. This is a temporary solution and should be
+  // replaced by a proper communication mechanism based either on a message or on a service call.
+  // TODO(fmilano): Replace this once such a message/service from the controller is available.
+  static constexpr float wait_time_arm_movement_ = 10.0;
+  // Fixed duration of the motion in seconds. Taken from
+  // https://bitbucket.org/leggedrobotics/waco_controller/src/
+  // d246df98e4c19d0eeeba1de91a9e3a77006c313c/waco_task_modules_ros/src/
+  // WacoHalTaskModuleRos.cpp#lines-164
+  static constexpr double motion_duration_ = 3.5;
 };
 }  // namespace pointlaser_loc_ros
 }  // namespace cad_percept
