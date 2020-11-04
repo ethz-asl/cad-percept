@@ -1,6 +1,7 @@
 #include "cpt_pointlaser_loc_ros/mabi_localizer.h"
 
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Pose.h>
 #include <kindr/minimal/position.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
@@ -223,8 +224,8 @@ bool MabiLocalizer::highAccuracyLocalization(
     ROS_INFO("Successfully called updating of base pose.\n");
 
     // Debug service to check whether base pose was updated correctly.
-    any_msgs::SetPose check_pose;
-    tf::poseKindrToMsg(world_to_armbase * armbase_to_endeffector, &check_pose.request.data);
+    geometry_msgs::Pose world_to_endeffector_to_check;
+    tf::poseKindrToMsg(world_to_armbase * armbase_to_endeffector, &world_to_endeffector_to_check);
     // TODO(fmilano): Implement!
     ROS_WARN("Service to check that the pose was correctly updated is not implemented yet.");
 
@@ -252,8 +253,6 @@ void MabiLocalizer::advertiseTopics() {
   // TODO(fmilano): Properly set topics.
   mabi_client_["ee_control"] = nh_.serviceClient<any_msgs::SetPose>("/hal_go_to_ee_pose");
   mabi_client_["send_pose"] = nh_.serviceClient<any_msgs::SetPose>("/hal_base_pose_update");
-  mabi_client_["check_pose"] =
-      nh_.serviceClient<any_msgs::SetPose>("/hal_compare_ee_poses_in_world");
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_acc_localize", &MabiLocalizer::highAccuracyLocalization, this);
 }
