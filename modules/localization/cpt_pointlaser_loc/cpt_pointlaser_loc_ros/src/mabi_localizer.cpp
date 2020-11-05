@@ -93,9 +93,9 @@ bool MabiLocalizer::initializeHALRoutine() {
   std_srvs::Empty empty_srvs;
   if (!leica_client_["laserOn"].call(empty_srvs.request, empty_srvs.response)) {
     ROS_ERROR("Failed to turn laser on. Unable to initialize HAL routine.");
-    initialized_hal_routine_ = true;
     return false;
   }
+  initialized_hal_routine_ = true;
   return true;
 }
 
