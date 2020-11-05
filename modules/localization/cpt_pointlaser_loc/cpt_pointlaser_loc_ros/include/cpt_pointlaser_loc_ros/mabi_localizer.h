@@ -41,7 +41,6 @@ class MabiLocalizer {
   ///
   /// \param arm_goal_pose  Goal pose of the arm end effector w.r.t. robot base.
   void setArmTo(const kindr::minimal::QuatTransformation &arm_goal_pose);
-  void setTaskType(const std_msgs::Int16 &task_type_msg);
 
   // Reference model.
   cad_percept::cgal::MeshModel::Ptr model_;
@@ -55,9 +54,6 @@ class MabiLocalizer {
   ros::Publisher pub_arm_movement_path_;
   // - Publisher of the pose from marker to end-effector.
   ros::Publisher pub_endeffector_pose_;
-  // - Subscriber to task type: each valid task type is associated to a movement defined as
-  //   "movement_type_<task_type>" on the parameter server.
-  ros::Subscriber sub_task_type_;
   // - Subscriber to the initial pose of the arm in the world frame.
   ros::Subscriber sub_offset_pose_;
   // Transform listener.
@@ -69,7 +65,6 @@ class MabiLocalizer {
   std::string reference_link_topic_name_, end_effector_topic_name_;
   Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
-  int task_type_;
   bool initialized_hal_routine_;
   kindr::minimal::QuatTransformation initial_marker_to_armbase_;
   kindr::minimal::QuatTransformation current_armbase_to_ref_link_;

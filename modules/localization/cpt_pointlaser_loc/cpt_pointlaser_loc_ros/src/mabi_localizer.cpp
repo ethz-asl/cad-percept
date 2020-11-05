@@ -20,7 +20,6 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
       reference_link_topic_name_(reference_link_topic_name),
       end_effector_topic_name_(end_effector_topic_name),
       transform_listener_(nh_),
-      task_type_(0),
       initialized_hal_routine_(false) {
   if (!nh_private_.hasParam("off_model")) {
     ROS_ERROR("'off_model' not set as parameter.\n");
@@ -126,82 +125,53 @@ bool MabiLocalizer::initializeHALRoutine() {
   initialized_hal_routine_ = true;
 }
 
-bool MabiLocalizer::highAccuracyLocalization(
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
+bool MabiLocalizer::takeMeasurement() {
+  // Initialize HAL routine if not previously done.
   if (!initialized_hal_routine_) {
     initializeHALRoutine();
   }
-  if (!nh_private_.hasParam("movement_type_" + std::to_string(task_type_))) {
-    ROS_WARN_STREAM("Could not find specific movement type for task-type "
-                    << task_type_ << ", using default movement\n");
+  // Take measurements.  
+  // - Add odometry measurement to the factor graph.
+  kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", reference_link_topic_name_);
+  localizer_->addOdometry(current_armbase_to_ref_link_.inverse() * new_arm_pose);
+  current_armbase_to_ref_link_ = new_arm_pose;
+  // - Take laser measurements and add them to the factor graph.
+  cpt_pointlaser_comm_ros::GetDistance::Request req;
+  cpt_pointlaser_comm_ros::GetDistance::Response resp;
+  while (!leica_client_["distance"].call(req, resp)) {
+    ROS_ERROR("could not get distance measurement.\n");
+    ros::Duration(0.1).sleep();
   }
-  // TODO(fmilano): Replace with correct movements!
-  std::vector<std::string> default_movement = {
-      "0 0 0 0.988 0.009 -0.025 0.05", "0 0 0 0.988 0.009 -0.025 0.05",
-      "0 0 0 0.988 0.009 -0.025 0.05", "0 0 0 0.988 0.009 -0.025 0.05",
-      "0 0 0 0.988 0.009 -0.025 0.05", "0 0 0 0.988 0.009 -0.025 0.05"};
-  // Get the movement from config in string format "x y z w x y z"
-  for (auto string_cmd : nh_private_.param<std::vector<std::string>>(
-           "movement_type_" + std::to_string(task_type_), default_movement)) {
-    // Move arm.
-    // Split the string at the spaces
-    // (https://www.fluentcpp.com/2017/04/21/how-to-split-a-string-in-c/).
-    std::istringstream iss(string_cmd);
-    std::vector<std::string> strings((std::istream_iterator<std::string>(iss)),
-                                     std::istream_iterator<std::string>());
-    if (strings.size() != 7) {
-      ROS_ERROR_STREAM("Movement has wrong number of parameters, should be 7 for: " << string_cmd
-                                                                                    << "\n");
-      return false;
-    }
-    // Convert strings to doubles.
-    std::vector<double> arm_cmd(strings.size());
-    std::transform(strings.begin(), strings.end(), arm_cmd.begin(),
-                   [](const std::string &s) { return std::stod(s.c_str()); });
-    // Compute arm goal pose and move arm to it.
-    Eigen::Quaternion<double> rot_quat(arm_cmd[3], arm_cmd[4], arm_cmd[5], arm_cmd[6]);
-    kindr::minimal::PositionTemplate<double> translation(arm_cmd[0], arm_cmd[1], arm_cmd[2]);
-    kindr::minimal::QuatTransformation arm_goal_pose =
-        localizer_->getArmGoalPose(rot_quat, translation);
-    setArmTo(arm_goal_pose);
+  localizer_->addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC);
 
-    // Add odometry measurement.
-    kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", reference_link_topic_name_);
-    localizer_->addOdometry(current_armbase_to_ref_link_.inverse() * new_arm_pose);
-    current_armbase_to_ref_link_ = new_arm_pose;
+  // For debugging, also publish the intersection as seen from the current state.
+  cad_percept::cgal::Intersection model_intersection_a, model_intersection_b,
+      model_intersection_c;
+  localizer_->getIntersectionsLasersWithModel(current_armbase_to_ref_link_, &model_intersection_a,
+                                              &model_intersection_b, &model_intersection_c);
+  geometry_msgs::PointStamped intersection_msg;
+  intersection_msg.header.stamp = ros::Time::now();
+  intersection_msg.header.frame_id = "marker";
+  intersection_msg.point.x = model_intersection_a.intersected_point.x();
+  intersection_msg.point.y = model_intersection_a.intersected_point.y();
+  intersection_msg.point.z = model_intersection_a.intersected_point.z();
+  pub_intersection_a_.publish(intersection_msg);
+  intersection_msg.point.x = model_intersection_b.intersected_point.x();
+  intersection_msg.point.y = model_intersection_b.intersected_point.y();
+  intersection_msg.point.z = model_intersection_b.intersected_point.z();
+  pub_intersection_b_.publish(intersection_msg);
+  intersection_msg.point.x = model_intersection_c.intersected_point.x();
+  intersection_msg.point.y = model_intersection_c.intersected_point.y();
+  intersection_msg.point.z = model_intersection_c.intersected_point.z();
+  pub_intersection_c_.publish(intersection_msg);
+}
 
-    // Take measurement.
-    cpt_pointlaser_comm_ros::GetDistance::Request req;
-    cpt_pointlaser_comm_ros::GetDistance::Response resp;
-    while (!leica_client_["distance"].call(req, resp)) {
-      ROS_ERROR("could not get distance measurement.\n");
-      ros::Duration(0.1).sleep();
-    }
-
-    localizer_->addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC);
-
-    // For debugging, also publish the intersection as seen from the current state.
-    cad_percept::cgal::Intersection model_intersection_a, model_intersection_b,
-        model_intersection_c;
-    localizer_->getIntersectionsLasersWithModel(current_armbase_to_ref_link_, &model_intersection_a,
-                                                &model_intersection_b, &model_intersection_c);
-    geometry_msgs::PointStamped intersection_msg;
-    intersection_msg.header.stamp = ros::Time::now();
-    intersection_msg.header.frame_id = "marker";
-    intersection_msg.point.x = model_intersection_a.intersected_point.x();
-    intersection_msg.point.y = model_intersection_a.intersected_point.y();
-    intersection_msg.point.z = model_intersection_a.intersected_point.z();
-    pub_intersection_a_.publish(intersection_msg);
-    intersection_msg.point.x = model_intersection_b.intersected_point.x();
-    intersection_msg.point.y = model_intersection_b.intersected_point.y();
-    intersection_msg.point.z = model_intersection_b.intersected_point.z();
-    pub_intersection_b_.publish(intersection_msg);
-    intersection_msg.point.x = model_intersection_c.intersected_point.x();
-    intersection_msg.point.y = model_intersection_c.intersected_point.y();
-    intersection_msg.point.z = model_intersection_c.intersected_point.z();
-    pub_intersection_c_.publish(intersection_msg);
-  }
+bool MabiLocalizer::highAccuracyLocalization(
+    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
+    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {  
+  // NOTE: this is temporary, in preparation for a subsequent split in service. Here it is assumed
+  // that a single movement is performed before calling this function.
+  takeMeasurement();
   leica_client_["laserOff"].call(empty_srvs.request, empty_srvs.response);
 
   // Optimize for the pose from the marker to the arm base.
@@ -240,7 +210,6 @@ bool MabiLocalizer::highAccuracyLocalization(
 
 void MabiLocalizer::advertiseTopics() {
   // TODO(fmilano): Check these topic names!
-  sub_task_type_ = nh_private_.subscribe("/task_type", 10, &MabiLocalizer::setTaskType, this);
   leica_client_["distance"] =
       nh_.serviceClient<cpt_pointlaser_comm_ros::GetDistance>("/pointlaser_comm/distance");
   leica_client_["laserOn"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOn");
@@ -254,10 +223,6 @@ void MabiLocalizer::advertiseTopics() {
       nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_acc_localize", &MabiLocalizer::highAccuracyLocalization, this);
-}
-
-void MabiLocalizer::setTaskType(const std_msgs::Int16 &task_type_msg) {
-  task_type_ = task_type_msg.data;
 }
 
 }  // namespace pointlaser_loc_ros
