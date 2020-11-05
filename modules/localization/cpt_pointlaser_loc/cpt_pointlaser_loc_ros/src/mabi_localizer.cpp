@@ -109,7 +109,7 @@ bool MabiLocalizer::takeMeasurement(
       return false;
     }
   }
-  // Take measurements.  
+  // Take measurements.
   // - Add odometry measurement to the factor graph.
   kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", reference_link_topic_name_);
   localizer_->addOdometry(current_armbase_to_ref_link_.inverse() * new_arm_pose);
@@ -124,8 +124,7 @@ bool MabiLocalizer::takeMeasurement(
   localizer_->addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC);
 
   // For debugging, also publish the intersection as seen from the current state.
-  cad_percept::cgal::Intersection model_intersection_a, model_intersection_b,
-      model_intersection_c;
+  cad_percept::cgal::Intersection model_intersection_a, model_intersection_b, model_intersection_c;
   localizer_->getIntersectionsLasersWithModel(current_armbase_to_ref_link_, &model_intersection_a,
                                               &model_intersection_b, &model_intersection_c);
   geometry_msgs::PointStamped intersection_msg;
