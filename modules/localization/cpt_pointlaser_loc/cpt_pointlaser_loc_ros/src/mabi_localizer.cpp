@@ -20,7 +20,8 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
       reference_link_topic_name_(reference_link_topic_name),
       end_effector_topic_name_(end_effector_topic_name),
       transform_listener_(nh_),
-      task_type_(0) {
+      task_type_(0),
+      initialized_hal_routine_(false) {
   if (!nh_private_.hasParam("off_model")) {
     ROS_ERROR("'off_model' not set as parameter.\n");
   }
@@ -87,14 +88,16 @@ void MabiLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goal_
   ros::Duration(wait_time_arm_movement_).sleep();
 }
 
-bool MabiLocalizer::highAccuracyLocalization(
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
+bool MabiLocalizer::initializeHALRoutine() {
+  // NOTE: It is assumed that the arm was already moved to its initial pose.
+  ROS_INFO(
+      "Initializing HAL routine. NOTE: It is assumed that the arm was already moved to its initial "
+      "pose.")
   // Get all the poses.
   // For the links in the arm, check URDF at
   // https://bitbucket.org/leggedrobotics/mabi_common/src/master/mabi_description/.
   // TODO(fmilano): Check that a "marker" is published to the TF!
-  kindr::minimal::QuatTransformation marker_to_armbase = getTF("marker", "arm_base");
+  initial_marker_to_armbase_ = getTF("marker", "arm_base");
   kindr::minimal::QuatTransformation initial_pose = getTF("arm_base", reference_link_topic_name_);
   kindr::minimal::QuatTransformation laser_a_offset =
       getTF(reference_link_topic_name_, "pointlaser_A");
@@ -104,21 +107,31 @@ bool MabiLocalizer::highAccuracyLocalization(
       getTF(reference_link_topic_name_, "pointlaser_C");
   kindr::minimal::QuatTransformation endeffector_offset =
       getTF(reference_link_topic_name_, end_effector_topic_name_);
-  kindr::minimal::QuatTransformation arm_base_to_base = getTF("arm_base", "base");
-
+  armbase_to_base_ = getTF("arm_base", "base");
   // Set up the optimizer for a new high-accuracy localization query.
-  localizer_->setUpOptimizer(marker_to_armbase, initial_pose, laser_a_offset, laser_b_offset,
-                             laser_c_offset, endeffector_offset, arm_base_to_base,
+  localizer_->setUpOptimizer(initial_marker_to_armbase_, initial_pose, laser_a_offset,
+                             laser_b_offset, laser_c_offset, endeffector_offset, armbase_to_base_,
                              nh_private_.param("fix_cad_planes", false),
                              nh_private_.param("initial_pose_prior", false),
                              nh_private_.param("only_optimize_translation", false));
-  // We measure over different poses of the end effector and optimize for the pose of the arm base.
-  kindr::minimal::QuatTransformation current_pose(initial_pose);
+  // We measure over different poses of the end effector and optimize for the pose of the reference
+  // link w.r.t. the arm base. Eventually, this is used to retrieve the corrected pose of the robot
+  // base in the world frame (cf. `highAccuracyLocalization`).
+  current_armbase_to_ref_link_ = initial_pose;
 
-  // Turn laser on, move and measure.
+  // Turn laser on.
   std_srvs::Empty empty_srvs;
   leica_client_["laserOn"].call(empty_srvs.request, empty_srvs.response);
 
+  initialized_hal_routine_ = true;
+}
+
+bool MabiLocalizer::highAccuracyLocalization(
+    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
+    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
+  if (!initialized_hal_routine_) {
+    initializeHALRoutine();
+  }
   if (!nh_private_.hasParam("movement_type_" + std::to_string(task_type_))) {
     ROS_WARN_STREAM("Could not find specific movement type for task-type "
                     << task_type_ << ", using default movement\n");
@@ -155,8 +168,8 @@ bool MabiLocalizer::highAccuracyLocalization(
 
     // Add odometry measurement.
     kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", reference_link_topic_name_);
-    localizer_->addOdometry(current_pose.inverse() * new_arm_pose);
-    current_pose = new_arm_pose;
+    localizer_->addOdometry(current_armbase_to_ref_link_.inverse() * new_arm_pose);
+    current_armbase_to_ref_link_ = new_arm_pose;
 
     // Take measurement.
     cpt_pointlaser_comm_ros::GetDistance::Request req;
@@ -171,7 +184,7 @@ bool MabiLocalizer::highAccuracyLocalization(
     // For debugging, also publish the intersection as seen from the current state.
     cad_percept::cgal::Intersection model_intersection_a, model_intersection_b,
         model_intersection_c;
-    localizer_->getIntersectionsLasersWithModel(current_pose, &model_intersection_a,
+    localizer_->getIntersectionsLasersWithModel(current_armbase_to_ref_link_, &model_intersection_a,
                                                 &model_intersection_b, &model_intersection_c);
     geometry_msgs::PointStamped intersection_msg;
     intersection_msg.header.stamp = ros::Time::now();
@@ -211,12 +224,12 @@ bool MabiLocalizer::highAccuracyLocalization(
   ROS_INFO("arm base in marker frame\n");
   ROS_INFO_STREAM(marker_to_armbase_optimized.getPosition().transpose() << "\n");
   ROS_INFO("initial pose from slam\n");
-  ROS_INFO_STREAM(marker_to_armbase.getPosition().transpose() << "\n");
+  ROS_INFO_STREAM(initial_marker_to_armbase_.getPosition().transpose() << "\n");
   ROS_INFO("arm base in world frame\n");
   ROS_INFO_STREAM(world_to_armbase.getPosition().transpose() << "\n");
 
   // Send corrected pose of the robot base to the controller.
-  kindr::minimal::QuatTransformation base_pose_in_world = world_to_armbase * arm_base_to_base;
+  kindr::minimal::QuatTransformation base_pose_in_world = world_to_armbase * armbase_to_base_;
   ROS_INFO_STREAM("Updated base pose in world, t: "
                   << base_pose_in_world.getPosition().transpose()
                   << ", o: " << base_pose_in_world.getRotation().vector().transpose() << "\n");

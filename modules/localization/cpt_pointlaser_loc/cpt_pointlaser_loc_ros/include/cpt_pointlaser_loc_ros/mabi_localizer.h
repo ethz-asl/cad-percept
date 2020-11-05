@@ -70,6 +70,11 @@ class MabiLocalizer {
   Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
   int task_type_;
+  bool initialized_hal_routine_;
+  kindr::minimal::QuatTransformation initial_marker_to_armbase_;
+  kindr::minimal::QuatTransformation current_armbase_to_ref_link_;
+  // (Fixed) pose of the robot base w.r.t. to the arm base.
+  kindr::minimal::QuatTransformation armbase_to_base_;
   // Localizer that performs the high-accuracy localization task.
   std::unique_ptr<cad_percept::pointlaser_loc::localizer::PointLaserLocalizer> localizer_;
 
