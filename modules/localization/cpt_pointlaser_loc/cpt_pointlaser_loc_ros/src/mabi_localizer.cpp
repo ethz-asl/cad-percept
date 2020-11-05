@@ -20,8 +20,7 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
       reference_link_topic_name_(reference_link_topic_name),
       end_effector_topic_name_(end_effector_topic_name),
       transform_listener_(nh_),
-      task_type_(0),
-      initial_arm_pose_received_(false) {
+      task_type_(0) {
   if (!nh_private_.hasParam("off_model")) {
     ROS_ERROR("'off_model' not set as parameter.\n");
   }
@@ -54,7 +53,6 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
 kindr::minimal::QuatTransformation MabiLocalizer::getTF(std::string from, std::string to) {
   tf::StampedTransform transform;
   kindr::minimal::QuatTransformation ret;
-  // TODO(fmilano): verify time!
   transform_listener_.lookupTransform(from, to, ros::Time(0), transform);
   tf::transformTFToKindr(transform, &ret);
   return ret;
@@ -92,16 +90,6 @@ void MabiLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goal_
 bool MabiLocalizer::highAccuracyLocalization(
     cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
     cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
-  if (!initial_arm_pose_received_) {
-    ROS_WARN(
-        "Did not receive the initial pose to which the arm should be set. Skipping HAL routine.");
-    return false;
-  }
-  // Move arm to initial pose.
-  // TODO(fmilano): Check that a "base" is published to the TF!
-  kindr::minimal::QuatTransformation world_to_base = getTF("world", "base");
-  setArmTo(world_to_base.inverse() * initial_world_to_arm_pose_);
-
   // Get all the poses.
   // For the links in the arm, check URDF at
   // https://bitbucket.org/leggedrobotics/mabi_common/src/master/mabi_description/.
@@ -240,8 +228,6 @@ bool MabiLocalizer::highAccuracyLocalization(
 void MabiLocalizer::advertiseTopics() {
   // TODO(fmilano): Check these topic names!
   sub_task_type_ = nh_private_.subscribe("/task_type", 10, &MabiLocalizer::setTaskType, this);
-  sub_offset_pose_ = nh_private_.subscribe("/building_task_manager/task_offset_target_pose", 10,
-                                           &MabiLocalizer::getOffsetPose, this);
   leica_client_["distance"] =
       nh_.serviceClient<cpt_pointlaser_comm_ros::GetDistance>("/pointlaser_comm/distance");
   leica_client_["laserOn"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOn");
@@ -259,11 +245,6 @@ void MabiLocalizer::advertiseTopics() {
 
 void MabiLocalizer::setTaskType(const std_msgs::Int16 &task_type_msg) {
   task_type_ = task_type_msg.data;
-}
-
-void MabiLocalizer::getOffsetPose(const geometry_msgs::PoseStamped::ConstPtr &msg) {
-  tf::poseMsgToKindr(msg->pose, &initial_world_to_arm_pose_);
-  initial_arm_pose_received_ = true;
 }
 
 }  // namespace pointlaser_loc_ros
