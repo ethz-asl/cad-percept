@@ -29,13 +29,15 @@ class MabiLocalizer {
   MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
                 std::string reference_link_topic_name = "grinder",
                 std::string end_effector_topic_name = "end_effector");
-  bool highAccuracyLocalization(
-      cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
-      cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response);
 
  private:
   void advertiseTopics();
   kindr::minimal::QuatTransformation getTF(std::string from, std::string to);
+
+  // Service handlers.
+  bool highAccuracyLocalization(
+      cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
+      cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response);
 
   // Reference model.
   cad_percept::cgal::MeshModel::Ptr model_;
