@@ -44,11 +44,27 @@ class MabiLocalizer {
   bool initializeHALRoutine();
 
   // Service handlers.
+  ///
+  /// \brief Takes laser measurements from the current pose and adds them, together with
+  /// arm-odometry measurements, to the factor graph to be used for the optimization.
+  ///
+  /// \param request   Service request (empty).
+  /// \param response  Service response (empty).
+  /// \return True if the measurements could be successfully taken; false otherwise (e.g., if the
+  ///   initialization of the HAL routine, required when no previous measurements were taken, is not
+  ///   successful.
+  bool takeMeasurement(cpt_pointlaser_loc_ros::HALTakeMeasurement::Request &request,
+                       cpt_pointlaser_loc_ros::HALTakeMeasurement::Response &response);
+  ///
+  /// \brief Performs the actual HAL routine by optimizing over the factor graph previously built.
+  ///
+  /// \param request   Service request (empty).
+  /// \param response  Service response, containing the corrected pose of the robot base as a field.
+  /// \return True if the HAL routine is successful, false otherwise (e.g., if the associated
+  /// service is called before any measurements are performed).
   bool highAccuracyLocalization(
       cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
       cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response);
-  bool takeMeasurement(cpt_pointlaser_loc_ros::HALTakeMeasurement::Request &request,
-                       cpt_pointlaser_loc_ros::HALTakeMeasurement::Response &response);
 
   // Reference model.
   cad_percept::cgal::MeshModel::Ptr model_;

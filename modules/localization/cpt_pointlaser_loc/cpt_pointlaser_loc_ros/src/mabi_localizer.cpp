@@ -78,7 +78,6 @@ bool MabiLocalizer::initializeHALRoutine() {
   kindr::minimal::QuatTransformation endeffector_offset =
       getTF(reference_link_topic_name_, end_effector_topic_name_);
   armbase_to_base_ = getTF("arm_base", "base");
-  // TODO(fmilano): Make sure that the optimizer is "reset".
   // Set up the optimizer for a new high-accuracy localization query.
   localizer_->setUpOptimizer(initial_marker_to_armbase_, initial_pose, laser_a_offset,
                              laser_b_offset, laser_c_offset, endeffector_offset, armbase_to_base_,
