@@ -78,6 +78,7 @@ bool MabiLocalizer::initializeHALRoutine() {
   kindr::minimal::QuatTransformation endeffector_offset =
       getTF(reference_link_topic_name_, end_effector_topic_name_);
   armbase_to_base_ = getTF("arm_base", "base");
+  // TODO(fmilano): Make sure that the optimizer is "reset".
   // Set up the optimizer for a new high-accuracy localization query.
   localizer_->setUpOptimizer(initial_marker_to_armbase_, initial_pose, laser_a_offset,
                              laser_b_offset, laser_c_offset, endeffector_offset, armbase_to_base_,
@@ -91,15 +92,21 @@ bool MabiLocalizer::initializeHALRoutine() {
 
   // Turn laser on.
   std_srvs::Empty empty_srvs;
-  leica_client_["laserOn"].call(empty_srvs.request, empty_srvs.response);
-
-  initialized_hal_routine_ = true;
+  if (!leica_client_["laserOn"].call(empty_srvs.request, empty_srvs.response)) {
+    ROS_ERROR("Failed to turn laser on. Unable to initialize HAL routine.");
+    initialized_hal_routine_ = true;
+    return false;
+  }
+  return true;
 }
 
 bool MabiLocalizer::takeMeasurement() {
   // Initialize HAL routine if not previously done.
   if (!initialized_hal_routine_) {
-    initializeHALRoutine();
+    if (!initializeHALRoutine()) {
+      ROS_ERROR("Unable to take measurement because the HAL routine could not be initialized.");
+      return false;
+    }
   }
   // Take measurements.  
   // - Add odometry measurement to the factor graph.
@@ -135,6 +142,8 @@ bool MabiLocalizer::takeMeasurement() {
   intersection_msg.point.y = model_intersection_c.intersected_point.y();
   intersection_msg.point.z = model_intersection_c.intersected_point.z();
   pub_intersection_c_.publish(intersection_msg);
+
+  return true;
 }
 
 bool MabiLocalizer::highAccuracyLocalization(

@@ -33,6 +33,13 @@ class MabiLocalizer {
  private:
   void advertiseTopics();
   kindr::minimal::QuatTransformation getTF(std::string from, std::string to);
+  ///
+  /// \brief Initializes the HAL routine, by setting up the optimizer and retrieving the fixed and
+  /// initial poses. NOTE: For the way it is currently implemented, this method should not be called
+  /// manually, but only by `takeMeasurements` method when the first measurement is taken.
+  ///
+  /// \return True if the initialization was successful - and in particular if the laser could be
+  ///   turned on; false otherwise.
   bool initializeHALRoutine();
 
   // Service handlers.
