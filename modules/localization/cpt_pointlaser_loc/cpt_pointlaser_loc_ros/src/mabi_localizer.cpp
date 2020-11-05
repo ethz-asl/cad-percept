@@ -62,7 +62,7 @@ bool MabiLocalizer::initializeHALRoutine() {
   // NOTE: It is assumed that the arm was already moved to its initial pose.
   ROS_INFO(
       "Initializing HAL routine. NOTE: It is assumed that the arm was already moved to its initial "
-      "pose.")
+      "pose.");
   // Get all the poses.
   // For the links in the arm, check URDF at
   // https://bitbucket.org/leggedrobotics/mabi_common/src/master/mabi_description/.
@@ -139,10 +139,12 @@ bool MabiLocalizer::takeMeasurement() {
 
 bool MabiLocalizer::highAccuracyLocalization(
     cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {  
+    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
   // NOTE: this is temporary, in preparation for a subsequent split in service. Here it is assumed
   // that a single movement is performed before calling this function.
   takeMeasurement();
+  // Turn the laser off.
+  std_srvs::Empty empty_srvs;
   leica_client_["laserOff"].call(empty_srvs.request, empty_srvs.response);
 
   // Optimize for the pose from the marker to the arm base.

@@ -33,6 +33,7 @@ class MabiLocalizer {
  private:
   void advertiseTopics();
   kindr::minimal::QuatTransformation getTF(std::string from, std::string to);
+  bool initializeHALRoutine();
 
   // Service handlers.
   bool highAccuracyLocalization(
