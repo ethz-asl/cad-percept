@@ -10,6 +10,7 @@
 
 #include <Eigen/Geometry>
 
+#include "cpt_pointlaser_loc_ros/HALTakeMeasurement.h"
 #include "cpt_pointlaser_loc_ros/HighAccuracyLocalization.h"
 
 namespace cad_percept {
@@ -46,6 +47,8 @@ class MabiLocalizer {
   bool highAccuracyLocalization(
       cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
       cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response);
+  bool takeMeasurement(cpt_pointlaser_loc_ros::HALTakeMeasurement::Request &request,
+                       cpt_pointlaser_loc_ros::HALTakeMeasurement::Response &response);
 
   // Reference model.
   cad_percept::cgal::MeshModel::Ptr model_;
@@ -62,6 +65,7 @@ class MabiLocalizer {
   tf::TransformListener transform_listener_;
   // Service clients and server.
   std::map<std::string, ros::ServiceClient> leica_client_;
+  ros::ServiceServer hal_take_measurement_service_;
   ros::ServiceServer high_acc_localisation_service_;
   // Internal parameters.
   std::string reference_link_topic_name_, end_effector_topic_name_;

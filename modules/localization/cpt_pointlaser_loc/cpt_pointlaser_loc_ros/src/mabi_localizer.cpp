@@ -100,7 +100,9 @@ bool MabiLocalizer::initializeHALRoutine() {
   return true;
 }
 
-bool MabiLocalizer::takeMeasurement() {
+bool MabiLocalizer::takeMeasurement(
+    cpt_pointlaser_loc_ros::HALTakeMeasurement::Request &request,
+    cpt_pointlaser_loc_ros::HALTakeMeasurement::Response &response) {
   // Initialize HAL routine if not previously done.
   if (!initialized_hal_routine_) {
     if (!initializeHALRoutine()) {
@@ -149,9 +151,12 @@ bool MabiLocalizer::takeMeasurement() {
 bool MabiLocalizer::highAccuracyLocalization(
     cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
     cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
-  // NOTE: this is temporary, in preparation for a subsequent split in service. Here it is assumed
-  // that a single movement is performed before calling this function.
-  takeMeasurement();
+  if (!initialized_hal_routine_) {
+    ROS_ERROR(
+        "Unable to perform the HAL routine. No measurements were received since the last completed "
+        "HAL routine.\n");
+    return false;
+  }
   // Turn the laser off.
   std_srvs::Empty empty_srvs;
   leica_client_["laserOff"].call(empty_srvs.request, empty_srvs.response);
@@ -187,6 +192,9 @@ bool MabiLocalizer::highAccuracyLocalization(
                   << ", o: " << base_pose_in_world.getRotation().vector().transpose() << "\n");
   tf::poseKindrToMsg(base_pose_in_world, &response.corrected_base_pose_in_world);
 
+  // Set the HAL routine as completed.
+  initialized_hal_routine_ = false;
+
   return true;
 }
 
@@ -204,6 +212,8 @@ void MabiLocalizer::advertiseTopics() {
       nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_acc_localize", &MabiLocalizer::highAccuracyLocalization, this);
+  hal_take_measurement_service_ =
+      nh_private_.advertiseService("hal_take_measurement", &MabiLocalizer::takeMeasurement, this);
 }
 
 }  // namespace pointlaser_loc_ros
