@@ -27,20 +27,23 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
   cad_percept::cgal::MeshModel::create(nh_private_.param<std::string>("off_model", "fail"), &model_,
                                        nh_private_.param("verbose", false));
 
-  if (!nh_private_.hasParam("initial_pose_std"))
+  if (!nh_private_.hasParam("initial_pose_std")) {
     ROS_ERROR("'initial_pose_std' not set as parameter.\n");
+  }
   initial_armbase_to_ref_link_std_ = Eigen::Matrix<double, 6, 1>(
       nh_private_
           .param<std::vector<double>>("initial_pose_std", std::vector<double>{1, 1, 1, 1, 1, 1})
           .data());
-  if (!nh_private_.hasParam("arm_odometry_std"))
+  if (!nh_private_.hasParam("arm_odometry_std")) {
     ROS_ERROR("'arm_odometry_std' not set as parameter.\n");
+  }
   odometry_noise_std_ = Eigen::Matrix<double, 6, 1>(
       nh_private_
           .param<std::vector<double>>("arm_odometry_std", std::vector<double>{1, 1, 1, 1, 1, 1})
           .data());
-  if (!nh_private_.hasParam("pointlaser_noise_std"))
+  if (!nh_private_.hasParam("pointlaser_noise_std")) {
     ROS_ERROR("'pointlaser_noise_std' not set as parameter.\n");
+  }
   pointlaser_noise_std_ = nh_private_.param<double>("pointlaser_noise_std", 1.0);
 
   // Initialize localizer.
