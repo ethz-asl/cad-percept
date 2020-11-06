@@ -20,8 +20,7 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
       reference_link_topic_name_(reference_link_topic_name),
       end_effector_topic_name_(end_effector_topic_name),
       transform_listener_(nh_),
-      task_type_(0),
-      initial_arm_pose_received_(false) {
+      initialized_hal_routine_(false) {
   if (!nh_private_.hasParam("off_model")) {
     ROS_ERROR("'off_model' not set as parameter.\n");
   }
@@ -54,59 +53,21 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
 kindr::minimal::QuatTransformation MabiLocalizer::getTF(std::string from, std::string to) {
   tf::StampedTransform transform;
   kindr::minimal::QuatTransformation ret;
-  // TODO(fmilano): verify time!
   transform_listener_.lookupTransform(from, to, ros::Time(0), transform);
   tf::transformTFToKindr(transform, &ret);
   return ret;
 }
 
-void MabiLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goal_pose) {
-  ROS_WARN(
-      "Please be careful: since no topic/service signaling the end of the arm movement is "
-      "available yet, the routine is hard-coded to wait for %f seconds after publishing the "
-      "message with the desired goal state.",
-      wait_time_arm_movement_);
-
-  nav_msgs::Path path_msg;
-  path_msg.header.stamp = ros::Time::now();
-  path_msg.header.frame_id = "base";
-  // Retrieve current pose from tf and add it to the path.
-  // TODO(fmilano): Check that this is the correct way to do this.
-  geometry_msgs::PoseStamped current_pose_msg;
-  tf::StampedTransform current_pose_tf;
-  kindr::minimal::QuatTransformation current_pose;
-  transform_listener_.lookupTransform("base", end_effector_topic_name_, ros::Time::now(),
-                                      current_pose_tf);
-  tf::transformTFToKindr(current_pose_tf, &current_pose);
-  tf::poseStampedKindrToMsg(current_pose, ros::Time(0.0), "base", &current_pose_msg);
-  path_msg.poses.push_back(current_pose_msg);
-  // Add target pose to the path.
-  geometry_msgs::PoseStamped target_pose_msg;
-  tf::poseStampedKindrToMsg(arm_goal_pose, ros::Time(motion_duration_), "base", &target_pose_msg);
-  path_msg.poses.push_back(target_pose_msg);
-  pub_arm_movement_path_.publish(path_msg);
-  // TODO(fmilano): Implement an alternative once a proper communication mechanism is available.
-  ros::Duration(wait_time_arm_movement_).sleep();
-}
-
-bool MabiLocalizer::highAccuracyLocalization(
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
-  if (!initial_arm_pose_received_) {
-    ROS_WARN(
-        "Did not receive the initial pose to which the arm should be set. Skipping HAL routine.");
-    return false;
-  }
-  // Move arm to initial pose.
-  // TODO(fmilano): Check that a "base" is published to the TF!
-  kindr::minimal::QuatTransformation world_to_base = getTF("world", "base");
-  setArmTo(world_to_base.inverse() * initial_world_to_arm_pose_);
-
+bool MabiLocalizer::initializeHALRoutine() {
+  // NOTE: It is assumed that the arm was already moved to its initial pose.
+  ROS_INFO(
+      "Initializing HAL routine. NOTE: It is assumed that the arm was already moved to its initial "
+      "pose.");
   // Get all the poses.
   // For the links in the arm, check URDF at
   // https://bitbucket.org/leggedrobotics/mabi_common/src/master/mabi_description/.
   // TODO(fmilano): Check that a "marker" is published to the TF!
-  kindr::minimal::QuatTransformation marker_to_armbase = getTF("marker", "arm_base");
+  initial_marker_to_armbase_ = getTF("marker", "arm_base");
   kindr::minimal::QuatTransformation initial_pose = getTF("arm_base", reference_link_topic_name_);
   kindr::minimal::QuatTransformation laser_a_offset =
       getTF(reference_link_topic_name_, "pointlaser_A");
@@ -116,91 +77,85 @@ bool MabiLocalizer::highAccuracyLocalization(
       getTF(reference_link_topic_name_, "pointlaser_C");
   kindr::minimal::QuatTransformation endeffector_offset =
       getTF(reference_link_topic_name_, end_effector_topic_name_);
-  kindr::minimal::QuatTransformation arm_base_to_base = getTF("arm_base", "base");
-
+  armbase_to_base_ = getTF("arm_base", "base");
   // Set up the optimizer for a new high-accuracy localization query.
-  localizer_->setUpOptimizer(marker_to_armbase, initial_pose, laser_a_offset, laser_b_offset,
-                             laser_c_offset, endeffector_offset, arm_base_to_base,
+  localizer_->setUpOptimizer(initial_marker_to_armbase_, initial_pose, laser_a_offset,
+                             laser_b_offset, laser_c_offset, endeffector_offset, armbase_to_base_,
                              nh_private_.param("fix_cad_planes", false),
                              nh_private_.param("initial_pose_prior", false),
                              nh_private_.param("only_optimize_translation", false));
-  // We measure over different poses of the end effector and optimize for the pose of the arm base.
-  kindr::minimal::QuatTransformation current_pose(initial_pose);
+  // We measure over different poses of the end effector and optimize for the pose of the reference
+  // link w.r.t. the arm base. Eventually, this is used to retrieve the corrected pose of the robot
+  // base in the world frame (cf. `highAccuracyLocalization`).
+  current_armbase_to_ref_link_ = initial_pose;
 
-  // Turn laser on, move and measure.
+  // Turn laser on.
   std_srvs::Empty empty_srvs;
-  leica_client_["laserOn"].call(empty_srvs.request, empty_srvs.response);
-
-  if (!nh_private_.hasParam("movement_type_" + std::to_string(task_type_))) {
-    ROS_WARN_STREAM("Could not find specific movement type for task-type "
-                    << task_type_ << ", using default movement\n");
+  if (!leica_client_["laserOn"].call(empty_srvs.request, empty_srvs.response)) {
+    ROS_ERROR("Failed to turn laser on. Unable to initialize HAL routine.");
+    return false;
   }
-  // TODO(fmilano): Replace with correct movements!
-  std::vector<std::string> default_movement = {
-      "0 0 0 0.988 0.009 -0.025 0.05", "0 0 0 0.988 0.009 -0.025 0.05",
-      "0 0 0 0.988 0.009 -0.025 0.05", "0 0 0 0.988 0.009 -0.025 0.05",
-      "0 0 0 0.988 0.009 -0.025 0.05", "0 0 0 0.988 0.009 -0.025 0.05"};
-  // Get the movement from config in string format "x y z w x y z"
-  for (auto string_cmd : nh_private_.param<std::vector<std::string>>(
-           "movement_type_" + std::to_string(task_type_), default_movement)) {
-    // Move arm.
-    // Split the string at the spaces
-    // (https://www.fluentcpp.com/2017/04/21/how-to-split-a-string-in-c/).
-    std::istringstream iss(string_cmd);
-    std::vector<std::string> strings((std::istream_iterator<std::string>(iss)),
-                                     std::istream_iterator<std::string>());
-    if (strings.size() != 7) {
-      ROS_ERROR_STREAM("Movement has wrong number of parameters, should be 7 for: " << string_cmd
-                                                                                    << "\n");
+  initialized_hal_routine_ = true;
+  return true;
+}
+
+bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
+                                    std_srvs::Empty::Response &response) {
+  // Initialize HAL routine if not previously done.
+  if (!initialized_hal_routine_) {
+    if (!initializeHALRoutine()) {
+      ROS_ERROR("Unable to take measurement because the HAL routine could not be initialized.");
       return false;
     }
-    // Convert strings to doubles.
-    std::vector<double> arm_cmd(strings.size());
-    std::transform(strings.begin(), strings.end(), arm_cmd.begin(),
-                   [](const std::string &s) { return std::stod(s.c_str()); });
-    // Compute arm goal pose and move arm to it.
-    Eigen::Quaternion<double> rot_quat(arm_cmd[3], arm_cmd[4], arm_cmd[5], arm_cmd[6]);
-    kindr::minimal::PositionTemplate<double> translation(arm_cmd[0], arm_cmd[1], arm_cmd[2]);
-    kindr::minimal::QuatTransformation arm_goal_pose =
-        localizer_->getArmGoalPose(rot_quat, translation);
-    setArmTo(arm_goal_pose);
-
-    // Add odometry measurement.
-    kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", reference_link_topic_name_);
-    localizer_->addOdometry(current_pose.inverse() * new_arm_pose);
-    current_pose = new_arm_pose;
-
-    // Take measurement.
-    cpt_pointlaser_comm_ros::GetDistance::Request req;
-    cpt_pointlaser_comm_ros::GetDistance::Response resp;
-    while (!leica_client_["distance"].call(req, resp)) {
-      ROS_ERROR("could not get distance measurement.\n");
-      ros::Duration(0.1).sleep();
-    }
-
-    localizer_->addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC);
-
-    // For debugging, also publish the intersection as seen from the current state.
-    cad_percept::cgal::Intersection model_intersection_a, model_intersection_b,
-        model_intersection_c;
-    localizer_->getIntersectionsLasersWithModel(current_pose, &model_intersection_a,
-                                                &model_intersection_b, &model_intersection_c);
-    geometry_msgs::PointStamped intersection_msg;
-    intersection_msg.header.stamp = ros::Time::now();
-    intersection_msg.header.frame_id = "marker";
-    intersection_msg.point.x = model_intersection_a.intersected_point.x();
-    intersection_msg.point.y = model_intersection_a.intersected_point.y();
-    intersection_msg.point.z = model_intersection_a.intersected_point.z();
-    pub_intersection_a_.publish(intersection_msg);
-    intersection_msg.point.x = model_intersection_b.intersected_point.x();
-    intersection_msg.point.y = model_intersection_b.intersected_point.y();
-    intersection_msg.point.z = model_intersection_b.intersected_point.z();
-    pub_intersection_b_.publish(intersection_msg);
-    intersection_msg.point.x = model_intersection_c.intersected_point.x();
-    intersection_msg.point.y = model_intersection_c.intersected_point.y();
-    intersection_msg.point.z = model_intersection_c.intersected_point.z();
-    pub_intersection_c_.publish(intersection_msg);
   }
+  // Take measurements.
+  // - Add odometry measurement to the factor graph.
+  kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", reference_link_topic_name_);
+  localizer_->addOdometry(current_armbase_to_ref_link_.inverse() * new_arm_pose);
+  current_armbase_to_ref_link_ = new_arm_pose;
+  // - Take laser measurements and add them to the factor graph.
+  cpt_pointlaser_comm_ros::GetDistance::Request req;
+  cpt_pointlaser_comm_ros::GetDistance::Response resp;
+  while (!leica_client_["distance"].call(req, resp)) {
+    ROS_ERROR("could not get distance measurement.\n");
+    ros::Duration(0.1).sleep();
+  }
+  localizer_->addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC);
+
+  // For debugging, also publish the intersection as seen from the current state.
+  cad_percept::cgal::Intersection model_intersection_a, model_intersection_b, model_intersection_c;
+  localizer_->getIntersectionsLasersWithModel(current_armbase_to_ref_link_, &model_intersection_a,
+                                              &model_intersection_b, &model_intersection_c);
+  geometry_msgs::PointStamped intersection_msg;
+  intersection_msg.header.stamp = ros::Time::now();
+  intersection_msg.header.frame_id = "marker";
+  intersection_msg.point.x = model_intersection_a.intersected_point.x();
+  intersection_msg.point.y = model_intersection_a.intersected_point.y();
+  intersection_msg.point.z = model_intersection_a.intersected_point.z();
+  pub_intersection_a_.publish(intersection_msg);
+  intersection_msg.point.x = model_intersection_b.intersected_point.x();
+  intersection_msg.point.y = model_intersection_b.intersected_point.y();
+  intersection_msg.point.z = model_intersection_b.intersected_point.z();
+  pub_intersection_b_.publish(intersection_msg);
+  intersection_msg.point.x = model_intersection_c.intersected_point.x();
+  intersection_msg.point.y = model_intersection_c.intersected_point.y();
+  intersection_msg.point.z = model_intersection_c.intersected_point.z();
+  pub_intersection_c_.publish(intersection_msg);
+
+  return true;
+}
+
+bool MabiLocalizer::highAccuracyLocalization(
+    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
+    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
+  if (!initialized_hal_routine_) {
+    ROS_ERROR(
+        "Unable to perform the HAL routine. No measurements were received since the last completed "
+        "HAL routine.\n");
+    return false;
+  }
+  // Turn the laser off.
+  std_srvs::Empty empty_srvs;
   leica_client_["laserOff"].call(empty_srvs.request, empty_srvs.response);
 
   // Optimize for the pose from the marker to the arm base.
@@ -223,25 +178,25 @@ bool MabiLocalizer::highAccuracyLocalization(
   ROS_INFO("arm base in marker frame\n");
   ROS_INFO_STREAM(marker_to_armbase_optimized.getPosition().transpose() << "\n");
   ROS_INFO("initial pose from slam\n");
-  ROS_INFO_STREAM(marker_to_armbase.getPosition().transpose() << "\n");
+  ROS_INFO_STREAM(initial_marker_to_armbase_.getPosition().transpose() << "\n");
   ROS_INFO("arm base in world frame\n");
   ROS_INFO_STREAM(world_to_armbase.getPosition().transpose() << "\n");
 
   // Send corrected pose of the robot base to the controller.
-  kindr::minimal::QuatTransformation base_pose_in_world = world_to_armbase * arm_base_to_base;
+  kindr::minimal::QuatTransformation base_pose_in_world = world_to_armbase * armbase_to_base_;
   ROS_INFO_STREAM("Updated base pose in world, t: "
                   << base_pose_in_world.getPosition().transpose()
                   << ", o: " << base_pose_in_world.getRotation().vector().transpose() << "\n");
   tf::poseKindrToMsg(base_pose_in_world, &response.corrected_base_pose_in_world);
+
+  // Set the HAL routine as completed.
+  initialized_hal_routine_ = false;
 
   return true;
 }
 
 void MabiLocalizer::advertiseTopics() {
   // TODO(fmilano): Check these topic names!
-  sub_task_type_ = nh_private_.subscribe("/task_type", 10, &MabiLocalizer::setTaskType, this);
-  sub_offset_pose_ = nh_private_.subscribe("/building_task_manager/task_offset_target_pose", 10,
-                                           &MabiLocalizer::getOffsetPose, this);
   leica_client_["distance"] =
       nh_.serviceClient<cpt_pointlaser_comm_ros::GetDistance>("/pointlaser_comm/distance");
   leica_client_["laserOn"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOn");
@@ -250,20 +205,12 @@ void MabiLocalizer::advertiseTopics() {
   pub_intersection_a_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_a", 1);
   pub_intersection_b_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_b", 1);
   pub_intersection_c_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_c", 1);
-  pub_arm_movement_path_ = nh_private_.advertise<nav_msgs::Path>("hal_base_to_ee_target_pose", 1);
   pub_endeffector_pose_ =
       nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_acc_localize", &MabiLocalizer::highAccuracyLocalization, this);
-}
-
-void MabiLocalizer::setTaskType(const std_msgs::Int16 &task_type_msg) {
-  task_type_ = task_type_msg.data;
-}
-
-void MabiLocalizer::getOffsetPose(const geometry_msgs::PoseStamped::ConstPtr &msg) {
-  tf::poseMsgToKindr(msg->pose, &initial_world_to_arm_pose_);
-  initial_arm_pose_received_ = true;
+  hal_take_measurement_service_ =
+      nh_private_.advertiseService("hal_take_measurement", &MabiLocalizer::takeMeasurement, this);
 }
 
 }  // namespace pointlaser_loc_ros
