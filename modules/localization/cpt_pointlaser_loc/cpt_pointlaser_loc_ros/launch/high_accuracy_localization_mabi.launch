@@ -7,7 +7,6 @@
   <arg name="distobox_usb_port"
        default="/dev/serial/by-id/usb-Silicon_Labs_CP2103_USB_to_UART_Bridge_Controller_0001-if00-port0"
        doc="Path of the USB port that the distobox is connected at."/>
-  <arg name="move_arm_manually" default="false"/>
   <!-- pointlaser_comm node and pointlaser_calibration node -->
   <include file="$(find cpt_pointlaser_comm_ros)/launch/pointlaser_comm.launch">
     <arg name="distobox_usb_port" value="$(arg distobox_usb_port)" />
@@ -19,6 +18,5 @@
         output="screen"
         respawn="true">
     <rosparam command="load" file="$(find cpt_pointlaser_loc_ros)/$(arg pointlaser_config_file)" />
-    <param name="move_arm_manually" value="$(arg move_arm_manually)" />
   </node>
 </launch>
