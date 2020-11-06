@@ -216,7 +216,7 @@ void MabiLocalizer::advertiseTopics() {
   pub_endeffector_pose_ =
       nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
   high_acc_localisation_service_ = nh_private_.advertiseService(
-      "high_acc_localize", &MabiLocalizer::highAccuracyLocalization, this);
+      "high_accuracy_localize", &MabiLocalizer::highAccuracyLocalization, this);
   hal_take_measurement_service_ =
       nh_private_.advertiseService("hal_take_measurement", &MabiLocalizer::takeMeasurement, this);
 }
