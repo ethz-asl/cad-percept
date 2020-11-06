@@ -2,9 +2,9 @@
 #define CPT_POINTLASER_COMM_ROS_DISTOBOX_WORKER_H_
 
 #include <cpt_pointlaser_comm/distobox_serial.h>
+#include <std_srvs/Empty.h>
 
 #include "cpt_pointlaser_comm_ros/GetDistance.h"
-#include "std_srvs/Empty.h"
 
 namespace cad_percept {
 namespace pointlaser_comm_ros {
