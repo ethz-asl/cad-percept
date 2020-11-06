@@ -6,11 +6,11 @@
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
 #include <std_msgs/Int16.h>
+#include <std_srvs/Empty.h>
 #include <tf/transform_listener.h>
 
 #include <Eigen/Geometry>
 
-#include "cpt_pointlaser_loc_ros/HALTakeMeasurement.h"
 #include "cpt_pointlaser_loc_ros/HighAccuracyLocalization.h"
 
 namespace cad_percept {
@@ -53,8 +53,7 @@ class MabiLocalizer {
   /// \return True if the measurements could be successfully taken; false otherwise (e.g., if the
   ///   initialization of the HAL routine, required when no previous measurements were taken, is not
   ///   successful.
-  bool takeMeasurement(cpt_pointlaser_loc_ros::HALTakeMeasurement::Request &request,
-                       cpt_pointlaser_loc_ros::HALTakeMeasurement::Response &response);
+  bool takeMeasurement(std_srvs::Empty::Request &request, std_srvs::Empty::Response &response);
   ///
   /// \brief Performs the actual HAL routine by optimizing over the factor graph previously built.
   ///

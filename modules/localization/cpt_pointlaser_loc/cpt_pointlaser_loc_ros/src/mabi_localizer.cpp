@@ -99,9 +99,8 @@ bool MabiLocalizer::initializeHALRoutine() {
   return true;
 }
 
-bool MabiLocalizer::takeMeasurement(
-    cpt_pointlaser_loc_ros::HALTakeMeasurement::Request &request,
-    cpt_pointlaser_loc_ros::HALTakeMeasurement::Response &response) {
+bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
+                                    std_srvs::Empty::Response &response) {
   // Initialize HAL routine if not previously done.
   if (!initialized_hal_routine_) {
     if (!initializeHALRoutine()) {
