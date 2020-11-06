@@ -12,15 +12,8 @@
 namespace cad_percept {
 namespace pointlaser_loc_ros {
 
-MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
-                             std::string reference_link_topic_name,
-                             std::string end_effector_topic_name)
-    : nh_(nh),
-      nh_private_(nh_private),
-      reference_link_topic_name_(reference_link_topic_name),
-      end_effector_topic_name_(end_effector_topic_name),
-      transform_listener_(nh_),
-      initialized_hal_routine_(false) {
+MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
+    : nh_(nh), nh_private_(nh_private), transform_listener_(nh_), initialized_hal_routine_(false) {
   if (!nh_private_.hasParam("off_model")) {
     ROS_ERROR("'off_model' not set as parameter.\n");
   }
@@ -45,6 +38,18 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
     ROS_ERROR("'pointlaser_noise_std' not set as parameter.\n");
   }
   pointlaser_noise_std_ = nh_private_.param<double>("pointlaser_noise_std", 1.0);
+
+  if (!nh_private.hasParam("reference_link_topic_name")) {
+    ROS_ERROR("'reference_link_topic_name' not set as parameter.\n");
+  }
+  reference_link_topic_name_ =
+      nh_private_.param<std::string>("reference_link_topic_name", "grinder");
+
+  if (!nh_private.hasParam("end_effector_topic_name")) {
+    ROS_ERROR("'end_effector_topic_name' not set as parameter.\n");
+  }
+  end_effector_topic_name_ =
+      nh_private_.param<std::string>("end_effector_topic_name", "end_effector");
 
   // Initialize localizer.
   localizer_.reset(new cad_percept::pointlaser_loc::localizer::PointLaserLocalizer(

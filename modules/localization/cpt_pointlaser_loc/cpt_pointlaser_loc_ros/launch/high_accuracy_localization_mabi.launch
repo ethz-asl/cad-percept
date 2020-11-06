@@ -2,7 +2,7 @@
 
 <launch>
   <arg name="pointlaser_config_file"
-       default="cfg/pointlaser_params.yaml"
+       default="cfg/pointlaser_params_mabi.yaml"
        doc="YAML file holding the parameters."/>
   <arg name="distobox_usb_port"
        default="/dev/serial/by-id/usb-Silicon_Labs_CP2103_USB_to_UART_Bridge_Controller_0001-if00-port0"

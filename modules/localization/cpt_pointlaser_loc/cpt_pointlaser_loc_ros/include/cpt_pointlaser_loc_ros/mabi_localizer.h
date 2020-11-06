@@ -24,12 +24,7 @@ class MabiLocalizer {
   ///
   /// \param nh                         Node handle.
   /// \param nh_private                 Private node handle.
-  /// \param reference_link_topic_name  Topic name of a reference link that has fixed pose w.r.t. to
-  ///    the lasers.
-  /// \param end_effector_topic_name    Topic name of the end effector.
-  MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private,
-                std::string reference_link_topic_name = "grinder",
-                std::string end_effector_topic_name = "end_effector");
+  MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
 
  private:
   void advertiseTopics();
