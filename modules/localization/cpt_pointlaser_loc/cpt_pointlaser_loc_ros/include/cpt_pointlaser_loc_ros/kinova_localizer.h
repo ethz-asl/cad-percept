@@ -3,14 +3,13 @@
 
 #include <cgal_definitions/mesh_model.h>
 #include <cpt_pointlaser_loc/localizer/localizer.h>
+#include <cpt_pointlaser_msgs/HighAccuracyLocalizationKinova.h>
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
 #include <std_msgs/Int16.h>
 #include <tf/transform_listener.h>
 
 #include <Eigen/Geometry>
-
-#include "cpt_pointlaser_loc_ros/HighAccuracyLocalizationKinova.h"
 
 namespace cad_percept {
 namespace pointlaser_loc_ros {
@@ -20,8 +19,8 @@ class KinovaLocalizer {
  public:
   KinovaLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
   bool highAccuracyLocalization(
-      cpt_pointlaser_loc_ros::HighAccuracyLocalizationKinova::Request &request,
-      cpt_pointlaser_loc_ros::HighAccuracyLocalizationKinova::Response &response);
+      cpt_pointlaser_msgs::HighAccuracyLocalizationKinova::Request &request,
+      cpt_pointlaser_msgs::HighAccuracyLocalizationKinova::Response &response);
 
  private:
   void advertiseTopics();

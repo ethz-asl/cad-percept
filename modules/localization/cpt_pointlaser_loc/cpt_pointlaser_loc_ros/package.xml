@@ -13,6 +13,7 @@
 
   <depend>cpt_pointlaser_comm_ros</depend>
   <depend>cpt_pointlaser_loc</depend>
+  <depend>cpt_pointlaser_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>minkindr</depend>
   <depend>minkindr_conversions</depend>

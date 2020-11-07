@@ -70,8 +70,8 @@ void KinovaLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goa
 }
 
 bool KinovaLocalizer::highAccuracyLocalization(
-    cpt_pointlaser_loc_ros::HighAccuracyLocalizationKinova::Request &request,
-    cpt_pointlaser_loc_ros::HighAccuracyLocalizationKinova::Response &response) {
+    cpt_pointlaser_msgs::HighAccuracyLocalizationKinova::Request &request,
+    cpt_pointlaser_msgs::HighAccuracyLocalizationKinova::Response &response) {
   if (mode_ != 3) {
     return false;
   }

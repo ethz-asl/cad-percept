@@ -3,6 +3,7 @@
 
 #include <cgal_definitions/mesh_model.h>
 #include <cpt_pointlaser_loc/localizer/localizer.h>
+#include <cpt_pointlaser_msgs/HighAccuracyLocalization.h>
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
 #include <std_msgs/Int16.h>
@@ -10,8 +11,6 @@
 #include <tf/transform_listener.h>
 
 #include <Eigen/Geometry>
-
-#include "cpt_pointlaser_loc_ros/HighAccuracyLocalization.h"
 
 namespace cad_percept {
 namespace pointlaser_loc_ros {
@@ -56,9 +55,8 @@ class MabiLocalizer {
   /// \param response  Service response, containing the corrected pose of the robot base as a field.
   /// \return True if the HAL routine is successful, false otherwise (e.g., if the associated
   /// service is called before any measurements are performed).
-  bool highAccuracyLocalization(
-      cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
-      cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response);
+  bool highAccuracyLocalization(cpt_pointlaser_msgs::HighAccuracyLocalization::Request &request,
+                                cpt_pointlaser_msgs::HighAccuracyLocalization::Response &response);
 
   // Reference model.
   cad_percept::cgal::MeshModel::Ptr model_;

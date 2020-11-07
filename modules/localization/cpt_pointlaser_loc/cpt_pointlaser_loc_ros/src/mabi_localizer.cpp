@@ -154,8 +154,8 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
 }
 
 bool MabiLocalizer::highAccuracyLocalization(
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Request &request,
-    cpt_pointlaser_loc_ros::HighAccuracyLocalization::Response &response) {
+    cpt_pointlaser_msgs::HighAccuracyLocalization::Request &request,
+    cpt_pointlaser_msgs::HighAccuracyLocalization::Response &response) {
   if (!initialized_hal_routine_) {
     ROS_ERROR(
         "Unable to perform the HAL routine. No measurements were received since the last completed "
