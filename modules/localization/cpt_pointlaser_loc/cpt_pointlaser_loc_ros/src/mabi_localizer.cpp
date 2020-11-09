@@ -153,15 +153,15 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
   intersection_msg.point.x = model_intersection_a.intersected_point.x();
   intersection_msg.point.y = model_intersection_a.intersected_point.y();
   intersection_msg.point.z = model_intersection_a.intersected_point.z();
-  pub_intersection_a_.publish(intersection_msg);
+  intersection_a_pub_.publish(intersection_msg);
   intersection_msg.point.x = model_intersection_b.intersected_point.x();
   intersection_msg.point.y = model_intersection_b.intersected_point.y();
   intersection_msg.point.z = model_intersection_b.intersected_point.z();
-  pub_intersection_b_.publish(intersection_msg);
+  intersection_b_pub_.publish(intersection_msg);
   intersection_msg.point.x = model_intersection_c.intersected_point.x();
   intersection_msg.point.y = model_intersection_c.intersected_point.y();
   intersection_msg.point.z = model_intersection_c.intersected_point.z();
-  pub_intersection_c_.publish(intersection_msg);
+  intersection_c_pub_.publish(intersection_msg);
 
   return true;
 }
@@ -193,7 +193,7 @@ bool MabiLocalizer::highAccuracyLocalization(
   tf::poseKindrToMsg(marker_to_armbase_optimized * armbase_to_endeffector, &pose_sent.pose);
   pose_sent.header.frame_id = "marker";
   pose_sent.header.stamp = ros::Time::now();
-  pub_endeffector_pose_.publish(pose_sent);
+  endeffector_pose_pub_.publish(pose_sent);
 
   // Write pose to terminal.
   ROS_INFO("arm base in marker frame\n");
@@ -225,10 +225,10 @@ void MabiLocalizer::advertiseTopics() {
   leica_client_["laserOn"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOn");
   leica_client_["laserOff"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOff");
 
-  pub_intersection_a_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_a", 1);
-  pub_intersection_b_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_b", 1);
-  pub_intersection_c_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_c", 1);
-  pub_endeffector_pose_ =
+  intersection_a_pub_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_a", 1);
+  intersection_b_pub_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_b", 1);
+  intersection_c_pub_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_c", 1);
+  endeffector_pose_pub_ =
       nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
   high_acc_localisation_service_ = nh_private_.advertiseService(
       "high_accuracy_localize", &MabiLocalizer::highAccuracyLocalization, this);
