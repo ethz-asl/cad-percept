@@ -89,7 +89,6 @@ bool MabiLocalizer::initializeHALRoutine() {
   // Get all the poses.
   // For the links in the arm, check URDF at
   // https://bitbucket.org/leggedrobotics/mabi_common/src/master/mabi_description/.
-  // TODO(fmilano): Check that a "marker" is published to the TF!
   initial_marker_to_armbase_ = getTF("marker", "arm_base");
   kindr::minimal::QuatTransformation initial_pose = getTF("arm_base", reference_link_topic_name_);
   kindr::minimal::QuatTransformation laser_a_offset =
