@@ -1,5 +1,6 @@
 #include "cpt_pointlaser_loc_ros/mabi_localizer.h"
 
+#include <cgal_conversions/mesh_conversions.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <minkindr_conversions/kindr_msg.h>
@@ -13,13 +14,11 @@ namespace cad_percept {
 namespace pointlaser_loc_ros {
 
 MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
-    : nh_(nh), nh_private_(nh_private), transform_listener_(nh_), initialized_hal_routine_(false) {
-  if (!nh_private_.hasParam("off_model")) {
-    ROS_ERROR("'off_model' not set as parameter.\n");
-  }
-  cad_percept::cgal::MeshModel::create(nh_private_.param<std::string>("off_model", "fail"), &model_,
-                                       nh_private_.param("verbose", false));
-
+    : nh_(nh),
+      nh_private_(nh_private),
+      transform_listener_(nh_),
+      initialized_hal_routine_(false),
+      received_cad_model_(false) {
   if (!nh_private_.hasParam("initial_pose_std")) {
     ROS_ERROR("'initial_pose_std' not set as parameter.\n");
   }
@@ -51,10 +50,6 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   end_effector_topic_name_ =
       nh_private_.param<std::string>("end_effector_topic_name", "end_effector");
 
-  // Initialize localizer.
-  localizer_.reset(new cad_percept::pointlaser_loc::localizer::PointLaserLocalizer(
-      model_, initial_armbase_to_ref_link_std_, odometry_noise_std_, pointlaser_noise_std_));
-
   advertiseTopics();
 }
 
@@ -66,7 +61,27 @@ kindr::minimal::QuatTransformation MabiLocalizer::getTF(std::string from, std::s
   return ret;
 }
 
+void MabiLocalizer::modelCallback(const cgal_msgs::TriangleMeshStamped &cad_mesh_msg) {
+  if (received_cad_model_) {
+    // Model was already received.
+    return;
+  }
+  // Load CAD model.
+  ROS_INFO("Loading CAD model.");
+  cgal::msgToMeshModel(cad_mesh_msg.mesh, &model_);
+
+  received_cad_model_ = true;
+
+  // Initialize localizer.
+  localizer_.reset(new cad_percept::pointlaser_loc::localizer::PointLaserLocalizer(
+      model_, initial_armbase_to_ref_link_std_, odometry_noise_std_, pointlaser_noise_std_));
+}
+
 bool MabiLocalizer::initializeHALRoutine() {
+  if (!received_cad_model_) {
+    ROS_ERROR("CAD model was not received. Unable to initialize localizer and run HAL routine.");
+    return false;
+  }
   // NOTE: It is assumed that the arm was already moved to its initial pose.
   ROS_INFO(
       "Initializing HAL routine. NOTE: It is assumed that the arm was already moved to its initial "
@@ -74,7 +89,6 @@ bool MabiLocalizer::initializeHALRoutine() {
   // Get all the poses.
   // For the links in the arm, check URDF at
   // https://bitbucket.org/leggedrobotics/mabi_common/src/master/mabi_description/.
-  // TODO(fmilano): Check that a "marker" is published to the TF!
   initial_marker_to_armbase_ = getTF("marker", "arm_base");
   kindr::minimal::QuatTransformation initial_pose = getTF("arm_base", reference_link_topic_name_);
   kindr::minimal::QuatTransformation laser_a_offset =
@@ -159,7 +173,7 @@ bool MabiLocalizer::highAccuracyLocalization(
   if (!initialized_hal_routine_) {
     ROS_ERROR(
         "Unable to perform the HAL routine. No measurements were received since the last completed "
-        "HAL routine.\n");
+        "HAL routine or the CAD model was not received yet.\n");
     return false;
   }
   // Turn the laser off.
@@ -204,6 +218,9 @@ bool MabiLocalizer::highAccuracyLocalization(
 }
 
 void MabiLocalizer::advertiseTopics() {
+  cad_model_sub_ =
+      nh_.subscribe("/mesh_publisher/mesh_out", 10, &MabiLocalizer::modelCallback, this);
+
   leica_client_["distance"] =
       nh_.serviceClient<cpt_pointlaser_comm_ros::GetDistance>("/pointlaser_comm/distance");
   leica_client_["laserOn"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOn");
