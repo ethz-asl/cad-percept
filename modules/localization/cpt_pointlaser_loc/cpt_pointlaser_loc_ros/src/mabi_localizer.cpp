@@ -174,7 +174,7 @@ bool MabiLocalizer::highAccuracyLocalization(
   if (!initialized_hal_routine_) {
     ROS_ERROR(
         "Unable to perform the HAL routine. No measurements were received since the last completed "
-        "HAL routine.\n");
+        "HAL routine or the CAD model was not received yet.\n");
     return false;
   }
   // Turn the laser off.
