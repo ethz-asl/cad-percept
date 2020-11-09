@@ -1,14 +1,13 @@
 #include "cpt_pointlaser_loc_ros/mabi_localizer.h"
 
 #include <cgal_conversions/mesh_conversions.h>
+#include <cpt_pointlaser_comm_ros/GetDistance.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
 #include <std_srvs/Empty.h>
-
-#include "cpt_pointlaser_comm_ros/GetDistance.h"
 
 namespace cad_percept {
 namespace pointlaser_loc_ros {
