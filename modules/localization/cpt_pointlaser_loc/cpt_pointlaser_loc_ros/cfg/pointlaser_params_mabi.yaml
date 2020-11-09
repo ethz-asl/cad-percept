@@ -7,7 +7,7 @@ fix_cad_planes: false
 only_optimize_translation: true
 verbose: false
 #  Topic name of a reference link that has fixed pose w.r.t. to the lasers.
-reference_link_topic_name: grinder
+reference_link_topic_name: WRIST_2
 # Topic name of the end effector.
 end_effector_topic_name: end_effector
 movement_type_0:  # Church-yard
