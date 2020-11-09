@@ -16,7 +16,7 @@
 namespace cad_percept {
 namespace pointlaser_loc_ros {
 
-/// \brief Class to control and localize the MABI arm.
+/// \brief Class to perform high-accuracy localization of the robot with the MABI arm.
 class MabiLocalizer {
  public:
   ///
