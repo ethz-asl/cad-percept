@@ -9,7 +9,7 @@
        doc="Path of the USB port that the distobox is connected at."/>
   <arg name="move_arm_manually" default="false"/>
   <!-- Calibration node: tf transforms between lasers and reference link -->
-  <include file="launch/lasers_tf_publishers_kinova.launch">
+  <include file="$(find cpt_pointlaser_loc_ros)/launch/lasers_tf_publishers_kinova.launch">
   </include>
   <!-- pointlaser_loc node -->
   <node name="pointlaser_loc"

@@ -8,7 +8,7 @@
        default="/dev/serial/by-id/usb-Silicon_Labs_CP2103_USB_to_UART_Bridge_Controller_0001-if00-port0"
        doc="Path of the USB port that the distobox is connected at."/>
   <!-- Calibration node: tf transforms between lasers and reference link -->
-  <include file="launch/lasers_tf_publishers_mabi.launch">
+  <include file="$(find cpt_pointlaser_loc_ros)/launch/lasers_tf_publishers_mabi.launch">
   </include>
   <!-- pointlaser_loc node -->
   <node name="pointlaser_loc"
