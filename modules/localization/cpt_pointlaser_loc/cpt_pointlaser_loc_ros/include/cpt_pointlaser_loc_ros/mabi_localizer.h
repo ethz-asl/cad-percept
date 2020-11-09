@@ -63,7 +63,7 @@ class MabiLocalizer {
   /// \param request   Service request (empty).
   /// \param response  Service response, containing the corrected pose of the robot base as a field.
   /// \return True if the HAL routine is successful, false otherwise (e.g., if the associated
-  /// service is called before any measurements are performed).
+  ///   service is called before any measurements are performed).
   bool highAccuracyLocalization(cpt_pointlaser_msgs::HighAccuracyLocalization::Request &request,
                                 cpt_pointlaser_msgs::HighAccuracyLocalization::Response &response);
 
