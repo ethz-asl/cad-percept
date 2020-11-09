@@ -6,7 +6,7 @@ off_model: /home/hilteth/Lee_H_Demo_2.off
 fix_cad_planes: false
 only_optimize_translation: true
 verbose: false
-#  Topic name of a reference link that has fixed pose w.r.t. to the lasers.
+# Topic name of a reference link that has fixed pose w.r.t. to the lasers.
 reference_link_topic_name: grinder
 # Topic name of the end effector.
 end_effector_topic_name: end_effector

@@ -2,6 +2,7 @@
 #define CPT_POINTLASER_LOC_ROS_MABI_LOCALIZER_H_
 
 #include <cgal_definitions/mesh_model.h>
+#include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_pointlaser_loc/localizer/localizer.h>
 #include <cpt_pointlaser_msgs/HighAccuracyLocalization.h>
 #include <kindr/minimal/quat-transformation.h>
@@ -37,6 +38,14 @@ class MabiLocalizer {
   ///   turned on; false otherwise.
   bool initializeHALRoutine();
 
+  // Callbacks.
+  ///
+  /// \brief Callback for the topic that publishes the CAD model.
+  ///
+  /// \param cad_mesh_msg
+  ///
+  void modelCallback(const cgal_msgs::TriangleMeshStamped &cad_mesh_msg);
+
   // Service handlers.
   ///
   /// \brief Takes laser measurements from the current pose and adds them, together with
@@ -67,6 +76,8 @@ class MabiLocalizer {
   ros::Publisher pub_intersection_a_, pub_intersection_b_, pub_intersection_c_;
   // - Publisher of the pose from marker to end-effector.
   ros::Publisher pub_endeffector_pose_;
+  // - Subscriber to the CAD model.
+  ros::Subscriber cad_model_sub_;
   // Transform listener.
   tf::TransformListener transform_listener_;
   // Service clients and server.
@@ -77,6 +88,7 @@ class MabiLocalizer {
   std::string reference_link_topic_name_, end_effector_topic_name_;
   Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
+  bool received_cad_model_;
   bool initialized_hal_routine_;
   kindr::minimal::QuatTransformation initial_marker_to_armbase_;
   kindr::minimal::QuatTransformation current_armbase_to_ref_link_;

@@ -11,6 +11,8 @@
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
 
+  <depend>cgal_msgs</depend>
+  <depend>cgal_conversions</depend>
   <depend>cpt_pointlaser_comm_ros</depend>
   <depend>cpt_pointlaser_loc</depend>
   <depend>cpt_pointlaser_msgs</depend>
