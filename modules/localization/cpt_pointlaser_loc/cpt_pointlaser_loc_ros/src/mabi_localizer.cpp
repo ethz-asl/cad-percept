@@ -204,7 +204,6 @@ bool MabiLocalizer::highAccuracyLocalization(
 }
 
 void MabiLocalizer::advertiseTopics() {
-  // TODO(fmilano): Check these topic names!
   leica_client_["distance"] =
       nh_.serviceClient<cpt_pointlaser_comm_ros::GetDistance>("/pointlaser_comm/distance");
   leica_client_["laserOn"] = nh_.serviceClient<std_srvs::Empty>("/pointlaser_comm/laserOn");
