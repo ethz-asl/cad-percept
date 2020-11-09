@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <launch>
-  <arg name="reference_link_topic_name"
-       default="grinder"
-       doc="Topic name of a reference link that has fixed pose w.r.t. to the lasers." />
   <arg name="pointlaser_config_file"
        default="cfg/pointlaser_params_mabi.yaml"
        doc="YAML file holding the parameters."/>
@@ -20,6 +17,5 @@
         output="screen"
         respawn="true">
     <rosparam command="load" file="$(find cpt_pointlaser_loc_ros)/$(arg pointlaser_config_file)" />
-    <rosparam param="reference_link_topic_name" subst_value="True">$(arg reference_link_topic_name)</rosparam>
   </node>
 </launch>
