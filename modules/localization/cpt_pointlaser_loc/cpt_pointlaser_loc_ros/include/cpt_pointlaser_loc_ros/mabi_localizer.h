@@ -67,8 +67,6 @@ class MabiLocalizer {
   ros::Publisher pub_intersection_a_, pub_intersection_b_, pub_intersection_c_;
   // - Publisher of the pose from marker to end-effector.
   ros::Publisher pub_endeffector_pose_;
-  // - Subscriber to the initial pose of the arm in the world frame.
-  ros::Subscriber sub_offset_pose_;
   // Transform listener.
   tf::TransformListener transform_listener_;
   // Service clients and server.
