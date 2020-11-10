@@ -181,7 +181,7 @@ bool MabiLocalizer::highAccuracyLocalization(
 
   // Optimize for the pose from the marker to the arm base.
   kindr::minimal::QuatTransformation marker_to_armbase_optimized =
-      localizer_->optimizeForArmBasePoseInMap(nh_private_.param<bool>("verbose", false));
+      localizer_->optimizeForArmBasePoseInMap(nh_private_.param<bool>("verbose_optimizer", false));
   // Translate the pose in the map into a pose in the world frame.
   kindr::minimal::QuatTransformation world_to_armbase =
       getTF("world", "marker") * marker_to_armbase_optimized;

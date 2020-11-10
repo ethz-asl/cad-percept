@@ -4,11 +4,13 @@ pointlaser_noise_std: 0.002
 arm_odometry_std: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
 fix_cad_planes: false
 only_optimize_translation: true
-verbose: false
+# If true, the HAL optimizer is run in verbose mode.
+verbose_optimizer: false
 # Topic name of a reference link that has fixed pose w.r.t. to the lasers.
 reference_link_topic_name: WRIST_2
 # Topic name of the end effector.
 end_effector_topic_name: end_effector
+# TODO(fmilano): Remove these movements if not read anywhere else in the pipeline.
 movement_type_0:  # Church-yard
   - "0 0 0 0.999848 0.0174524 0 0" # 2 x 0 y 0 z
   - "0 0 0 0.999 0.044 0 0" # 5 deg around x
