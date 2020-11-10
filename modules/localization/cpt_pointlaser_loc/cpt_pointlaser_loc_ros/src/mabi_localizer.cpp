@@ -19,32 +19,32 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       initialized_hal_routine_(false),
       received_cad_model_(false) {
   if (!nh_private_.hasParam("initial_pose_std")) {
-    ROS_ERROR("'initial_pose_std' not set as parameter.\n");
+    ROS_ERROR("'initial_pose_std' not set as parameter.");
   }
   initial_armbase_to_ref_link_std_ = Eigen::Matrix<double, 6, 1>(
       nh_private_
           .param<std::vector<double>>("initial_pose_std", std::vector<double>{1, 1, 1, 1, 1, 1})
           .data());
   if (!nh_private_.hasParam("arm_odometry_std")) {
-    ROS_ERROR("'arm_odometry_std' not set as parameter.\n");
+    ROS_ERROR("'arm_odometry_std' not set as parameter.");
   }
   odometry_noise_std_ = Eigen::Matrix<double, 6, 1>(
       nh_private_
           .param<std::vector<double>>("arm_odometry_std", std::vector<double>{1, 1, 1, 1, 1, 1})
           .data());
   if (!nh_private_.hasParam("pointlaser_noise_std")) {
-    ROS_ERROR("'pointlaser_noise_std' not set as parameter.\n");
+    ROS_ERROR("'pointlaser_noise_std' not set as parameter.");
   }
   pointlaser_noise_std_ = nh_private_.param<double>("pointlaser_noise_std", 1.0);
 
   if (!nh_private.hasParam("reference_link_topic_name")) {
-    ROS_ERROR("'reference_link_topic_name' not set as parameter.\n");
+    ROS_ERROR("'reference_link_topic_name' not set as parameter.");
   }
   reference_link_topic_name_ =
       nh_private_.param<std::string>("reference_link_topic_name", "grinder");
 
   if (!nh_private.hasParam("end_effector_topic_name")) {
-    ROS_ERROR("'end_effector_topic_name' not set as parameter.\n");
+    ROS_ERROR("'end_effector_topic_name' not set as parameter.");
   }
   end_effector_topic_name_ =
       nh_private_.param<std::string>("end_effector_topic_name", "end_effector");
@@ -130,6 +130,7 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
     }
   }
   // Take measurements.
+  ROS_INFO("Taking laser measurements.");
   // - Add odometry measurement to the factor graph.
   kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", reference_link_topic_name_);
   localizer_->addOdometry(current_armbase_to_ref_link_.inverse() * new_arm_pose);
@@ -138,7 +139,7 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
   cpt_pointlaser_comm_ros::GetDistance::Request req;
   cpt_pointlaser_comm_ros::GetDistance::Response resp;
   while (!leica_client_["distance"].call(req, resp)) {
-    ROS_ERROR("could not get distance measurement.\n");
+    ROS_ERROR("Could not get distance measurement.");
     ros::Duration(0.1).sleep();
   }
   localizer_->addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC);
@@ -172,7 +173,7 @@ bool MabiLocalizer::highAccuracyLocalization(
   if (!initialized_hal_routine_) {
     ROS_ERROR(
         "Unable to perform the HAL routine. No measurements were received since the last completed "
-        "HAL routine or the CAD model was not received yet.\n");
+        "HAL routine or the CAD model was not received yet.");
     return false;
   }
   // Turn the laser off.
@@ -196,11 +197,11 @@ bool MabiLocalizer::highAccuracyLocalization(
   endeffector_pose_pub_.publish(pose_sent);
 
   // Write pose to terminal.
-  ROS_INFO("arm base in marker frame\n");
+  ROS_INFO("Arm base pose in marker frame:");
   ROS_INFO_STREAM(marker_to_armbase_optimized.getPosition().transpose() << "\n");
-  ROS_INFO("initial pose from slam\n");
+  ROS_INFO("Initial arm base pose in marker frame from state estimation:");
   ROS_INFO_STREAM(initial_marker_to_armbase_.getPosition().transpose() << "\n");
-  ROS_INFO("arm base in world frame\n");
+  ROS_INFO("Arm base pose in world frame:");
   ROS_INFO_STREAM(world_to_armbase.getPosition().transpose() << "\n");
 
   // Send corrected pose of the robot base to the controller.
