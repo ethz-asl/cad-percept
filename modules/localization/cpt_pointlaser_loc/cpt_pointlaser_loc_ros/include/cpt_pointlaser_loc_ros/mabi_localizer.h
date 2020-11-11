@@ -89,6 +89,7 @@ class MabiLocalizer {
   Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
   bool received_cad_model_;
+  bool received_at_least_one_measurement_;
   bool initialized_hal_routine_;
   kindr::minimal::QuatTransformation initial_marker_to_armbase_;
   kindr::minimal::QuatTransformation current_armbase_to_ref_link_;

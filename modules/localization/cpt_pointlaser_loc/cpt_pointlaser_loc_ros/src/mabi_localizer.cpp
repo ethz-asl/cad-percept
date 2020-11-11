@@ -17,6 +17,7 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       nh_private_(nh_private),
       transform_listener_(nh_),
       initialized_hal_routine_(false),
+      received_at_least_one_measurement_(false),
       received_cad_model_(false) {
   if (!nh_private_.hasParam("initial_pose_std")) {
     ROS_ERROR("'initial_pose_std' not set as parameter.");
@@ -164,16 +165,18 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
   intersection_msg.point.z = model_intersection_c.intersected_point.z();
   intersection_c_pub_.publish(intersection_msg);
 
+  received_at_least_one_measurement_ = true;
+
   return true;
 }
 
 bool MabiLocalizer::highAccuracyLocalization(
     cpt_pointlaser_msgs::HighAccuracyLocalization::Request &request,
     cpt_pointlaser_msgs::HighAccuracyLocalization::Response &response) {
-  if (!initialized_hal_routine_) {
+  if (!received_at_least_one_measurement_) {
     ROS_ERROR(
         "Unable to perform the HAL routine. No measurements were received since the last completed "
-        "HAL routine or the CAD model was not received yet.");
+        "HAL routine or the HAL routine was not (re-)initialized.");
     return false;
   }
   // Turn the laser off.
@@ -213,6 +216,7 @@ bool MabiLocalizer::highAccuracyLocalization(
 
   // Set the HAL routine as completed.
   initialized_hal_routine_ = false;
+  received_at_least_one_measurement_ = false;
 
   return true;
 }
