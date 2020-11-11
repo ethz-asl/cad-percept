@@ -77,7 +77,8 @@ void MabiLocalizer::modelCallback(const cgal_msgs::TriangleMeshStamped &cad_mesh
       model_, initial_armbase_to_ref_link_std_, odometry_noise_std_, pointlaser_noise_std_));
 }
 
-bool MabiLocalizer::initializeHALRoutine() {
+bool MabiLocalizer::initializeHALRoutine(std_srvs::Empty::Request &request,
+                                         std_srvs::Empty::Response &response) {
   if (!received_cad_model_) {
     ROS_ERROR("CAD model was not received. Unable to initialize localizer and run HAL routine.");
     return false;
@@ -123,12 +124,9 @@ bool MabiLocalizer::initializeHALRoutine() {
 
 bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
                                     std_srvs::Empty::Response &response) {
-  // Initialize HAL routine if not previously done.
   if (!initialized_hal_routine_) {
-    if (!initializeHALRoutine()) {
-      ROS_ERROR("Unable to take measurement because the HAL routine could not be initialized.");
-      return false;
-    }
+    ROS_ERROR("Unable to take measurement because the HAL routine could not be initialized.");
+    return false;
   }
   // Take measurements.
   ROS_INFO("Taking laser measurements.");
@@ -235,10 +233,12 @@ void MabiLocalizer::advertiseTopics() {
   intersection_c_pub_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_c", 1);
   endeffector_pose_pub_ =
       nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
-  high_acc_localisation_service_ = nh_private_.advertiseService(
-      "high_accuracy_localize", &MabiLocalizer::highAccuracyLocalization, this);
+  initialize_hal_routine_service_ = nh_private_.advertiseService(
+      "initialize_hal_routine", &MabiLocalizer::initializeHALRoutine, this);
   hal_take_measurement_service_ =
       nh_private_.advertiseService("hal_take_measurement", &MabiLocalizer::takeMeasurement, this);
+  high_acc_localisation_service_ = nh_private_.advertiseService(
+      "high_accuracy_localize", &MabiLocalizer::highAccuracyLocalization, this);
 }
 
 }  // namespace pointlaser_loc_ros
