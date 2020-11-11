@@ -125,7 +125,7 @@ bool MabiLocalizer::initializeHALRoutine(std_srvs::Empty::Request &request,
 bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
                                     std_srvs::Empty::Response &response) {
   if (!initialized_hal_routine_) {
-    ROS_ERROR("Unable to take measurement because the HAL routine could not be initialized.");
+    ROS_ERROR("Unable to take measurement because the HAL routine was not initialized.");
     return false;
   }
   // Take measurements.
