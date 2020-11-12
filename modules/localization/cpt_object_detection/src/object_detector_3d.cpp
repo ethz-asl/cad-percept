@@ -16,7 +16,8 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
     : nh_(nh),
       nh_private_(nh_private),
       object_frame_id_("object_detection_mesh"),
-      pointcloud_topic_("/camera/depth/color/points"),
+      detection_topic_(),
+      pointcloud_topic_(),
       detection_frame_id_("camera_depth_optical_frame"),
       keypoint_type_(kIss),
       descriptor_type_(kFpfh),
@@ -94,7 +95,8 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
 }
 
 void ObjectDetector3D::getParamsFromRos() {
-  nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
+  nh_private_.param("detection_topic", detection_topic_, detection_topic_);
+  nh_private_.param("detection_pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
   nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
   nh_private_.param("refine_using_icp", refine_using_icp_, refine_using_icp_);
@@ -164,9 +166,16 @@ void ObjectDetector3D::getParamsFromRos() {
 void ObjectDetector3D::subscribeToTopics() {
   int queue_size = 1;
   nh_private_.param("queue_size", queue_size, queue_size);
-  detection_pointcloud_sub_ = nh_.subscribe(pointcloud_topic_, queue_size,
-                                            &ObjectDetector3D::objectDetectionCallback, this);
-  LOG(INFO) << "Subscribed to pointcloud topic [" << detection_pointcloud_sub_.getTopic() << "]";
+  if (!detection_topic_.empty()) {
+    detection_sub_ = nh_.subscribe(detection_topic_, queue_size,
+                                   &ObjectDetector3D::objectDetectionCallback, this);
+    LOG(INFO) << "Subscribed to detection topic [" << detection_sub_.getTopic() << "]";
+  }
+  if (!pointcloud_topic_.empty()) {
+    detection_pointcloud_sub_ = nh_.subscribe(pointcloud_topic_, queue_size,
+                                              &ObjectDetector3D::objectPointcloudCallback, this);
+    LOG(INFO) << "Subscribed to pointcloud topic [" << detection_pointcloud_sub_.getTopic() << "]";
+  }
 }
 
 void ObjectDetector3D::advertiseTopics() {
@@ -192,7 +201,23 @@ void ObjectDetector3D::advertiseTopics() {
   normals_pub_ = nh_private_.advertise<visualization_msgs::MarkerArray>("surface_normals", 1, true);
 }
 
-void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in) {
+void ObjectDetector3D::objectDetectionCallback(
+    const piloting_detector_msgs::Detection& detection_msg) {
+  LOG(INFO) << "[ObjectDetector3D] Received object of type " << detection_msg.type_name.data
+            << " with id " << detection_msg.id.data;
+
+  detection_frame_id_ = detection_msg.pointcloud.header.frame_id;
+  detection_stamp_ = detection_msg.pointcloud.header.stamp;
+  pcl::fromROSMsg(detection_msg.pointcloud, detection_pointcloud_);
+
+  if (!use_3d_features_) {
+    processDetectionUsingPcaAndIcp();
+  } else {
+    processDetectionUsing3dFeatures();
+  }
+}
+
+void ObjectDetector3D::objectPointcloudCallback(const sensor_msgs::PointCloud2& cloud_msg_in) {
   detection_frame_id_ = cloud_msg_in.header.frame_id;
   detection_stamp_ = cloud_msg_in.header.stamp;
   pcl::fromROSMsg(cloud_msg_in, detection_pointcloud_);

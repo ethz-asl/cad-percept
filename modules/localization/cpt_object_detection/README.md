@@ -23,8 +23,8 @@ The objective is to match a predefined mesh of an object with the pointcloud of
 its detection in space.
 The object mesh is loaded from an .off file, where the filepath is given in the
 parameter ``off_model``.
-The node subscribes to a pointcloud via the ROS network. 
-The topic name is set using the parameter ``pointcloud_topic``.
+The node subscribes to a detection via the ROS network. 
+The topic name is set using the parameter ``detection_topic``.
 
 ### Output
 As a result of the object detection matching, we publish the transform from the 
@@ -89,10 +89,10 @@ The following list summarizes the parameters that can be set in the launch file:
   The filepath where the object mesh is stored as a `.off` file.
   No default value.
   
-- `pointcloud_topic`  
+- `detection_topic`  
   The name of the topic we subscribe to containing the 
-  preprocessed pointclouds of the object detection.  
-  Default value: `/camera/depth/color/points`
+  detected object, including a preprocessed pointcloud.  
+  Default value: `/piloting_detector/detection`
   
 - `icp_config_file`  
   The filepath of the config file for ICP used by 

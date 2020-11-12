@@ -19,6 +19,8 @@
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>piloting_detector_msgs</depend>
+
   <depend>eigen_catkin</depend>
   <depend>minkindr</depend>
   <depend>minkindr_conversions</depend>

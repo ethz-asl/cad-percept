@@ -4,6 +4,7 @@
 #include <cpt_object_detection/learned_descriptor.h>
 #include <cpt_object_detection/object_detection.h>
 #include <kindr/minimal/quat-transformation.h>
+#include <piloting_detector_msgs/Detection.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
@@ -28,7 +29,8 @@ class ObjectDetector3D {
   ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
   ~ObjectDetector3D() = default;
 
-  void objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
+  void objectPointcloudCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
+  void objectDetectionCallback(const piloting_detector_msgs::Detection& detection_msg);
 
   void processDetectionUsingPcaAndIcp();
   void processDetectionUsing3dFeatures();
@@ -61,6 +63,7 @@ class ObjectDetector3D {
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
 
+  ros::Subscriber detection_sub_;
   ros::Subscriber detection_pointcloud_sub_;
   ros::Publisher object_pointcloud_pub_;
   ros::Publisher object_mesh_pub_;
@@ -81,6 +84,7 @@ class ObjectDetector3D {
   pcl::PointCloud<LearnedDescriptor>::Ptr object_descriptors_learned_;
 
   // Detection
+  std::string detection_topic_;
   std::string pointcloud_topic_;
   ros::Time detection_stamp_;
   std::string detection_frame_id_;
