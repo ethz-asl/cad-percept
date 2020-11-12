@@ -217,7 +217,8 @@ void ObjectDetector3D::objectDetectionCallback(
   pcl::fromROSMsg(detection_msg.pointcloud, detection_pointcloud_);
 
   if (!use_3d_features_) {
-    processDetectionUsingPcaAndIcp(detection_msg.type_name.data);
+    processDetectionUsingCentroidAndIcp(detection_msg.type_name.data);
+//    processDetectionUsingPcaAndIcp(detection_msg.type_name.data);
   } else {
     processDetectionUsing3dFeatures(detection_msg.type_name.data);
   }
@@ -233,6 +234,50 @@ void ObjectDetector3D::objectPointcloudCallback(const sensor_msgs::PointCloud2& 
   } else {
     processDetectionUsing3dFeatures();
   }
+}
+
+void ObjectDetector3D::processDetectionUsingCentroidAndIcp(const std::string& object_type) {
+  Transformation T_object_detection_init = pca(mesh_model_, detection_pointcloud_);
+  T_object_detection_init.getRotation().setIdentity();
+
+  // Align front of object
+  pcl::PointCloud<pcl::PointXYZ> object_transformed;
+  pcl::transformPointCloud(object_pointcloud_, object_transformed,
+                           Eigen::Affine3f(T_object_detection_init.getTransformationMatrix()));
+  visualizePointcloud(object_transformed, detection_stamp_, detection_frame_id_,
+                      object_pointcloud_pub_);
+  float z_min_object = std::numeric_limits<float>::min();
+  for (const auto& point : object_transformed.points) {
+    z_min_object = std::min(z_min_object, point.z);
+  }
+  float z_min_detection = std::numeric_limits<float>::min();
+  for (const auto& point : detection_pointcloud_.points) {
+    z_min_detection = std::min(z_min_detection, point.z);
+  }
+  float delta_z = z_min_detection - z_min_object;
+  LOG(INFO) << "z_min object: " << z_min_object << ", z_min detection: " << z_min_detection;
+  LOG(INFO) << "Delta_z: " << delta_z;
+  LOG(INFO) << "Transform before:\n" << T_object_detection_init;
+  T_object_detection_init.getPosition().z() += delta_z;
+  LOG(INFO) << "Transform after:\n" << T_object_detection_init;
+
+  Transformation T_object_detection =
+      icp(object_pointcloud_, detection_pointcloud_, T_object_detection_init);
+
+  // Publish transformations to TF
+  std::string object_frame_id = object_frame_id_;
+  std::string object_init_frame_id = object_init_frame_id_;
+  if (!object_type.empty()) {
+    object_frame_id += "_" + object_type;
+    object_init_frame_id += "_" + object_type;
+  }
+  publishTransformation(T_object_detection_init, detection_stamp_, detection_frame_id_,
+                        object_init_frame_id);
+  publishTransformation(T_object_detection, detection_stamp_, detection_frame_id_, object_frame_id);
+
+  // Visualize object
+  visualizeMesh(mesh_model_, detection_stamp_, object_init_frame_id, object_mesh_init_pub_);
+  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id, object_mesh_pub_);
 }
 
 void ObjectDetector3D::processDetectionUsingPcaAndIcp(const std::string& object_type) {
