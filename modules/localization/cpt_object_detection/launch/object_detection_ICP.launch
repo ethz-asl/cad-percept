@@ -11,11 +11,11 @@
   <arg name="detection_topic"
        default="/detection_projector/object_detection"/>
   <arg name="object_off_path"
-       default="$(find cpt_object_detection)/resources/Y10148_Torus Thick.off"/>
+       default="/media/laura/Elements/Work/SBB_demo/meshes/EC350 v1.off"/>
   <arg name="object_type" default="display_fuse"/>
   <arg name="object_frame_id" value="object_detection_mesh"/>
 
-  <arg name="use_3d_features" value="true"/>
+  <arg name="use_3d_features" value="false"/>
   <arg name="num_points_object_pointcloud" default="5000"/>
   <arg name="downsampling" default="0.001"/>
   <arg name="keypoint_type" default="uniform"/> <!-- ISS or Harris or uniform-->
@@ -47,11 +47,12 @@
 
     <param name="refine_using_icp" value="$(arg refine_using_icp)"/>
     <param name="icp_config_file" value="$(arg icp_config_file)"/>
+    <param name="use_3d_features" value="$(arg use_3d_features)"/>
   </node>
 
   <node if="$(arg play_rosbag)" name="rosbag_player" pkg="rosbag" type="play"
         args="--clock -q $(arg rosbag_file)"/>
 
   <node if="$(arg visualize)" name="rviz" pkg="rviz" type="rviz"
-        args="-d $(find cpt_object_detection)/config/object_detection_matching_3d_features.rviz"/>
+        args="-d $(find cpt_object_detection)/config/sbb_demo_21.rviz"/>
 </launch>
