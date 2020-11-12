@@ -16,6 +16,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
     : nh_(nh),
       nh_private_(nh_private),
       object_frame_id_("object_detection_mesh"),
+      object_init_frame_id_(object_frame_id_ + "_init"),
       detection_topic_(),
       pointcloud_topic_(),
       detection_frame_id_("camera_depth_optical_frame"),
@@ -97,7 +98,9 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
 void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("detection_topic", detection_topic_, detection_topic_);
   nh_private_.param("detection_pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
+  nh_private_.param("object_type", object_type_, object_type_);
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
+  object_init_frame_id_ = object_frame_id_ + "_init";
   nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
   nh_private_.param("refine_using_icp", refine_using_icp_, refine_using_icp_);
   nh_private_.param("icp_config_file", icp_config_file_, icp_config_file_);
@@ -205,15 +208,18 @@ void ObjectDetector3D::objectDetectionCallback(
     const piloting_detector_msgs::Detection& detection_msg) {
   LOG(INFO) << "[ObjectDetector3D] Received object of type " << detection_msg.type_name.data
             << " with id " << detection_msg.id.data;
+  if (!object_type_.empty() && detection_msg.type_name.data != object_type_) {
+    return;
+  }
 
   detection_frame_id_ = detection_msg.pointcloud.header.frame_id;
   detection_stamp_ = detection_msg.pointcloud.header.stamp;
   pcl::fromROSMsg(detection_msg.pointcloud, detection_pointcloud_);
 
   if (!use_3d_features_) {
-    processDetectionUsingPcaAndIcp();
+    processDetectionUsingPcaAndIcp(detection_msg.type_name.data);
   } else {
-    processDetectionUsing3dFeatures();
+    processDetectionUsing3dFeatures(detection_msg.type_name.data);
   }
 }
 
@@ -229,23 +235,29 @@ void ObjectDetector3D::objectPointcloudCallback(const sensor_msgs::PointCloud2& 
   }
 }
 
-void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
+void ObjectDetector3D::processDetectionUsingPcaAndIcp(const std::string& object_type) {
   Transformation T_object_detection_init;
   Transformation T_object_detection = alignDetectionUsingPcaAndIcp(
       mesh_model_, detection_pointcloud_, icp_config_file_, &T_object_detection_init);
 
   // Publish transformations to TF
+  std::string object_frame_id = object_frame_id_;
+  std::string object_init_frame_id = object_init_frame_id_;
+  if (!object_type.empty()) {
+    object_frame_id += "_" + object_type;
+    object_init_frame_id += "_" + object_type;
+  }
   publishTransformation(T_object_detection_init.inverse(), detection_stamp_, detection_frame_id_,
-                        object_frame_id_ + "_init");
+                        object_init_frame_id);
   publishTransformation(T_object_detection.inverse(), detection_stamp_, detection_frame_id_,
-                        object_frame_id_);
+                        object_frame_id);
 
   // Visualize object
-  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
-  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
+  visualizeMesh(mesh_model_, detection_stamp_, object_init_frame_id, object_mesh_init_pub_);
+  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id, object_mesh_pub_);
 }
 
-void ObjectDetector3D::processDetectionUsing3dFeatures() {
+void ObjectDetector3D::processDetectionUsing3dFeatures(const std::string& object_type) {
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
   // Downsampling detection pointcloud
@@ -300,8 +312,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     case k3dSmoothNet: {
       typename pcl::PointCloud<LearnedDescriptor>::Ptr detection_descriptors_learned(
           new pcl::PointCloud<LearnedDescriptor>());
-      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_surfels,
-                                       detection_keypoints, detection_descriptors_learned);
+      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
+                                       detection_descriptors_learned);
       T_features = computeTransformUsing3dFeatures<LearnedDescriptor>(
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_learned,
           object_surfels_, object_keypoints_, object_descriptors_learned_,
@@ -323,6 +335,14 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     return;
   }
 
+  // Object frames
+  std::string object_frame_id = object_frame_id_;
+  std::string object_init_frame_id = object_init_frame_id_;
+  if (!object_type.empty()) {
+    object_frame_id += "_" + object_type;
+    object_init_frame_id += "_" + object_type;
+  }
+
   // Visualizations
   visualizeNormals(detection_surfels, "detection", detection_frame_id_, normals_pub_);
   visualizeNormals(object_surfels_, "object", detection_frame_id_, normals_pub_);
@@ -337,8 +357,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
 
   // Publish initial transform
   publishTransformation(T_features.inverse(), detection_stamp_, detection_frame_id_,
-                        object_frame_id_ + "_init");
-  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
+                        object_init_frame_id);
+  visualizeMesh(mesh_model_, detection_stamp_, object_init_frame_id, object_mesh_init_pub_);
 
   // Refine using ICP
   Transformation T_icp = T_features;
@@ -353,10 +373,10 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
   }
 
   // Publish results
-  publishTransformation(T_icp.inverse(), detection_stamp_, detection_frame_id_, object_frame_id_);
+  publishTransformation(T_icp.inverse(), detection_stamp_, detection_frame_id_, object_frame_id);
   visualizePointcloud(object_pointcloud_, detection_stamp_, detection_frame_id_,
                       object_pointcloud_pub_);
-  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
+  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id, object_mesh_pub_);
   LOG(INFO) << "Published results.";
   LOG(INFO) << "Time aligning: "
             << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()

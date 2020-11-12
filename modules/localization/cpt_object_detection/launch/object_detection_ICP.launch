@@ -12,6 +12,7 @@
        default="/detection_projector/object_detection"/>
   <arg name="object_off_path"
        default="$(find cpt_object_detection)/resources/Y10148_Torus Thick.off"/>
+  <arg name="object_type" default="display_fuse"/>
   <arg name="object_frame_id" value="object_detection_mesh"/>
 
   <arg name="use_3d_features" value="true"/>
@@ -32,6 +33,7 @@
     <param name="detection_topic" value="$(arg detection_topic)"/>
     <param name="off_model" value="$(arg object_off_path)"/>
     <param name="visualize_object_on_startup" value="true"/>
+    <param name="object_type" value="$(arg object_type)"/>
     <param name="object_frame_id" value="$(arg object_frame_id)"/>
 
     <param name="use_3d_features" value="$(arg use_3d_features)"/>
