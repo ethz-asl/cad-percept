@@ -40,6 +40,9 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
 Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
                    const Transformation& T_object_detection_init, const std::string& config_file);
+Transformation icp(const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+                   const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+                   const Transformation& T_object_detection_init);
 
 PM::DataPoints sampleDataPointsFromMesh(const cgal::MeshModel::Ptr& mesh_model,
                                         const int number_of_points);
