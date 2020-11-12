@@ -16,8 +16,15 @@ void MeshFromJSON<HDS>::operator()(HDS &hds) {
   }
   for (auto &[id, vertices] : j_["face"].items()) {
     B.begin_facet();
-    for (std::string vertex : vertices) {
-      B.add_vertex_to_facet(vertex_to_index_[vertex]);
+    for (auto &vertex : vertices) {
+      std::string parsed_vertex;
+      if (vertex.is_string()) {
+        parsed_vertex = vertex;
+      } else {
+        int int_vertex = vertex;
+        parsed_vertex = std::to_string(int_vertex);
+      }
+      B.add_vertex_to_facet(vertex_to_index_[parsed_vertex]);
     }
     B.end_facet();
     triangle_order_.push_back(id);
