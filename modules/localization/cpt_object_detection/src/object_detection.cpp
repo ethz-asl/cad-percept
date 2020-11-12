@@ -174,6 +174,36 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
   return Transformation(Tmatrix);
 }
 
+Transformation icp(const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+                   const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+                   const Transformation& T_object_detection_init) {
+  std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
+
+  pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+  icp.setInputSource(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(object_pointcloud));
+  icp.setInputTarget(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(detection_pointcloud));
+
+  pcl::PointCloud<pcl::PointXYZ> pcl;
+  icp.align(pcl, T_object_detection_init.getTransformationMatrix());
+
+  if (!icp.hasConverged()) {
+    LOG(WARNING) << "ICP hasn't converged!";
+  }
+
+  Eigen::Matrix4f T_object_detection_icp = icp.getFinalTransformation();
+
+  if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {
+    LOG(ERROR) << "Invalid rotation matrix!";
+    return T_object_detection_init;
+  }
+  Transformation::TransformationMatrix Tmatrix(T_object_detection_icp);
+
+  LOG(INFO) << "Time ICP: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+            << " s";
+  return Transformation(Tmatrix);
+}
+
 PM::DataPoints sampleDataPointsFromMesh(const cgal::MeshModel::Ptr& mesh_model,
                                         const int number_of_points) {
   CHECK(mesh_model);
