@@ -1,5 +1,6 @@
 #include "cpt_object_detection/object_detector_3d.h"
 
+#include <cgal_conversions/eigen_conversions.h>
 #include <cgal_conversions/mesh_conversions.h>
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_object_detection/learned_descriptor.h>
@@ -37,6 +38,13 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
   }
   LOG(INFO) << "Object mesh with " << mesh_model_->getMesh().size_of_facets() << " facets and "
             << mesh_model_->getMesh().size_of_vertices() << " vertices";
+
+  // TODO(gasserl): Load object in depth_frame, not optical_depth frame
+  Eigen::Quaterniond quaternion(0.5, 0.5, -0.5, -0.5);
+  //  Eigen::Quaterniond quaternion(0, -0.7071068, 0, 0.7071068);
+  Eigen::Transform<double, 3, Eigen::Affine> T;
+  T.fromPositionOrientationScale(Eigen::Vector3d(0, 0, 0), quaternion, Eigen::Vector3d::Ones());
+  mesh_model_->transform(cgal::eigenTransformationToCgalTransformation(T.inverse().matrix()));
 
   // Sample pointcloud from object mesh
   int num_points_object_pointcloud = 1e3;
