@@ -14,6 +14,7 @@
        default="/media/laura/Elements/Work/SBB_demo/meshes/EC350 v1.off"/>
   <arg name="object_type" default="display_fuse"/>
   <arg name="object_frame_id" value="object_detection_mesh"/>
+  <arg name="demo_mode" default=""/>
 
   <arg name="use_3d_features" value="false"/>
   <arg name="num_points_object_pointcloud" default="5000"/>
@@ -48,6 +49,7 @@
     <param name="refine_using_icp" value="$(arg refine_using_icp)"/>
     <param name="icp_config_file" value="$(arg icp_config_file)"/>
     <param name="use_3d_features" value="$(arg use_3d_features)"/>
+    <param name="demo_mode" value="$(arg demo_mode)"/>
   </node>
 
   <node if="$(arg play_rosbag)" name="rosbag_player" pkg="rosbag" type="play"

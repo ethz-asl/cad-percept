@@ -39,12 +39,21 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
   LOG(INFO) << "Object mesh with " << mesh_model_->getMesh().size_of_facets() << " facets and "
             << mesh_model_->getMesh().size_of_vertices() << " vertices";
 
-  // TODO(gasserl): Load object in depth_frame, not optical_depth frame
-  Eigen::Quaterniond quaternion(0.5, 0.5, -0.5, -0.5);
-  //  Eigen::Quaterniond quaternion(0, -0.7071068, 0, 0.7071068);
-  Eigen::Transform<double, 3, Eigen::Affine> T;
-  T.fromPositionOrientationScale(Eigen::Vector3d(0, 0, 0), quaternion, Eigen::Vector3d::Ones());
-  mesh_model_->transform(cgal::eigenTransformationToCgalTransformation(T.inverse().matrix()));
+  // Orient mesh according to situation during demo
+  bool valid_demo_mode = true;
+  Eigen::Quaterniond quaternion;
+  if (demo_mode_ == "21-10") {
+    quaternion = Eigen::Quaterniond(0.5, 0.5, -0.5, -0.5);
+  } else if (demo_mode_ == "04-11") {
+    quaternion = Eigen::Quaterniond(0, -0.7071068, 0, 0.7071068);
+  } else {
+    valid_demo_mode = false;
+  }
+  if (valid_demo_mode) {
+    Eigen::Transform<double, 3, Eigen::Affine> T;
+    T.fromPositionOrientationScale(Eigen::Vector3d(0, 0, 0), quaternion, Eigen::Vector3d::Ones());
+    mesh_model_->transform(cgal::eigenTransformationToCgalTransformation(T.inverse().matrix()));
+  }
 
   // Sample pointcloud from object mesh
   int num_points_object_pointcloud = 1e3;
@@ -115,6 +124,7 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("correspondence_threshold", correspondence_threshold_,
                     correspondence_threshold_);
   nh_private_.param("downsampling", downsampling_resolution_, downsampling_resolution_);
+  nh_private_.param("demo_mode", demo_mode_, demo_mode_);
 
   std::string keypoint_type;
   nh_private_.param("keypoint_type", keypoint_type, keypoint_type);

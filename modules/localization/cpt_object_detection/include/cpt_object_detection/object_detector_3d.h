@@ -103,6 +103,8 @@ class ObjectDetector3D {
   std::string icp_config_file_;
   float correspondence_threshold_;
   float downsampling_resolution_;
+
+  std::string demo_mode_;
 };
 
 }  // namespace object_detection
