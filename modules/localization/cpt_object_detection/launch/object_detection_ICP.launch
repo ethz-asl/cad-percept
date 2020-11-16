@@ -15,6 +15,7 @@
   <arg name="object_type" default="display_fuse"/>
   <arg name="object_frame_id" value="object_detection_mesh"/>
   <arg name="demo_mode" default=""/>
+  <arg name="reference_frame_id" default="arm_base"/>
 
   <arg name="use_3d_features" value="false"/>
   <arg name="num_points_object_pointcloud" default="5000"/>
@@ -50,6 +51,7 @@
     <param name="icp_config_file" value="$(arg icp_config_file)"/>
     <param name="use_3d_features" value="$(arg use_3d_features)"/>
     <param name="demo_mode" value="$(arg demo_mode)"/>
+    <param name="reference_frame_id" value="$(arg reference_frame_id)"/>
   </node>
 
   <node if="$(arg play_rosbag)" name="rosbag_player" pkg="rosbag" type="play"

@@ -8,6 +8,7 @@
 #include <minkindr_conversions/kindr_msg.h>
 #include <pcl/filters/voxel_grid.h>
 #include <tf/transform_broadcaster.h>
+#include <tf_conversions/tf_eigen.h>
 #include <visualization_msgs/MarkerArray.h>
 
 namespace cad_percept {
@@ -27,7 +28,8 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       use_3d_features_(true),
       refine_using_icp_(true),
       correspondence_threshold_(0.1),
-      downsampling_resolution_(0.001) {
+      downsampling_resolution_(0.001),
+      tf_listener_(ros::Duration(30)) {
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
@@ -125,6 +127,7 @@ void ObjectDetector3D::getParamsFromRos() {
                     correspondence_threshold_);
   nh_private_.param("downsampling", downsampling_resolution_, downsampling_resolution_);
   nh_private_.param("demo_mode", demo_mode_, demo_mode_);
+  nh_private_.param("reference_frame_id", reference_frame_id_, reference_frame_id_);
 
   std::string keypoint_type;
   nh_private_.param("keypoint_type", keypoint_type, keypoint_type);
@@ -234,11 +237,49 @@ void ObjectDetector3D::objectDetectionCallback(
   detection_stamp_ = detection_msg.pointcloud.header.stamp;
   pcl::fromROSMsg(detection_msg.pointcloud, detection_pointcloud_);
 
+  // Lookup orientation difference between detection and reference frame
+  tf::StampedTransform transform;
+  bool success_reference_frame_transform = false;
+  std::string error_message;
+  if (tf_listener_.canTransform(detection_frame_id_, reference_frame_id_, ros::Time(0),
+                                &error_message)) {
+    tf_listener_.lookupTransform(detection_frame_id_, reference_frame_id_, ros::Time(0), transform);
+    success_reference_frame_transform = true;
+  } else {
+    LOG(WARNING) << "Couldn't get transformation from " << detection_frame_id_ << " to "
+                 << reference_frame_id_ << ":\n"
+                 << error_message;
+  }
+
+  // Orient mesh accordingly
+  cgal::Transformation T_cgal;
+  pcl::PointCloud<pcl::PointXYZ> object_pointcloud;
+  if (success_reference_frame_transform) {
+    Eigen::Affine3d T_eigen;
+    tf::transformTFToEigen(transform, T_eigen);
+    T_eigen.translation().setZero();
+    LOG(INFO) << "Transform between detection frmae " << detection_frame_id_
+              << " and reference frame " << reference_frame_id_ << ":\n"
+              << T_eigen.matrix();
+
+    // Orient object to world frame
+    cgal::eigenTransformationToCgalTransformation(T_eigen.matrix(), &T_cgal);
+    mesh_model_->transform(T_cgal);
+    object_pointcloud = object_pointcloud_;
+    pcl::transformPointCloud(object_pointcloud_, object_pointcloud, T_eigen);
+  }
+
   if (!use_3d_features_) {
     processDetectionUsingCentroidAndIcp(detection_msg.type_name.data);
 //    processDetectionUsingPcaAndIcp(detection_msg.type_name.data);
   } else {
     processDetectionUsing3dFeatures(detection_msg.type_name.data);
+  }
+
+  // Revert adjusted orientation
+  if (success_reference_frame_transform) {
+    mesh_model_->transform(T_cgal.inverse());
+    object_pointcloud_ = object_pointcloud;
   }
 }
 

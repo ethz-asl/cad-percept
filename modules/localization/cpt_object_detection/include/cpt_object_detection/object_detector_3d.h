@@ -7,6 +7,7 @@
 #include <piloting_detector_msgs/Detection.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <tf/transform_listener.h>
 
 namespace cad_percept {
 namespace object_detection {
@@ -105,6 +106,8 @@ class ObjectDetector3D {
   float downsampling_resolution_;
 
   std::string demo_mode_;
+  std::string reference_frame_id_;
+  tf::TransformListener tf_listener_;
 };
 
 }  // namespace object_detection
