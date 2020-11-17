@@ -8,8 +8,7 @@
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/MarkerArray.h>
 
-namespace cad_percept {
-namespace object_detection {
+namespace cad_percept::object_detection {
 
 ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
     : nh_(nh),
@@ -440,5 +439,4 @@ void ObjectDetector3D::visualizeNormals(const modelify::PointSurfelCloudType::Pt
   publisher.publish(marker_array);
 }
 
-}  // namespace object_detection
-}  // namespace cad_percept
+}  // namespace cad_percept::object_detection

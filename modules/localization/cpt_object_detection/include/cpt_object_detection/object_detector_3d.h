@@ -4,10 +4,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
-#include "cpt_object_detection/object_detection.h"
-
-namespace cad_percept {
-namespace object_detection {
+namespace cad_percept::object_detection {
 
 class ObjectDetector3D {
   std::map<size_t, std::string> KeypointNames = {
@@ -95,7 +92,6 @@ class ObjectDetector3D {
   float downsampling_resolution_;
 };
 
-}  // namespace object_detection
-}  // namespace cad_percept
+}  // namespace cad_percept::object_detection
 
 #endif  // CPT_OBJECT_DETECTION_OBJECT_DETECTOR_3D_H_

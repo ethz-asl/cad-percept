@@ -7,8 +7,7 @@
 #include <modelify/registration_toolbox/registration_toolbox.h>
 #include <pcl/common/pca.h>
 
-namespace cad_percept {
-namespace object_detection {
+namespace cad_percept::object_detection {
 
 Transformation alignDetectionUsingPcaAndIcp(
     const cgal::MeshModel::Ptr& mesh_model,
@@ -448,5 +447,4 @@ pcl::PointCloud<modelify::DescriptorFPFH> getDescriptors<modelify::DescriptorFPF
   return *descriptors;
 }
 
-}  // namespace object_detection
-}  // namespace cad_percept
+}  // namespace cad_percept::object_detection

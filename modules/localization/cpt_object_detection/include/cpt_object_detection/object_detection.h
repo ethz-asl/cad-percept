@@ -8,8 +8,7 @@
 #include <pcl/point_types.h>
 #include <pointmatcher/PointMatcher.h>
 
-namespace cad_percept {
-namespace object_detection {
+namespace cad_percept::object_detection {
 
 typedef kindr::minimal::QuatTransformationTemplate<float> Transformation;
 typedef kindr::minimal::RotationQuaternionTemplate<float> Quaternion;
@@ -110,8 +109,7 @@ typename pcl::PointCloud<descriptor_type> getDescriptors(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints);
 
-}  // namespace object_detection
-}  // namespace cad_percept
+}  // namespace cad_percept::object_detection
 
 #include "cpt_object_detection/object_detection_inl.h"
 
