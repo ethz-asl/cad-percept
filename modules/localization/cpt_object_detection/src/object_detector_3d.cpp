@@ -9,8 +9,7 @@
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/MarkerArray.h>
 
-namespace cad_percept {
-namespace object_detection {
+namespace cad_percept::object_detection {
 
 ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
     : nh_(nh),
@@ -275,15 +274,15 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     case k3dSmoothNet: {
       typename pcl::PointCloud<LearnedDescriptor>::Ptr detection_descriptors_learned(
           new pcl::PointCloud<LearnedDescriptor>());
-      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_surfels,
-                                       detection_keypoints, detection_descriptors_learned);
+      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
+                                       detection_descriptors_learned);
       T_features = computeTransformUsing3dFeatures<LearnedDescriptor>(
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_learned,
           object_surfels_, object_keypoints_, object_descriptors_learned_,
           correspondence_threshold_, correspondences);
       break;
     }
-    default:
+    default: {
       LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
       LOG(INFO) << "Descriptor types:";
       for (int i = 0; i < DescriptorType::kNumDescriptorTypes; ++i) {
@@ -456,5 +455,4 @@ void ObjectDetector3D::visualizeNormals(const modelify::PointSurfelCloudType::Pt
   publisher.publish(marker_array);
 }
 
-}  // namespace object_detection
-}  // namespace cad_percept
+}  // namespace cad_percept::object_detection

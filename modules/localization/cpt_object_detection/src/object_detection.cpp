@@ -10,8 +10,7 @@
 
 #include <thread>
 
-namespace cad_percept {
-namespace object_detection {
+namespace cad_percept::object_detection {
 
 Transformation alignDetectionUsingPcaAndIcp(
     const cgal::MeshModel::Ptr& mesh_model,
@@ -164,6 +163,36 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
   if (icp.getMaxNumIterationsReached()) {
     LOG(WARNING) << "ICP reached maximum number of iterations!";
   }
+
+  if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {
+    LOG(ERROR) << "Invalid rotation matrix!";
+    return T_object_detection_init;
+  }
+  Transformation::TransformationMatrix Tmatrix(T_object_detection_icp);
+
+  LOG(INFO) << "Time ICP: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+            << " s";
+  return Transformation(Tmatrix);
+}
+
+Transformation icp(const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+                   const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+                   const Transformation& T_object_detection_init) {
+  std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
+
+  pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+  icp.setInputSource(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(object_pointcloud));
+  icp.setInputTarget(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(detection_pointcloud));
+
+  pcl::PointCloud<pcl::PointXYZ> pcl;
+  icp.align(pcl, T_object_detection_init.getTransformationMatrix());
+
+  if (!icp.hasConverged()) {
+    LOG(WARNING) << "ICP hasn't converged!";
+  }
+
+  Eigen::Matrix4f T_object_detection_icp = icp.getFinalTransformation();
 
   if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {
     LOG(ERROR) << "Invalid rotation matrix!";
@@ -425,13 +454,38 @@ template <>
 pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
-  // Write to file
-  std::string filename_pointcloud = "/home/laura/bags/matching/pointcloud.ply";
-  LOG(INFO) << "Writing pointcloud to file " << filename_pointcloud;
-  pcl::PLYWriter ply_writer;
-  ply_writer.write(filename_pointcloud, *pointcloud_surfel_ptr);
+  // Parameters
+  float radius = 0.002;
 
+  // Clean files
+  std::string filename_pointcloud = "/home/laura/bags/matching/pointcloud.ply";
+  std::remove(filename_pointcloud.c_str());
   std::string filename_keypoints = "/home/laura/bags/matching/keypoints.txt";
+  std::remove(filename_keypoints.c_str());
+  std::string filepath_input = "/home/laura/bags/matching/sdv/";
+  char radius_char[100];
+  std::sprintf(radius_char, "%.6f", radius);
+  std::string radius_str(radius_char);
+  std::string filename_csv = filepath_input + "pointcloud_" + radius_str + "_16_1.750000.csv";
+  std::remove(filename_csv.c_str());
+  std::string filepath_output = "/home/laura/bags/matching";
+  std::string filename_descriptor =
+      filepath_output + "/32_dim/pointcloud_" + radius_str + "_16_1.750000_3DSmoothNet.txt";
+  std::remove(filename_descriptor.c_str());
+
+  // Write to file
+  LOG(INFO) << "Writing pointcloud to file " << filename_pointcloud;
+  pcl::PointCloud<pcl::PointXYZ> pcl_xyz;
+  pcl::copyPointCloud(*pointcloud_surfel_ptr, pcl_xyz);
+  Eigen::Vector4f origin = pcl_xyz.sensor_origin_;
+  Eigen::Quaternionf orientation = pcl_xyz.sensor_orientation_;
+  pcl::PCLPointCloud2 blob;
+  pcl::toPCLPointCloud2 (pcl_xyz, blob);
+  blob.row_step = blob.data.size();
+  blob.width = pcl_xyz.size();
+  pcl::PLYWriter ply_writer;
+  ply_writer.write(filename_pointcloud, blob, origin, orientation, false, true);
+
   LOG(INFO) << "Writing keypoints to file " << filename_keypoints;
   std::ofstream keypoint_file;
   keypoint_file.open(filename_keypoints);
@@ -448,53 +502,50 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
   keypoint_file.close();
 
   // Prep input
-  //  system("cd /home/laura/pilot_ws/src/3DSmoothNet");
-  float radius = 0.002;
-  char radius_char[100];
-  std::sprintf(radius_char, "%.6f", radius);
-  std::string radius_str(radius_char);
-  std::string filepath_input = "/home/laura/bags/matching/sdv/";
-  std::string args_parametrize = "./3DSmoothNet -r " + radius_str + " -f " + filename_pointcloud +
-                                 " -k " + filename_keypoints + " -o " + filepath_input;
-  std::string command_parametrize = "gnome-terminal -x sh -c '" + args_parametrize + "'";
-  command_parametrize = args_parametrize;
-  //  system(command_parametrize.c_str());
-  //  LOG(INFO) << "Executed command \"" << command_parametrize << "\"";
+  std::string python_path = "/home/laura/pilot_ws/src/3DSmoothNet";
+  std::string command_parametrize = python_path + "/3DSmoothNet -r " + radius_str + " -f " +
+                                 filename_pointcloud + " -k " + filename_keypoints + " -o " +
+                                 filepath_input;
+
+  LOG(INFO) << "\n------------------------------------------------PYHTON------------------------"
+               "-----------------------\n"
+            << std::endl;
+  int result_parametrize = system(command_parametrize.c_str());
+  LOG(INFO) << "\n-----------------------------------------------/PYHTON------------------------"
+               "-----------------------\n"
+            << std::endl;
+
+  LOG(INFO) << "Executed command: " << command_parametrize << "\nResult: " << result_parametrize;
+  if (result_parametrize != 0) {
+    LOG(ERROR) << "Parametrization failed!";
+    return pcl::PointCloud<LearnedDescriptor>();
+  }
 
   // Get Descriptors by inference
-  std::string filepath_output = "/home/laura/bags/matching";
-  std::string args_inference =
-      "python3 ./main_cnn.py --run_mode=test "
-      "--evaluate_input_folder=" +
-      filepath_input + " --evaluate_output_folder=" + filepath_output;
-  std::string command_inference = "gnome-terminal -x sh -c '" + args_inference + "'";
-  command_inference = args_inference;
-  //  system(command_inference.c_str());
-  //  LOG(INFO) << "Executed command \"" << command_inference << "\"";
+  std::string command_inference = "python3 " + python_path +
+                               "/main_cnn.py --run_mode=test "
+                               "--evaluate_input_folder=" +
+                               filepath_input + " --evaluate_output_folder=" + filepath_output +
+                               " --saved_model_dir=" + python_path + "/models/" +
+                               " --training_data_folder=" + python_path +
+                               "/data/train/trainingData3DMatch";
 
-  std::string command = ("gnome-terminal -x sh -c 'cd /home/laura/pilot_ws/src/3DSmoothNet ; " +
-                         args_parametrize + " ; " + args_inference + "'");
-  system(command.c_str());
-  LOG(INFO) << "Executed command: " << command;
+  LOG(INFO) << "\n------------------------------------------------PYHTON------------------------"
+               "-----------------------\n"
+            << std::endl;
+  int result_inference = system(command_inference.c_str());
+  LOG(INFO) << "\n-----------------------------------------------/PYHTON------------------------"
+               "-----------------------\n"
+            << std::endl;
+  LOG(INFO) << "Executed command: " << command_inference << "\nResult: " << result_inference;
+  if (result_inference != 0) {
+    LOG(ERROR) << "Inference failed!";
+  }
 
-  // Wait until done in 0.5 s steps
-  std::string filename_descriptor =
-      filepath_output + "/32_dim/pointcloud_" + radius_str + "_16_1.750000_3DSmoothNet.txt";
+  // Read descriptors from file
+  pcl::PointCloud<LearnedDescriptor> descriptors;
   std::fstream descriptor_file;
   descriptor_file.open(filename_descriptor);
-  int count = 0;
-  float dt = 0.5;
-  int max_count = std::ceil(30 / dt);
-  while (count < max_count && !descriptor_file.is_open()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(int(std::round(dt * 1000))));
-    descriptor_file.open(filename_descriptor);
-    ++count;
-  }
-  if (count > 0) {
-    LOG(INFO) << "Waited " << dt * count << " seconds.";
-  }
-
-  pcl::PointCloud<LearnedDescriptor> descriptors;
   if (descriptor_file.is_open()) {
     std::string line_str;
     while (std::getline(descriptor_file, line_str)) {
@@ -515,13 +566,8 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
     LOG(ERROR) << "Could not open file " << filename_descriptor;
   }
   LOG(INFO) << "Got " << descriptors.size() << " descriptors.";
-
-  // Clean files
-  std::remove(filename_pointcloud.c_str());
-  std::remove(filename_keypoints.c_str());
-  std::remove(filename_descriptor.c_str());
+  LOG(INFO) << "For " << keypoints->size() << " keypoints";
   return descriptors;
 }
 
-}  // namespace object_detection
-}  // namespace cad_percept
+}  // namespace cad_percept::object_detection
