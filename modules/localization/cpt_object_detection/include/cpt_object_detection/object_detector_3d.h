@@ -1,6 +1,7 @@
 #ifndef CPT_OBJECT_DETECTION_OBJECT_DETECTOR_3D_H_
 #define CPT_OBJECT_DETECTION_OBJECT_DETECTOR_3D_H_
 
+#include <cpt_object_detection/object_detection.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
