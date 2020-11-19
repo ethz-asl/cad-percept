@@ -261,49 +261,6 @@ PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& poin
   return PM::DataPoints(features, feature_labels);
 }
 
-Transformation refineUsingICP(const cgal::MeshModel::Ptr& mesh_model,
-                              const modelify::PointSurfelCloudType::Ptr& detection_pointcloud,
-                              const modelify::PointSurfelCloudType::Ptr& object_pointcloud,
-                              const Transformation& transform_init,
-                              const std::string& config_file) {
-  // Validate initial alignment
-  modelify::registration_toolbox::ICPParams icp_params;
-  double cloud_resolution = modelify::kInvalidCloudResolution;
-  double mean_squared_distance;
-  double inlier_ratio;
-  std::vector<size_t> outlier_indices;
-  modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-      detection_pointcloud, object_pointcloud, transform_init.getTransformationMatrix(), icp_params,
-      cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
-  LOG(INFO) << "Initial validation results: \n"
-            << mean_squared_distance << " mean squared distance, " << inlier_ratio
-            << " inlier ratio";
-
-  // Refine transformation with ICP
-  pcl::PointCloud<pcl::PointXYZ> detection_xyz;
-  pcl::copyPointCloud(*detection_pointcloud, detection_xyz);
-  Transformation transform_icp = icp(mesh_model, detection_xyz, transform_init, config_file);
-
-  // Validate alignment ICP
-  double mean_squared_distance_icp = 0;
-  double inlier_ratio_icp = mean_squared_distance;
-  modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-      detection_pointcloud, object_pointcloud, transform_icp.getTransformationMatrix(), icp_params,
-      cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
-  LOG(INFO) << "ICP validation results: \n"
-            << mean_squared_distance_icp << " mean squared distance, " << inlier_ratio_icp
-            << " inlier ratio";
-
-  if (inlier_ratio_icp >= inlier_ratio) {
-    // TODO(gasserl): include mean_squared_distance_icp < mean_squared_distance
-    return transform_icp;
-  } else {
-    LOG(WARNING) << "ICP didn't improve alignment!";
-  }
-
-  return transform_init;
-}
-
 modelify::PointSurfelCloudType estimateNormals(
     const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz) {
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();

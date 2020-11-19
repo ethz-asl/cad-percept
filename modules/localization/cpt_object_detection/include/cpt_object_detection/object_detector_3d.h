@@ -81,16 +81,20 @@ class ObjectDetector3D {
   std::string detection_frame_id_;
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
 
-  // Parameters
+  // Parameters: General options
+  bool use_3d_features_;
+
+  // Parameters: 3D Features
   KeypointType keypoint_type_;
   DescriptorType descriptor_type_;
   MatchingMethod matching_method_;
-
-  bool use_3d_features_;
-  bool refine_using_icp_;
-  std::string icp_config_file_;
   float correspondence_threshold_;
   float downsampling_resolution_;
+
+  // Parameters: ICP
+  bool refine_using_icp_;
+  bool use_icp_on_pointcloud_;
+  std::string icp_config_file_;
 };
 
 }  // namespace cad_percept::object_detection

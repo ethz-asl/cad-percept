@@ -16,13 +16,14 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       object_frame_id_("object_detection_mesh"),
       pointcloud_topic_("/camera/depth/color/points"),
       detection_frame_id_("camera_depth_optical_frame"),
+      use_3d_features_(true),
       keypoint_type_(kIss),
       descriptor_type_(kFpfh),
       matching_method_(kGeometricConsistency),
-      use_3d_features_(true),
-      refine_using_icp_(true),
       correspondence_threshold_(0.1),
-      downsampling_resolution_(0.001) {
+      downsampling_resolution_(0.001),
+      refine_using_icp_(true),
+      use_icp_on_pointcloud_(false) {
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
@@ -43,7 +44,7 @@ bool ObjectDetector3D::initializeObject() {
             << mesh_model_->getMesh().size_of_vertices() << " vertices";
 
   // Sample pointcloud from object mesh
-  if (use_3d_features_) {
+  if (use_3d_features_ || use_icp_on_pointcloud_) {
     std::chrono::steady_clock::time_point start_sampling = std::chrono::steady_clock::now();
     int num_points_object_pointcloud = 1e3;
     nh_private_.param("num_points_object_pointcloud", num_points_object_pointcloud,
@@ -140,6 +141,7 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
   nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
   nh_private_.param("refine_using_icp", refine_using_icp_, refine_using_icp_);
+  nh_private_.param("use_icp_on_pointcloud", use_icp_on_pointcloud_, use_icp_on_pointcloud_);
   nh_private_.param("icp_config_file", icp_config_file_, icp_config_file_);
   nh_private_.param("correspondence_threshold", correspondence_threshold_,
                     correspondence_threshold_);
@@ -254,8 +256,13 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   Transformation T_object_detection_init = pca(mesh_model_, detection_pointcloud_).inverse();
 
   // Get final alignment with ICP
-  Transformation T_object_detection =
-      icp(mesh_model_, detection_pointcloud_, T_object_detection_init, icp_config_file_);
+  Transformation T_object_detection;
+  if (use_icp_on_pointcloud_) {
+    T_object_detection = icp(object_pointcloud_, detection_pointcloud_, T_object_detection_init);
+  } else {
+    T_object_detection =
+        icp(mesh_model_, detection_pointcloud_, T_object_detection_init, icp_config_file_);
+  }
 
   LOG(INFO) << "Time matching total: "
             << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
@@ -358,19 +365,57 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
 
   // Refine using ICP
-  Transformation T_icp = T_features;
+  Transformation T_refined;
   if (refine_using_icp_) {
-    T_icp = refineUsingICP(mesh_model_, detection_surfels, object_surfels_, T_features,
-                           icp_config_file_);
+    // Validate initial alignment
+    modelify::registration_toolbox::ICPParams icp_params;
+    double cloud_resolution = modelify::kInvalidCloudResolution;
+    double mean_squared_distance;
+    double inlier_ratio;
+    std::vector<size_t> outlier_indices;
+    modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+        detection_surfels, object_surfels_, T_features.getTransformationMatrix(), icp_params,
+        cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
+    LOG(INFO) << "Initial validation results: \n"
+              << mean_squared_distance << " mean squared distance, " << inlier_ratio
+              << " inlier ratio";
+
+    // Refine transformation with ICP
+    Transformation T_icp;
+    if (use_icp_on_pointcloud_) {
+      T_icp = icp(object_pointcloud_, detection_pointcloud_, T_features);
+    } else {
+      T_icp = icp(mesh_model_, detection_pointcloud_, T_features, icp_config_file_);
+    }
+
+    // Validate alignment ICP
+    double mean_squared_distance_icp;
+    double inlier_ratio_icp;
+    modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+        detection_surfels, object_surfels_, T_icp.getTransformationMatrix(), icp_params,
+        cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
+    LOG(INFO) << "ICP validation results: \n"
+              << mean_squared_distance_icp << " mean squared distance, " << inlier_ratio_icp
+              << " inlier ratio";
+
+    // Set refined transformation
+    if (inlier_ratio_icp >= inlier_ratio) {
+      // TODO(gasserl): include mean_squared_distance_icp < mean_squared_distance
+      T_refined = T_icp;
+    } else {
+      LOG(WARNING) << "ICP didn't improve alignment!";
+      T_refined = T_features;
+    }
   }
 
-  if (!T_icp.getTransformationMatrix().allFinite()) {
-    LOG(ERROR) << "Transformation from ICP is not valid!\n" << T_icp;
+  if (!T_refined.getTransformationMatrix().allFinite()) {
+    LOG(ERROR) << "Transformation from ICP is not valid!\n" << T_refined;
     return;
   }
 
   // Publish results
-  publishTransformation(T_icp.inverse(), detection_stamp_, detection_frame_id_, object_frame_id_);
+  publishTransformation(T_refined.inverse(), detection_stamp_, detection_frame_id_,
+                        object_frame_id_);
   visualizePointcloud(object_pointcloud_, detection_stamp_, detection_frame_id_,
                       object_pointcloud_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
