@@ -236,18 +236,18 @@ Transformation computeTransformUsingTeaser(
 }
 
 template <typename descriptor_type>
-bool get3dFeatures(const KeypointType& keypoint_type,
-                   const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
-                   const modelify::PointSurfelCloudType::Ptr& keypoints,
-                   const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors) {
+bool compute3dFeatures(const KeypointType& keypoint_type,
+                       const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+                       const modelify::PointSurfelCloudType::Ptr& keypoints,
+                       const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors) {
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-  *keypoints = getKeypoints(keypoint_type, pointcloud_surfel_ptr);
+  *keypoints = computeKeypoints(keypoint_type, pointcloud_surfel_ptr);
   LOG(INFO) << "Time keypoints: "
             << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
             << " s";
 
   std::chrono::steady_clock::time_point start_descriptors = std::chrono::steady_clock::now();
-  *descriptors = getDescriptors<descriptor_type>(pointcloud_surfel_ptr, keypoints);
+  *descriptors = computeDescriptors<descriptor_type>(pointcloud_surfel_ptr, keypoints);
   LOG(INFO)
       << "Time descriptors: "
       << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_descriptors).count()

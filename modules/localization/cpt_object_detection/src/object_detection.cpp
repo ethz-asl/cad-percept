@@ -9,42 +9,6 @@
 
 namespace cad_percept::object_detection {
 
-Transformation alignDetectionUsingPcaAndIcp(
-    const cgal::MeshModel::Ptr& mesh_model,
-    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud, const std::string& config_file,
-    Transformation* T_object_detection_init) {
-  CHECK(T_object_detection_init);
-  std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
-
-  // Get initial guess with PCA
-  Transformation T_detection_object_pca = pca(mesh_model, detection_pointcloud);
-  *T_object_detection_init = T_detection_object_pca.inverse();
-
-  // Get final alignment with ICP
-  Transformation T_object_detection =
-      icp(mesh_model, detection_pointcloud, *T_object_detection_init, config_file);
-
-  LOG(INFO) << "Time matching total: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
-            << " s";
-  return T_object_detection;
-}
-
-Transformation alignDetectionUsingPcaAndIcp(
-    const cgal::MeshModel::Ptr& mesh_model,
-    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
-  Transformation T;
-  std::string config_file;
-  return alignDetectionUsingPcaAndIcp(mesh_model, detection_pointcloud, config_file, &T);
-}
-
-Transformation alignDetectionUsingPcaAndIcp(
-    const cgal::MeshModel::Ptr& mesh_model,
-    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud, const std::string& config_file) {
-  Transformation T;
-  return alignDetectionUsingPcaAndIcp(mesh_model, detection_pointcloud, config_file, &T);
-}
-
 Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
   CHECK_NOTNULL(mesh_model);
@@ -384,7 +348,7 @@ modelify::PointSurfelCloudType estimateNormals(
   return pointcloud_surfels;
 }
 
-modelify::PointSurfelCloudType getKeypoints(
+modelify::PointSurfelCloudType computeKeypoints(
     const KeypointType& keypoint_type,
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr) {
   modelify::PointSurfelCloudType::Ptr keypoints(new modelify::PointSurfelCloudType());
@@ -422,7 +386,7 @@ modelify::PointSurfelCloudType getKeypoints(
 }
 
 template <>
-pcl::PointCloud<modelify::DescriptorSHOT> getDescriptors<modelify::DescriptorSHOT>(
+pcl::PointCloud<modelify::DescriptorSHOT> computeDescriptors<modelify::DescriptorSHOT>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
   modelify::feature_toolbox::SHOTParams shot_params;
@@ -435,7 +399,7 @@ pcl::PointCloud<modelify::DescriptorSHOT> getDescriptors<modelify::DescriptorSHO
 }
 
 template <>
-pcl::PointCloud<modelify::DescriptorFPFH> getDescriptors<modelify::DescriptorFPFH>(
+pcl::PointCloud<modelify::DescriptorFPFH> computeDescriptors<modelify::DescriptorFPFH>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
   modelify::feature_toolbox::FPFHParams fpfh_params;

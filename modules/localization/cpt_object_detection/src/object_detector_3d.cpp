@@ -51,13 +51,13 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
     switch (descriptor_type_) {
       case kFpfh:
         object_descriptors_fpfh_.reset(new modelify::DescriptorFPFHCloudType());
-        get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, object_surfels_, object_keypoints_,
-                                                object_descriptors_fpfh_);
+        compute3dFeatures<modelify::DescriptorFPFH>(
+            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_fpfh_);
         break;
       case kShot:
         object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
-        get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, object_surfels_, object_keypoints_,
-                                                object_descriptors_shot_);
+        compute3dFeatures<modelify::DescriptorSHOT>(
+            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_shot_);
         break;
       default:
         LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
@@ -164,7 +164,8 @@ void ObjectDetector3D::subscribeToTopics() {
 
 void ObjectDetector3D::advertiseTopics() {
   object_pointcloud_pub_ = nh_private_.advertise<sensor_msgs::PointCloud2>("object_pcl", 1, true);
-  LOG(INFO) << "Publishing object poincloud to topic [" << object_pointcloud_pub_.getTopic() << "]";
+  LOG(INFO) << "Publishing object pointcloud to topic [" << object_pointcloud_pub_.getTopic()
+            << "]";
   object_mesh_pub_ = nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh", 1, true);
   LOG(INFO) << "Publishing object mesh to topic [" << object_mesh_pub_.getTopic() << "]";
   object_mesh_init_pub_ =
@@ -198,9 +199,18 @@ void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& c
 }
 
 void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
-  Transformation T_object_detection_init;
-  Transformation T_object_detection = alignDetectionUsingPcaAndIcp(
-      mesh_model_, detection_pointcloud_, icp_config_file_, &T_object_detection_init);
+  std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
+
+  // Get initial guess with PCA
+  Transformation T_object_detection_init = pca(mesh_model_, detection_pointcloud_).inverse();
+
+  // Get final alignment with ICP
+  T_object_detection =
+      icp(mesh_model_, detection_pointcloud_, T_object_detection_init, icp_config_file_);
+
+  LOG(INFO) << "Time matching total: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+            << " s";
 
   // Publish transformations to TF
   publishTransformation(T_object_detection_init.inverse(), detection_stamp_, detection_frame_id_,
@@ -246,8 +256,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     case kFpfh: {
       typename pcl::PointCloud<modelify::DescriptorFPFH>::Ptr detection_descriptors_fpfh(
           new pcl::PointCloud<modelify::DescriptorFPFH>());
-      get3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, detection_surfels,
-                                              detection_keypoints, detection_descriptors_fpfh);
+      compute3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, detection_surfels,
+                                                  detection_keypoints, detection_descriptors_fpfh);
       T_features = computeTransformUsing3dFeatures<modelify::DescriptorFPFH>(
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_fpfh,
           object_surfels_, object_keypoints_, object_descriptors_fpfh_, correspondence_threshold_,
@@ -257,8 +267,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     case kShot: {
       typename pcl::PointCloud<modelify::DescriptorSHOT>::Ptr detection_descriptors_shot(
           new pcl::PointCloud<modelify::DescriptorSHOT>());
-      get3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, detection_surfels,
-                                              detection_keypoints, detection_descriptors_shot);
+      compute3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, detection_surfels,
+                                                  detection_keypoints, detection_descriptors_shot);
       T_features = computeTransformUsing3dFeatures<modelify::DescriptorSHOT>(
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_shot,
           object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
