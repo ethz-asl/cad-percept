@@ -5,7 +5,7 @@ Launch file for Selective ICP
 
 <launch>
 
-	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
+	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla_grinding_string.json" />
 
 	<node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen" >
     <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
