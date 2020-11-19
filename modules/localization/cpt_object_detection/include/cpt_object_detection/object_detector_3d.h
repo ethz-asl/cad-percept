@@ -25,6 +25,7 @@ class ObjectDetector3D {
 
   void objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
 
+  bool initializeObject();
   void processDetectionUsingPcaAndIcp();
   void processDetectionUsing3dFeatures();
 
