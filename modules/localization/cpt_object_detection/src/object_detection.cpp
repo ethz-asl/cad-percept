@@ -374,7 +374,7 @@ pcl::PointCloud<modelify::DescriptorFPFH> computeDescriptors<modelify::Descripto
 }
 
 template <>
-pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
+pcl::PointCloud<LearnedDescriptor> computeDescriptors<LearnedDescriptor>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
   // Parameters
@@ -403,7 +403,7 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
   Eigen::Vector4f origin = pcl_xyz.sensor_origin_;
   Eigen::Quaternionf orientation = pcl_xyz.sensor_orientation_;
   pcl::PCLPointCloud2 blob;
-  pcl::toPCLPointCloud2 (pcl_xyz, blob);
+  pcl::toPCLPointCloud2(pcl_xyz, blob);
   blob.row_step = blob.data.size();
   blob.width = pcl_xyz.size();
   pcl::PLYWriter ply_writer;
@@ -427,8 +427,8 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
   // Prep input
   std::string python_path = "/home/laura/pilot_ws/src/3DSmoothNet";
   std::string command_parametrize = python_path + "/3DSmoothNet -r " + radius_str + " -f " +
-                                 filename_pointcloud + " -k " + filename_keypoints + " -o " +
-                                 filepath_input;
+                                    filename_pointcloud + " -k " + filename_keypoints + " -o " +
+                                    filepath_input;
 
   LOG(INFO) << "\n------------------------------------------------PYHTON------------------------"
                "-----------------------\n"
@@ -446,12 +446,12 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
 
   // Get Descriptors by inference
   std::string command_inference = "python3 " + python_path +
-                               "/main_cnn.py --run_mode=test "
-                               "--evaluate_input_folder=" +
-                               filepath_input + " --evaluate_output_folder=" + filepath_output +
-                               " --saved_model_dir=" + python_path + "/models/" +
-                               " --training_data_folder=" + python_path +
-                               "/data/train/trainingData3DMatch";
+                                  "/main_cnn.py --run_mode=test "
+                                  "--evaluate_input_folder=" +
+                                  filepath_input + " --evaluate_output_folder=" + filepath_output +
+                                  " --saved_model_dir=" + python_path + "/models/" +
+                                  " --training_data_folder=" + python_path +
+                                  "/data/train/trainingData3DMatch";
 
   LOG(INFO) << "\n------------------------------------------------PYHTON------------------------"
                "-----------------------\n"
@@ -475,7 +475,7 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
       LearnedDescriptor point{};
       int i = 0;
       while (!line_str.empty() && i < LearnedDescriptor::descriptorSize()) {
-        size_t idx = line_str.find_first_of(",");
+        size_t idx = line_str.find_first_of(',');
         point.learned_descriptor[i] = std::stof(line_str.substr(0, idx));
         line_str.erase(0, idx + 1);
         ++i;

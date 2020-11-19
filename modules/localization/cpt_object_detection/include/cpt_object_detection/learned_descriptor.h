@@ -1,7 +1,6 @@
-#ifndef CPT_OBJECT_DETECTION_MODULES_LOCALIZATION_CPT_OBJECT_DETECTION_INCLUDE_CPT_OBJECT_DETECTION_LEARNED_DESCRIPTOR_H_
-#define CPT_OBJECT_DETECTION_MODULES_LOCALIZATION_CPT_OBJECT_DETECTION_INCLUDE_CPT_OBJECT_DETECTION_LEARNED_DESCRIPTOR_H_
+#ifndef CPT_OBJECT_DETECTION_LEARNED_DESCRIPTOR_H_
+#define CPT_OBJECT_DETECTION_LEARNED_DESCRIPTOR_H_
 
-#define PCL_NO_PRECOMPILE
 #include <modelify/pcl_common.h>
 #include <modelify/registration_toolbox/fast_global_registration.h>
 #include <pcl/pcl_macros.h>
@@ -31,8 +30,4 @@ inline float registration_toolbox::fast_global_registration::getDescriptorBin<Le
 
 }  // namespace modelify
 
-/*template <>
-class pcl::DefaultPointRepresentation<LearnedDescriptor>
-    : public pcl::DefaultFeatureRepresentation<LearnedDescriptor> {};*/
-
-#endif  // CPT_OBJECT_DETECTION_MODULES_LOCALIZATION_CPT_OBJECT_DETECTION_INCLUDE_CPT_OBJECT_DETECTION_LEARNED_DESCRIPTOR_H_
+#endif  // CPT_OBJECT_DETECTION_LEARNED_DESCRIPTOR_H_

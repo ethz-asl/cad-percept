@@ -105,8 +105,8 @@ bool ObjectDetector3D::initializeObject() {
         break;
       case k3dSmoothNet:
         object_descriptors_learned_.reset(new pcl::PointCloud<LearnedDescriptor>());
-        get3dFeatures<LearnedDescriptor>(keypoint_type_, object_surfels_, object_keypoints_,
-                                         object_descriptors_learned_);
+        success = compute3dFeatures<LearnedDescriptor>(
+            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_learned_);
         break;
       default:
         LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
@@ -340,8 +340,8 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     case k3dSmoothNet: {
       typename pcl::PointCloud<LearnedDescriptor>::Ptr detection_descriptors_learned(
           new pcl::PointCloud<LearnedDescriptor>());
-      get3dFeatures<LearnedDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
-                                       detection_descriptors_learned);
+      compute3dFeatures<LearnedDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
+                                           detection_descriptors_learned);
       T_features = computeTransformUsing3dFeatures<LearnedDescriptor>(
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_learned,
           object_surfels_, object_keypoints_, object_descriptors_learned_,
