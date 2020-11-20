@@ -65,7 +65,7 @@ The results are then published as described previously.
 A further approach is given by the use of 3D features of the detection and the object pointcloud.
 The function `processDetectionUsing3dFeatures` is called for every detection pointcloud.
 After an initial downsampling of the pointcloud, we compute the features using the function
-`get3dFeatures` and the corresponding transform using `computeTransformUsing3dFeatures`.
+`compute3dFeatures` and the corresponding transform using `computeTransformUsing3dFeatures`.
 The alignment is further refined using ICP as described in the previous section.
 The following configurations of 3D features are supported: 
 

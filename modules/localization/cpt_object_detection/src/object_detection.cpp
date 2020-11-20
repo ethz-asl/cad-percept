@@ -12,42 +12,6 @@
 
 namespace cad_percept::object_detection {
 
-Transformation alignDetectionUsingPcaAndIcp(
-    const cgal::MeshModel::Ptr& mesh_model,
-    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud, const std::string& config_file,
-    Transformation* T_object_detection_init) {
-  CHECK(T_object_detection_init);
-  std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
-
-  // Get initial guess with PCA
-  Transformation T_detection_object_pca = pca(mesh_model, detection_pointcloud);
-  *T_object_detection_init = T_detection_object_pca.inverse();
-
-  // Get final alignment with ICP
-  Transformation T_object_detection =
-      icp(mesh_model, detection_pointcloud, *T_object_detection_init, config_file);
-
-  LOG(INFO) << "Time matching total: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
-            << " s";
-  return T_object_detection;
-}
-
-Transformation alignDetectionUsingPcaAndIcp(
-    const cgal::MeshModel::Ptr& mesh_model,
-    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
-  Transformation T;
-  std::string config_file;
-  return alignDetectionUsingPcaAndIcp(mesh_model, detection_pointcloud, config_file, &T);
-}
-
-Transformation alignDetectionUsingPcaAndIcp(
-    const cgal::MeshModel::Ptr& mesh_model,
-    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud, const std::string& config_file) {
-  Transformation T;
-  return alignDetectionUsingPcaAndIcp(mesh_model, detection_pointcloud, config_file, &T);
-}
-
 Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
   CHECK_NOTNULL(mesh_model);
@@ -83,9 +47,11 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
 
   // Compute PCA for object triangles
   CGAL::Simple_cartesian<double>::Plane_3 plane;
-  CGAL::Simple_cartesian<double>::Point_3 object_centroid;
-  CGAL::linear_least_squares_fitting_3(triangles.begin(), triangles.end(), plane, object_centroid,
+  CGAL::Simple_cartesian<double>::Point_3 object_centroid_cgal;
+  CGAL::linear_least_squares_fitting_3(triangles.begin(), triangles.end(), plane, object_centroid_cgal,
                                        CGAL::Dimension_tag<2>());
+  Eigen::Vector3f object_centroid(object_centroid_cgal.x(), object_centroid_cgal.y(),
+                                  object_centroid_cgal.z());
 
   // Get coordinate system from PCA
   Eigen::Matrix3f object_vectors;
@@ -98,13 +64,13 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
                       plane.orthogonal_vector().z())
           .normalized();
 
-  // Translation from mean of pointclouds det_r_obj_det
-  kindr::minimal::PositionTemplate<float> translation(
-      detection_centroid.head(3) -
-      Eigen::Vector3f(object_centroid.x(), object_centroid.y(), object_centroid.z()));
-
   // Get rotation between detection and object pointcloud
   Eigen::Matrix3f rotation_matrix = detection_vectors * object_vectors.transpose();
+
+  // Translation from mean of pointclouds det_r_obj_det
+  object_centroid = rotation_matrix * object_centroid;
+  kindr::minimal::PositionTemplate<float> translation(
+      detection_centroid.head(3) - object_centroid);
 
   Quaternion rotation;
   rotation.setIdentity();
@@ -153,7 +119,7 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
   // icp: reference - object mesh, data - detection cloud
   PM::TransformationParameters T_object_detection_icp;
   try {
-    T_object_detection_icp = icp.compute(points_detection, points_object,
+    T_object_detection_icp = icp.compute(points_object, points_detection,
                                          T_object_detection_init.getTransformationMatrix());
   } catch (PM::ConvergenceError& error_msg) {
     LOG(ERROR) << "ICP was not successful!";
@@ -300,49 +266,6 @@ PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& poin
   return PM::DataPoints(features, feature_labels);
 }
 
-Transformation refineUsingICP(const cgal::MeshModel::Ptr& mesh_model,
-                              const modelify::PointSurfelCloudType::Ptr& detection_pointcloud,
-                              const modelify::PointSurfelCloudType::Ptr& object_pointcloud,
-                              const Transformation& transform_init,
-                              const std::string& config_file) {
-  // Validate initial alignment
-  modelify::registration_toolbox::ICPParams icp_params;
-  double cloud_resolution = modelify::kInvalidCloudResolution;
-  double mean_squared_distance;
-  double inlier_ratio;
-  std::vector<size_t> outlier_indices;
-  modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-      detection_pointcloud, object_pointcloud, transform_init.getTransformationMatrix(), icp_params,
-      cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
-  LOG(INFO) << "Initial validation results: \n"
-            << mean_squared_distance << " mean squared distance, " << inlier_ratio
-            << " inlier ratio";
-
-  // Refine transformation with ICP
-  pcl::PointCloud<pcl::PointXYZ> detection_xyz;
-  pcl::copyPointCloud(*detection_pointcloud, detection_xyz);
-  Transformation transform_icp = icp(mesh_model, detection_xyz, transform_init, config_file);
-
-  // Validate alignment ICP
-  double mean_squared_distance_icp = 0;
-  double inlier_ratio_icp = mean_squared_distance;
-  modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-      detection_pointcloud, object_pointcloud, transform_icp.getTransformationMatrix(), icp_params,
-      cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
-  LOG(INFO) << "ICP validation results: \n"
-            << mean_squared_distance_icp << " mean squared distance, " << inlier_ratio_icp
-            << " inlier ratio";
-
-  if (inlier_ratio_icp >= inlier_ratio) {
-    // TODO(gasserl): include mean_squared_distance_icp < mean_squared_distance
-    return transform_icp;
-  } else {
-    LOG(WARNING) << "ICP didn't improve alignment!";
-  }
-
-  return transform_init;
-}
-
 modelify::PointSurfelCloudType estimateNormals(
     const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz) {
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -387,7 +310,7 @@ modelify::PointSurfelCloudType estimateNormals(
   return pointcloud_surfels;
 }
 
-modelify::PointSurfelCloudType getKeypoints(
+modelify::PointSurfelCloudType computeKeypoints(
     const KeypointType& keypoint_type,
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr) {
   modelify::PointSurfelCloudType::Ptr keypoints(new modelify::PointSurfelCloudType());
@@ -425,7 +348,7 @@ modelify::PointSurfelCloudType getKeypoints(
 }
 
 template <>
-pcl::PointCloud<modelify::DescriptorSHOT> getDescriptors<modelify::DescriptorSHOT>(
+pcl::PointCloud<modelify::DescriptorSHOT> computeDescriptors<modelify::DescriptorSHOT>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
   modelify::feature_toolbox::SHOTParams shot_params;
@@ -438,7 +361,7 @@ pcl::PointCloud<modelify::DescriptorSHOT> getDescriptors<modelify::DescriptorSHO
 }
 
 template <>
-pcl::PointCloud<modelify::DescriptorFPFH> getDescriptors<modelify::DescriptorFPFH>(
+pcl::PointCloud<modelify::DescriptorFPFH> computeDescriptors<modelify::DescriptorFPFH>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
   modelify::feature_toolbox::FPFHParams fpfh_params;
@@ -451,7 +374,7 @@ pcl::PointCloud<modelify::DescriptorFPFH> getDescriptors<modelify::DescriptorFPF
 }
 
 template <>
-pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
+pcl::PointCloud<LearnedDescriptor> computeDescriptors<LearnedDescriptor>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
   // Parameters
@@ -480,7 +403,7 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
   Eigen::Vector4f origin = pcl_xyz.sensor_origin_;
   Eigen::Quaternionf orientation = pcl_xyz.sensor_orientation_;
   pcl::PCLPointCloud2 blob;
-  pcl::toPCLPointCloud2 (pcl_xyz, blob);
+  pcl::toPCLPointCloud2(pcl_xyz, blob);
   blob.row_step = blob.data.size();
   blob.width = pcl_xyz.size();
   pcl::PLYWriter ply_writer;
@@ -504,8 +427,8 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
   // Prep input
   std::string python_path = "/home/laura/pilot_ws/src/3DSmoothNet";
   std::string command_parametrize = python_path + "/3DSmoothNet -r " + radius_str + " -f " +
-                                 filename_pointcloud + " -k " + filename_keypoints + " -o " +
-                                 filepath_input;
+                                    filename_pointcloud + " -k " + filename_keypoints + " -o " +
+                                    filepath_input;
 
   LOG(INFO) << "\n------------------------------------------------PYHTON------------------------"
                "-----------------------\n"
@@ -523,12 +446,12 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
 
   // Get Descriptors by inference
   std::string command_inference = "python3 " + python_path +
-                               "/main_cnn.py --run_mode=test "
-                               "--evaluate_input_folder=" +
-                               filepath_input + " --evaluate_output_folder=" + filepath_output +
-                               " --saved_model_dir=" + python_path + "/models/" +
-                               " --training_data_folder=" + python_path +
-                               "/data/train/trainingData3DMatch";
+                                  "/main_cnn.py --run_mode=test "
+                                  "--evaluate_input_folder=" +
+                                  filepath_input + " --evaluate_output_folder=" + filepath_output +
+                                  " --saved_model_dir=" + python_path + "/models/" +
+                                  " --training_data_folder=" + python_path +
+                                  "/data/train/trainingData3DMatch";
 
   LOG(INFO) << "\n------------------------------------------------PYHTON------------------------"
                "-----------------------\n"
@@ -552,7 +475,7 @@ pcl::PointCloud<LearnedDescriptor> getDescriptors<LearnedDescriptor>(
       LearnedDescriptor point{};
       int i = 0;
       while (!line_str.empty() && i < LearnedDescriptor::descriptorSize()) {
-        size_t idx = line_str.find_first_of(",");
+        size_t idx = line_str.find_first_of(',');
         point.learned_descriptor[i] = std::stof(line_str.substr(0, idx));
         line_str.erase(0, idx + 1);
         ++i;
