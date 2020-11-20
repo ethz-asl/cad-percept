@@ -44,9 +44,11 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
 
   // Compute PCA for object triangles
   CGAL::Simple_cartesian<double>::Plane_3 plane;
-  CGAL::Simple_cartesian<double>::Point_3 object_centroid;
-  CGAL::linear_least_squares_fitting_3(triangles.begin(), triangles.end(), plane, object_centroid,
+  CGAL::Simple_cartesian<double>::Point_3 object_centroid_cgal;
+  CGAL::linear_least_squares_fitting_3(triangles.begin(), triangles.end(), plane, object_centroid_cgal,
                                        CGAL::Dimension_tag<2>());
+  Eigen::Vector3f object_centroid(object_centroid_cgal.x(), object_centroid_cgal.y(),
+                                  object_centroid_cgal.z());
 
   // Get coordinate system from PCA
   Eigen::Matrix3f object_vectors;
@@ -59,13 +61,13 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
                       plane.orthogonal_vector().z())
           .normalized();
 
-  // Translation from mean of pointclouds det_r_obj_det
-  kindr::minimal::PositionTemplate<float> translation(
-      detection_centroid.head(3) -
-      Eigen::Vector3f(object_centroid.x(), object_centroid.y(), object_centroid.z()));
-
   // Get rotation between detection and object pointcloud
   Eigen::Matrix3f rotation_matrix = detection_vectors * object_vectors.transpose();
+
+  // Translation from mean of pointclouds det_r_obj_det
+  object_centroid = rotation_matrix * object_centroid;
+  kindr::minimal::PositionTemplate<float> translation(
+      detection_centroid.head(3) - object_centroid);
 
   Quaternion rotation;
   rotation.setIdentity();
