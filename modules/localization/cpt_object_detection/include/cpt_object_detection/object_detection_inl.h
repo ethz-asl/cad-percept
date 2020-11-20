@@ -72,7 +72,7 @@ modelify::CorrespondencesType computeCorrespondences(
   }
   flann_params.keep_statistics = true;
   modelify::registration_toolbox::matchDescriptorsFlannSearch<descriptor_type>(
-      detection_descriptors, object_descriptors, flann_params, correspondences);
+      object_descriptors, detection_descriptors, flann_params, correspondences);
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   if (correspondences->empty()) {
     LOG(ERROR) << "No correspondences found!";
@@ -83,7 +83,7 @@ modelify::CorrespondencesType computeCorrespondences(
   // Filter correspondences
   modelify::registration_toolbox::RansacParams ransac_params;
   modelify::CorrespondencesTypePtr filtered_correspondences(new modelify::CorrespondencesType());
-  if (!modelify::registration_toolbox::filterCorrespondences(detection_keypoints, object_keypoints,
+  if (!modelify::registration_toolbox::filterCorrespondences(object_keypoints, detection_keypoints,
                                                              ransac_params, correspondences,
                                                              filtered_correspondences)) {
     LOG(WARNING) << "Filtering correspondences failed!";
@@ -118,7 +118,7 @@ Transformation computeTransformUsingGeometricConsistency(
   modelify::TransformationVector T_geometric_consistency;
   std::vector<modelify::CorrespondencesType> clustered_correspondences;
   if (!modelify::registration_toolbox::alignKeypointsGeometricConsistency(
-          detection_keypoints, object_keypoints, correspondences,
+          object_keypoints, detection_keypoints, correspondences,
           consistency_params.min_cluster_size, consistency_params.consensus_set_resolution_m,
           &T_geometric_consistency, &clustered_correspondences)) {
     LOG(ERROR) << "Keypoint alignment failed!";
@@ -162,7 +162,7 @@ Transformation computeTransformUsingFgr(
   modelify::Correspondences corrs;
   if (!modelify::registration_toolbox::fast_global_registration::
           estimateTransformationFastGlobalRegistration<modelify::PointSurfelType, descriptor_type>(
-              detection_surfels, object_surfels, detection_keypoints, object_keypoints,
+      object_surfels, object_keypoints, detection_surfels, detection_keypoints,
               detection_descriptors, object_descriptors, fgr_params, &corrs, &transform)) {
     LOG(ERROR) << "Fast global registration was not successful!";
     return Transformation();
@@ -220,7 +220,7 @@ Transformation computeTransformUsingTeaser(
   params.rotation_cost_threshold = 0.005;
   teaser::RobustRegistrationSolver solver(params);
   begin = std::chrono::steady_clock::now();
-  teaser::RegistrationSolution solution = solver.solve(detection_matrix, object_matrix);
+  teaser::RegistrationSolution solution = solver.solve(object_matrix, detection_matrix);
   end = std::chrono::steady_clock::now();
   LOG(INFO) << "Time teaser: " << std::chrono::duration<float>(end - begin).count() << " s";
 

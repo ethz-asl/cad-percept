@@ -253,7 +253,7 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
 
   // Get initial guess with PCA
-  Transformation T_object_detection_init = pca(mesh_model_, detection_pointcloud_).inverse();
+  Transformation T_object_detection_init = pca(mesh_model_, detection_pointcloud_);
 
   // Get final alignment with ICP
   Transformation T_object_detection;
@@ -269,9 +269,9 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
             << " s";
 
   // Publish transformations to TF
-  publishTransformation(T_object_detection_init.inverse(), detection_stamp_, detection_frame_id_,
+  publishTransformation(T_object_detection_init, detection_stamp_, detection_frame_id_,
                         object_frame_id_ + "_init");
-  publishTransformation(T_object_detection.inverse(), detection_stamp_, detection_frame_id_,
+  publishTransformation(T_object_detection, detection_stamp_, detection_frame_id_,
                         object_frame_id_);
 
   // Visualize object
@@ -360,7 +360,7 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
                            detection_frame_id_, correspondences_pub_);
 
   // Publish initial transform
-  publishTransformation(T_features.inverse(), detection_stamp_, detection_frame_id_,
+  publishTransformation(T_features, detection_stamp_, detection_frame_id_,
                         object_frame_id_ + "_init");
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
 
@@ -374,7 +374,7 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     double inlier_ratio;
     std::vector<size_t> outlier_indices;
     modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-        detection_surfels, object_surfels_, T_features.getTransformationMatrix(), icp_params,
+        object_surfels_, detection_surfels, T_features.getTransformationMatrix(), icp_params,
         cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
     LOG(INFO) << "Initial validation results: \n"
               << mean_squared_distance << " mean squared distance, " << inlier_ratio
@@ -392,7 +392,7 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
     double mean_squared_distance_icp;
     double inlier_ratio_icp;
     modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-        detection_surfels, object_surfels_, T_icp.getTransformationMatrix(), icp_params,
+        object_surfels_, detection_surfels, T_icp.getTransformationMatrix(), icp_params,
         cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
     LOG(INFO) << "ICP validation results: \n"
               << mean_squared_distance_icp << " mean squared distance, " << inlier_ratio_icp
@@ -414,7 +414,7 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
   }
 
   // Publish results
-  publishTransformation(T_refined.inverse(), detection_stamp_, detection_frame_id_,
+  publishTransformation(T_refined, detection_stamp_, detection_frame_id_,
                         object_frame_id_);
   visualizePointcloud(object_pointcloud_, detection_stamp_, detection_frame_id_,
                       object_pointcloud_pub_);
@@ -495,12 +495,12 @@ void ObjectDetector3D::visualizeCorrespondences(
   geometry_msgs::Point point_msg;
   marker.points.clear();
   for (auto it = correspondences->begin(); it != correspondences->end(); it++) {
-    const auto& point_object = object_keypoints->points[it->index_match];
+    const auto& point_object = object_keypoints->points[it->index_query];
     point_msg.x = point_object.x;
     point_msg.y = point_object.y;
     point_msg.z = point_object.z;
     marker.points.push_back(point_msg);
-    const auto& point_detection = detection_keypoints->points[it->index_query];
+    const auto& point_detection = detection_keypoints->points[it->index_match];
     point_msg.x = point_detection.x;
     point_msg.y = point_detection.y;
     point_msg.z = point_detection.z;

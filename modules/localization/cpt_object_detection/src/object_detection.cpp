@@ -116,7 +116,7 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
   // icp: reference - object mesh, data - detection cloud
   PM::TransformationParameters T_object_detection_icp;
   try {
-    T_object_detection_icp = icp.compute(points_detection, points_object,
+    T_object_detection_icp = icp.compute(points_object, points_detection,
                                          T_object_detection_init.getTransformationMatrix());
   } catch (PM::ConvergenceError& error_msg) {
     LOG(ERROR) << "ICP was not successful!";
