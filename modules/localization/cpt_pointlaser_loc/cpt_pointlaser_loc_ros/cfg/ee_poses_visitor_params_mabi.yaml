@@ -1,0 +1,14 @@
+arm_controller: MabiExternalPathEndeffectorTrackingController
+# Name of the service that switches the arm controller.
+arm_controller_switch_service_name: /mabi_mobile_highlevel_controller/controller_manager/switch_controller
+# Topic name for the path that the end-effector should follow during the movements.
+path_topic_name: /mission_control/planned_path
+# Initial pose in the arm base frame to which the end effector should be set before
+# starting the HAL routine (obtained from URDF).
+armbase_to_ee_initial_hal_pose: "-0.0396287 -0.5516176 0.7162148 -0.7069676 0.7071617 0.0071219 0.0082710"
+# Time (in seconds) - from the sending of the path message to the controller - after which the movement
+# is assumed to be completed.
+timeout_arm_movement: 10.0
+# Index of the collection of movements to perform. Can be 0, 1, 2, cf.
+# `movement_type_<movenent_to_perform>` in`common_params_mabi.yaml`.
+movement_to_perform: 0
