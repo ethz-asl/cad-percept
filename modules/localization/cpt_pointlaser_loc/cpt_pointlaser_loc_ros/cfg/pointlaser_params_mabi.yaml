@@ -6,29 +6,3 @@ fix_cad_planes: false
 only_optimize_translation: true
 # If true, the HAL optimizer is run in verbose mode.
 verbose_optimizer: false
-# Topic name of a reference link that has fixed pose w.r.t. to the lasers.
-reference_link_topic_name: WRIST_2
-# Topic name of the end effector.
-end_effector_topic_name: end_effector
-# TODO(fmilano): Remove these movements if not read anywhere else in the pipeline.
-movement_type_0:  # Church-yard
-  - "0 0 0 0.999848 0.0174524 0 0" # 2 x 0 y 0 z
-  - "0 0 0 0.999 0.044 0 0" # 5 deg around x
-  - "0 0 0 0.998 -0.044 0.044 -0.002" # back and 5 deg around y
-  - "0 0 0 0.996 0 -0.087 0" # back and -5 deg around y
-  - "0 0 0 0.998 0.002 0.044 0.044" # back and 5 deg around z
-  - "0 0 0 0.996 0 0 -0.087" # back and -5 deg around z
-movement_type_2:  # Lillian
-  - "0 0 0 0.999048 -0.026161 0.000913562 0.0348875" # -2 x 0 y 4 z
-  - "0 0 0 0.999848 0 0.0174524 0" # 0 x 2 y 0 z
-  - "0 0 0 0.999695 -0.000304586 -0.0174497 0.0174497" # 0 x -2 y 2 z
-  - "0 0 0 0.999848 0 0 0.0174524" # 0 x 0 y 2 z
-  - "0 0 0 0.999848 0 -0.0174524 0" # 0 x -2 y 0 z
-  - "0 0 0 0.99981 -0.00872521 0.0174517 -0.000152299" # -1 x 2 y 0 z
-movement_type_1:  # Belin beach
-  - "0 0 0 0.999048 -0.0436194 0 0" # -5 deg around x, to avoid the pipe
-  - "0 0 0 0.999848 -0.0174524 0 0" # -2 x 2 y 0 z
-  - "0 0 0 0.999848 0 0 0.0174524" # 0 x 0 y 2 z
-  - "0 0 0 0.999695 0.0174497 -0.0174497 -0.000304586" # 2 x -2 y 0 z
-  - "0 0 0 0.999239 -0.0174418 0.00060908 0.0348942" # -2 x 0 y 4 z
-  - "0 0 0 0.999695 0.0174497 0.0174497 0.000304586" # 2 x 2 y 0 z

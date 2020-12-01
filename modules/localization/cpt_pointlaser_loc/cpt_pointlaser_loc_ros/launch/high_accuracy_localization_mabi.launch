@@ -3,10 +3,15 @@
 <launch>
   <arg name="pointlaser_config_file"
        default="cfg/pointlaser_params_mabi.yaml"
-       doc="YAML file holding the parameters."/>
+       doc="YAML file holding the parameters for the point-laser localizer."/>
+  <arg name="common_params_file"
+       default="cfg/common_params_mabi.yaml"
+       doc="YAML file holding the common parameters."/>
   <arg name="distobox_usb_port"
        default="/dev/serial/by-id/usb-Silicon_Labs_CP2103_USB_to_UART_Bridge_Controller_0001-if00-port0"
        doc="Path of the USB port that the distobox is connected at."/>
+  <!-- Load common parameters -->
+  <rosparam command="load" file="$(find cpt_pointlaser_loc_ros)/$(arg common_params_file)" />
   <!-- Calibration node: tf transforms between lasers and reference link -->
   <include file="$(find cpt_pointlaser_loc_ros)/launch/lasers_tf_publishers_mabi.launch">
   </include>

@@ -37,17 +37,15 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   }
   pointlaser_noise_std_ = nh_private_.param<double>("pointlaser_noise_std", 1.0);
 
-  if (!nh_private.hasParam("reference_link_topic_name")) {
+  if (!nh.hasParam("reference_link_topic_name")) {
     ROS_ERROR("'reference_link_topic_name' not set as parameter.");
   }
-  reference_link_topic_name_ =
-      nh_private_.param<std::string>("reference_link_topic_name", "grinder");
+  reference_link_topic_name_ = nh.param<std::string>("reference_link_topic_name", "grinder");
 
-  if (!nh_private.hasParam("end_effector_topic_name")) {
+  if (!nh.hasParam("end_effector_topic_name")) {
     ROS_ERROR("'end_effector_topic_name' not set as parameter.");
   }
-  end_effector_topic_name_ =
-      nh_private_.param<std::string>("end_effector_topic_name", "end_effector");
+  end_effector_topic_name_ = nh.param<std::string>("end_effector_topic_name", "end_effector");
 
   advertiseTopics();
 }
