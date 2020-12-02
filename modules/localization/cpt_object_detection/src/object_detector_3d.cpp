@@ -255,6 +255,10 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   // Get initial guess with PCA
   Transformation T_object_detection_init = pca(mesh_model_, detection_pointcloud_);
 
+  // Optimize orientation
+  T_object_detection_init =
+      optimizeTransformation(*mesh_model_, detection_pointcloud_, T_object_detection_init);
+
   // Get final alignment with ICP
   Transformation T_object_detection;
   if (use_icp_on_pointcloud_) {

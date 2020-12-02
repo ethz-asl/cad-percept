@@ -87,6 +87,136 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
   return Transformation(rotation, translation);
 }
 
+Transformation optimizeTransformation(const modelify::PointSurfelCloudType::Ptr& object_surfels,
+                                      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+                                      const Transformation& T_init) {
+  std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
+
+  pcl::CentroidPoint<pcl::PointSurfel> centroid_cal;
+  for (const auto& point : object_surfels->points) {
+    centroid_cal.add(point);
+  }
+  pcl::PointSurfel centroid_pcl;
+  centroid_cal.get(centroid_pcl);
+  Position centroid(centroid_pcl.x, centroid_pcl.y, centroid_pcl.z);
+
+  std::vector<Quaternion> rotations;
+  rotations.emplace_back();
+  rotations.emplace_back(0, 1, 0, 0);
+  rotations.emplace_back(0, 0, 1, 0);
+  rotations.emplace_back(0, 0, 0, 1);
+
+  std::vector<Position> translations;
+  translations.emplace_back();
+  translations.emplace_back(0, 2 * centroid.y(), 2 * centroid.z());
+  translations.emplace_back(2 * centroid.x(), 0, 2 * centroid.z());
+  translations.emplace_back(2 * centroid.x(), 2 * centroid.y(), 0);
+
+  std::vector<Transformation> transformations;
+  transformations.reserve(4);
+  std::vector<double> inlier_ratios;
+  inlier_ratios.reserve(4);
+  std::vector<double> mean_squared_distances;
+  mean_squared_distances.reserve(4);
+  std::vector<double> optimization_criteria;
+  optimization_criteria.reserve(4);
+
+  for (size_t i = 0; i < rotations.size(); ++i) {
+    transformations[i] = Transformation(rotations[i], translations[i]);
+    Transformation T_test = T_init * transformations[i];
+    modelify::registration_toolbox::ICPParams icp_params;
+    icp_params.inlier_distance_threshold_m = 0.01;
+    double cloud_resolution = modelify::kInvalidCloudResolution;
+    double mean_squared_distance;
+    double inlier_ratio;
+    std::vector<size_t> outlier_indices;
+    modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+        object_surfels, detection_surfels, T_test.getTransformationMatrix(), icp_params,
+        cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
+    // Save results
+    inlier_ratios.emplace_back(inlier_ratio);
+    mean_squared_distances.emplace_back(mean_squared_distance);
+    optimization_criteria.emplace_back(inlier_ratio / mean_squared_distance);
+  }
+  LOG(INFO) << "Time optimization: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+            << " s";
+
+  // Select best orientation
+  const auto& most_inliers = std::max_element(inlier_ratios.begin(), inlier_ratios.end());
+  // TODO(gasserl): consider other criteria
+  return T_init * transformations[std::distance(inlier_ratios.begin(), most_inliers)];
+}
+
+Transformation optimizeTransformation(const cgal::MeshModel& mesh_model,
+                                      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+                                      const Transformation& T_init) {
+  std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
+
+  std::vector<CGAL::Simple_cartesian<double>::Triangle_3> triangles;
+  triangles.reserve(mesh_model.size());
+  for (const auto& id : mesh_model.getFacetIds()) {
+    triangles.push_back(mesh_model.getTriangle(id));
+  }
+  cgal::Point centroid_cgal = CGAL::centroid(triangles.begin(), triangles.end());
+  Position centroid(centroid_cgal.x(), centroid_cgal.y(), centroid_cgal.z());
+
+  std::vector<Quaternion> rotations;
+  rotations.emplace_back();
+  rotations.emplace_back(0, 1, 0, 0);
+  rotations.emplace_back(0, 0, 1, 0);
+  rotations.emplace_back(0, 0, 0, 1);
+
+  std::vector<Position> translations;
+  translations.emplace_back();
+  translations.emplace_back(0, 2 * centroid.y(), 2 * centroid.z());
+  translations.emplace_back(2 * centroid.x(), 0, 2 * centroid.z());
+  translations.emplace_back(2 * centroid.x(), 2 * centroid.y(), 0);
+
+  std::vector<Transformation> transformations;
+  transformations.reserve(4);
+  std::vector<double> inlier_ratios;
+  inlier_ratios.reserve(4);
+  std::vector<double> mean_squared_distances;
+  mean_squared_distances.reserve(4);
+  std::vector<double> optimization_criteria;
+  optimization_criteria.reserve(4);
+
+  constexpr double inlier_dist = 0.01;
+  for (size_t i = 0; i < rotations.size(); ++i) {
+    transformations.emplace_back(rotations[i], translations[i]);
+    pcl::PointCloud<pcl::PointXYZ> transformed_pcl;
+    Eigen::Affine3f transform_eigen(
+        (T_init * transformations[i]).inverse().getTransformationMatrix());
+    pcl::transformPointCloud(detection_pointcloud, transformed_pcl, transform_eigen);
+
+    size_t num_inlier = 0;
+    double squared_distance = 0;
+    for (const auto& point : transformed_pcl.points) {
+      std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+      cgal::PointAndPrimitiveId ppid =
+          mesh_model.getClosestTriangle(cgal::Point(point.x, point.y, point.z));
+      double dist = (Eigen::Vector3d(ppid.first.x(), ppid.first.y(), ppid.first.z()) -
+                     Eigen::Vector3d(point.x, point.y, point.z))
+                        .norm();
+      num_inlier += dist < inlier_dist;
+      squared_distance += dist * dist;
+    }
+    inlier_ratios.emplace_back(static_cast<double>(num_inlier) /
+                               static_cast<double>(detection_pointcloud.size()));
+    mean_squared_distances.emplace_back(squared_distance /
+                                        static_cast<double>(detection_pointcloud.size()));
+  }
+  LOG(INFO) << "Time optimization: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+            << " s";
+
+  // Select best orientation
+  const auto& most_inliers = std::max_element(inlier_ratios.begin(), inlier_ratios.end());
+  // TODO(gasserl): consider other criteria
+  return T_init * transformations[std::distance(inlier_ratios.begin(), most_inliers)];
+}
+
 Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
                    const Transformation& T_object_detection_init, const std::string& config_file) {

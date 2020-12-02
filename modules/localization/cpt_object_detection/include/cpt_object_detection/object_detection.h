@@ -12,6 +12,7 @@ namespace cad_percept::object_detection {
 
 typedef kindr::minimal::QuatTransformationTemplate<float> Transformation;
 typedef kindr::minimal::RotationQuaternionTemplate<float> Quaternion;
+typedef kindr::minimal::PositionTemplate<float> Position;
 typedef PointMatcher<float> PM;
 
 enum KeypointType { kIss = 0, kHarris, kUniform, kNumKeypointTypes };
@@ -25,6 +26,13 @@ enum MatchingMethod {
 
 Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud);
+Transformation optimizeTransformation(const cgal::MeshModel& mesh_model,
+                                      const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+                                      const Transformation& T_init);
+Transformation optimizeTransformation(const modelify::PointSurfelCloudType::Ptr& object_surfels,
+                                      const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+                                      const Transformation& T_init);
+
 Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
                    const Transformation& T_object_detection_init, const std::string& config_file);
