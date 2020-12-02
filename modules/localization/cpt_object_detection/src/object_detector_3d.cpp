@@ -35,12 +35,12 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
   subscribeToTopics();
   advertiseTopics();
 
-  if (!initializeObject()) {
+  if (!initializeObjectMesh()) {
     std::cerr << "Could not initialize object!";
   }
 }
 
-bool ObjectDetector3D::initializeObject() {
+bool ObjectDetector3D::initializeObjectMesh() {
   // Load object mesh
   const std::string& off_file = nh_private_.param<std::string>("off_model", "fail");
   if (!cgal::MeshModel::create(off_file, &mesh_model_)) {
@@ -362,9 +362,10 @@ void ObjectDetector3D::processInitialization() {
   }
   visualizePointcloud(cumulative_pcl, ros::Time::now(), reference_frame_id_,
                       initialization_detection_pointcloud_pub_);
-  LOG(INFO) << "Time accumulation: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_accumulation).count()
-            << " s";
+  LOG(INFO)
+      << "Time accumulation: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_accumulation).count()
+      << " s";
 
   // Compute best transformation
   std::chrono::steady_clock::time_point start_comparison = std::chrono::steady_clock::now();
@@ -397,9 +398,10 @@ void ObjectDetector3D::processInitialization() {
   initialization_object_pose_ = initialization_object_poses_[idx_best];
   publishTransformation(initialization_object_pose_, ros::Time::now(), reference_frame_id_,
                         object_frame_id_ + "_initialization");
-  LOG(INFO) << "Time comparison: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_comparison).count()
-            << " s";
+  LOG(INFO)
+      << "Time comparison: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_comparison).count()
+      << " s";
 
   // optimize again using icp
   Transformation T_object_detection_icp;

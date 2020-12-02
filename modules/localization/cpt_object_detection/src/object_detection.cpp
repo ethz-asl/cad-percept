@@ -45,8 +45,8 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
   // Compute PCA for object triangles
   CGAL::Simple_cartesian<double>::Plane_3 plane;
   CGAL::Simple_cartesian<double>::Point_3 object_centroid_cgal;
-  CGAL::linear_least_squares_fitting_3(triangles.begin(), triangles.end(), plane, object_centroid_cgal,
-                                       CGAL::Dimension_tag<2>());
+  CGAL::linear_least_squares_fitting_3(triangles.begin(), triangles.end(), plane,
+                                       object_centroid_cgal, CGAL::Dimension_tag<2>());
   Eigen::Vector3f object_centroid(object_centroid_cgal.x(), object_centroid_cgal.y(),
                                   object_centroid_cgal.z());
 
@@ -66,8 +66,7 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
 
   // Translation from mean of pointclouds det_r_obj_det
   object_centroid = rotation_matrix * object_centroid;
-  kindr::minimal::PositionTemplate<float> translation(
-      detection_centroid.head(3) - object_centroid);
+  kindr::minimal::PositionTemplate<float> translation(detection_centroid.head(3) - object_centroid);
 
   Quaternion rotation;
   rotation.setIdentity();
@@ -288,8 +287,15 @@ Transformation icp(const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
   Eigen::Matrix4f T_object_detection_icp = icp.getFinalTransformation();
 
   if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {
-    LOG(ERROR) << "Invalid rotation matrix!";
-    return T_object_detection_init;
+    for (int i = 0; i < 3; ++i) {
+      T_object_detection_icp.block<3, 1>(0, i) =
+          T_object_detection_icp.block<3, 1>(0, i).normalized();
+    }
+
+    if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {
+      LOG(ERROR) << "No valid rotation matrix possible!";
+      return T_object_detection_init;
+    }
   }
   Transformation::TransformationMatrix Tmatrix(T_object_detection_icp);
 
@@ -324,7 +330,7 @@ PM::DataPoints convertMeshPointsToDataPoints(const cgal::MeshModel::Ptr& mesh_mo
 
   PM::Matrix features(feature_labels.totalDim(), points.size());
   PM::Matrix descriptors(descriptor_labels.totalDim(), points.size());
-  for (int i = 0; i < points.size(); ++i) {
+  for (size_t i = 0; i < points.size(); ++i) {
     features.col(i) = Eigen::Vector4f(points[i].x(), points[i].y(), points[i].z(), 1);
     cgal::PointAndPrimitiveId ppid = mesh_model->getClosestTriangle(points[i]);
     cgal::Vector normal = mesh_model->getNormal(ppid);

@@ -13,6 +13,9 @@
   <arg name="object_off_path"
        default="$(find cpt_object_detection)/resources/Y10148_Torus Thick.off"/>
   <arg name="object_frame_id" value="object_detection_mesh"/>
+  <arg name="publish_static_transform" default="true"/>
+  <arg name="reference_frame_id" default="base_link"/>
+  <arg name="initialization_duration_s" default="1.0"/>
 
   <arg name="use_3d_features" value="true"/>
   <arg name="num_points_object_pointcloud" default="5000"/>
@@ -29,11 +32,14 @@
 
   <node name="object_detection_matcher"
         pkg="cpt_object_detection" type="cpt_object_detection_node"
-        args="--colorlogtostderr">
+        args="--colorlogtostderr" output="screen">
     <param name="pointcloud_topic" value="$(arg detection_pointcloud_topic)"/>
     <param name="off_model" value="$(arg object_off_path)"/>
     <param name="visualize_object_on_startup" value="true"/>
     <param name="object_frame_id" value="$(arg object_frame_id)"/>
+    <param name="publish_static_transform" value="$(arg publish_static_transform)"/>
+    <param name="reference_frame_id" value="$(arg reference_frame_id)"/>
+    <param name="initialization_duration_s" value="$(arg initialization_duration_s)"/>
 
     <param name="use_3d_features" value="$(arg use_3d_features)"/>
     <param name="num_points_object_pointcloud"

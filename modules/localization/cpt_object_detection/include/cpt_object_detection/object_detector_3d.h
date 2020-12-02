@@ -29,7 +29,7 @@ class ObjectDetector3D {
   void objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
   bool startInitializationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
-  bool initializeObject();
+  bool initializeObjectMesh();
   bool processDetectionUsingInitializationAndIcp(Transformation* T_object_world);
   Transformation processDetectionUsingPcaAndIcp();
   Transformation processDetectionUsing3dFeatures();
