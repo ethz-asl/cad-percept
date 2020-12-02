@@ -162,7 +162,7 @@ Transformation computeTransformUsingFgr(
   modelify::Correspondences corrs;
   if (!modelify::registration_toolbox::fast_global_registration::
           estimateTransformationFastGlobalRegistration<modelify::PointSurfelType, descriptor_type>(
-      object_surfels, object_keypoints, detection_surfels, detection_keypoints,
+              object_surfels, object_keypoints, detection_surfels, detection_keypoints,
               detection_descriptors, object_descriptors, fgr_params, &corrs, &transform)) {
     LOG(ERROR) << "Fast global registration was not successful!";
     return Transformation();
