@@ -4,8 +4,10 @@
 #include <cgal_msgs/TriangleMeshStamped.h>
 #include <cpt_utils/pc_processing.h>
 #include <minkindr_conversions/kindr_msg.h>
+#include <minkindr_conversions/kindr_tf.h>
 #include <pcl/filters/voxel_grid.h>
 #include <tf/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 #include <visualization_msgs/MarkerArray.h>
 
 namespace cad_percept::object_detection {
@@ -17,6 +19,8 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       pointcloud_topic_("/camera/depth/color/points"),
       detection_frame_id_("camera_depth_optical_frame"),
       use_3d_features_(true),
+      publish_static_transform_(true),
+      reference_frame_id_("world"),
       keypoint_type_(kIss),
       descriptor_type_(kFpfh),
       matching_method_(kGeometricConsistency),
@@ -140,6 +144,9 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
   nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
+  nh_private_.param("publish_static_transform", publish_static_transform_,
+                    publish_static_transform_);
+  nh_private_.param("reference_frame_id", reference_frame_id_, reference_frame_id_);
   nh_private_.param("refine_using_icp", refine_using_icp_, refine_using_icp_);
   nh_private_.param("use_icp_on_pointcloud", use_icp_on_pointcloud_, use_icp_on_pointcloud_);
   nh_private_.param("icp_config_file", icp_config_file_, icp_config_file_);
@@ -275,8 +282,25 @@ void ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   // Publish transformations to TF
   publishTransformation(T_object_detection_init, detection_stamp_, detection_frame_id_,
                         object_frame_id_ + "_init");
-  publishTransformation(T_object_detection, detection_stamp_, detection_frame_id_,
-                        object_frame_id_);
+  Transformation T_object_world;
+  if (publish_static_transform_) {
+    Transformation T_detection_world;
+    ros::Time stamp_T;
+    if (lookupTransform(reference_frame_id_, detection_frame_id_, detection_stamp_,
+                        T_detection_world, stamp_T)) {
+      T_object_world = T_detection_world * T_object_detection;
+      publishTransformation(T_object_world, detection_stamp_, reference_frame_id_,
+                            object_frame_id_);
+    } else {
+      LOG(WARNING) << "Publishing relative transform from detection frame " << detection_frame_id_
+                   << " to object frame " << object_frame_id_ << " instead.";
+      publishTransformation(T_object_detection, detection_stamp_, detection_frame_id_,
+                            object_frame_id_);
+    }
+  } else {
+    publishTransformation(T_object_detection, detection_stamp_, detection_frame_id_,
+                          object_frame_id_);
+  }
 
   // Visualize object
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
@@ -418,8 +442,23 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
   }
 
   // Publish results
-  publishTransformation(T_refined, detection_stamp_, detection_frame_id_,
-                        object_frame_id_);
+  Transformation T_object_world;
+  if (publish_static_transform_) {
+    Transformation T_detection_world;
+    ros::Time stamp_T;
+    if (lookupTransform(reference_frame_id_, detection_frame_id_, detection_stamp_,
+                        T_detection_world, stamp_T)) {
+      T_object_world = T_detection_world * T_refined;
+      publishTransformation(T_object_world, detection_stamp_, reference_frame_id_,
+                            object_frame_id_);
+    } else {
+      LOG(WARNING) << "Publishing relative transform from detection frame " << detection_frame_id_
+                   << " to object frame " << object_frame_id_ << " instead.";
+      publishTransformation(T_refined, detection_stamp_, detection_frame_id_, object_frame_id_);
+    }
+  } else {
+    publishTransformation(T_refined, detection_stamp_, detection_frame_id_, object_frame_id_);
+  }
   visualizePointcloud(object_pointcloud_, detection_stamp_, detection_frame_id_,
                       object_pointcloud_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
@@ -429,11 +468,53 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
             << " s";
 }
 
+bool ObjectDetector3D::lookupTransform(const std::string& target_frame,
+                                       const std::string& source_frame, const ros::Time& timestamp,
+                                       Transformation& transform, ros::Time& stamp_transform) {
+  std::string tf_error_str;
+  if (tf_listener_.canTransform(target_frame, source_frame, timestamp, &tf_error_str)) {
+    tf::StampedTransform transform_stamped;
+    tf_listener_.lookupTransform(target_frame, source_frame, timestamp, transform_stamped);
+    tf::transformTFToKindr(transform_stamped, &transform);
+    stamp_transform = timestamp;
+    return true;
+  } else if (tf_listener_.canTransform(target_frame, source_frame, ros::Time(0), &tf_error_str)) {
+    tf::StampedTransform transform_stamped;
+    tf_listener_.lookupTransform(target_frame, source_frame, ros::Time(0), transform_stamped);
+    LOG(WARNING) << "Using latest transformation betweeen frames " << target_frame << " and "
+                 << source_frame << ", " << (detection_stamp_ - transform_stamped.stamp_).toSec()
+                 << " s back.";
+    tf::transformTFToKindr(transform_stamped, &transform);
+    stamp_transform = transform_stamped.stamp_;
+    return true;
+  } else {
+    LOG(ERROR) << "Could not get transform from frame " << target_frame << " to frame "
+               << source_frame << " at time " << timestamp << "!";
+    LOG(INFO) << "Error message: " << tf_error_str;
+    return false;
+  }
+}
+
 void ObjectDetector3D::publishTransformation(const Transformation& transform,
                                              const ros::Time& stamp,
                                              const std::string& parent_frame_id,
                                              const std::string& child_frame_id) {
   static tf2_ros::TransformBroadcaster tf_broadcaster;
+  geometry_msgs::Transform transform_msg;
+  tf::transformKindrToMsg(transform.cast<double>(), &transform_msg);
+  geometry_msgs::TransformStamped stamped_transform_msg;
+  stamped_transform_msg.header.stamp = stamp;
+  stamped_transform_msg.header.frame_id = parent_frame_id;
+  stamped_transform_msg.child_frame_id = child_frame_id;
+  stamped_transform_msg.transform = transform_msg;
+  tf_broadcaster.sendTransform(stamped_transform_msg);
+}
+
+void ObjectDetector3D::publishStaticTransformation(const Transformation& transform,
+                                                   const ros::Time& stamp,
+                                                   const std::string& parent_frame_id,
+                                                   const std::string& child_frame_id) {
+  static tf2_ros::StaticTransformBroadcaster tf_broadcaster;
   geometry_msgs::Transform transform_msg;
   tf::transformKindrToMsg(transform.cast<double>(), &transform_msg);
   geometry_msgs::TransformStamped stamped_transform_msg;

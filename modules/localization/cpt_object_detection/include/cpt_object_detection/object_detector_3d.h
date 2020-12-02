@@ -4,6 +4,7 @@
 #include <cpt_object_detection/object_detection.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <tf/transform_listener.h>
 
 namespace cad_percept::object_detection {
 
@@ -30,6 +31,10 @@ class ObjectDetector3D {
   void processDetectionUsingPcaAndIcp();
   void processDetectionUsing3dFeatures();
 
+  bool lookupTransform(const std::string& target_frame, const std::string& source_frame,
+                       const ros::Time& timestamp, Transformation& transform,
+                       ros::Time& stamp_transform);
+
   static void visualizeMesh(const cgal::MeshModel::Ptr& mesh_model, const ros::Time& timestamp,
                             const std::string& frame_id, const ros::Publisher& publisher);
   static void visualizePointcloud(const pcl::PointCloud<pcl::PointXYZ>& pointcloud,
@@ -49,6 +54,9 @@ class ObjectDetector3D {
   static void publishTransformation(const Transformation& transform, const ros::Time& stamp,
                                     const std::string& parent_frame_id,
                                     const std::string& child_frame_id);
+  static void publishStaticTransformation(const Transformation& transform, const ros::Time& stamp,
+                                          const std::string& parent_frame_id,
+                                          const std::string& child_frame_id);
 
  private:
   void getParamsFromRos();
@@ -67,6 +75,8 @@ class ObjectDetector3D {
   ros::Publisher correspondences_pub_;
   ros::Publisher normals_pub_;
 
+  tf::TransformListener tf_listener_;
+
   // Object
   cgal::MeshModel::Ptr mesh_model_;
   std::string object_frame_id_;
@@ -84,6 +94,8 @@ class ObjectDetector3D {
 
   // Parameters: General options
   bool use_3d_features_;
+  bool publish_static_transform_;
+  std::string reference_frame_id_;
 
   // Parameters: 3D Features
   KeypointType keypoint_type_;
