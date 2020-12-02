@@ -4,6 +4,7 @@
 #include <cpt_object_detection/object_detection.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <std_srvs/Empty.h>
 #include <tf/transform_listener.h>
 
 namespace cad_percept::object_detection {
@@ -26,10 +27,13 @@ class ObjectDetector3D {
   ~ObjectDetector3D() = default;
 
   void objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
+  bool startInitializationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
   bool initializeObject();
-  void processDetectionUsingPcaAndIcp();
-  void processDetectionUsing3dFeatures();
+  bool processDetectionUsingInitializationAndIcp(Transformation* T_object_world);
+  Transformation processDetectionUsingPcaAndIcp();
+  Transformation processDetectionUsing3dFeatures();
+  void processInitialization();
 
   bool lookupTransform(const std::string& target_frame, const std::string& source_frame,
                        const ros::Time& timestamp, Transformation& transform,
@@ -74,6 +78,8 @@ class ObjectDetector3D {
   ros::Publisher detection_keypoint_pub_;
   ros::Publisher correspondences_pub_;
   ros::Publisher normals_pub_;
+  ros::Publisher initialization_detection_pointcloud_pub_;
+  ros::ServiceServer initialization_srv_;
 
   tf::TransformListener tf_listener_;
 
@@ -91,6 +97,16 @@ class ObjectDetector3D {
   ros::Time detection_stamp_;
   std::string detection_frame_id_;
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
+
+  // Initialization
+  bool initialized_;
+  bool initializing_;
+  ros::Time initialization_start_time_;
+  float initialization_duration_s_;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> initialization_object_pointclouds_;
+  std::vector<Transformation> initialization_object_poses_;
+  std::vector<Transformation> initialization_detection_poses_;
+  Transformation initialization_object_pose_;
 
   // Parameters: General options
   bool use_3d_features_;
