@@ -71,6 +71,8 @@ class EEPosesVisitor {
   std::string reference_link_topic_name_, end_effector_topic_name_;
   // List of poses that the end-effector should visit, relative to the previous end-effector pose.
   std::vector<kindr::minimal::QuatTransformation> relative_ee_poses_to_visit_;
+  // Whether or not the arm was moved to the initial position.
+  bool arm_in_initial_position_;
 };
 }  // namespace pointlaser_loc_ros
 }  // namespace cad_percept

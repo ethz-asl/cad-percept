@@ -1,6 +1,7 @@
 #include "cpt_pointlaser_loc_ros/ee_poses_visitor.h"
 
 #include <cpt_pointlaser_loc_ros/utils.h>
+#include <cpt_pointlaser_msgs/HighAccuracyLocalization.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
@@ -13,7 +14,7 @@ namespace cad_percept {
 namespace pointlaser_loc_ros {
 
 EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
-    : nh_(nh), nh_private_(nh_private), transform_listener_(nh_) {
+    : nh_(nh), nh_private_(nh_private), transform_listener_(nh_), arm_in_initial_position_(false) {
   // Read arm controller to use.
   if (!nh_private.hasParam("arm_controller")) {
     ROS_ERROR("'arm_controller' not set as parameter.");
@@ -202,16 +203,34 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
       base_to_armbase_pose * armbase_to_ee_initial_hal_pose_;
   setArmTo(base_to_ee_initial_hal_pose);
 
+  arm_in_initial_position_ = true;
+
   return true;
 }
 
 bool EEPosesVisitor::visitPoses(std_srvs::Empty::Request &request,
                                 std_srvs::Empty::Response &response) {
-  // Visit pose.
-
-  // Trigger HAL for data collection.
+  if (!arm_in_initial_position_) {
+    ROS_ERROR(
+        "The arm was not moved to its initial pose! Please call the service "
+        "`hal_move_arm_to_initial_pose` first.");
+    return false;
+  }
+  kindr::minimal::QuatTransformation current_base_to_ee_pose = armbase_to_ee_initial_hal_pose_;
+  arm_in_initial_position_ = false;
+  for (const auto &relative_pose : relative_ee_poses_to_visit_) {
+    // Visit pose.
+    relativePoseToAbsolutePose(current_base_to_ee_pose, relative_pose, &current_base_to_ee_pose);
+    setArmTo(current_base_to_ee_pose);
+    // Trigger HAL for data collection.
+    std_srvs::Empty srv_data_collection;
+    CHECK(hal_take_measurement_client_.call(srv_data_collection))
+        << "Failure to collect data after movement was performed.";
+  }
 
   // When all poses are visited, trigger HAL for optimization.
+  cpt_pointlaser_msgs::HighAccuracyLocalization srv_optimization;
+  hal_optimize_client_.call(srv_optimization);
 
   return true;
 }
