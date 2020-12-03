@@ -27,7 +27,9 @@ class EEPosesVisitor {
   /// \brief Sets the end effector to a certain pose in the robot-base frame.
   ///
   /// \param target_base_to_ee_pose  Goal pose of the end effector w.r.t. robot base.
-  void setArmTo(const kindr::minimal::QuatTransformation &target_base_to_ee_pose);
+  /// \return True if (exactly) one node is listening to the path message containing the poses - and
+  ///   therefore it is assumed that the movement could be performed -, false otherwise.
+  bool setArmTo(const kindr::minimal::QuatTransformation &target_base_to_ee_pose);
   ///
   /// \brief Parses a pose from a string in the format "x y z w x y z".
   ///

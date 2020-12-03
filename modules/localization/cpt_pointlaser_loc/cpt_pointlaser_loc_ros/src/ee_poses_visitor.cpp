@@ -93,7 +93,19 @@ void EEPosesVisitor::readListOfPoses(int movement_type) {
   }
 }
 
-void EEPosesVisitor::setArmTo(const kindr::minimal::QuatTransformation &target_base_to_ee_pose) {
+bool EEPosesVisitor::setArmTo(const kindr::minimal::QuatTransformation &target_base_to_ee_pose) {
+  size_t num_subscribers = arm_movement_path_pub_.getNumSubscribers();
+  if (num_subscribers != 1) {
+    std::string msg;
+    if (num_subscribers < 1) {
+      msg = "No nodes are";
+    } else {
+      msg = "More than one node is";
+    }
+    msg = "Unable to move the arm. " + msg + " subscribed to the path message.\n";
+    ROS_ERROR(msg.c_str());
+    return false;
+  }
   ROS_WARN(
       "Please be careful: since no topic/service signaling the end of the arm movement is "
       "available yet, the routine is hard-coded to wait for %f seconds after publishing the "
@@ -122,6 +134,8 @@ void EEPosesVisitor::setArmTo(const kindr::minimal::QuatTransformation &target_b
   // TODO(fmilano): Implement an alternative once a proper communication mechanism is available.
   ros::Duration(timeout_arm_movement_).sleep();
   ROS_INFO("Assuming movement was completed.\n");
+
+  return true;
 }
 
 bool EEPosesVisitor::parsePose(const std::string &pose_to_parse,
@@ -198,11 +212,12 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
   kindr::minimal::QuatTransformation base_to_armbase_pose = getTF("base", "arm_base");
   kindr::minimal::QuatTransformation base_to_ee_initial_hal_pose =
       base_to_armbase_pose * armbase_to_ee_initial_hal_pose_;
-  setArmTo(base_to_ee_initial_hal_pose);
-
-  arm_in_initial_position_ = true;
-
-  return true;
+  if (setArmTo(base_to_ee_initial_hal_pose)) {
+    arm_in_initial_position_ = true;
+    return true;
+  } else {
+    return false;
+  }
 }
 
 bool EEPosesVisitor::visitPoses(std_srvs::Empty::Request &request,
@@ -218,7 +233,7 @@ bool EEPosesVisitor::visitPoses(std_srvs::Empty::Request &request,
   for (const auto &relative_pose : relative_ee_poses_to_visit_) {
     // Visit pose.
     relativePoseToAbsolutePose(current_base_to_ee_pose, relative_pose, &current_base_to_ee_pose);
-    setArmTo(current_base_to_ee_pose);
+    CHECK(setArmTo(current_base_to_ee_pose)) << "Unable to perform arm movement.";
     // Trigger HAL for data collection.
     std_srvs::Empty srv_data_collection;
     CHECK(hal_take_measurement_client_.call(srv_data_collection))
