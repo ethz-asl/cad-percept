@@ -175,6 +175,8 @@ void EEPosesVisitor::advertiseAndSubscribe() {
       "hal_move_arm_to_initial_pose", &EEPosesVisitor::goToArmInitialPosition, this);
   visit_poses_service_ =
       nh_private_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
+  // Advertise path topic.
+  pub_arm_movement_path_ = nh_private_.advertise<nav_msgs::Path>(path_topic_name_, 1);
   // Subscribe to services of the controller.
   switch_controller_client_ =
       nh_.serviceClient<rocoma_msgs::SwitchController>(arm_controller_switch_service_name_);
