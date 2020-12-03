@@ -25,8 +25,7 @@ bool PointLaserLocalizer::setUpOptimizer(
     const kindr::minimal::QuatTransformation &laser_a_offset,
     const kindr::minimal::QuatTransformation &laser_b_offset,
     const kindr::minimal::QuatTransformation &laser_c_offset,
-    const kindr::minimal::QuatTransformation &endeffector_offset,
-    const kindr::minimal::QuatTransformation &arm_base_to_base, bool fix_cad_planes,
+    bool fix_cad_planes,
     bool add_marker_pose_prior, bool only_optimize_translation) {
   // NOTE: we assume that the arm was already moved to the initial pose.
 
@@ -47,10 +46,6 @@ bool PointLaserLocalizer::setUpOptimizer(
   laser_a_offset_.reset(new kindr::minimal::QuatTransformation(laser_a_offset));
   laser_b_offset_.reset(new kindr::minimal::QuatTransformation(laser_b_offset));
   laser_c_offset_.reset(new kindr::minimal::QuatTransformation(laser_c_offset));
-
-  // Store the initial goal pose of the arm.
-  arm_goal_pose_.reset(new kindr::minimal::QuatTransformation(
-      arm_base_to_base.inverse() * initial_armbase_to_ref_link * endeffector_offset));
 }
 
 void PointLaserLocalizer::addOdometry(

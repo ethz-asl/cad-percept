@@ -42,9 +42,6 @@ class PointLaserLocalizer {
   /// \param laser_a_offset               (Fixed) pose from the reference link to the point laser A.
   /// \param laser_b_offset               (Fixed) pose from the reference link to the point laser B.
   /// \param laser_c_offset               (Fixed) pose from the reference link to the point laser C.
-  /// \param endeffector_offset           (Fixed) pose from the reference link to the arm end
-  ///   effector.
-  /// \param arm_base_to_base             (Fixed) pose from the arm base to the base.
   /// \param fix_cad_planes               If True, the planes retrieved by the optimizer are fixed.
   /// \param add_marker_pose_prior        If True, a factor for the prior of the model offset (from
   ///   arm base to marker) is added to the optimization graph.
@@ -55,8 +52,6 @@ class PointLaserLocalizer {
                       const kindr::minimal::QuatTransformation& laser_a_offset,
                       const kindr::minimal::QuatTransformation& laser_b_offset,
                       const kindr::minimal::QuatTransformation& laser_c_offset,
-                      const kindr::minimal::QuatTransformation& endeffector_offset,
-                      const kindr::minimal::QuatTransformation& arm_base_to_base,
                       bool fix_cad_planes = false, bool add_marker_pose_prior = false,
                       bool only_optimize_translation = false);
 
@@ -113,8 +108,6 @@ class PointLaserLocalizer {
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_a_offset_;
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_b_offset_;
   std::unique_ptr<kindr::minimal::QuatTransformation> laser_c_offset_;
-  // Goal pose of the arm.
-  std::unique_ptr<kindr::minimal::QuatTransformation> arm_goal_pose_;
   // Flags to track the reception of measurements.
   bool was_new_odometry_received_;
   bool were_new_laser_measurements_received_;
