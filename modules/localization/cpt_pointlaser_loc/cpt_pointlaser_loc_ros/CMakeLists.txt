@@ -9,6 +9,7 @@ catkin_simple(ALL_DEPS_REQUIRED)
 cs_add_library(${PROJECT_NAME}
   #src/kinova_localizer.cpp
   src/mabi_localizer.cpp
+  src/ee_poses_visitor.cpp
 )
 
 #cs_add_executable(kinova_localizer_node src/kinova_localizer_node.cpp)
