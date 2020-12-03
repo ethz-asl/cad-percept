@@ -55,5 +55,8 @@
     local-name: json_catkin
     uri: git@github.com:ethz-asl/json_catkin.git
 - git:
+    local-name: rocoma
+    uri: git@bitbucket.org:leggedrobotics/rocoma.git
+- git:
    local-name: serial
    uri: git@github.com:wjwwood/serial.git

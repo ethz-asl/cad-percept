@@ -4,6 +4,7 @@
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
+#include <rocoma_msgs/SwitchController.h>
 
 #include <sstream>
 #include <vector>
@@ -175,13 +176,28 @@ void EEPosesVisitor::advertiseAndSubscribe() {
   visit_poses_service_ =
       nh_private_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
   // Subscribe to services of the controller.
-
+  switch_controller_client_ =
+      nh_.serviceClient<rocoma_msgs::SwitchController>(arm_controller_switch_service_name_);
   // Subscribe to services of HAL routine.
 }
 
 bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
                                             std_srvs::Empty::Response &response) {
   // Switch controller.
+  rocoma_msgs::SwitchController srv;
+  srv.request.name = arm_controller_;
+  switch_controller_client_.call(srv);
+  if (srv.response.status <= 0) {
+    ROS_ERROR("Failed to switch arm controller on.");
+    return false;
+  }
+  // Move arm to initial position.
+  kindr::minimal::QuatTransformation base_to_armbase_pose = getTF("base", "arm_base");
+  kindr::minimal::QuatTransformation base_to_ee_initial_hal_pose =
+      base_to_armbase_pose * armbase_to_ee_initial_hal_pose_;
+  setArmTo(base_to_ee_initial_hal_pose);
+
+  return true;
 }
 
 bool EEPosesVisitor::visitPoses(std_srvs::Empty::Request &request,
