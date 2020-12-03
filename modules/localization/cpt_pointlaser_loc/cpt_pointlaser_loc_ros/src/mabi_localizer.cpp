@@ -87,11 +87,10 @@ bool MabiLocalizer::initializeHALRoutine() {
       getTF(reference_link_topic_name_, "pointlaser_C");
   armbase_to_base_ = getTF("arm_base", "base");
   // Set up the optimizer for a new high-accuracy localization query.
-  localizer_->setUpOptimizer(initial_marker_to_armbase_, initial_pose, laser_a_offset,
-                             laser_b_offset, laser_c_offset,
-                             nh_private_.param("fix_cad_planes", false),
-                             nh_private_.param("initial_pose_prior", false),
-                             nh_private_.param("only_optimize_translation", false));
+  localizer_->setUpOptimizer(
+      initial_marker_to_armbase_, initial_pose, laser_a_offset, laser_b_offset, laser_c_offset,
+      nh_private_.param("fix_cad_planes", false), nh_private_.param("initial_pose_prior", false),
+      nh_private_.param("only_optimize_translation", false));
   // We measure over different poses of the end effector and optimize for the pose of the reference
   // link w.r.t. the arm base. Eventually, this is used to retrieve the corrected pose of the robot
   // base in the world frame (cf. `highAccuracyLocalization`).
