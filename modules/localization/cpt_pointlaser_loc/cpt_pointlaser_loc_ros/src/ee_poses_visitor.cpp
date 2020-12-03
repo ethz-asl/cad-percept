@@ -181,6 +181,9 @@ void EEPosesVisitor::advertiseAndSubscribe() {
   switch_controller_client_ =
       nh_.serviceClient<rocoma_msgs::SwitchController>(arm_controller_switch_service_name_);
   // Subscribe to services of HAL routine.
+  hal_take_measurement_client_ = nh_.serviceClient<std_srvs::Empty>("hal_take_measurement");
+  hal_optimize_client_ =
+      nh_.serviceClient<cpt_pointlaser_msgs::HighAccuracyLocalization>("high_accuracy_localize");
 }
 
 bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
