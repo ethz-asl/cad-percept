@@ -60,16 +60,6 @@ class PointLaserLocalizer {
                       bool fix_cad_planes = false, bool add_marker_pose_prior = false,
                       bool only_optimize_translation = false);
 
-  /// \brief Updates and returns the goal pose of the arm, given an input movement.
-  ///
-  /// \param rotation_quat  Rotation component of the movement (quaternion format).
-  /// \param translation    Translation component of the movement.
-  ///
-  /// \return Goal pose of the arm.
-  kindr::minimal::QuatTransformation getArmGoalPose(
-      Eigen::Quaternion<double> rotation_quat,
-      kindr::minimal::PositionTemplate<double> translation);
-
   /// \brief Adds an odometry transform (on the reference link) to the optimization.
   ///
   /// \param odometry_transform  Odometry transformation to add to the optimization.

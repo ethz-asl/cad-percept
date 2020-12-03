@@ -53,22 +53,6 @@ bool PointLaserLocalizer::setUpOptimizer(
       arm_base_to_base.inverse() * initial_armbase_to_ref_link * endeffector_offset));
 }
 
-kindr::minimal::QuatTransformation PointLaserLocalizer::getArmGoalPose(
-    Eigen::Quaternion<double> rotation_quat, kindr::minimal::PositionTemplate<double> translation) {
-  CHECK(arm_goal_pose_ != nullptr) << "Must set up optimizer before getting arm goal pose.";
-  rotation_quat.normalize();
-  kindr::minimal::RotationQuaternionTemplate<double> rotation(rotation_quat);
-  kindr::minimal::PositionTemplate<double> no_translation(0, 0, 0);
-  kindr::minimal::RotationQuaternionTemplate<double> no_rotation(Eigen::Vector3d(0, 0, 0));
-
-  kindr::minimal::QuatTransformation orientation_shift(no_translation, rotation);
-  kindr::minimal::QuatTransformation position_shift(translation, no_rotation);
-
-  *arm_goal_pose_ = position_shift * *arm_goal_pose_ * orientation_shift;
-
-  return *arm_goal_pose_;
-}
-
 void PointLaserLocalizer::addOdometry(
     const kindr::minimal::QuatTransformation &odometry_transform) {
   CHECK(optimizer_ != nullptr) << "Must set up optimizer before adding odometry transform.";
