@@ -32,9 +32,18 @@ class EEPosesVisitor {
   /// \param[in] pose_to_parse Pose to parse, in the string format.
   /// \param[out] parsed_pose  Parsed pose.
   /// \return True if the pose could be successfully parsed, false otherwise.
-  ///
   bool parsePose(const std::string &pose_to_parse, kindr::minimal::QuatTransformation *parsed_pose);
-  
+
+  ///
+  /// \brief Converts a relative pose (expressed w.r.t. a reference pose) to an absolute pose.
+  /// 
+  /// \param[in] reference_pose Reference pose w.r.t. which the relative pose is expressed.
+  /// \param[in] relative_pose  Relative pose to convert.
+  /// \param[out] absolute_pose Absolute pose obtained by converting the input relative pose.
+  void relativePoseToAbsolutePose(const kindr::minimal::QuatTransformation &reference_pose,
+                                  const kindr::minimal::QuatTransformation &relative_pose,
+                                  kindr::minimal::QuatTransformation *absolute_pose);
+
   void advertiseAndSubscribe();
 
   void goToArmInitialPosition();
@@ -49,8 +58,8 @@ class EEPosesVisitor {
   kindr::minimal::QuatTransformation armbase_to_ee_initial_hal_pose_;
   double timeout_arm_movement_;
   std::string reference_link_topic_name_, end_effector_topic_name_;
-  // List of poses that the end-effector should visit, expressed in the robot-base frame.
-  std::vector<kindr::minimal::QuatTransformation> base_to_ee_poses_to_visit_;
+  // List of poses that the end-effector should visit, relative to the previous end-effector pose.
+  std::vector<kindr::minimal::QuatTransformation> relative_ee_poses_to_visit_;
 };
 }  // namespace pointlaser_loc_ros
 }  // namespace cad_percept

@@ -3,6 +3,8 @@ reference_link_topic_name: WRIST_2
 # Topic name of the end effector.
 end_effector_topic_name: end_effector
 # Collections of possible movements.
+# NOTE: These movements are *relative* to the previous pose of the
+# end-effector!
 movement_type_0:  # Church-yard
   - "0 0 0 0.999848 0.0174524 0 0" # 2 x 0 y 0 z
   - "0 0 0 0.999 0.044 0 0" # 5 deg around x

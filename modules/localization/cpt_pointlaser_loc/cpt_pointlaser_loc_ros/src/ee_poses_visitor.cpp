@@ -70,12 +70,12 @@ void EEPosesVisitor::readListOfPoses(int movement_type) {
   CHECK(nh_.hasParam("movement_type_" + std::to_string(movement_type)))
       << "Unable to find collection of movements with index " << movement_type
       << " (i.e., the parameters `movement_type_" << movement_type << "` is not defined).";
-  kindr::minimal::QuatTransformation base_to_ee_pose;
+  kindr::minimal::QuatTransformation relative_ee_pose;
   std::vector<std::string> movement_collection;
   nh_.getParam("movement_type_" + std::to_string(movement_type), movement_collection);
   for (auto string_cmd : movement_collection) {
-    parsePose(string_cmd, &base_to_ee_pose);
-    base_to_ee_poses_to_visit_.push_back(base_to_ee_pose);
+    parsePose(string_cmd, &relative_ee_pose);
+    relative_ee_poses_to_visit_.push_back(relative_ee_pose);
   }
 }
 
@@ -101,8 +101,29 @@ bool EEPosesVisitor::parsePose(const std::string &pose_to_parse,
   // Compute arm goal pose and move arm to it.
   Eigen::Quaternion<double> rot_quat(arm_cmd[3], arm_cmd[4], arm_cmd[5], arm_cmd[6]);
   kindr::minimal::PositionTemplate<double> translation(arm_cmd[0], arm_cmd[1], arm_cmd[2]);
-  // TODO(fmilano): fix!
-  *parsed_pose = localizer_->getArmGoalPose(rot_quat, translation);
+
+  kindr::minimal::QuatTransformation parsed_pose_ret(translation, rot_quat);
+
+  *parsed_pose = parsed_pose_ret;
+
+  return true;
+}
+
+void EEPosesVisitor::relativePoseToAbsolutePose(
+    const kindr::minimal::QuatTransformation &reference_pose,
+    const kindr::minimal::QuatTransformation &relative_pose,
+    kindr::minimal::QuatTransformation *absolute_pose) {
+  Eigen::Quaternion<double> rotation_quat = relative_pose.getEigenQuaternion();
+  kindr::minimal::PositionTemplate<double> translation = relative_pose.getPosition();
+
+  kindr::minimal::RotationQuaternionTemplate<double> rotation(rotation_quat);
+  kindr::minimal::PositionTemplate<double> no_translation(0, 0, 0);
+  kindr::minimal::RotationQuaternionTemplate<double> no_rotation(Eigen::Vector3d(0, 0, 0));
+
+  kindr::minimal::QuatTransformation orientation_shift(no_translation, rotation);
+  kindr::minimal::QuatTransformation position_shift(translation, no_rotation);
+
+  *absolute_pose = position_shift * reference_pose * orientation_shift;
 }
 
 void EEPosesVisitor::advertiseAndSubscribe() {
