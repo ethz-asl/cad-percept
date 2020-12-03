@@ -9,6 +9,9 @@ armbase_to_ee_initial_hal_pose: "-0.0396287 -0.5516176 0.7162148 -0.7069676 0.70
 # Time (in seconds) - from the sending of the path message to the controller - after which the movement
 # is assumed to be completed.
 timeout_arm_movement: 10.0
+# Fixed duration of the movement in seconds. Taken from https://bitbucket.org/leggedrobotics/waco_controller/src/
+# d246df98e4c19d0eeeba1de91a9e3a77006c313c/waco_task_modules_ros/src/WacoHalTaskModuleRos.cpp#lines-164
+motion_duration: 3.5
 # Index of the collection of movements to perform. Can be 0, 1, 2, cf.
 # `movement_type_<movenent_to_perform>` in`common_params_mabi.yaml`.
 movement_to_perform: 0

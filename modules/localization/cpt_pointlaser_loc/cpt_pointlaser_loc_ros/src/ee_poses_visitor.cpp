@@ -1,5 +1,9 @@
 #include "cpt_pointlaser_loc_ros/ee_poses_visitor.h"
 
+#include <minkindr_conversions/kindr_msg.h>
+#include <minkindr_conversions/kindr_tf.h>
+#include <nav_msgs/Path.h>
+
 #include <sstream>
 #include <vector>
 
@@ -7,7 +11,7 @@ namespace cad_percept {
 namespace pointlaser_loc_ros {
 
 EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
-    : nh_(nh), nh_private_(nh_private) {
+    : nh_(nh), nh_private_(nh_private), transform_listener_(nh_) {
   // Read arm controller to use.
   if (!nh_private.hasParam("arm_controller")) {
     ROS_ERROR("'arm_controller' not set as parameter.");
@@ -40,12 +44,18 @@ EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
                   &armbase_to_ee_initial_hal_pose_))
       << "Unable to parse initial target end-effector pose.";
 
-  // Read time (in seconds) - from the sending of the path message to the controller - after which
-  // the movement will be assumed to be completed.
+  // Time (in seconds) - from the sending of the path message to the controller - after which the
+  // movement will be assumed to be completed.
   if (!nh_private.hasParam("timeout_arm_movement")) {
     ROS_ERROR("'timeout_arm_movement' not set as parameter.");
   }
   timeout_arm_movement_ = nh_private.param<double>("timeout_arm_movement", 10.0);
+
+  // Fixed duration of the movement in seconds.
+  if (!nh_private.hasParam("motion_duration")) {
+    ROS_ERROR("'motion_duration' not set as parameter.");
+  }
+  motion_duration_ = nh_private.param<double>("motion_duration", 3.5);
 
   // Read list of poses.
   if (!nh_private.hasParam("movement_to_perform")) {
@@ -79,7 +89,36 @@ void EEPosesVisitor::readListOfPoses(int movement_type) {
   }
 }
 
-void EEPosesVisitor::setArmTo(const kindr::minimal::QuatTransformation &target_base_to_ee_pose) {}
+void EEPosesVisitor::setArmTo(const kindr::minimal::QuatTransformation &target_base_to_ee_pose) {
+  ROS_WARN(
+      "Please be careful: since no topic/service signaling the end of the arm movement is "
+      "available yet, the routine is hard-coded to wait for %f seconds after publishing the "
+      "message with the desired goal state.",
+      timeout_arm_movement_);
+
+  nav_msgs::Path path_msg;
+  path_msg.header.stamp = ros::Time::now();
+  path_msg.header.frame_id = "base";
+  // Retrieve current pose from tf and add it to the path.
+  // TODO(fmilano): Check that this is the correct way to do this.
+  geometry_msgs::PoseStamped current_pose_msg;
+  tf::StampedTransform current_pose_tf;
+  kindr::minimal::QuatTransformation current_pose;
+  transform_listener_.lookupTransform("base", end_effector_topic_name_, ros::Time::now(),
+                                      current_pose_tf);
+  tf::transformTFToKindr(current_pose_tf, &current_pose);
+  tf::poseStampedKindrToMsg(current_pose, ros::Time(0.0), "base", &current_pose_msg);
+  path_msg.poses.push_back(current_pose_msg);
+  // Add target pose to the path.
+  geometry_msgs::PoseStamped target_pose_msg;
+  tf::poseStampedKindrToMsg(target_base_to_ee_pose, ros::Time(motion_duration_), "base",
+                            &target_pose_msg);
+  path_msg.poses.push_back(target_pose_msg);
+  pub_arm_movement_path_.publish(path_msg);
+  // TODO(fmilano): Implement an alternative once a proper communication mechanism is available.
+  ros::Duration(timeout_arm_movement_).sleep();
+  ROS_INFO("Assuming movement was completed.\n");
+}
 
 bool EEPosesVisitor::parsePose(const std::string &pose_to_parse,
                                kindr::minimal::QuatTransformation *parsed_pose) {

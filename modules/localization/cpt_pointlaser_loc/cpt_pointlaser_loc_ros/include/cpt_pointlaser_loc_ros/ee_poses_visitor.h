@@ -3,6 +3,7 @@
 
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
+#include <tf/transform_listener.h>
 
 namespace cad_percept {
 namespace pointlaser_loc_ros {
@@ -36,7 +37,7 @@ class EEPosesVisitor {
 
   ///
   /// \brief Converts a relative pose (expressed w.r.t. a reference pose) to an absolute pose.
-  /// 
+  ///
   /// \param[in] reference_pose Reference pose w.r.t. which the relative pose is expressed.
   /// \param[in] relative_pose  Relative pose to convert.
   /// \param[out] absolute_pose Absolute pose obtained by converting the input relative pose.
@@ -52,11 +53,17 @@ class EEPosesVisitor {
 
   // Node handles.
   ros::NodeHandle nh_, nh_private_;
+  // Publishers, subscribers.
+  // - Publisher of the path that the controller should interpolate to move the arm. The poses are
+  //   referred to the end effector and defined in the robot-base frame.
+  ros::Publisher pub_arm_movement_path_;
+  // Transform listener.
+  tf::TransformListener transform_listener_;
   // Internal parameters.
   std::string arm_controller_;
   std::string arm_controller_switch_service_name_, path_topic_name_;
   kindr::minimal::QuatTransformation armbase_to_ee_initial_hal_pose_;
-  double timeout_arm_movement_;
+  double timeout_arm_movement_, motion_duration_;
   std::string reference_link_topic_name_, end_effector_topic_name_;
   // List of poses that the end-effector should visit, relative to the previous end-effector pose.
   std::vector<kindr::minimal::QuatTransformation> relative_ee_poses_to_visit_;
