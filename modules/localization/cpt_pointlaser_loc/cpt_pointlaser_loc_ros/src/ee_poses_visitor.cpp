@@ -118,7 +118,7 @@ void EEPosesVisitor::setArmTo(const kindr::minimal::QuatTransformation &target_b
   tf::poseStampedKindrToMsg(target_base_to_ee_pose, ros::Time(motion_duration_), "base",
                             &target_pose_msg);
   path_msg.poses.push_back(target_pose_msg);
-  pub_arm_movement_path_.publish(path_msg);
+  arm_movement_path_pub_.publish(path_msg);
   // TODO(fmilano): Implement an alternative once a proper communication mechanism is available.
   ros::Duration(timeout_arm_movement_).sleep();
   ROS_INFO("Assuming movement was completed.\n");
@@ -176,7 +176,7 @@ void EEPosesVisitor::advertiseAndSubscribe() {
   visit_poses_service_ =
       nh_private_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
   // Advertise path topic.
-  pub_arm_movement_path_ = nh_private_.advertise<nav_msgs::Path>(path_topic_name_, 1);
+  arm_movement_path_pub_ = nh_private_.advertise<nav_msgs::Path>(path_topic_name_, 1);
   // Subscribe to services of the controller.
   switch_controller_client_ =
       nh_.serviceClient<rocoma_msgs::SwitchController>(arm_controller_switch_service_name_);

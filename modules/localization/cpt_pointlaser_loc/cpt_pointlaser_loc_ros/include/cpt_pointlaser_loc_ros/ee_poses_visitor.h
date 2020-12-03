@@ -57,7 +57,7 @@ class EEPosesVisitor {
   // Publishers, subscribers.
   // - Publisher of the path that the controller should interpolate to move the arm. The poses are
   //   referred to the end effector and defined in the robot-base frame.
-  ros::Publisher pub_arm_movement_path_;
+  ros::Publisher arm_movement_path_pub_;
   // Transform listener.
   tf::TransformListener transform_listener_;
   // Service clients and server.
