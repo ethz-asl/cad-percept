@@ -40,8 +40,7 @@ class MabiLocalizer {
   ///
   /// \brief Callback for the topic that publishes the CAD model.
   ///
-  /// \param cad_mesh_msg
-  ///
+  /// \param cad_mesh_msg Message containing the building model message.
   void modelCallback(const cgal_msgs::TriangleMeshStamped &cad_mesh_msg);
 
   // Service handlers.
