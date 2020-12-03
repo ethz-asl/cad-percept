@@ -9,7 +9,6 @@
 #include <ros/ros.h>
 #include <std_msgs/Int16.h>
 #include <std_srvs/Empty.h>
-#include <tf/transform_listener.h>
 
 #include <Eigen/Geometry>
 
@@ -28,7 +27,6 @@ class MabiLocalizer {
 
  private:
   void advertiseTopics();
-  kindr::minimal::QuatTransformation getTF(std::string from, std::string to);
   ///
   /// \brief Initializes the HAL routine, by setting up the optimizer and retrieving the fixed and
   /// initial poses. NOTE: For the way it is currently implemented, this method should not be called
@@ -78,8 +76,6 @@ class MabiLocalizer {
   ros::Publisher endeffector_pose_pub_;
   // - Subscriber to the CAD model.
   ros::Subscriber cad_model_sub_;
-  // Transform listener.
-  tf::TransformListener transform_listener_;
   // Service clients and server.
   std::map<std::string, ros::ServiceClient> leica_client_;
   ros::ServiceServer hal_take_measurement_service_;

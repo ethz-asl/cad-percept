@@ -1,14 +1,13 @@
 #include "cpt_pointlaser_loc_ros/kinova_localizer.h"
 
+#include <any_msgs/SetPose.h>
+#include <cpt_pointlaser_comm_ros/GetDistance.h>
+#include <cpt_pointlaser_loc_ros/utils.h>
 #include <geometry_msgs/PointStamped.h>
 #include <kindr/minimal/position.h>
 #include <minkindr_conversions/kindr_msg.h>
-#include <minkindr_conversions/kindr_tf.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/Trigger.h>
-
-#include "any_msgs/SetPose.h"
-#include "cpt_pointlaser_comm_ros/GetDistance.h"
 
 namespace cad_percept {
 namespace pointlaser_loc_ros {
@@ -16,7 +15,6 @@ namespace pointlaser_loc_ros {
 KinovaLocalizer::KinovaLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      transform_listener_(nh_),
       mode_(0),
       task_type_(0),
       processing_(false),
@@ -48,14 +46,6 @@ KinovaLocalizer::KinovaLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_privat
       model_, initial_pose_std_, odometry_noise_std_, pointlaser_noise_std_));
 
   advertiseTopics();
-}
-
-kindr::minimal::QuatTransformation KinovaLocalizer::getTF(std::string from, std::string to) {
-  tf::StampedTransform transform;
-  kindr::minimal::QuatTransformation ret;
-  transform_listener_.lookupTransform(from, to, ros::Time(0), transform);
-  tf::transformTFToKindr(transform, &ret);
-  return ret;
 }
 
 void KinovaLocalizer::setArmTo(const kindr::minimal::QuatTransformation &arm_goal_pose) {

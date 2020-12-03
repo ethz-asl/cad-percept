@@ -7,7 +7,6 @@
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
 #include <std_msgs/Int16.h>
-#include <tf/transform_listener.h>
 
 #include <Eigen/Geometry>
 
@@ -24,7 +23,6 @@ class KinovaLocalizer {
 
  private:
   void advertiseTopics();
-  kindr::minimal::QuatTransformation getTF(std::string from, std::string to);
   void setArmTo(const kindr::minimal::QuatTransformation &arm_goal_pose);
   void setMode(const std_msgs::Int16 &mode_msg);
   void setTaskType(const std_msgs::Int16 &task_type_msg);
@@ -34,7 +32,6 @@ class KinovaLocalizer {
   ros::Publisher pub_intersection_a_, pub_intersection_b_, pub_intersection_c_,
       pub_endeffector_pose_;
   ros::Subscriber sub_mode_, sub_task_type_, sub_offset_pose_;
-  tf::TransformListener transform_listener_;
   std::map<std::string, ros::ServiceClient> leica_client_, waco_client_;
   Eigen::Matrix<double, 6, 1> initial_pose_std_, odometry_noise_std_;
   double pointlaser_noise_std_;

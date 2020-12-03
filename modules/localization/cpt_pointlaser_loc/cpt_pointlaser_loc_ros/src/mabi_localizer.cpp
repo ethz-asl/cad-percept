@@ -2,10 +2,10 @@
 
 #include <cgal_conversions/mesh_conversions.h>
 #include <cpt_pointlaser_comm_ros/GetDistance.h>
+#include <cpt_pointlaser_loc_ros/utils.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <minkindr_conversions/kindr_msg.h>
-#include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
 #include <std_srvs/Empty.h>
 
@@ -15,7 +15,6 @@ namespace pointlaser_loc_ros {
 MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      transform_listener_(nh_),
       initialized_hal_routine_(false),
       received_cad_model_(false) {
   if (!nh_private_.hasParam("initial_pose_std")) {
@@ -48,14 +47,6 @@ MabiLocalizer::MabiLocalizer(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   end_effector_topic_name_ = nh.param<std::string>("end_effector_topic_name", "end_effector");
 
   advertiseTopics();
-}
-
-kindr::minimal::QuatTransformation MabiLocalizer::getTF(std::string from, std::string to) {
-  tf::StampedTransform transform;
-  kindr::minimal::QuatTransformation ret;
-  transform_listener_.lookupTransform(from, to, ros::Time(0), transform);
-  tf::transformTFToKindr(transform, &ret);
-  return ret;
 }
 
 void MabiLocalizer::modelCallback(const cgal_msgs::TriangleMeshStamped &cad_mesh_msg) {
