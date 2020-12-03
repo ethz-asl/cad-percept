@@ -1,7 +1,6 @@
 #include "cpt_pointlaser_loc_ros/ee_poses_visitor.h"
 
 #include <cpt_pointlaser_loc_ros/utils.h>
-#include <cpt_pointlaser_msgs/HighAccuracyLocalization.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
@@ -183,8 +182,6 @@ void EEPosesVisitor::advertiseAndSubscribe() {
       nh_.serviceClient<rocoma_msgs::SwitchController>(arm_controller_switch_service_name_);
   // Subscribe to services of HAL routine.
   hal_take_measurement_client_ = nh_.serviceClient<std_srvs::Empty>("hal_take_measurement");
-  hal_optimize_client_ =
-      nh_.serviceClient<cpt_pointlaser_msgs::HighAccuracyLocalization>("high_accuracy_localize");
 }
 
 bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
@@ -228,9 +225,9 @@ bool EEPosesVisitor::visitPoses(std_srvs::Empty::Request &request,
         << "Failure to collect data after movement was performed.";
   }
 
-  // When all poses are visited, trigger HAL for optimization.
-  cpt_pointlaser_msgs::HighAccuracyLocalization srv_optimization;
-  hal_optimize_client_.call(srv_optimization);
+  ROS_INFO(
+      "All poses were visited and all measurement were collected. You may now call the service to "
+      "perform the HAL optimization.");
 
   return true;
 }

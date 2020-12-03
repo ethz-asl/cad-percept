@@ -61,7 +61,7 @@ class EEPosesVisitor {
   // Transform listener.
   tf::TransformListener transform_listener_;
   // Service clients and server.
-  ros::ServiceClient switch_controller_client_, hal_take_measurement_client_, hal_optimize_client_;
+  ros::ServiceClient switch_controller_client_, hal_take_measurement_client_;
   ros::ServiceServer go_to_initial_position_service_, visit_poses_service_;
   // Internal parameters.
   std::string arm_controller_;
