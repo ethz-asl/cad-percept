@@ -3,6 +3,7 @@
 
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
+#include <std_srvs/Empty.h>
 #include <tf/transform_listener.h>
 
 namespace cad_percept {
@@ -47,9 +48,9 @@ class EEPosesVisitor {
 
   void advertiseAndSubscribe();
 
-  void goToArmInitialPosition();
-
-  void visitPoses();
+  bool goToArmInitialPosition(std_srvs::Empty::Request &request,
+                              std_srvs::Empty::Response &response);
+  bool visitPoses(std_srvs::Empty::Request &request, std_srvs::Empty::Response &response);
 
   // Node handles.
   ros::NodeHandle nh_, nh_private_;
@@ -59,6 +60,8 @@ class EEPosesVisitor {
   ros::Publisher pub_arm_movement_path_;
   // Transform listener.
   tf::TransformListener transform_listener_;
+  // Service clients and server.
+  ros::ServiceServer go_to_initial_position_service_, visit_poses_service_;
   // Internal parameters.
   std::string arm_controller_;
   std::string arm_controller_switch_service_name_, path_topic_name_;

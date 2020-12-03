@@ -1,5 +1,6 @@
 #include "cpt_pointlaser_loc_ros/ee_poses_visitor.h"
 
+#include <cpt_pointlaser_loc_ros/utils.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
@@ -74,6 +75,8 @@ EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     ROS_ERROR("'end_effector_topic_name' not set as parameter.");
   }
   end_effector_topic_name_ = nh.param<std::string>("end_effector_topic_name", "end_effector");
+
+  advertiseAndSubscribe();
 }
 
 void EEPosesVisitor::readListOfPoses(int movement_type) {
@@ -166,23 +169,30 @@ void EEPosesVisitor::relativePoseToAbsolutePose(
 }
 
 void EEPosesVisitor::advertiseAndSubscribe() {
-  // Advertise service to wait for start.
-
+  // Advertise services to position the arm and move it through the poses.
+  go_to_initial_position_service_ = nh_private_.advertiseService(
+      "hal_move_arm_to_initial_pose", &EEPosesVisitor::goToArmInitialPosition, this);
+  visit_poses_service_ =
+      nh_private_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
   // Subscribe to services of the controller.
 
   // Subscribe to services of HAL routine.
 }
 
-void EEPosesVisitor::goToArmInitialPosition() {
+bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
+                                            std_srvs::Empty::Response &response) {
   // Switch controller.
 }
 
-void EEPosesVisitor::visitPoses() {
+bool EEPosesVisitor::visitPoses(std_srvs::Empty::Request &request,
+                                std_srvs::Empty::Response &response) {
   // Visit pose.
 
   // Trigger HAL for data collection.
 
   // When all poses are visited, trigger HAL for optimization.
+
+  return true;
 }
 
 }  // namespace pointlaser_loc_ros
