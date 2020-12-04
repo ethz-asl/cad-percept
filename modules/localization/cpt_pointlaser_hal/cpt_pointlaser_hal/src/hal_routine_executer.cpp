@@ -42,10 +42,13 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
   std::string answer;
   std_srvs::Empty empty_srvs;
   do {
-    std::cout << "When ready to move the arm to the initial position, type 'ready': ";
+    std::cout << "When ready to move the arm to the initial position, type 'ready' ('q' to exit): ";
     std::cin >> answer;
     std::transform(answer.begin(), answer.end(), answer.begin(),
                    [](unsigned char c) { return std::tolower(c); });
+    if (answer == "q") {
+      return;
+    }
     ready = (answer == "ready");
   } while (!ready);
   CHECK(hal_move_arm_to_initial_pose_client_.call(empty_srvs.request, empty_srvs.response))
@@ -53,10 +56,13 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
   // Initialize the HAL localization.
   ready = false;
   do {
-    std::cout << "When ready to initialize HAL localization, type 'ready': ";
+    std::cout << "When ready to initialize HAL localization, type 'ready' ('q' to exit): ";
     std::cin >> answer;
     std::transform(answer.begin(), answer.end(), answer.begin(),
                    [](unsigned char c) { return std::tolower(c); });
+    if (answer == "q") {
+      return;
+    }
     ready = (answer == "ready");
   } while (!ready);
   CHECK(hal_initialize_localization_client_.call(empty_srvs.request, empty_srvs.response))
@@ -68,10 +74,13 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
   do {
     ready = false;
     do {
-      std::cout << "When ready to visit the next end-effector pose, type 'ready': ";
+      std::cout << "When ready to visit the next end-effector pose, type 'ready' ('q' to exit): ";
       std::cin >> answer;
       std::transform(answer.begin(), answer.end(), answer.begin(),
                      [](unsigned char c) { return std::tolower(c); });
+      if (answer == "q") {
+        return;
+      }
       ready = (answer == "ready");
     } while (!ready);
     cpt_pointlaser_msgs::EEVisitPose hal_visit_pose_srv;
@@ -83,11 +92,14 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
   ready = false;
   do {
     std::cout << "All the end-effector poses were visited. When ready to perform HAL optimization, "
-                 "type 'ready': ";
+                 "type 'ready' ('q' to exit): ";
     std::cin >> answer;
     std::transform(answer.begin(), answer.end(), answer.begin(),
                    [](unsigned char c) { return std::tolower(c); });
     ready = (answer == "ready");
+    if (answer == "q") {
+      return;
+    }
   } while (!ready);
   cpt_pointlaser_msgs::HighAccuracyLocalization hal_optimize_srv;
   CHECK(hal_optimize_client_.call(hal_optimize_srv.request, hal_optimize_srv.response))
