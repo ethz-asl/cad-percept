@@ -1,6 +1,7 @@
 #ifndef CPT_POINTLASER_CTRL_ROS_EE_POSES_VISITOR_H_
 #define CPT_POINTLASER_CTRL_ROS_EE_POSES_VISITOR_H_
 
+#include <cpt_pointlaser_msgs/EEVisitPose.h>
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
@@ -52,7 +53,8 @@ class EEPosesVisitor {
 
   bool goToArmInitialPosition(std_srvs::Empty::Request &request,
                               std_srvs::Empty::Response &response);
-  bool visitPoses(std_srvs::Empty::Request &request, std_srvs::Empty::Response &response);
+  bool visitPoses(cpt_pointlaser_msgs::EEVisitPose::Request &request,
+                  cpt_pointlaser_msgs::EEVisitPose::Response &response);
 
   // Node handles.
   ros::NodeHandle nh_, nh_private_;
@@ -75,6 +77,10 @@ class EEPosesVisitor {
   std::vector<kindr::minimal::QuatTransformation> relative_ee_poses_to_visit_;
   // Whether or not the arm was moved to the initial position.
   bool arm_in_initial_position_;
+  // Current pose of the end-effector in the robot-base frame.
+  kindr::minimal::QuatTransformation current_base_to_ee_pose_;
+  // Number of poses visited.
+  size_t num_poses_visited_;
 };
 }  // namespace pointlaser_ctrl_ros
 }  // namespace cad_percept

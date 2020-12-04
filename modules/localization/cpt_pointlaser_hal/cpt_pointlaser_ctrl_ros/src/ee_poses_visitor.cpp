@@ -14,7 +14,11 @@ namespace cad_percept {
 namespace pointlaser_ctrl_ros {
 
 EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
-    : nh_(nh), nh_private_(nh_private), transform_listener_(nh_), arm_in_initial_position_(false) {
+    : nh_(nh),
+      nh_private_(nh_private),
+      transform_listener_(nh_),
+      arm_in_initial_position_(false),
+      num_poses_visited_(0) {
   // Read arm controller to use.
   if (!nh_private.hasParam("arm_controller")) {
     ROS_ERROR("'arm_controller' not set as parameter.");
@@ -216,35 +220,44 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
       base_to_armbase_pose * armbase_to_ee_initial_hal_pose_;
   if (setArmTo(base_to_ee_initial_hal_pose)) {
     arm_in_initial_position_ = true;
+    current_base_to_ee_pose_ = armbase_to_ee_initial_hal_pose_;
+    num_poses_visited_ = 0;
     return true;
   } else {
     return false;
   }
 }
 
-bool EEPosesVisitor::visitPoses(std_srvs::Empty::Request &request,
-                                std_srvs::Empty::Response &response) {
-  if (!arm_in_initial_position_) {
+bool EEPosesVisitor::visitPoses(cpt_pointlaser_msgs::EEVisitPose::Request &request,
+                                cpt_pointlaser_msgs::EEVisitPose::Response &response) {
+  if (num_poses_visited_ == 0 && !arm_in_initial_position_) {
     ROS_ERROR(
         "The arm was not moved to its initial pose! Please call the service "
         "`hal_move_arm_to_initial_pose` first.");
     return false;
   }
-  kindr::minimal::QuatTransformation current_base_to_ee_pose = armbase_to_ee_initial_hal_pose_;
-  arm_in_initial_position_ = false;
-  for (const auto &relative_pose : relative_ee_poses_to_visit_) {
-    // Visit pose.
-    relativePoseToAbsolutePose(current_base_to_ee_pose, relative_pose, &current_base_to_ee_pose);
-    CHECK(setArmTo(current_base_to_ee_pose)) << "Unable to perform arm movement.";
-    // Trigger HAL for data collection.
-    std_srvs::Empty srv_data_collection;
-    CHECK(hal_take_measurement_client_.call(srv_data_collection))
-        << "Failure to collect data after movement was performed.";
-  }
 
-  ROS_INFO(
-      "All poses were visited and all measurement were collected. You may now call the service to "
-      "perform the HAL optimization.");
+  arm_in_initial_position_ = false;
+  const auto &relative_pose = relative_ee_poses_to_visit_[num_poses_visited_];
+  // Visit pose.
+  relativePoseToAbsolutePose(current_base_to_ee_pose_, relative_pose, &current_base_to_ee_pose_);
+  CHECK(setArmTo(current_base_to_ee_pose_)) << "Unable to perform arm movement.";
+  // Trigger HAL for data collection.
+  std_srvs::Empty srv_data_collection;
+  CHECK(hal_take_measurement_client_.call(srv_data_collection))
+      << "Failure to collect data after movement was performed.";
+
+  ++num_poses_visited_;
+
+  if (num_poses_visited_ == relative_ee_poses_to_visit_.size()) {
+    response.more_poses_left = false;
+    ROS_INFO(
+        "All poses were visited and all measurement were collected. You may now call the service "
+        "to "
+        "perform the HAL optimization.");
+  } else {
+    response.more_poses_left = true;
+  }
 
   return true;
 }

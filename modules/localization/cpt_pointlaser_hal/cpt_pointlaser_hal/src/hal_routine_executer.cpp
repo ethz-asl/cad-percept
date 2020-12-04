@@ -1,5 +1,6 @@
 #include "cpt_pointlaser_hal/hal_routine_executer.h"
 
+#include <cpt_pointlaser_msgs/EEVisitPose.h>
 #include <cpt_pointlaser_msgs/HighAccuracyLocalization.h>
 #include <geometry_msgs/Pose.h>
 #include <glog/logging.h>
@@ -61,21 +62,28 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
   CHECK(hal_initialize_localization_client_.call(empty_srvs.request, empty_srvs.response))
       << "Failed to initialize HAL localization.";
   // Visit the poses.
-  ready = false;
+  std::cout << "You may now visit the end-effector poses one at a time and concurrently take "
+               "measurements.";
+  bool more_poses_left = true;
   do {
-    std::cout << "When ready to visit the end-effector poses and concurrently take measurements, "
-                 "type 'ready': ";
-    std::cin >> answer;
-    std::transform(answer.begin(), answer.end(), answer.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    ready = (answer == "ready");
-  } while (!ready);
-  CHECK(hal_visit_poses_client_.call(empty_srvs.request, empty_srvs.response))
-      << "Failed to visit end-effector poses.";
+    ready = false;
+    do {
+      std::cout << "When ready to visit the next end-effector pose, type 'ready': ";
+      std::cin >> answer;
+      std::transform(answer.begin(), answer.end(), answer.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+      ready = (answer == "ready");
+    } while (!ready);
+    cpt_pointlaser_msgs::EEVisitPose hal_visit_pose_srv;
+    CHECK(hal_visit_poses_client_.call(hal_visit_pose_srv.request, hal_visit_pose_srv.response))
+        << "Failed to visit end-effector pose.";
+    more_poses_left = hal_visit_pose_srv.response.more_poses_left;
+  } while (more_poses_left);
   // Optimize for base pose.
   ready = false;
   do {
-    std::cout << "When ready to perform HAL optimization, type 'ready': ";
+    std::cout << "All the end-effector poses were visited. When ready to perform HAL optimization, "
+                 "type 'ready': ";
     std::cin >> answer;
     std::transform(answer.begin(), answer.end(), answer.begin(),
                    [](unsigned char c) { return std::tolower(c); });
