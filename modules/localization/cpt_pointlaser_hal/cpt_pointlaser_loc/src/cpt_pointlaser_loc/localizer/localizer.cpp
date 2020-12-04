@@ -24,8 +24,7 @@ bool PointLaserLocalizer::setUpOptimizer(
     const kindr::minimal::QuatTransformation &initial_armbase_to_ref_link,
     const kindr::minimal::QuatTransformation &laser_a_offset,
     const kindr::minimal::QuatTransformation &laser_b_offset,
-    const kindr::minimal::QuatTransformation &laser_c_offset,
-    bool fix_cad_planes,
+    const kindr::minimal::QuatTransformation &laser_c_offset, bool fix_cad_planes,
     bool add_marker_pose_prior, bool only_optimize_translation) {
   // NOTE: we assume that the arm was already moved to the initial pose.
 
