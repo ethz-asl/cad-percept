@@ -2,7 +2,7 @@
 
 <launch>
   <arg name="ee_poses_visitor_config_file"
-       default="cfg/ee_poses_visitor_config_params_mabi.yaml"
+       default="cfg/ee_poses_visitor_params_mabi.yaml"
        doc="YAML file holding the parameters for the end-effector poses visitor."/>
   <arg name="common_params_file"
        default="cfg/common_params_mabi.yaml"
@@ -12,7 +12,7 @@
   <!-- Node that communicates with the controller to move the end effector -->
   <node name="pointlaser_ctrl"
         pkg="cpt_pointlaser_ctrl_ros"
-        type="ee_poses_visitor_node"
+        type="mabi_ee_poses_visitor_node"
         output="screen"
         respawn="true">
     <rosparam command="load" file="$(find cpt_pointlaser_ctrl_ros)/$(arg ee_poses_visitor_config_file)" />
