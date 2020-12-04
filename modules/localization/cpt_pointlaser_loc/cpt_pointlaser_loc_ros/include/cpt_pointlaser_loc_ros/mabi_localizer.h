@@ -82,7 +82,7 @@ class MabiLocalizer {
   std::map<std::string, ros::ServiceClient> leica_client_;
   ros::ServiceServer hal_initialize_localization_service_;
   ros::ServiceServer hal_take_measurement_service_;
-  ros::ServiceServer high_acc_localisation_service_;
+  ros::ServiceServer hal_optimize_service_;
   // Internal parameters.
   std::string reference_link_topic_name_, end_effector_topic_name_;
   Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;

@@ -223,8 +223,8 @@ void MabiLocalizer::advertiseTopics() {
       "hal_initialize_localization", &MabiLocalizer::initializeHALLocalization, this);
   hal_take_measurement_service_ =
       nh_private_.advertiseService("hal_take_measurement", &MabiLocalizer::takeMeasurement, this);
-  high_acc_localisation_service_ = nh_private_.advertiseService(
-      "high_accuracy_localize", &MabiLocalizer::highAccuracyLocalization, this);
+  hal_optimize_service_ =
+      nh_private_.advertiseService("hal_optimize", &MabiLocalizer::highAccuracyLocalization, this);
 }
 
 }  // namespace pointlaser_loc_ros
