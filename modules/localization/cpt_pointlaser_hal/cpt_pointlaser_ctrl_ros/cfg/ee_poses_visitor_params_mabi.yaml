@@ -5,7 +5,8 @@ arm_controller_switch_service_name: /mabi_mobile_highlevel_controller/controller
 path_topic_name: /mission_control/planned_path
 # Initial pose in the arm base frame to which the end effector should be set before
 # starting the HAL routine (obtained from URDF).
-armbase_to_ee_initial_hal_pose: "-0.0396287 -0.5516176 0.7162148 -0.7069676 0.7071617 0.0071219 0.0082710"
+# NOTE: This must be in "x y z q_w q_x q_y q_z" format.
+armbase_to_ee_initial_hal_pose:  "-0.0400554 -0.8660097 0.5508336 -0.0928633 -0.7009716 0.7009969 -0.0928361"
 # Time (in seconds) - from the sending of the path message to the controller - after which the movement
 # is assumed to be completed.
 timeout_arm_movement: 10.0
