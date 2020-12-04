@@ -7,12 +7,4 @@
   <!-- Node that handles the control of the arm -->
   <include file="$(find cpt_pointlaser_ctrl_ros)/launch/ee_poses_visitor.launch">
   </include>
-  <!-- Node that assists the user through the routine -->
-  <node name="pointlaser_hal"
-        pkg="cpt_pointlaser_hal"
-        type="hal_routine_executer"
-        output="screen"
-        launch-prefix="terminator -e">
-    <rosparam command="load" file="cfg/hal_routine_executer.yaml" />
-  </node>
 </launch>
