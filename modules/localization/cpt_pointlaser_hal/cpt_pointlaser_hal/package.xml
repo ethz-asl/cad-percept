@@ -14,4 +14,5 @@
   <depend>cpt_pointlaser_ctrl_ros</depend>
   <depend>cpt_pointlaser_loc_ros</depend>
   <depend>cpt_pointlaser_msgs</depend> 
+  <depend>geometry_msgs</depend> 
 </package>
