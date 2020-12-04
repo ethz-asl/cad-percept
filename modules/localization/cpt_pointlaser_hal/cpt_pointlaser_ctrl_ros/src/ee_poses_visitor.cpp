@@ -242,6 +242,10 @@ bool EEPosesVisitor::visitPoses(cpt_pointlaser_msgs::EEVisitPose::Request &reque
   CHECK(setArmTo(current_base_to_ee_pose_)) << "Unable to perform arm movement.";
   // Trigger HAL for data collection.
   std_srvs::Empty srv_data_collection;
+  if (!hal_take_measurement_client_.exists()) {
+    ROS_ERROR("The service to take measurements is not available.");
+    return false;
+  }
   CHECK(hal_take_measurement_client_.call(srv_data_collection))
       << "Failure to collect data after movement was performed.";
 
