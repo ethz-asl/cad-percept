@@ -111,22 +111,23 @@ bool EEPosesVisitor::setArmTo(const kindr::minimal::QuatTransformation &target_b
       timeout_arm_movement_);
 
   nav_msgs::Path path_msg;
-  path_msg.header.stamp = ros::Time::now();
+  ros::Time base_time = ros::Time::now();
+  path_msg.header.stamp = base_time;
   path_msg.header.frame_id = "base";
   // Retrieve current pose from tf and add it to the path.
   // TODO(fmilano): Check that this is the correct way to do this.
   geometry_msgs::PoseStamped current_pose_msg;
   tf::StampedTransform current_pose_tf;
   kindr::minimal::QuatTransformation current_pose;
-  transform_listener_.lookupTransform("base", end_effector_topic_name_, ros::Time::now(),
+  transform_listener_.lookupTransform("base", end_effector_topic_name_, ros::Time(0),
                                       current_pose_tf);
   tf::transformTFToKindr(current_pose_tf, &current_pose);
-  tf::poseStampedKindrToMsg(current_pose, ros::Time(0.0), "base", &current_pose_msg);
+  tf::poseStampedKindrToMsg(current_pose, base_time, "base", &current_pose_msg);
   path_msg.poses.push_back(current_pose_msg);
   // Add target pose to the path.
   geometry_msgs::PoseStamped target_pose_msg;
-  tf::poseStampedKindrToMsg(target_base_to_ee_pose, ros::Time(motion_duration_), "base",
-                            &target_pose_msg);
+  tf::poseStampedKindrToMsg(target_base_to_ee_pose, base_time + ros::Duration(motion_duration_),
+                            "base", &target_pose_msg);
   path_msg.poses.push_back(target_pose_msg);
   arm_movement_path_pub_.publish(path_msg);
   // TODO(fmilano): Implement an alternative once a proper communication mechanism is available.
