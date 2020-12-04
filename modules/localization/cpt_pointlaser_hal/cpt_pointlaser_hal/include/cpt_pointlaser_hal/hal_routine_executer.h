@@ -13,6 +13,10 @@ class HALRoutineExecuter {
   HALRoutineExecuter(ros::NodeHandle &nh, ros::NodeHandle &nh_private);
 
  private:
+  ///
+  /// \brief Main function, guides the user through the HAL routine.
+  void assistUserThroughRoutine();
+
   // Node handles.
   ros::NodeHandle nh_, nh_private_;
   // Publishers, subscribers.
@@ -23,6 +27,9 @@ class HALRoutineExecuter {
   // Service clients and server.
   ros::ServiceClient hal_move_arm_to_initial_pose_client_, hal_initialize_localization_client_,
       hal_visit_poses_client_, hal_optimize_client_;
+  // Name of the topic that will contain the optimized pose of the base at the end of the HAL
+  // routine.
+  std::string optimized_base_pose_topic_name_;
 };
 }  // namespace pointlaser_hal
 }  // namespace cad_percept
