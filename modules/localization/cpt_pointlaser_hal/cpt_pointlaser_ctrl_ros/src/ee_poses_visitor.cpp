@@ -100,15 +100,8 @@ void EEPosesVisitor::readListOfPoses(int movement_type) {
 
 bool EEPosesVisitor::setArmTo(const kindr::minimal::QuatTransformation &target_base_to_ee_pose) {
   size_t num_subscribers = arm_movement_path_pub_.getNumSubscribers();
-  if (num_subscribers != 1) {
-    std::string msg;
-    if (num_subscribers < 1) {
-      msg = "No nodes are";
-    } else {
-      msg = "More than one node is";
-    }
-    msg = "Unable to move the arm. " + msg + " subscribed to the path message.\n";
-    ROS_ERROR(msg.c_str());
+  if (num_subscribers < 1) {
+    ROS_ERROR("Unable to move the arm. No node is subscribed to the path message.\n");
     return false;
   }
   ROS_WARN(
