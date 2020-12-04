@@ -12,12 +12,12 @@
     type="static_transform_publisher"
     name="base_calibration"
     args="0 0 0 0 0 0 1 arm_base base"
-    if="$(eval simulation == 'true')"
+    if="$(arg simulation)"
   />
   <node pkg="tf2_ros"
     type="static_transform_publisher"
     name="map_calibration"
     args="0 0 0 0 0 0 1 map world"
-    if="$(eval simulation == 'true')"
+    if="$(arg simulation)"
   />
 </launch>
