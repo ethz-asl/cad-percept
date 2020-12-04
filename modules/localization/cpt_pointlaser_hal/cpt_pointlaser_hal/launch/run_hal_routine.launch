@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+  <!-- Nodes that handle the laser and the HAL optimizer -->
+  <include file="$(find cpt_pointlaser_loc_ros)/launch/high_accuracy_localization_mabi.launch">
+  </include>
+  <!-- Node that handles the control of the arm -->
+  <include file="$(find cpt_pointlaser_ctrl_ros)/launch/ee_poses_visitor.launch">
+  </include>
+  <!-- Node that assists the user through the routine -->
+  <node name="pointlaser_hal"
+        pkg="cpt_pointlaser_hal"
+        type="hal_routine_executer"
+        output="screen"
+        respawn="true">
+  </node>
+</launch>
