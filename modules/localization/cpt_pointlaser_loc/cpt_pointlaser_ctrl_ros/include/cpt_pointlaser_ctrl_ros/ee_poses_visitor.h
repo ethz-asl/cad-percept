@@ -1,5 +1,5 @@
-#ifndef CPT_POINTLASER_LOC_ROS_EE_POSES_VISITOR_H_
-#define CPT_POINTLASER_LOC_ROS_EE_POSES_VISITOR_H_
+#ifndef CPT_POINTLASER_CTRL_ROS_EE_POSES_VISITOR_H_
+#define CPT_POINTLASER_CTRL_ROS_EE_POSES_VISITOR_H_
 
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
@@ -7,7 +7,7 @@
 #include <tf/transform_listener.h>
 
 namespace cad_percept {
-namespace pointlaser_loc_ros {
+namespace pointlaser_ctrl_ros {
 
 /// \brief Class that triggers the arm to move through a set of poses to take measurements for the
 ///   HAL routine.
@@ -76,6 +76,6 @@ class EEPosesVisitor {
   // Whether or not the arm was moved to the initial position.
   bool arm_in_initial_position_;
 };
-}  // namespace pointlaser_loc_ros
+}  // namespace pointlaser_ctrl_ros
 }  // namespace cad_percept
 #endif

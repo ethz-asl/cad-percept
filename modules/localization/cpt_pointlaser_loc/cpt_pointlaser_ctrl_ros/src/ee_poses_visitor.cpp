@@ -1,6 +1,6 @@
-#include "cpt_pointlaser_loc_ros/ee_poses_visitor.h"
+#include "cpt_pointlaser_ctrl_ros/ee_poses_visitor.h"
 
-#include <cpt_pointlaser_loc_ros/utils.h>
+#include <cpt_pointlaser_common/utils.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
@@ -10,7 +10,7 @@
 #include <vector>
 
 namespace cad_percept {
-namespace pointlaser_loc_ros {
+namespace pointlaser_ctrl_ros {
 
 EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
     : nh_(nh), nh_private_(nh_private), transform_listener_(nh_), arm_in_initial_position_(false) {
@@ -209,7 +209,8 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
     return false;
   }
   // Move arm to initial position.
-  kindr::minimal::QuatTransformation base_to_armbase_pose = getTF("base", "arm_base");
+  kindr::minimal::QuatTransformation base_to_armbase_pose =
+      cad_percept::pointlaser_common::getTF("base", "arm_base");
   kindr::minimal::QuatTransformation base_to_ee_initial_hal_pose =
       base_to_armbase_pose * armbase_to_ee_initial_hal_pose_;
   if (setArmTo(base_to_ee_initial_hal_pose)) {
@@ -247,5 +248,5 @@ bool EEPosesVisitor::visitPoses(std_srvs::Empty::Request &request,
   return true;
 }
 
-}  // namespace pointlaser_loc_ros
+}  // namespace pointlaser_ctrl_ros
 }  // namespace cad_percept

@@ -1,23 +1,23 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>cpt_pointlaser_loc_ros</name>
-  <version>0.0.1</version>
-  <description>ROS wrapper of `cpt_pointlaser_loc` package</description>
+  <name>cpt_pointlaser_ctrl_ros</name>
+  <version>0.1.1</version>
+  <description>
+    ROS package that handles the communication with the arm to visit poses during the HAL routine.
+  </description>
 
+  <author email="fmilano@ethz.ch">Francesco Milano</author>
   <maintainer email="fmilano@ethz.ch">Francesco Milano</maintainer>
 
-  <license>TODO</license>
+  <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
 
-  <depend>cgal_msgs</depend>
-  <depend>cgal_conversions</depend>
-  <depend>cpt_pointlaser_comm_ros</depend>
   <depend>cpt_pointlaser_common</depend>
-  <depend>cpt_pointlaser_loc</depend>
   <depend>cpt_pointlaser_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>minkindr</depend>
   <depend>minkindr_conversions</depend>
+  <depend>rocoma_msgs</depend>
 </package>

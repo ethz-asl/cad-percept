@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>cpt_pointlaser_common</name>
+  <version>0.0.1</version>
+  <description>Common utils and config files for the `cpt_pointlaser_loc` package</description>
+
+  <maintainer email="fmilano@ethz.ch">Francesco Milano</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>minkindr</depend>
+  <depend>minkindr_conversions</depend>
+</package>

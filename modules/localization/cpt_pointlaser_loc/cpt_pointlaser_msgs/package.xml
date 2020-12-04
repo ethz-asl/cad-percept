@@ -15,5 +15,4 @@
   <depend>message_runtime</depend>
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
-  <depend>rocoma_msgs</depend>
 </package>

@@ -2,7 +2,7 @@
 
 #include <cgal_conversions/mesh_conversions.h>
 #include <cpt_pointlaser_comm_ros/GetDistance.h>
-#include <cpt_pointlaser_loc_ros/utils.h>
+#include <cpt_pointlaser_common/utils.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <minkindr_conversions/kindr_msg.h>
@@ -79,15 +79,16 @@ bool MabiLocalizer::initializeHALLocalization(std_srvs::Empty::Request &request,
   // Get all the poses.
   // For the links in the arm, check URDF at
   // https://bitbucket.org/leggedrobotics/mabi_common/src/master/mabi_description/.
-  initial_marker_to_armbase_ = getTF("marker", "arm_base");
-  kindr::minimal::QuatTransformation initial_pose = getTF("arm_base", reference_link_topic_name_);
+  initial_marker_to_armbase_ = cad_percept::pointlaser_common::getTF("marker", "arm_base");
+  kindr::minimal::QuatTransformation initial_pose =
+      cad_percept::pointlaser_common::getTF("arm_base", reference_link_topic_name_);
   kindr::minimal::QuatTransformation laser_a_offset =
-      getTF(reference_link_topic_name_, "pointlaser_A");
+      cad_percept::pointlaser_common::getTF(reference_link_topic_name_, "pointlaser_A");
   kindr::minimal::QuatTransformation laser_b_offset =
-      getTF(reference_link_topic_name_, "pointlaser_B");
+      cad_percept::pointlaser_common::getTF(reference_link_topic_name_, "pointlaser_B");
   kindr::minimal::QuatTransformation laser_c_offset =
-      getTF(reference_link_topic_name_, "pointlaser_C");
-  armbase_to_base_ = getTF("arm_base", "base");
+      cad_percept::pointlaser_common::getTF(reference_link_topic_name_, "pointlaser_C");
+  armbase_to_base_ = cad_percept::pointlaser_common::getTF("arm_base", "base");
   // Set up the optimizer for a new high-accuracy localization query.
   localizer_->setUpOptimizer(
       initial_marker_to_armbase_, initial_pose, laser_a_offset, laser_b_offset, laser_c_offset,
@@ -117,7 +118,8 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
   // Take measurements.
   ROS_INFO("Taking laser measurements.");
   // - Add odometry measurement to the factor graph.
-  kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", reference_link_topic_name_);
+  kindr::minimal::QuatTransformation new_arm_pose =
+      cad_percept::pointlaser_common::getTF("arm_base", reference_link_topic_name_);
   localizer_->addOdometry(current_armbase_to_ref_link_.inverse() * new_arm_pose);
   current_armbase_to_ref_link_ = new_arm_pose;
   // - Take laser measurements and add them to the factor graph.
@@ -172,11 +174,11 @@ bool MabiLocalizer::highAccuracyLocalization(
       localizer_->optimizeForArmBasePoseInMap(nh_private_.param<bool>("verbose_optimizer", false));
   // Translate the pose in the map into a pose in the world frame.
   kindr::minimal::QuatTransformation world_to_armbase =
-      getTF("world", "marker") * marker_to_armbase_optimized;
+      cad_percept::pointlaser_common::getTF("world", "marker") * marker_to_armbase_optimized;
 
   // Publish pose of the end effector.
   kindr::minimal::QuatTransformation armbase_to_endeffector =
-      getTF("arm_base", end_effector_topic_name_);
+      cad_percept::pointlaser_common::getTF("arm_base", end_effector_topic_name_);
   geometry_msgs::PoseStamped pose_sent;
   tf::poseKindrToMsg(marker_to_armbase_optimized * armbase_to_endeffector, &pose_sent.pose);
   pose_sent.header.frame_id = "marker";

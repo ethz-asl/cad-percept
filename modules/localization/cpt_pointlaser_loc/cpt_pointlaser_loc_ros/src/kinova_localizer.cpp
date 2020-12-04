@@ -2,7 +2,7 @@
 
 #include <any_msgs/SetPose.h>
 #include <cpt_pointlaser_comm_ros/GetDistance.h>
-#include <cpt_pointlaser_loc_ros/utils.h>
+#include <cpt_pointlaser_common/utils.h>
 #include <geometry_msgs/PointStamped.h>
 #include <kindr/minimal/position.h>
 #include <minkindr_conversions/kindr_msg.h>
@@ -66,18 +66,25 @@ bool KinovaLocalizer::highAccuracyLocalization(
     return false;
   }
   // Move arm to initial pose.
-  kindr::minimal::QuatTransformation world_to_base = getTF("world", "base");
+  kindr::minimal::QuatTransformation world_to_base =
+      cad_percept::pointlaser_common::getTF("world", "base");
   setArmTo(world_to_base.inverse() * initial_arm_pose_);
 
   // Get all the poses.
-  kindr::minimal::QuatTransformation marker_to_armbase = getTF("marker", "arm_base");
-  kindr::minimal::QuatTransformation initial_pose = getTF("arm_base", "kinova_link_6");
-  kindr::minimal::QuatTransformation laser_a_offset = getTF("kinova_link_6", "pointlaser_A");
-  kindr::minimal::QuatTransformation laser_b_offset = getTF("kinova_link_6", "pointlaser_B");
-  kindr::minimal::QuatTransformation laser_c_offset = getTF("kinova_link_6", "pointlaser_C");
+  kindr::minimal::QuatTransformation marker_to_armbase =
+      cad_percept::pointlaser_common::getTF("marker", "arm_base");
+  kindr::minimal::QuatTransformation initial_pose =
+      cad_percept::pointlaser_common::getTF("arm_base", "kinova_link_6");
+  kindr::minimal::QuatTransformation laser_a_offset =
+      cad_percept::pointlaser_common::getTF("kinova_link_6", "pointlaser_A");
+  kindr::minimal::QuatTransformation laser_b_offset =
+      cad_percept::pointlaser_common::getTF("kinova_link_6", "pointlaser_B");
+  kindr::minimal::QuatTransformation laser_c_offset =
+      cad_percept::pointlaser_common::getTF("kinova_link_6", "pointlaser_C");
   kindr::minimal::QuatTransformation endeffector_offset =
-      getTF("kinova_link_6", "kinova_end_effector");
-  kindr::minimal::QuatTransformation arm_base_to_base = getTF("arm_base", "base");
+      cad_percept::pointlaser_common::getTF("kinova_link_6", "kinova_end_effector");
+  kindr::minimal::QuatTransformation arm_base_to_base =
+      cad_percept::pointlaser_common::getTF("arm_base", "base");
 
   // Set up the optimizer for a new high-accuracy localization query.
   localizer_->setUpOptimizer(marker_to_armbase, initial_pose, laser_a_offset, laser_b_offset,
@@ -129,7 +136,8 @@ bool KinovaLocalizer::highAccuracyLocalization(
     setArmTo(arm_goal_pose);
 
     // Add odometry measurement.
-    kindr::minimal::QuatTransformation new_arm_pose = getTF("arm_base", "kinova_link_6");
+    kindr::minimal::QuatTransformation new_arm_pose =
+        cad_percept::pointlaser_common::getTF("arm_base", "kinova_link_6");
     localizer_->addOdometry(current_pose.inverse() * new_arm_pose);
     current_pose = new_arm_pose;
 
@@ -170,11 +178,12 @@ bool KinovaLocalizer::highAccuracyLocalization(
   kindr::minimal::QuatTransformation base_pose_in_map =
       localizer_->optimizeForArmBasePoseInMap(nh_private_.param<bool>("verbose", false));
   // Translate the pose in the map into a pose in the world frame.
-  kindr::minimal::QuatTransformation world_to_armbase = getTF("world", "marker") * base_pose_in_map;
+  kindr::minimal::QuatTransformation world_to_armbase =
+      cad_percept::pointlaser_common::getTF("world", "marker") * base_pose_in_map;
 
   // Publish pose of the end effector.
   kindr::minimal::QuatTransformation armbase_to_endeffector =
-      getTF("arm_base", "kinova_end_effector");
+      cad_percept::pointlaser_common::getTF("arm_base", "kinova_end_effector");
   geometry_msgs::PoseStamped pose_sent;
   tf::poseKindrToMsg(base_pose_in_map * armbase_to_endeffector, &pose_sent.pose);
   pose_sent.header.frame_id = "marker";
