@@ -7,6 +7,7 @@
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
 #include <std_msgs/Int16.h>
+#include <tf/transform_listener.h>
 
 #include <Eigen/Geometry>
 
@@ -39,6 +40,7 @@ class KinovaLocalizer {
   int mode_, task_type_;
   bool processing_, transform_received_;
   kindr::minimal::QuatTransformation initial_arm_pose_;
+  tf::TransformListener transform_listener_;
   // Localizer that performs the high-accuracy localization task.
   std::unique_ptr<cad_percept::pointlaser_loc::localizer::PointLaserLocalizer> localizer_;
 };

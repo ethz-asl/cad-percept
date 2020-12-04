@@ -9,6 +9,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Int16.h>
 #include <std_srvs/Empty.h>
+#include <tf/transform_listener.h>
 
 #include <Eigen/Geometry>
 
@@ -83,6 +84,8 @@ class MabiLocalizer {
   ros::ServiceServer hal_initialize_localization_service_;
   ros::ServiceServer hal_take_measurement_service_;
   ros::ServiceServer hal_optimize_service_;
+  // Transform listener.
+  tf::TransformListener transform_listener_;
   // Internal parameters.
   std::string reference_link_topic_name_, end_effector_topic_name_;
   Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;

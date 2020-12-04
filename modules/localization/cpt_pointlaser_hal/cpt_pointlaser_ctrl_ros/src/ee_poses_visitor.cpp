@@ -215,7 +215,7 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
   }
   // Move arm to initial position.
   kindr::minimal::QuatTransformation base_to_armbase_pose =
-      cad_percept::pointlaser_common::getTF("base", "arm_base");
+      cad_percept::pointlaser_common::getTF(transform_listener_, "base", "arm_base");
   kindr::minimal::QuatTransformation base_to_ee_initial_hal_pose =
       base_to_armbase_pose * armbase_to_ee_initial_hal_pose_;
   if (setArmTo(base_to_ee_initial_hal_pose)) {
