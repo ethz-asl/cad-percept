@@ -13,8 +13,7 @@
   <node name="pointlaser_ctrl"
         pkg="cpt_pointlaser_ctrl_ros"
         type="mabi_ee_poses_visitor_node"
-        output="screen"
-        respawn="true">
+        output="screen">
     <rosparam command="load" file="$(find cpt_pointlaser_ctrl_ros)/$(arg ee_poses_visitor_config_file)" />
   </node>
 </launch>
