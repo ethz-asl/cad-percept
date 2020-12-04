@@ -34,8 +34,9 @@ To run the HAL routine:
     In alternative, to run the software in simulation, cf. Terminal 2 below.
 - On the local computer:
   - In Terminal 1, launch the interface to align the building model to the robot.
-    ```bash.
-    roslaunch cpt_selective_icp cpt_selective_icp_standalone.launch
+    ```bash
+    # Use argument simulation:=true if running in simulation.
+    roslaunch cpt_selective_icp cpt_selective_icp_hal_routine.launch
     ```
   - If the software should be run in simulation, in Terminal 2, launch the simulation GUI:
     ```bash
