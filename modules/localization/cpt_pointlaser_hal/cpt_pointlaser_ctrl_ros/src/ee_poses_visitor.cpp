@@ -1,6 +1,7 @@
 #include "cpt_pointlaser_ctrl_ros/ee_poses_visitor.h"
 
 #include <cpt_pointlaser_common/utils.h>
+#include <glog/logging.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
