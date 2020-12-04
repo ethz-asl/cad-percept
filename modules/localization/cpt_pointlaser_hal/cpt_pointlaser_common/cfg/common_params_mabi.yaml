@@ -1,7 +1,7 @@
 # Topic name of a reference link that has fixed pose w.r.t. to the lasers.
 reference_link_topic_name: WRIST_2
 # Topic name of the end effector.
-end_effector_topic_name: end_effector
+end_effector_topic_name: ENDEFFECTOR
 # Collections of possible movements.
 # NOTE: These movements are *relative* to the previous pose of the
 # end-effector!
