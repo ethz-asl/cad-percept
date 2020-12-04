@@ -162,6 +162,7 @@ bool EEPosesVisitor::parsePose(const std::string &pose_to_parse,
                  [](const std::string &s) { return std::stod(s.c_str()); });
   // Compute arm goal pose and move arm to it.
   Eigen::Quaternion<double> rot_quat(arm_cmd[3], arm_cmd[4], arm_cmd[5], arm_cmd[6]);
+  rot_quat.normalize();
   kindr::minimal::PositionTemplate<double> translation(arm_cmd[0], arm_cmd[1], arm_cmd[2]);
 
   kindr::minimal::QuatTransformation parsed_pose_ret(translation, rot_quat);
