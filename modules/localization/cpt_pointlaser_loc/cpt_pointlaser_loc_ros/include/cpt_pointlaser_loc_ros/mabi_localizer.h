@@ -44,7 +44,8 @@ class MabiLocalizer {
   /// \param response  Service response (empty).
   /// \return True if the initialization was successful - and in particular if the laser could be
   ///   turned on; false otherwise.
-  bool initializeHALRoutine(std_srvs::Empty::Request &request, std_srvs::Empty::Response &response);
+  bool initializeHALLocalization(std_srvs::Empty::Request &request,
+                                 std_srvs::Empty::Response &response);
 
   ///
   /// \brief Takes laser measurements from the current pose and adds them, together with
@@ -79,7 +80,7 @@ class MabiLocalizer {
   ros::Subscriber cad_model_sub_;
   // Service clients and server.
   std::map<std::string, ros::ServiceClient> leica_client_;
-  ros::ServiceServer initialize_hal_routine_service_;
+  ros::ServiceServer hal_initialize_localization_service_;
   ros::ServiceServer hal_take_measurement_service_;
   ros::ServiceServer high_acc_localisation_service_;
   // Internal parameters.

@@ -66,8 +66,8 @@ void MabiLocalizer::modelCallback(const cgal_msgs::TriangleMeshStamped &cad_mesh
       model_, initial_armbase_to_ref_link_std_, odometry_noise_std_, pointlaser_noise_std_));
 }
 
-bool MabiLocalizer::initializeHALRoutine(std_srvs::Empty::Request &request,
-                                         std_srvs::Empty::Response &response) {
+bool MabiLocalizer::initializeHALLocalization(std_srvs::Empty::Request &request,
+                                              std_srvs::Empty::Response &response) {
   if (!received_cad_model_) {
     ROS_ERROR("CAD model was not received. Unable to initialize localizer and run HAL routine.");
     return false;
@@ -219,8 +219,8 @@ void MabiLocalizer::advertiseTopics() {
   intersection_c_pub_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_c", 1);
   endeffector_pose_pub_ =
       nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
-  initialize_hal_routine_service_ = nh_private_.advertiseService(
-      "initialize_hal_routine", &MabiLocalizer::initializeHALRoutine, this);
+  hal_initialize_localization_service_ = nh_private_.advertiseService(
+      "hal_initialize_localization", &MabiLocalizer::initializeHALLocalization, this);
   hal_take_measurement_service_ =
       nh_private_.advertiseService("hal_take_measurement", &MabiLocalizer::takeMeasurement, this);
   high_acc_localisation_service_ = nh_private_.advertiseService(
