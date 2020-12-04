@@ -27,14 +27,6 @@ class MabiLocalizer {
 
  private:
   void advertiseTopics();
-  ///
-  /// \brief Initializes the HAL routine, by setting up the optimizer and retrieving the fixed and
-  /// initial poses. NOTE: For the way it is currently implemented, this method should not be called
-  /// manually, but only by `takeMeasurements` method when the first measurement is taken.
-  ///
-  /// \return True if the initialization was successful - and in particular if the laser could be
-  ///   turned on; false otherwise.
-  bool initializeHALRoutine();
 
   // Callbacks.
   ///
@@ -44,6 +36,16 @@ class MabiLocalizer {
   void modelCallback(const cgal_msgs::TriangleMeshStamped &cad_mesh_msg);
 
   // Service handlers.
+  ///
+  /// \brief Initializes the HAL routine, by setting up the optimizer and retrieving the fixed and
+  ///   initial poses. NOTE: It assumes that the arm was already moved to its initial position.
+  ///
+  /// \param request   Service request (empty).
+  /// \param response  Service response (empty).
+  /// \return True if the initialization was successful - and in particular if the laser could be
+  ///   turned on; false otherwise.
+  bool initializeHALRoutine(std_srvs::Empty::Request &request, std_srvs::Empty::Response &response);
+
   ///
   /// \brief Takes laser measurements from the current pose and adds them, together with
   /// arm-odometry measurements, to the factor graph to be used for the optimization.
@@ -77,6 +79,7 @@ class MabiLocalizer {
   ros::Subscriber cad_model_sub_;
   // Service clients and server.
   std::map<std::string, ros::ServiceClient> leica_client_;
+  ros::ServiceServer initialize_hal_routine_service_;
   ros::ServiceServer hal_take_measurement_service_;
   ros::ServiceServer high_acc_localisation_service_;
   // Internal parameters.
@@ -84,6 +87,7 @@ class MabiLocalizer {
   Eigen::Matrix<double, 6, 1> initial_armbase_to_ref_link_std_, odometry_noise_std_;
   double pointlaser_noise_std_;
   bool received_cad_model_;
+  bool received_at_least_one_measurement_;
   bool initialized_hal_routine_;
   kindr::minimal::QuatTransformation initial_marker_to_armbase_;
   kindr::minimal::QuatTransformation current_armbase_to_ref_link_;
