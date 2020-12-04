@@ -191,10 +191,9 @@ void EEPosesVisitor::relativePoseToAbsolutePose(
 
 void EEPosesVisitor::advertiseAndSubscribe() {
   // Advertise services to position the arm and move it through the poses.
-  go_to_initial_position_service_ = nh_private_.advertiseService(
+  go_to_initial_position_service_ = nh_.advertiseService(
       "hal_move_arm_to_initial_pose", &EEPosesVisitor::goToArmInitialPosition, this);
-  visit_poses_service_ =
-      nh_private_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
+  visit_poses_service_ = nh_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
   // Advertise path topic.
   arm_movement_path_pub_ = nh_private_.advertise<nav_msgs::Path>(path_topic_name_, 1);
   // Subscribe to services of the controller.

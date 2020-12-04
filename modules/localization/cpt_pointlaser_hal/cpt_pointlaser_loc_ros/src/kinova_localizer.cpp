@@ -250,8 +250,8 @@ void KinovaLocalizer::advertiseTopics() {
   waco_client_["check_pose"] =
       nh_.serviceClient<any_msgs::SetPose>("/waco_hal_compare_ee_poses_in_world");
   waco_client_["execute_task"] = nh_.serviceClient<std_srvs::Trigger>("/go_to_goal_pose");
-  high_acc_localisation_service_ = nh_private_.advertiseService(
-      "high_acc_localize", &KinovaLocalizer::highAccuracyLocalization, this);
+  high_acc_localisation_service_ =
+      nh_.advertiseService("high_acc_localize", &KinovaLocalizer::highAccuracyLocalization, this);
 }
 
 void KinovaLocalizer::setMode(const std_msgs::Int16 &mode_msg) {
