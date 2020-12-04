@@ -103,6 +103,10 @@ bool MabiLocalizer::initializeHALLocalization(std_srvs::Empty::Request &request,
 
   // Turn laser on.
   std_srvs::Empty empty_srvs;
+  if (!leica_client_["laserOn"].exists()) {
+    ROS_ERROR("The service to turn the laser on is not available.");
+    return false;
+  }
   if (!leica_client_["laserOn"].call(empty_srvs.request, empty_srvs.response)) {
     ROS_ERROR("Failed to turn laser on. Unable to initialize HAL routine.");
     return false;
@@ -169,6 +173,10 @@ bool MabiLocalizer::highAccuracyLocalization(
   }
   // Turn the laser off.
   std_srvs::Empty empty_srvs;
+  if (!leica_client_["laserOff"].exists()) {
+    ROS_ERROR("The service to turn the laser off is not available.");
+    return false;
+  }
   leica_client_["laserOff"].call(empty_srvs.request, empty_srvs.response);
 
   // Optimize for the pose from the marker to the arm base.

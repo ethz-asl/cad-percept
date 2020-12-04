@@ -202,6 +202,10 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
   // Switch controller.
   rocoma_msgs::SwitchController srv;
   srv.request.name = arm_controller_;
+  if (!switch_controller_client_.exists()) {
+    ROS_ERROR("The arm-controller service is not available.");
+    return false;
+  }
   switch_controller_client_.call(srv);
   if (srv.response.status <= 0) {
     ROS_ERROR("Failed to switch arm controller on.");

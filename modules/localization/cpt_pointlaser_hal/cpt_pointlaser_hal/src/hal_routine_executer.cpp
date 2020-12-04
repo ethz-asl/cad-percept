@@ -51,6 +51,8 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
     }
     ready = (answer == "ready");
   } while (!ready);
+  CHECK(hal_move_arm_to_initial_pose_client_.exists())
+      << "The service to move the arm to its initial pose is not available.";
   CHECK(hal_move_arm_to_initial_pose_client_.call(empty_srvs.request, empty_srvs.response))
       << "Failed to move the arm to its initial pose.";
   // Initialize the HAL localization.
@@ -65,6 +67,8 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
     }
     ready = (answer == "ready");
   } while (!ready);
+  CHECK(hal_initialize_localization_client_.exists())
+      << "The service to initialize the localization is not available.";
   CHECK(hal_initialize_localization_client_.call(empty_srvs.request, empty_srvs.response))
       << "Failed to initialize HAL localization.";
   // Visit the poses.
@@ -84,6 +88,7 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
       ready = (answer == "ready");
     } while (!ready);
     cpt_pointlaser_msgs::EEVisitPose hal_visit_pose_srv;
+    CHECK(hal_visit_poses_client_.exists()) << "The service to visit poses is not available.";
     CHECK(hal_visit_poses_client_.call(hal_visit_pose_srv.request, hal_visit_pose_srv.response))
         << "Failed to visit end-effector pose.";
     more_poses_left = hal_visit_pose_srv.response.more_poses_left;
@@ -102,6 +107,8 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
     }
   } while (!ready);
   cpt_pointlaser_msgs::HighAccuracyLocalization hal_optimize_srv;
+  CHECK(hal_optimize_client_.exists())
+      << "The service to perform HAL optimization is not available.";
   CHECK(hal_optimize_client_.call(hal_optimize_srv.request, hal_optimize_srv.response))
       << "Failed to perform HAL optimization.";
   // Publish optimized pose.
