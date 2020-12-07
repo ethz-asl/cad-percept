@@ -73,7 +73,8 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
       << "Failed to initialize HAL localization.";
   // Visit the poses.
   std::cout << "You may now visit the end-effector poses one at a time and concurrently take "
-               "measurements.";
+               "measurements."
+            << std::endl;
   bool more_poses_left = true;
   do {
     ready = false;
