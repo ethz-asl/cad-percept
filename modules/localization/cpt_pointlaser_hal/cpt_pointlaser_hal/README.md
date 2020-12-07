@@ -1,6 +1,6 @@
 In the following, it will be assumed that a catkin workspace is available on the robot, that has the following packages installed (including the other packages on which the latter depend):
 - This repo (`cad_percept`);
-- The `mabi_mobile_robot` package from the `mabi_mobile` [repo](https://bitbucket.org/leggedrobotics/mabi_mobile/src/b0fbe33151401e5b6c19265dc95e4765fb43ea0a/mabi_mobile_robot/?at=feature%2Fmabi_smb), checked-out at branch `feature/mabi_smb`.
+- The `mabi_mobile_robot` package from the `mabi_mobile` [repo](https://bitbucket.org/leggedrobotics/mabi_mobile/src/93e2ca550ebac4e64bb3330583959e7a88575aea/?at=feature%2Ftest_hal_routine), checked-out at branch `feature/test_hal_routine`.
 
 To do so, follow the instructions below:
 ```bash
@@ -25,7 +25,7 @@ catkin build cpt_pointlaser_hal
 cd ${HAL_WS}/src
 git clone git@bitbucket.org:leggedrobotics/mabi_mobile.git
 cd mabi_mobile
-git checkout b0fbe33151401e5b6c19265dc95e4765fb43ea0a
+git checkout feature/test_hal_routine
 cd ..
 ./mabi_mobile/mabi_mobile_deps/bin/clone_deps.sh
 catkin build mabi_mobile_robot
