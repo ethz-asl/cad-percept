@@ -20,7 +20,7 @@ HALRoutineExecuter::HALRoutineExecuter(ros::NodeHandle &nh, ros::NodeHandle &nh_
       nh_.serviceClient<std_srvs::Empty>("/hal_move_arm_to_initial_pose");
   hal_initialize_localization_client_ =
       nh_.serviceClient<std_srvs::Empty>("/hal_initialize_localization");
-  hal_visit_poses_client_ = nh_.serviceClient<std_srvs::Empty>("/hal_visit_poses");
+  hal_visit_poses_client_ = nh_.serviceClient<cpt_pointlaser_msgs::EEVisitPose>("/hal_visit_poses");
   hal_optimize_client_ =
       nh_.serviceClient<cpt_pointlaser_msgs::HighAccuracyLocalization>("/hal_optimize");
   // Advertise topic with corrected base pose.
