@@ -1,6 +1,35 @@
 In the following, it will be assumed that a catkin workspace is available on the robot, that has the following packages installed (including the other packages on which the latter depend):
 - This repo (`cad_percept`);
-- The `mabi_mobile_robot` package from the `mabi_mobile` [repo](https://bitbucket.org/leggedrobotics/mabi_mobile/src/f9b8af0ded21b3e7ea4b9d99ca09a64a21479ee0/mabi_mobile_robot/?at=feature%2Fmabi_smb), checked-out at branch `feature/mabi_smb`.
+- The `mabi_mobile_robot` package from the `mabi_mobile` [repo](https://bitbucket.org/leggedrobotics/mabi_mobile/src/b0fbe33151401e5b6c19265dc95e4765fb43ea0a/mabi_mobile_robot/?at=feature%2Fmabi_smb), checked-out at branch `feature/mabi_smb`.
+
+To do so, follow the instructions below:
+```bash
+export HAL_WS=hal_test_ws
+mkdir -p ${HAL_WS}/src
+cd ${HAL_WS}
+catkin init
+catkin config --merge-devel
+catkin config --extend /opt/ros/melodic/
+catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
+cd src
+# Clone and build cad-percept.
+git clone git@github.com:ethz-asl/cad-percept.git
+cd cad-percept
+git checkout fmilano/cpt_pointlaser_EE_poses_visitor
+cd ..
+wstool init
+wstool merge cad-percept/dependencies.rosinstall
+wstool update -j8
+catkin build cpt_pointlaser_hal
+# Clone and build mabi_mobile.
+cd ${HAL_WS}/src
+git clone git@bitbucket.org:leggedrobotics/mabi_mobile.git
+cd mabi_mobile
+git checkout b0fbe33151401e5b6c19265dc95e4765fb43ea0a
+cd ..
+./mabi_mobile/mabi_mobile_deps/bin/clone_deps.sh
+catkin build mabi_mobile_robot
+```
 
 It will also be assumed that a catkin workspace is available on the local computer, with the following packages installed:
 - This repo (`cad_percept`);
