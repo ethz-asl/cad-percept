@@ -62,6 +62,7 @@ To run the HAL routine:
     - The robot state publisher.
 
     In alternative, to run the software in simulation, cf. Terminal 2 below.
+    In case this launch file is terminated (e.g., `Ctrl+C`) or some of its nodes crashes, you might have to fix some memory errors, by running `rosrun cosmo memory_remover`, which should display `Sucessfully removed shared memory pool 'COSMO_SHM'` in return.
   - In Terminal 3, enable the robot. NOTE: Make sure you know what you're doing.
     ```bash
     rosservice call /mabi_lowlevel_controller/enable_slave "id: 0 action: 1"
