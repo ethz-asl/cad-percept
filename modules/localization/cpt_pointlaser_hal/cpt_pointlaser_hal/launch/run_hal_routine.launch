@@ -2,7 +2,7 @@
 
 <launch>
   <arg name="simulation" default="false"/>
-  <!-- Nodes that handle the laser and the HAL optimizer -->
+  <!-- Nodes that handle the laser measurements and the HAL optimizer -->
   <include file="$(find cpt_pointlaser_loc_ros)/launch/high_accuracy_localization_mabi.launch">
   </include>
   <!-- Node that handles the control of the arm -->

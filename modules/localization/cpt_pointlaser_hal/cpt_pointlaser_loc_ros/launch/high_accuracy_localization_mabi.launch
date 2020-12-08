@@ -12,6 +12,9 @@
        doc="Path of the USB port that the distobox is connected at."/>
   <!-- Load common parameters -->
   <rosparam command="load" file="$(find cpt_pointlaser_common)/$(arg common_params_file)" />
+  <!-- Laser communication node -->
+  <include file="$(find cpt_pointlaser_comm_ros)/launch/pointlaser_comm.launch">
+  </include>
   <!-- Calibration node: tf transforms between lasers and reference link -->
   <include file="$(find cpt_pointlaser_loc_ros)/launch/lasers_tf_publishers_mabi.launch">
   </include>
