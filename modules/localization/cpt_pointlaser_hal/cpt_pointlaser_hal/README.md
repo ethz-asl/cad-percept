@@ -47,7 +47,8 @@ To run the HAL routine:
 - On the robot:
   - In Terminal 1, launch the HAL module and the interface to the arm controller:
     ```bash
-    # Use argument simulation:=true if running in simulation.
+    # If running in simulation, use argument `simulation:=true` and set the parameter `simulation_mode` to
+    # `true` in `cpt_pointlaser_ctrl_ros/cfg/ee_poses_visitor_params_mabi.yaml`.
     roslaunch cpt_pointlaser_hal run_hal_routine.launch
     ```
   - In Terminal 2, launch the software stack for the robot:

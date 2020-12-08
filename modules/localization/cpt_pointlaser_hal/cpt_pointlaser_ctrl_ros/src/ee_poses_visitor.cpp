@@ -19,6 +19,11 @@ EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       transform_listener_(nh_),
       arm_in_initial_position_(false),
       num_poses_visited_(0) {
+  // Read whether or not the node is running in simulation.
+  if (!nh_private.hasParam("simulation_mode")) {
+    ROS_WARN("'simulation_mode' not set as parameter.");
+  }
+  simulation_mode_ = nh_private.param<bool>("simulation_mode", false);
   // Read combined controller to use (there should only be one.)
   if (!nh_private.hasParam("combined_controller")) {
     ROS_ERROR("'combined_controller' not set as parameter.");
@@ -215,17 +220,19 @@ void EEPosesVisitor::advertiseAndSubscribe() {
 
 bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
                                             std_srvs::Empty::Response &response) {
-  // Switch combined controller on.
   rocoma_msgs::SwitchController srv;
-  srv.request.name = combined_controller_;
-  if (!switch_combined_controller_client_.exists()) {
-    ROS_ERROR("The combined-controller service is not available.");
-    return false;
-  }
-  switch_combined_controller_client_.call(srv);
-  if (srv.response.status <= 0) {
-    ROS_ERROR("Failed to switch combined controller on.");
-    return false;
+  if (!simulation_mode_) {
+    // Switch combined controller on, which is only required on the real robot.
+    srv.request.name = combined_controller_;
+    if (!switch_combined_controller_client_.exists()) {
+      ROS_ERROR("The combined-controller service is not available.");
+      return false;
+    }
+    switch_combined_controller_client_.call(srv);
+    if (srv.response.status <= 0) {
+      ROS_ERROR("Failed to switch combined controller on.");
+      return false;
+    }
   }
   // Switch arm controller on.
   srv.request.name = arm_controller_;

@@ -83,6 +83,8 @@ class EEPosesVisitor {
   kindr::minimal::QuatTransformation current_base_to_ee_pose_;
   // Number of poses visited.
   size_t num_poses_visited_;
+  // Whether or not the node is running in simulation node (needed to select the controllers).
+  bool simulation_mode_;
 };
 }  // namespace pointlaser_ctrl_ros
 }  // namespace cad_percept
