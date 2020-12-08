@@ -1,6 +1,9 @@
 arm_controller: MabiExternalPathEndeffectorTrackingController
-# Name of the service that switches the arm controller.
-arm_controller_switch_service_name: /mabi_mobile_highlevel_controller/controller_manager/switch_controller
+combined_controller: MabiMobileCombinedController
+# Name of the service that switches the arm controller on.
+arm_controller_switch_service_name: /mabi_highlevel_controller/controller_manager/switch_controller
+# Name of the service that switches the combined controller on.
+combined_controller_switch_service_name: /mabi_mobile_highlevel_controller/controller_manager/switch_controller
 # Topic name for the path that the end-effector should follow during the movements.
 path_topic_name: /mission_control/planned_path
 # Initial pose in the arm base frame to which the end effector should be set before

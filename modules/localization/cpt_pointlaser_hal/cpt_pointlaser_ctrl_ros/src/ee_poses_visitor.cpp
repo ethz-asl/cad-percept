@@ -19,19 +19,33 @@ EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       transform_listener_(nh_),
       arm_in_initial_position_(false),
       num_poses_visited_(0) {
+  // Read combined controller to use (there should only be one.)
+  if (!nh_private.hasParam("combined_controller")) {
+    ROS_ERROR("'combined_controller' not set as parameter.");
+  }
+  combined_controller_ =
+      nh_private.param<std::string>("combined_controller", "MabiMobileCombinedController");
   // Read arm controller to use.
   if (!nh_private.hasParam("arm_controller")) {
     ROS_ERROR("'arm_controller' not set as parameter.");
   }
   arm_controller_ = nh_private.param<std::string>("arm_controller",
                                                   "MabiExternalPathEndeffectorTrackingController");
-  // Read name of the service that switches the arm controller.
+  // Read name of the service that switches the combined controller on.
+  if (!nh_private.hasParam("combined_controller_switch_service_name")) {
+    ROS_ERROR("'combined_controller_switch_service_name' not set as parameter.");
+  }
+  combined_controller_switch_service_name_ = nh_private.param<std::string>(
+      "combined_controller_switch_service_name",
+      "/mabi_mobile_highlevel_controller/controller_manager/switch_controller");
+
+  // Read name of the service that switches the arm controller on.
   if (!nh_private.hasParam("arm_controller_switch_service_name")) {
     ROS_ERROR("'arm_controller_switch_service_name' not set as parameter.");
   }
   arm_controller_switch_service_name_ = nh_private.param<std::string>(
       "arm_controller_switch_service_name",
-      "/mabi_mobile_highlevel_controller/controller_manager/switch_controller");
+      "/mabi_highlevel_controller/controller_manager/switch_controller");
 
   // Read topic name for the path that the end-effector should follow during the movements.
   if (!nh_private.hasParam("path_topic_name")) {
@@ -190,23 +204,36 @@ void EEPosesVisitor::advertiseAndSubscribe() {
   visit_poses_service_ = nh_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
   // Advertise path topic.
   arm_movement_path_pub_ = nh_private_.advertise<nav_msgs::Path>(path_topic_name_, 1);
-  // Subscribe to services of the controller.
-  switch_controller_client_ =
+  // Subscribe to services of the controllers.
+  switch_arm_controller_client_ =
       nh_.serviceClient<rocoma_msgs::SwitchController>(arm_controller_switch_service_name_);
+  switch_combined_controller_client_ =
+      nh_.serviceClient<rocoma_msgs::SwitchController>(combined_controller_switch_service_name_);
   // Subscribe to services of HAL routine.
   hal_take_measurement_client_ = nh_.serviceClient<std_srvs::Empty>("hal_take_measurement");
 }
 
 bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
                                             std_srvs::Empty::Response &response) {
-  // Switch controller.
+  // Switch combined controller on.
   rocoma_msgs::SwitchController srv;
+  srv.request.name = combined_controller_;
+  if (!switch_combined_controller_client_.exists()) {
+    ROS_ERROR("The combined-controller service is not available.");
+    return false;
+  }
+  switch_combined_controller_client_.call(srv);
+  if (srv.response.status <= 0) {
+    ROS_ERROR("Failed to switch combined controller on.");
+    return false;
+  }
+  // Switch arm controller on.
   srv.request.name = arm_controller_;
-  if (!switch_controller_client_.exists()) {
+  if (!switch_arm_controller_client_.exists()) {
     ROS_ERROR("The arm-controller service is not available.");
     return false;
   }
-  switch_controller_client_.call(srv);
+  switch_arm_controller_client_.call(srv);
   if (srv.response.status <= 0) {
     ROS_ERROR("Failed to switch arm controller on.");
     return false;

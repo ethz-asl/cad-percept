@@ -65,11 +65,13 @@ class EEPosesVisitor {
   // Transform listener.
   tf::TransformListener transform_listener_;
   // Service clients and server.
-  ros::ServiceClient switch_controller_client_, hal_take_measurement_client_;
+  ros::ServiceClient switch_arm_controller_client_, switch_combined_controller_client_,
+      hal_take_measurement_client_;
   ros::ServiceServer go_to_initial_position_service_, visit_poses_service_;
   // Internal parameters.
-  std::string arm_controller_;
-  std::string arm_controller_switch_service_name_, path_topic_name_;
+  std::string arm_controller_, combined_controller_;
+  std::string arm_controller_switch_service_name_, combined_controller_switch_service_name_,
+      path_topic_name_;
   kindr::minimal::QuatTransformation armbase_to_ee_initial_hal_pose_;
   double timeout_arm_movement_, motion_duration_;
   std::string reference_link_topic_name_, end_effector_topic_name_;
