@@ -5,7 +5,7 @@ Launch file for Selective ICP with rviz
 
 <launch>
 
-	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/LEE_H_single_surface.off" />
+	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/Lee_H_Demo_2.off" />
   <arg name="simulation" default="false"/>
 
   <node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen">
