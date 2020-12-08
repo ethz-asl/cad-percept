@@ -70,12 +70,11 @@ To run the HAL routine:
 - On the local computer:
   - In Terminal 1, launch the interface to align the building model to the robot.
     ```bash
-    # Use argument simulation:=true if running in simulation.
     roslaunch cpt_selective_icp cpt_selective_icp_hal_routine.launch
     ```
   - If the software should be run in simulation, in Terminal 2, launch the simulation GUI:
     ```bash
-    roslaunch mabi_sim run_sim.launch tool_name:=grinder
+    roslaunch mabi_sim run_sim_hal_routine.launch
     ```
     Also, change `arm_controller_switch_service_name` to `/mabi_highlevel_controller/controller_manager/switch_controller` in `cpt_pointlaser_ctrl_ros/cfg/ee_poses_visitor_params_mabi.yaml`.
   - In Terminal 3, launch the interface that will guide the user through the routine:
