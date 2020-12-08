@@ -84,3 +84,4 @@ To run the HAL routine:
 
 To execute the routine:
 1. Align mesh model to the robot.
+2. Follow the instructions in Terminal 3 on the local computer.
