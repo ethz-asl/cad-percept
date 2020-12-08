@@ -62,6 +62,10 @@ To run the HAL routine:
     - The robot state publisher.
 
     In alternative, to run the software in simulation, cf. Terminal 2 below.
+  - In Terminal 3, enable the robot. NOTE: Make sure you know what you're doing.
+    ```bash
+    rosservice call /mabi_lowlevel_controller/enable_slave "id: 0 action: 1"
+    ```
 - On the local computer:
   - In Terminal 1, launch the interface to align the building model to the robot.
     ```bash
