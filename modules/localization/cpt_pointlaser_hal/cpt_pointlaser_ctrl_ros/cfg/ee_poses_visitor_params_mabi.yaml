@@ -20,4 +20,4 @@ motion_duration: 3.5
 # `movement_type_<movenent_to_perform>` in`common_params_mabi.yaml`.
 movement_to_perform: 0
 # Whether or not the node should run in simulation (needed only to choose whether to start the combined controller).
-simulation_mode: true
+simulation_mode: false
