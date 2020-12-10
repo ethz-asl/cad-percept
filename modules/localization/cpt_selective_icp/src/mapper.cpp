@@ -302,7 +302,9 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
     if (parameters_.publish_distance) {
       if (icp_.hasMap()) {
-        publishDistanceToMeshAsPC(pc, distance_pc_pub_);
+        DP originalCloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(cloud_msg_in));
+        DP pc_original = transformation_->compute(originalCloud, T_updated_scanner_to_map);
+        publishDistanceToMeshAsPC(pc_original, distance_pc_pub_);
         std::cout << "published pc with distance information" << std::endl;
       } else {
         ROS_ERROR_STREAM("[Selective ICP] Can't publish distance to mesh. No map found");
