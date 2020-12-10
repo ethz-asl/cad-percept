@@ -143,12 +143,10 @@ bool EEPosesVisitor::setArmTo(const kindr::minimal::QuatTransformation &target_b
   tf::transformTFToKindr(current_pose_tf, &current_pose);
   tf::poseStampedKindrToMsg(current_pose, base_time, "base", &current_pose_msg);
   path_msg.poses.push_back(current_pose_msg);
-  ROS_INFO_STREAM("Current pose is " << current_pose);
   // Add target pose to the path.
   geometry_msgs::PoseStamped target_pose_msg;
   tf::poseStampedKindrToMsg(target_base_to_ee_pose, base_time + ros::Duration(motion_duration_),
                             "base", &target_pose_msg);
-  ROS_INFO_STREAM("Target pose is " << target_base_to_ee_pose);
   path_msg.poses.push_back(target_pose_msg);
   arm_movement_path_pub_.publish(path_msg);
   // TODO(fmilano): Implement an alternative once a proper communication mechanism is available.
