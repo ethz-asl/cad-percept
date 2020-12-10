@@ -1,2 +1,0 @@
-# Topic name for the optimized base pose at the end of the HAL routine.
-optimized_base_pose_topic_name: hal_corrected_base_pose_in_world

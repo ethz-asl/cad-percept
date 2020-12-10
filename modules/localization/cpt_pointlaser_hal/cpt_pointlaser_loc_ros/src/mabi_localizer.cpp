@@ -210,7 +210,7 @@ bool MabiLocalizer::highAccuracyLocalization(
   ROS_INFO_STREAM("Updated base pose in world, t: "
                   << base_pose_in_world.getPosition().transpose()
                   << ", o: " << base_pose_in_world.getRotation().vector().transpose() << "\n");
-  tf::poseKindrToMsg(base_pose_in_world, &response.corrected_base_pose_in_world);
+  tf::transformKindrToMsg(base_pose_in_world, &response.corrected_base_pose_in_world);
 
   // Set the HAL routine as completed.
   initialized_hal_routine_ = false;

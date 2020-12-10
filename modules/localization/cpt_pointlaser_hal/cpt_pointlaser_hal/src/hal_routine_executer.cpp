@@ -23,14 +23,10 @@ HALRoutineExecuter::HALRoutineExecuter(ros::NodeHandle &nh, ros::NodeHandle &nh_
   hal_visit_poses_client_ = nh_.serviceClient<cpt_pointlaser_msgs::EEVisitPose>("/hal_visit_poses");
   hal_optimize_client_ =
       nh_.serviceClient<cpt_pointlaser_msgs::HighAccuracyLocalization>("/hal_optimize");
-  // Advertise topic with corrected base pose.
-  if (!nh_private_.hasParam("optimized_base_pose_topic_name")) {
-    ROS_ERROR("'optimized_base_pose_topic_name' not set as parameter.");
+  if (!nh.hasParam("end_effector_topic_name")) {
+    ROS_ERROR("'end_effector_topic_name' not set as parameter.");
   }
-  optimized_base_pose_topic_name_ = nh_private_.param<std::string>(
-      "optimized_base_pose_topic_name", "hal_corrected_base_pose_in_world");
-  corrected_base_pose_in_world_pub_ =
-      nh_private_.advertise<geometry_msgs::Pose>(optimized_base_pose_topic_name_, 1);
+  optimized_ee_frame_name_ = nh.param<std::string>("optimized_ee_frame_name", "optimized_ee");
 
   assistUserThroughRoutine();
 }
@@ -112,11 +108,21 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
   CHECK(hal_optimize_client_.call(hal_optimize_srv.request, hal_optimize_srv.response))
       << "Failed to perform HAL optimization.";
   // Publish optimized pose.
-  corrected_base_pose_in_world_pub_.publish(hal_optimize_srv.response);
-
   std::cout << "The HAL routine is now completed. The optimized pose of the base in the world "
-               "frame is published on the topic '"
-            << optimized_base_pose_topic_name_ << "'." << std::endl;
+               "frame is published on the TF tree as a new frame '"
+            << optimized_ee_frame_name_ << "'." << std::endl;
+
+  geometry_msgs::TransformStamped stamped_transform_msg;
+  stamped_transform_msg.header.frame_id = "base";
+  stamped_transform_msg.child_frame_id = optimized_ee_frame_name_;
+  stamped_transform_msg.transform = hal_optimize_srv.response.corrected_base_pose_in_world;
+  ros::Rate rate(10.0);
+  // Keep publishing the optimized pose until the node is killed.
+  do {
+    stamped_transform_msg.header.stamp = ros::Time::now();
+    tf_broadcaster_.sendTransform(stamped_transform_msg);
+    rate.sleep();
+  } while (nh_.ok());
 }
 
 }  // namespace pointlaser_hal
