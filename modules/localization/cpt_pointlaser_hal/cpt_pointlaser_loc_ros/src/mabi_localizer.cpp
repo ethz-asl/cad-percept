@@ -177,7 +177,8 @@ bool MabiLocalizer::highAccuracyLocalization(
     ROS_ERROR("The service to turn the laser off is not available.");
     return false;
   }
-  leica_client_["laserOff"].call(empty_srvs.request, empty_srvs.response);
+  CHECK(leica_client_["laserOff"].call(empty_srvs.request, empty_srvs.response))
+      << "Failed to turn laser off";
 
   // Optimize for the pose from the marker to the arm base.
   kindr::minimal::QuatTransformation marker_to_armbase_optimized =
