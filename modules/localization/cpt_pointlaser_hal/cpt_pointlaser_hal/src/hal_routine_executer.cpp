@@ -24,14 +24,13 @@ HALRoutineExecuter::HALRoutineExecuter(ros::NodeHandle &nh, ros::NodeHandle &nh_
   hal_optimize_client_ =
       nh_.serviceClient<cpt_pointlaser_msgs::HighAccuracyLocalization>("/hal_optimize");
   // Advertise topic with corrected base pose.
-  corrected_base_pose_in_world_pub_ =
-      nh_private_.advertise<geometry_msgs::Pose>(optimized_base_pose_topic_name_, 1);
-
   if (!nh_private_.hasParam("optimized_base_pose_topic_name")) {
     ROS_ERROR("'optimized_base_pose_topic_name' not set as parameter.");
   }
   optimized_base_pose_topic_name_ = nh_private_.param<std::string>(
       "optimized_base_pose_topic_name", "hal_corrected_base_pose_in_world");
+  corrected_base_pose_in_world_pub_ =
+      nh_private_.advertise<geometry_msgs::Pose>(optimized_base_pose_topic_name_, 1);
 
   assistUserThroughRoutine();
 }
