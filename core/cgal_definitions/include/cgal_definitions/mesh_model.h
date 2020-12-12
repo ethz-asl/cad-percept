@@ -170,6 +170,8 @@ class MeshModel {
 
   CGAL::Bbox_3 getBounds() const;
 
+  void save(const std::string path) const;
+
  private:
   Polyhedron P_;
   std::shared_ptr<PolyhedronAABBTree> tree_;

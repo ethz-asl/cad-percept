@@ -47,8 +47,6 @@ void UVMapping::CoordinateMeshBuilder::operator()(cgal::HalfedgeDS &hds) {
   B.end_surface();
 }
 
-
-
 void UVMapping::determineTransformation() {
   // precondition: UVParametrization has been called.
 
@@ -84,6 +82,12 @@ void UVMapping::createMappings() {
   map_3d_to_2d_.insert(mesh_3d_->getMeshRef().facets_begin(), mesh_3d_->getMeshRef().facets_end(),
                        mesh_2d_->getMeshRef().facets_begin());
 };
+
+void UVMapping::storeMapping() const {
+  // store both meshes
+  mesh_2d_->save("mesh2d.off");
+  mesh_3d_->save("mesh3d.off");
+}
 
 std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(
     cad_percept::cgal::Vector3In vec_in) const {

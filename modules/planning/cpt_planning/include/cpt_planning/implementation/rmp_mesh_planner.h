@@ -30,6 +30,8 @@ class RMPMeshPlanner : public SurfacePlanner {
     dt_ = dt;
   }
 
+  void storeMapping() const;
+
   Eigen::Vector3d tuning_1_, tuning_2_;
   double dt_{0.01};
 

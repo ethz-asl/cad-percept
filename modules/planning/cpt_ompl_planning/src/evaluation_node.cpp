@@ -28,7 +28,10 @@ int main(int argc, char *argv[]) {
   cad_percept::planning::RMPMeshPlanner rmp_planner(mesh_path);
   // rmp_planner.setTuning({1.0, 11.0, 0.81}, {8.8, 20.0, 0.06}, 0.01);
     //rmp_planner.setTuning({0.7, 11.6, 0.81}, {20.0, 30.0, 0.01}, 0.01);
-    rmp_planner.setTuning({0.7, 13.6, 0.4}, {20.0, 30.0, 0.01}, 0.01);
+  rmp_planner.setTuning({0.7, 13.6, 0.4}, {20.0, 30.0, 0.01}, 0.01);
+  rmp_planner.storeMapping();
+  exit(0);
+
   cad_percept::planning::GeodesicMeshPlanner dgeo_planner(mesh_path);
   OMPLMeshSamplingPlanner ompl_planner(mesh_path, false, 1.0 * debug_factor);
   OMPLMeshSamplingPlanner ompl_planner_fast(mesh_path, false, 0.25 * debug_factor);

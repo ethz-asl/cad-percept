@@ -171,6 +171,8 @@ class UVMapping {
 
   FaceCoords3d to3D(const FaceCoords2d &coords2d) const;
 
+  void storeMapping() const;
+
  public:
   FaceHashMap map_2d_to_3d_;
   FaceHashMap map_3d_to_2d_;

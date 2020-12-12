@@ -33,9 +33,10 @@ int main(int argc, char *argv[]) {
 
   evaluationNode->plan(true);
 
-  dynamic_reconfigure::Server<cpt_ompl_planning::PlannerTuningConfig> server;
-  server.setCallback(boost::bind(&callback, _1, _2));
 
-  ros::spin();
+  //dynamic_reconfigure::Server<cpt_ompl_planning::PlannerTuningConfig> server;
+  //server.setCallback(boost::bind(&callback, _1, _2));
+
+  //ros::spin();
   return 0;
 }
