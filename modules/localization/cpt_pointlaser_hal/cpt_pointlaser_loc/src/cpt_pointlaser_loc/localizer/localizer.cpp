@@ -61,6 +61,12 @@ void PointLaserLocalizer::addLaserMeasurements(uint32_t distance_a, uint32_t dis
         laser_c_offset_ != nullptr)
       << "Must set up optimizer before adding laser measurements.";
   // It is assumed that the sensors measure distance in 1/10 mm.
+  ROS_INFO_STREAM("Adding the following relative measurement for laser A: " << distance_a /
+                                                                                   10000.0);
+  ROS_INFO_STREAM("Adding the following relative measurement for laser B: " << distance_b /
+                                                                                   10000.0);
+  ROS_INFO_STREAM("Adding the following relative measurement for laser C: " << distance_c / 10000.0
+                                                                            << "\n");
   optimizer_->addRelativeMeasurement(distance_a / 10000.0, *laser_a_offset_);
   optimizer_->addRelativeMeasurement(distance_b / 10000.0, *laser_b_offset_);
   optimizer_->addRelativeMeasurement(distance_c / 10000.0, *laser_c_offset_);

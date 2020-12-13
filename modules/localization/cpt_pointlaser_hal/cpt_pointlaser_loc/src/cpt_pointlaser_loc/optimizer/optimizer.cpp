@@ -3,6 +3,7 @@
 #include <cpt_utils/cpt_utils.h>
 #include <gtsam/base/Vector.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/Values.h>
 
 #include "cpt_pointlaser_loc/optimizer/geometric_utils.h"
 
@@ -35,6 +36,9 @@ LocalizationOptimizer::LocalizationOptimizer(
   initialization_.insert<kindr::minimal::QuatTransformation>(0, architecture_offset);
   if (add_prior) {
     // add a factor for the prior of the architecture_offset
+    LOG(INFO) << "Adding factor for prior of the architecture offset:";
+    architect_offset_.print("\tMeasurement model: ");
+    LOG(INFO) << "\tMeasurement: " << architecture_offset;
     graph_.addExpressionFactor(architect_offset_, architecture_offset,
                                gtsam::noiseModel::Diagonal::Sigmas(architecture_offset_std));
   }
@@ -84,6 +88,22 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
       multiplyVectors(*plane_support - ray_origin, *plane_normal);
   gtsam::Expression<double> expected_distance =
       checkPositive(divide(shortest_distance, multiplyVectors(ray_direction, *plane_normal)));
+  gtsam::Values values;
+  kindr::minimal::QuatTransformation tmp_transf;
+  //LOG(INFO) << "tmp_transf = " << tmp_transf;
+  values.insert(0, tmp_transf);
+
+  /*LOG(INFO) << "\tlaser_in_map = " << laser_in_map->value(values);
+  LOG(INFO) << "\tray_origin = " << ray_origin.value(values);
+  LOG(INFO) << "\tplane_support = " << plane_support->value(values);
+  LOG(INFO) << "\tplane_normal = " << plane_normal->value(values);
+  LOG(INFO) << "\tshortest_distance = " << shortest_distance.value(values);*/
+  LOG(INFO) << "\texpected_distance = " << expected_distance.value(values)
+            << ", measured distance = " << distance;
+  /*LOG(INFO) << "Adding factor for laser measurement:";
+  expected_distance.print("\tExpected distance: ");
+  LOG(INFO) << "\tMeasured distance: " << distance;
+  pointlaser_noise_->print("\tPointlaser noise: ");*/
   graph_.addExpressionFactor(expected_distance, distance, pointlaser_noise_);
   // Return the intersection point for debugging / visualization.
   // Caution: for constant expressions, argument of value function is ignored.
