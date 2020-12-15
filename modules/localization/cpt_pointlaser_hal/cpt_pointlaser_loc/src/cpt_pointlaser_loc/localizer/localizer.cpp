@@ -72,9 +72,9 @@ void PointLaserLocalizer::addLaserMeasurements(
                                                                             << "\n");
   std::vector<Eigen::Vector3d> intersected_plane_normals_, intersected_plane_supports_;
   std::vector<std::string> intersected_face_ids_;
-  intersected_plane_normals_.reserve(3);
-  intersected_plane_supports_.reserve(3);
-  intersected_face_ids_.reserve(3);
+  intersected_plane_normals_.resize(3);
+  intersected_plane_supports_.resize(3);
+  intersected_face_ids_.resize(3);
   optimizer_->addRelativeMeasurement(distance_a / 10000.0, *laser_a_offset_,
                                      &intersected_plane_normals_[0],
                                      &intersected_plane_supports_[0], &intersected_face_ids_[0]);
