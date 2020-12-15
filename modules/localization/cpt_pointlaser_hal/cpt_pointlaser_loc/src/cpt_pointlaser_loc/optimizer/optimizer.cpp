@@ -70,9 +70,9 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   } else {
     // make a constant from the architecture model
     auto model = gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>(architect_model_);
-    auto intersection = getIntersectionPlane(*laser_in_map, model);
-    plane_normal = std::make_shared<EVector3>(getIntersectionNormal(intersection));
-    plane_support = std::make_shared<EVector3>(getIntersectionPoint(intersection));
+    auto intersection_plane = getIntersectionPlane(*laser_in_map, model);
+    plane_normal = std::make_shared<EVector3>(getIntersectionNormal(intersection_plane));
+    plane_support = std::make_shared<EVector3>(getIntersectionPoint(intersection_plane));
   }
   EVector3 unit_dir(Eigen::Vector3d(1, 0, 0));
   EVector3 origin(Eigen::Vector3d(0, 0, 0));
