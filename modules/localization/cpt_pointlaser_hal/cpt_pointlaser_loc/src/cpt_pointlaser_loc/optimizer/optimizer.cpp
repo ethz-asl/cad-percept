@@ -105,16 +105,11 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
             << ", measured distance = " << distance;
 
   // For debug purposes, publish the intersection point, direction and plane.
-  gtsam::Values values_eig;
-  Eigen::Vector3d tmp_vector;
-  cad_percept::cgal::Intersection tmp_intersection;
-  values_eig.insert(0, tmp_vector);
-
   if (plane_normal != nullptr) {
-    *plane_normal = plane_normal_expr->value(values_eig);
+    *plane_normal = plane_normal_expr->value(values);
   }
   if (plane_support != nullptr) {
-    *plane_support = plane_support_expr->value(values_eig);
+    *plane_support = plane_support_expr->value(values);
   }
 
   cad_percept::cgal::PointAndPrimitiveId closest_triangle =

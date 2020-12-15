@@ -31,7 +31,7 @@ Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
 cad_percept::cgal::Intersection intersectionFromIntersectionExpr(
     const gtsam::Expression<Eigen::Matrix<double, 6, 1>> &intersection_expr) {
   // Retrieve value of intersection.
-  Eigen::Matrix<double, 6, 1> tmp_intersection;
+  kindr::minimal::QuatTransformation tmp_intersection;
   gtsam::Values values;
   values.insert(0, tmp_intersection);
   Eigen::Matrix<double, 6, 1> intersection_eig = intersection_expr.value(values);
