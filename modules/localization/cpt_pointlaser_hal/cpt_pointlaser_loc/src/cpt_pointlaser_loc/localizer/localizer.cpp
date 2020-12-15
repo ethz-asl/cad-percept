@@ -55,8 +55,11 @@ void PointLaserLocalizer::addOdometry(
   was_new_odometry_received_ = true;
 }
 
-void PointLaserLocalizer::addLaserMeasurements(uint32_t distance_a, uint32_t distance_b,
-                                               uint32_t distance_c) {
+void PointLaserLocalizer::addLaserMeasurements(
+    uint32_t distance_a, uint32_t distance_b, uint32_t distance_c,
+    std::vector<Eigen::Vector3d> *intersected_plane_normals,
+    std::vector<Eigen::Vector3d> *intersected_plane_supports,
+    std::vector<std::string> *intersected_face_ids) {
   CHECK(optimizer_ != nullptr && laser_a_offset_ != nullptr && laser_b_offset_ != nullptr &&
         laser_c_offset_ != nullptr)
       << "Must set up optimizer before adding laser measurements.";
@@ -67,9 +70,29 @@ void PointLaserLocalizer::addLaserMeasurements(uint32_t distance_a, uint32_t dis
                                                                                    10000.0);
   ROS_INFO_STREAM("Adding the following relative measurement for laser C: " << distance_c / 10000.0
                                                                             << "\n");
-  optimizer_->addRelativeMeasurement(distance_a / 10000.0, *laser_a_offset_);
-  optimizer_->addRelativeMeasurement(distance_b / 10000.0, *laser_b_offset_);
-  optimizer_->addRelativeMeasurement(distance_c / 10000.0, *laser_c_offset_);
+  std::vector<Eigen::Vector3d> intersected_plane_normals_, intersected_plane_supports_;
+  std::vector<std::string> intersected_face_ids_;
+  intersected_plane_normals_.reserve(3);
+  intersected_plane_supports_.reserve(3);
+  intersected_face_ids_.reserve(3);
+  optimizer_->addRelativeMeasurement(distance_a / 10000.0, *laser_a_offset_,
+                                     &intersected_plane_normals_[0],
+                                     &intersected_plane_supports_[0], &intersected_face_ids_[0]);
+  optimizer_->addRelativeMeasurement(distance_b / 10000.0, *laser_b_offset_,
+                                     &intersected_plane_normals_[1],
+                                     &intersected_plane_supports_[1], &intersected_face_ids_[1]);
+  optimizer_->addRelativeMeasurement(distance_c / 10000.0, *laser_c_offset_,
+                                     &intersected_plane_normals_[2],
+                                     &intersected_plane_supports_[2], &intersected_face_ids_[2]);
+  if (intersected_plane_normals != nullptr) {
+    *intersected_plane_normals = intersected_plane_normals_;
+  }
+  if (intersected_plane_supports != nullptr) {
+    *intersected_plane_supports = intersected_plane_supports_;
+  }
+  if (intersected_face_ids != nullptr) {
+    *intersected_face_ids = intersected_face_ids_;
+  }
 }
 
 void PointLaserLocalizer::getIntersectionsLasersWithModel(
