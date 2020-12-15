@@ -80,6 +80,9 @@ Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
     const cad_percept::cgal::MeshModel::Ptr model, gtsam::OptionalJacobian<6, 6> H,
     gtsam::OptionalJacobian<6, 1> H_ignored);
 
+cad_percept::cgal::Intersection intersectionFromIntersectionExpr(
+    const gtsam::Expression<Eigen::Matrix<double, 6, 1>> &intersection_expr);
+
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
     const ETransformation &sensor_pose,
     gtsam::Expression<cad_percept::cgal::MeshModel::Ptr> &model);

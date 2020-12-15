@@ -1,6 +1,7 @@
 #include "cpt_pointlaser_loc/optimizer/geometric_utils.h"
 
 #include <cpt_utils/cpt_utils.h>
+#include <gtsam/nonlinear/Values.h>
 
 namespace cad_percept {
 namespace pointlaser_loc {
@@ -25,6 +26,26 @@ Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
   response.tail<3>() =
       Eigen::Vector3d(i.surface_normal.x(), i.surface_normal.y(), i.surface_normal.z());
   return response;
+}
+
+cad_percept::cgal::Intersection intersectionFromIntersectionExpr(
+    const gtsam::Expression<Eigen::Matrix<double, 6, 1>> &intersection_expr) {
+  // Retrieve value of intersection.
+  Eigen::Matrix<double, 6, 1> tmp_intersection;
+  gtsam::Values values;
+  values.insert(0, tmp_intersection);
+  Eigen::Matrix<double, 6, 1> intersection_eig = intersection_expr.value(values);
+
+  cad_percept::cgal::Intersection intersection;
+
+  cad_percept::cgal::Point intersected_point(intersection_eig(0, 0), intersection_eig(1, 0),
+                                             intersection_eig(2, 0));
+  cad_percept::cgal::Vector surface_normal(intersection_eig(3, 0), intersection_eig(4, 0),
+                                           intersection_eig(5, 0));
+  intersection.intersected_point = intersected_point;
+  intersection.surface_normal = surface_normal;
+
+  return intersection;
 }
 
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
