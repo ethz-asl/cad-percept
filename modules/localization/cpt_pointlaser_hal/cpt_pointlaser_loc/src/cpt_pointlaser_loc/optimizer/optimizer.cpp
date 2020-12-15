@@ -45,11 +45,13 @@ LocalizationOptimizer::LocalizationOptimizer(
 }
 
 Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
-    const double distance, const kindr::minimal::QuatTransformation &joint2sensor) {
+    const double distance, const kindr::minimal::QuatTransformation &joint2sensor,
+    Eigen::Vector3d *plane_normal, Eigen::Vector3d *plane_support,
+    std::string *closest_triangle_id) {
   ETransformation armbase2sensor(current_arm_pose_ * joint2sensor);
   // TODO once cpp14 is supported, change to unique pointers
   std::shared_ptr<ETransformation> laser_in_map;
-  std::shared_ptr<EVector3> plane_normal, plane_support;
+  std::shared_ptr<EVector3> plane_normal_expr, plane_support_expr;
   if (only_optimize_translation_) {
     ETransformation fixed_architect_offset(initial_architect_offset_);
     ETransformation architect_offset_with_fixed_rot = kindr::minimal::transformationFromComponents(
@@ -60,6 +62,7 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   } else {
     laser_in_map = std::make_shared<ETransformation>(architect_offset_ * armbase2sensor);
   }
+  cad_percept::cgal::Intersection intersection_plane;
   if (fix_retrieved_planes_) {
     LOG(INFO) << "Fixing retrieved planes.";
     kindr::minimal::QuatTransformation slam_guess_laser_in_map =
@@ -67,18 +70,21 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
     // Build the ray to query for intersections.
     cad_percept::cgal::Ray query_ray =
         cad_percept::cpt_utils::buildRayFromPose(slam_guess_laser_in_map);
-    cad_percept::cgal::Intersection plane = architect_model_->getIntersection(query_ray);
-    plane_support = std::make_shared<EVector3>(Eigen::Vector3d(
-        plane.intersected_point.x(), plane.intersected_point.y(), plane.intersected_point.z()));
-    plane_normal = std::make_shared<EVector3>(Eigen::Vector3d(
-        plane.surface_normal.x(), plane.surface_normal.y(), plane.surface_normal.z()));
+    intersection_plane = architect_model_->getIntersection(query_ray);
+    plane_support_expr = std::make_shared<EVector3>(Eigen::Vector3d(
+        intersection_plane.intersected_point.x(), intersection_plane.intersected_point.y(),
+        intersection_plane.intersected_point.z()));
+    plane_normal_expr = std::make_shared<EVector3>(Eigen::Vector3d(
+        intersection_plane.surface_normal.x(), intersection_plane.surface_normal.y(),
+        intersection_plane.surface_normal.z()));
   } else {
     LOG(INFO) << "Not fixing retrieved planes.";
     // make a constant from the architecture model
     auto model = gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>(architect_model_);
-    auto intersection_plane = getIntersectionPlane(*laser_in_map, model);
-    plane_normal = std::make_shared<EVector3>(getIntersectionNormal(intersection_plane));
-    plane_support = std::make_shared<EVector3>(getIntersectionPoint(intersection_plane));
+    auto intersection_plane_expr = getIntersectionPlane(*laser_in_map, model);
+    intersection_plane = intersectionFromIntersectionExpr(intersection_plane_expr);
+    plane_normal_expr = std::make_shared<EVector3>(getIntersectionNormal(intersection_plane_expr));
+    plane_support_expr = std::make_shared<EVector3>(getIntersectionPoint(intersection_plane_expr));
   }
   EVector3 unit_dir(Eigen::Vector3d(1, 0, 0));
   EVector3 origin(Eigen::Vector3d(0, 0, 0));
@@ -87,9 +93,9 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   EVector3 ray_origin = *laser_in_map * origin;
   // find intersection distance
   gtsam::Expression<double> shortest_distance =
-      multiplyVectors(*plane_support - ray_origin, *plane_normal);
+      multiplyVectors(*plane_support_expr - ray_origin, *plane_normal_expr);
   gtsam::Expression<double> expected_distance =
-      checkPositive(divide(shortest_distance, multiplyVectors(ray_direction, *plane_normal)));
+      checkPositive(divide(shortest_distance, multiplyVectors(ray_direction, *plane_normal_expr)));
   gtsam::Values values;
   kindr::minimal::QuatTransformation tmp_transf;
   values.insert(0, tmp_transf);
@@ -97,10 +103,34 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   LOG(INFO) << "\tshortest_distance = " << shortest_distance.value(values);
   LOG(INFO) << "\texpected_distance = " << expected_distance.value(values)
             << ", measured distance = " << distance;
+
+  // For debug purposes, publish the intersection point, direction and plane.
+  gtsam::Values values_eig;
+  Eigen::Vector3d tmp_vector;
+  cad_percept::cgal::Intersection tmp_intersection;
+  values_eig.insert(0, tmp_vector);
+
+  if (plane_normal != nullptr) {
+    *plane_normal = plane_normal_expr->value(values_eig);
+  }
+  if (plane_support != nullptr) {
+    *plane_support = plane_support_expr->value(values_eig);
+  }
+
+  cad_percept::cgal::PointAndPrimitiveId closest_triangle =
+      architect_model_->getClosestTriangle(intersection_plane.intersected_point);
+
+  if (closest_triangle_id != nullptr) {
+    *closest_triangle_id = architect_model_->getIdFromFacetHandle(closest_triangle.second);
+    CHECK(architect_model_->isCorrectId(*closest_triangle_id))
+        << "Intersection face not in mesh model.";
+  }
+
+  // Add factor to the factor graph.
   graph_.addExpressionFactor(expected_distance, distance, pointlaser_noise_);
   // Return the intersection point for debugging / visualization.
   // Caution: for constant expressions, argument of value function is ignored.
-  return plane_support->value(initialization_);
+  return plane_support_expr->value(initialization_);
 }
 
 void LocalizationOptimizer::addOdometry(const kindr::minimal::QuatTransformation &transform) {
