@@ -92,20 +92,11 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
       checkPositive(divide(shortest_distance, multiplyVectors(ray_direction, *plane_normal)));
   gtsam::Values values;
   kindr::minimal::QuatTransformation tmp_transf;
-  //LOG(INFO) << "tmp_transf = " << tmp_transf;
   values.insert(0, tmp_transf);
 
-  /*LOG(INFO) << "\tlaser_in_map = " << laser_in_map->value(values);
-  LOG(INFO) << "\tray_origin = " << ray_origin.value(values);
-  LOG(INFO) << "\tplane_support = " << plane_support->value(values);
-  LOG(INFO) << "\tplane_normal = " << plane_normal->value(values);
-  LOG(INFO) << "\tshortest_distance = " << shortest_distance.value(values);*/
+  LOG(INFO) << "\tshortest_distance = " << shortest_distance.value(values);
   LOG(INFO) << "\texpected_distance = " << expected_distance.value(values)
             << ", measured distance = " << distance;
-  /*LOG(INFO) << "Adding factor for laser measurement:";
-  expected_distance.print("\tExpected distance: ");
-  LOG(INFO) << "\tMeasured distance: " << distance;
-  pointlaser_noise_->print("\tPointlaser noise: ");*/
   graph_.addExpressionFactor(expected_distance, distance, pointlaser_noise_);
   // Return the intersection point for debugging / visualization.
   // Caution: for constant expressions, argument of value function is ignored.
