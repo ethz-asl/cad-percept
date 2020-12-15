@@ -61,6 +61,7 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
     laser_in_map = std::make_shared<ETransformation>(architect_offset_ * armbase2sensor);
   }
   if (fix_retrieved_planes_) {
+    LOG(INFO) << "Fixing retrieved planes.";
     kindr::minimal::QuatTransformation slam_guess_laser_in_map =
         initial_architect_offset_ * current_arm_pose_ * joint2sensor;
     // Build the ray to query for intersections.
@@ -72,6 +73,7 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
     plane_normal = std::make_shared<EVector3>(Eigen::Vector3d(
         plane.surface_normal.x(), plane.surface_normal.y(), plane.surface_normal.z()));
   } else {
+    LOG(INFO) << "Not fixing retrieved planes.";
     // make a constant from the architecture model
     auto model = gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>(architect_model_);
     auto intersection_plane = getIntersectionPlane(*laser_in_map, model);
