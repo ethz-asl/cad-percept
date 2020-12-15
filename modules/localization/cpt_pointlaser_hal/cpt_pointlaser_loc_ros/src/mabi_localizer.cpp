@@ -1,13 +1,19 @@
 #include "cpt_pointlaser_loc_ros/mabi_localizer.h"
 
 #include <cgal_conversions/mesh_conversions.h>
+#include <cgal_msgs/ColoredMesh.h>
+#include <cgal_msgs/TriangleMesh.h>
 #include <cpt_pointlaser_comm_ros/GetDistance.h>
 #include <cpt_pointlaser_common/utils.h>
+#include <geometry_msgs/Point.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <nav_msgs/Path.h>
+#include <std_msgs/ColorRGBA.h>
 #include <std_srvs/Empty.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 namespace cad_percept {
 namespace pointlaser_loc_ros {
@@ -135,9 +141,15 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
     ROS_ERROR("Could not get distance measurement.");
     ros::Duration(0.1).sleep();
   }
-  localizer_->addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC);
+
+  std::vector<Eigen::Vector3d> intersected_plane_normals, intersected_plane_supports;
+  std::vector<std::string> intersected_face_ids;
+  localizer_->addLaserMeasurements(resp.distanceA, resp.distanceB, resp.distanceC,
+                                   &intersected_plane_normals, &intersected_plane_supports,
+                                   &intersected_face_ids);
 
   // For debugging, also publish the intersection as seen from the current state.
+  // - Intersections using ray from current pose.
   cad_percept::cgal::Intersection model_intersection_a, model_intersection_b, model_intersection_c;
   localizer_->getIntersectionsLasersWithModel(current_armbase_to_ref_link_, &model_intersection_a,
                                               &model_intersection_b, &model_intersection_c);
@@ -156,6 +168,67 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
   intersection_msg.point.y = model_intersection_c.intersected_point.y();
   intersection_msg.point.z = model_intersection_c.intersected_point.z();
   intersection_c_pub_.publish(intersection_msg);
+  // - Intersections obtained from querying building model.
+  visualization_msgs::Marker marker;
+  visualization_msgs::MarkerArray marker_array;
+  geometry_msgs::Point p_from, p_to;
+  marker.header.frame_id = "marker";
+  marker.type = visualization_msgs::Marker::ARROW;
+  marker.action = visualization_msgs::Marker::ADD;
+  marker.scale.x = 0.1f;
+  marker.color.r = 1.;
+  marker.color.g = 1.;
+  marker.color.b = 0.;
+  marker.color.a = 1.;
+  for (size_t intersection_id = 0; intersection_id < 3; ++intersection_id) {
+    p_from.x = intersected_plane_supports[intersection_id].x();
+    p_from.y = intersected_plane_supports[intersection_id].y();
+    p_from.z = intersected_plane_supports[intersection_id].z();
+    // TODO(fmilano): Double-check!
+    p_to.x = intersected_plane_supports[intersection_id].x() +
+             intersected_plane_normals[intersection_id].x();
+    p_to.y = intersected_plane_supports[intersection_id].y() +
+             intersected_plane_normals[intersection_id].y();
+    p_to.z = intersected_plane_supports[intersection_id].z() +
+             intersected_plane_normals[intersection_id].z();
+    marker.points.push_back(p_from);
+    marker.points.push_back(p_to);
+    marker.id = intersection_id;
+    marker_array.markers.push_back(marker);
+  }
+  intersection_normals_pub_.publish(marker_array);
+  // - Mesh with the interesected faces being colored.
+  cgal_msgs::TriangleMesh t_msg;
+  cgal_msgs::ColoredMesh c_msg;
+  cgal::meshModelToMsg(model_, &t_msg);
+  c_msg.mesh = t_msg;
+  c_msg.header.frame_id = "marker";
+  c_msg.header.stamp = {secs : 0, nsecs : 0};
+  c_msg.header.seq = 0;
+  std_msgs::ColorRGBA c;
+  //   - Color all faces in blue.
+  for (size_t i = 0; i < c_msg.mesh.triangles.size(); ++i) {
+    c.r = 0.0;
+    c.g = 0.0;
+    c.b = 1.0;
+    c.a = 0.4;
+    c_msg.colors.push_back(c);
+  }
+  //   - Color the intersected faces in red.
+  for (const auto &intersected_face_id : intersected_face_ids) {
+    c.r = 1.0;
+    c.g = 0.0;
+    c.b = 0.0;
+    c.a = 0.4;
+    // find index of triangle with this id
+    std::vector<std::string>::iterator it = std::find(
+        c_msg.mesh.triangle_ids.begin(), c_msg.mesh.triangle_ids.end(), intersected_face_id);
+    CHECK(it != c_msg.mesh.triangle_ids.end())
+        << "Unable to find triangle ID " << *it << " in the mesh model.";
+    size_t index = std::distance(c_msg.mesh.triangle_ids.begin(), it);
+    c_msg.colors[index] = c;
+  }
+  mesh_with_intersections_pub_.publish(c_msg);
 
   received_at_least_one_measurement_ = true;
 
@@ -231,6 +304,10 @@ void MabiLocalizer::advertiseTopics() {
   intersection_a_pub_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_a", 1);
   intersection_b_pub_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_b", 1);
   intersection_c_pub_ = nh_private_.advertise<geometry_msgs::PointStamped>("intersection_c", 1);
+  intersection_normals_pub_ =
+      nh_private_.advertise<visualization_msgs::MarkerArray>("intersection_normals", 100, true);
+  mesh_with_intersections_pub_ =
+      nh_private_.advertise<cgal_msgs::ColoredMesh>("mesh_with_intersections", 1, true);
   endeffector_pose_pub_ =
       nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
   hal_initialize_localization_service_ = nh_.advertiseService(
