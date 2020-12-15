@@ -48,9 +48,9 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   std::shared_ptr<EVector3> plane_normal, plane_support;
   if (only_optimize_translation_) {
     ETransformation fixed_architect_offset(initial_architect_offset_);
-    ETransformation architect_offset_with_fixed_rot =
-        transformationFromComponents(rotationFromTransformation(fixed_architect_offset),
-                                     translationFromTransformation(architect_offset_));
+    ETransformation architect_offset_with_fixed_rot = kindr::minimal::transformationFromComponents(
+        kindr::minimal::rotationFromTransformation(fixed_architect_offset),
+        kindr::minimal::translationFromTransformation(architect_offset_));
     laser_in_map =
         std::make_shared<ETransformation>(architect_offset_with_fixed_rot * armbase2sensor);
   } else {
