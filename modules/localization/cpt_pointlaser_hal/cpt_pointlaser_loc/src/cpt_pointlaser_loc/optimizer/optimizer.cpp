@@ -52,9 +52,9 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   std::shared_ptr<EVector3> plane_normal, plane_support;
   if (only_optimize_translation_) {
     ETransformation fixed_architect_offset(initial_architect_offset_);
-    ETransformation architect_offset_with_fixed_rot =
-        transformationFromComponents(rotationFromTransformation(fixed_architect_offset),
-                                     translationFromTransformation(architect_offset_));
+    ETransformation architect_offset_with_fixed_rot = kindr::minimal::transformationFromComponents(
+        kindr::minimal::rotationFromTransformation(fixed_architect_offset),
+        kindr::minimal::translationFromTransformation(architect_offset_));
     laser_in_map =
         std::make_shared<ETransformation>(architect_offset_with_fixed_rot * armbase2sensor);
   } else {
@@ -74,9 +74,9 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
   } else {
     // make a constant from the architecture model
     auto model = gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>(architect_model_);
-    auto intersection = getIntersectionPlane(*laser_in_map, model);
-    plane_normal = std::make_shared<EVector3>(getIntersectionNormal(intersection));
-    plane_support = std::make_shared<EVector3>(getIntersectionPoint(intersection));
+    auto intersection_plane = getIntersectionPlane(*laser_in_map, model);
+    plane_normal = std::make_shared<EVector3>(getIntersectionNormal(intersection_plane));
+    plane_support = std::make_shared<EVector3>(getIntersectionPoint(intersection_plane));
   }
   EVector3 unit_dir(Eigen::Vector3d(1, 0, 0));
   EVector3 origin(Eigen::Vector3d(0, 0, 0));
