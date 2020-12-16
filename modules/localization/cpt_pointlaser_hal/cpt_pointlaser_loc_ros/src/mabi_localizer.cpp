@@ -176,6 +176,8 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
   marker.type = visualization_msgs::Marker::ARROW;
   marker.action = visualization_msgs::Marker::ADD;
   marker.scale.x = 0.1f;
+  marker.scale.y = 0.1f;
+  marker.scale.z = 0.1f;
   marker.color.r = 1.;
   marker.color.g = 1.;
   marker.color.b = 0.;
@@ -191,6 +193,7 @@ bool MabiLocalizer::takeMeasurement(std_srvs::Empty::Request &request,
              intersected_plane_normals[intersection_id].y();
     p_to.z = intersected_plane_supports[intersection_id].z() +
              intersected_plane_normals[intersection_id].z();
+    marker.points.clear();
     marker.points.push_back(p_from);
     marker.points.push_back(p_to);
     marker.id = intersection_id;
