@@ -61,6 +61,11 @@ static EVector3 getIntersectionPoint(
   return EVector3(&getIntersectionPointImplementation, intersection);
 }
 
+static Eigen::Vector3d getIntersectionPoint(const cad_percept::cgal::Intersection &intersection) {
+  return Eigen::Vector3d(intersection.intersected_point.x(), intersection.intersected_point.y(),
+                         intersection.intersected_point.z());
+}
+
 static Eigen::Vector3d getIntersectionNormalImplementation(
     const Eigen::Matrix<double, 6, 1> &intersection, gtsam::OptionalJacobian<3, 6> H) {
   if (H) {
@@ -73,6 +78,11 @@ static Eigen::Vector3d getIntersectionNormalImplementation(
 static EVector3 getIntersectionNormal(
     const gtsam::Expression<Eigen::Matrix<double, 6, 1>> &intersection) {
   return EVector3(&getIntersectionNormalImplementation, intersection);
+}
+
+static Eigen::Vector3d getIntersectionNormal(const cad_percept::cgal::Intersection &intersection) {
+  return Eigen::Vector3d(intersection.surface_normal.x(), intersection.surface_normal.y(),
+                         intersection.surface_normal.z());
 }
 
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(

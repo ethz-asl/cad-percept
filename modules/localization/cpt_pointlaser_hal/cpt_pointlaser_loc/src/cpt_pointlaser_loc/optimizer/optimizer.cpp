@@ -83,7 +83,7 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
     auto model = gtsam::Expression<cad_percept::cgal::MeshModel::Ptr>(architect_model_);
     auto intersection_plane_expr = getIntersectionPlane(*laser_in_map, model);
     cad_percept::cgal::Ray query_ray = cad_percept::cpt_utils::buildRayFromPose(
-      initial_architect_offset_ * current_arm_pose_ * joint2sensor);
+        initial_architect_offset_ * current_arm_pose_ * joint2sensor);
     intersection_plane = architect_model_->getIntersection(query_ray);
     plane_normal_expr = std::make_shared<EVector3>(getIntersectionNormal(intersection_plane_expr));
     plane_support_expr = std::make_shared<EVector3>(getIntersectionPoint(intersection_plane_expr));
@@ -108,10 +108,10 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
 
   // For debug purposes, publish the intersection point, direction and plane.
   if (plane_normal != nullptr) {
-    *plane_normal = plane_normal_expr->value(values);
+    *plane_normal = getIntersectionNormal(intersection_plane);
   }
   if (plane_support != nullptr) {
-    *plane_support = plane_support_expr->value(values);
+    *plane_support = getIntersectionPoint(intersection_plane);
   }
 
   cad_percept::cgal::PointAndPrimitiveId closest_triangle =
