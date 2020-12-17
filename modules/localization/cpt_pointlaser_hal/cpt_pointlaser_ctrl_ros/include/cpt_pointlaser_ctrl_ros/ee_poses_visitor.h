@@ -3,6 +3,7 @@
 
 #include <cpt_pointlaser_msgs/AlignPointlaserAToMarker.h>
 #include <cpt_pointlaser_msgs/EEVisitPose.h>
+#include <cpt_pointlaser_msgs/RotatePointlaserA.h>
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
@@ -58,6 +59,13 @@ class EEPosesVisitor {
   /// \brief Aligns pointlaser A to the x axis of the marker frame.
   bool alignPointlaserAToMarker(cpt_pointlaser_msgs::AlignPointlaserAToMarker::Request &request,
                                 cpt_pointlaser_msgs::AlignPointlaserAToMarker::Response &response);
+  ///
+  /// \brief Rotates pointlaser A according to the input rotation. NOTE: The reference pose w.r.t.
+  ///   the rotation is defined is NOT (necessarily) the current pose of the pointlaser, but rather
+  ///   the initial pose to which the pointlaser is moved when aligning it to the marker (cf.
+  ///   `alignPointlaserAToMarker`).
+  bool rotatePointlaserA(cpt_pointlaser_msgs::RotatePointlaserA::Request &request,
+                         cpt_pointlaser_msgs::RotatePointlaserA::Response &response);
   bool visitPoses(cpt_pointlaser_msgs::EEVisitPose::Request &request,
                   cpt_pointlaser_msgs::EEVisitPose::Response &response);
 
@@ -73,7 +81,7 @@ class EEPosesVisitor {
   ros::ServiceClient switch_arm_controller_client_, switch_combined_controller_client_,
       hal_take_measurement_client_;
   ros::ServiceServer go_to_initial_position_service_, visit_poses_service_,
-      align_pointlaser_A_to_marker_service_;
+      align_pointlaser_A_to_marker_service_, rotate_pointlaser_A_service_;
   // Internal parameters.
   std::string arm_controller_, combined_controller_;
   std::string arm_controller_switch_service_name_, combined_controller_switch_service_name_,
@@ -89,6 +97,9 @@ class EEPosesVisitor {
   bool lasers_aligned_with_marker_;
   // Current pose of the end-effector in the robot-base frame.
   kindr::minimal::QuatTransformation current_base_to_ee_pose_;
+  // Initial pose of the pointlaser A w.r.t. the marker frame, after aligning the laser with the
+  // marker frame. Used in RL tests as a reference w.r.t. compute the subsequent poses.
+  kindr::minimal::QuatTransformation initial_marker_to_pointlaser_A_pose_;
   // Number of poses visited.
   size_t num_poses_visited_;
   // Whether or not the node is running in simulation node (needed to select the controllers).
