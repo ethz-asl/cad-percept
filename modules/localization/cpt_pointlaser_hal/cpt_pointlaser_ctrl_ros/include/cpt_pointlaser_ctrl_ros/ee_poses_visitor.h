@@ -1,6 +1,7 @@
 #ifndef CPT_POINTLASER_CTRL_ROS_EE_POSES_VISITOR_H_
 #define CPT_POINTLASER_CTRL_ROS_EE_POSES_VISITOR_H_
 
+#include <cpt_pointlaser_msgs/AlignLasersToMarker.h>
 #include <cpt_pointlaser_msgs/EEVisitPose.h>
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
@@ -53,7 +54,8 @@ class EEPosesVisitor {
 
   bool goToArmInitialPosition(std_srvs::Empty::Request &request,
                               std_srvs::Empty::Response &response);
-  bool alignLasersToMarker(std_srvs::Empty::Request &request, std_srvs::Empty::Response &response);
+  bool alignLasersToMarker(cpt_pointlaser_msgs::AlignLasersToMarker::Request &request,
+                           cpt_pointlaser_msgs::AlignLasersToMarker::Response &response);
   bool visitPoses(cpt_pointlaser_msgs::EEVisitPose::Request &request,
                   cpt_pointlaser_msgs::EEVisitPose::Response &response);
 

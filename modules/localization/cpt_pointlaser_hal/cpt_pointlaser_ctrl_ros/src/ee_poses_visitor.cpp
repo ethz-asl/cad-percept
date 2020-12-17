@@ -1,6 +1,7 @@
 #include "cpt_pointlaser_ctrl_ros/ee_poses_visitor.h"
 
 #include <cpt_pointlaser_common/utils.h>
+#include <geometry_msgs/Point.h>
 #include <glog/logging.h>
 #include <kindr/minimal/rotation-quaternion.h>
 #include <minkindr_conversions/kindr_msg.h>
@@ -264,8 +265,9 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
   }
 }
 
-bool EEPosesVisitor::alignLasersToMarker(std_srvs::Empty::Request &request,
-                                         std_srvs::Empty::Response &response) {
+bool EEPosesVisitor::alignLasersToMarker(
+    cpt_pointlaser_msgs::AlignLasersToMarker::Request &request,
+    cpt_pointlaser_msgs::AlignLasersToMarker::Response &response) {
   if (!arm_in_initial_position_) {
     ROS_WARN("Please move arm to initial position first. Not aligning the lasers.");
     return false;
@@ -313,6 +315,10 @@ bool EEPosesVisitor::alignLasersToMarker(std_srvs::Empty::Request &request,
   if (setArmTo(target_base_to_ee_initial_hal_pose)) {
     lasers_aligned_with_marker_ = true;
     current_base_to_ee_pose_ = target_base_to_ee_initial_hal_pose;
+    geometry_msgs::Point initial_marker_to_pointlaser_A_msg;
+    tf::pointKindrToMsg(target_marker_to_pointlaser_A_pose.getPosition(),
+                        &initial_marker_to_pointlaser_A_msg);
+    response.initial_marker_to_pointlaser_A = initial_marker_to_pointlaser_A_msg;
     return true;
   } else {
     return false;
