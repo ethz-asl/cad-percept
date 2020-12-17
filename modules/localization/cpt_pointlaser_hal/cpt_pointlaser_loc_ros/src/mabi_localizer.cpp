@@ -268,10 +268,8 @@ bool MabiLocalizer::highAccuracyLocalization(
   kindr::minimal::QuatTransformation armbase_to_endeffector = cad_percept::pointlaser_common::getTF(
       transform_listener_, "arm_base", end_effector_topic_name_);
   geometry_msgs::PoseStamped pose_sent;
-  tf::poseKindrToMsg(marker_to_armbase_optimized * armbase_to_endeffector, &pose_sent.pose);
-  pose_sent.header.frame_id = "marker";
-  pose_sent.header.stamp = ros::Time::now();
-  endeffector_pose_pub_.publish(pose_sent);
+  kindr::minimal::QuatTransformation corrected_endeffector_pose_in_marker =
+      marker_to_armbase_optimized * armbase_to_endeffector;
 
   // Write pose to terminal.
   ROS_INFO("Arm base pose in marker frame:");
@@ -282,11 +280,13 @@ bool MabiLocalizer::highAccuracyLocalization(
   ROS_INFO_STREAM(map_to_armbase.getPosition().transpose() << "\n");
 
   // Send corrected pose of the robot base to the controller.
-  kindr::minimal::QuatTransformation base_pose_in_world = map_to_armbase * armbase_to_base_;
+  kindr::minimal::QuatTransformation base_pose_in_map = map_to_armbase * armbase_to_base_;
   ROS_INFO_STREAM("Updated base pose in map, t: "
-                  << base_pose_in_world.getPosition().transpose()
-                  << ", o: " << base_pose_in_world.getRotation().vector().transpose() << "\n");
-  tf::transformKindrToMsg(base_pose_in_world, &response.corrected_base_pose_in_map);
+                  << base_pose_in_map.getPosition().transpose()
+                  << ", o: " << base_pose_in_map.getRotation().vector().transpose() << "\n");
+  tf::transformKindrToMsg(corrected_endeffector_pose_in_marker,
+                          &response.corrected_endeffector_pose_in_marker);
+  tf::transformKindrToMsg(base_pose_in_map, &response.corrected_base_pose_in_map);
 
   // Set the HAL routine as completed.
   initialized_hal_routine_ = false;
@@ -311,8 +311,6 @@ void MabiLocalizer::advertiseTopics() {
       nh_private_.advertise<visualization_msgs::MarkerArray>("intersection_normals", 100, true);
   mesh_with_intersections_pub_ =
       nh_private_.advertise<cgal_msgs::ColoredMesh>("mesh_with_intersections", 1, true);
-  endeffector_pose_pub_ =
-      nh_private_.advertise<geometry_msgs::PoseStamped>("hal_marker_to_end_effector", 1);
   hal_initialize_localization_service_ = nh_.advertiseService(
       "hal_initialize_localization", &MabiLocalizer::initializeHALLocalization, this);
   hal_take_measurement_service_ =

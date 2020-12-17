@@ -27,6 +27,8 @@ HALRoutineExecuter::HALRoutineExecuter(ros::NodeHandle &nh, ros::NodeHandle &nh_
     ROS_ERROR("'end_effector_topic_name' not set as parameter.");
   }
   optimized_base_frame_name_ = nh.param<std::string>("optimized_base_frame_name", "optimized_base");
+  optimized_endeffector_frame_name_ =
+      nh.param<std::string>("optimized_endeffector_frame_name", "optimized_ee");
 
   assistUserThroughRoutine();
 }
@@ -108,19 +110,26 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
   CHECK(hal_optimize_client_.call(hal_optimize_srv.request, hal_optimize_srv.response))
       << "Failed to perform HAL optimization.";
   // Publish optimized pose.
-  std::cout << "The HAL routine is now completed. The optimized pose of the base in the world "
-               "frame is published on the TF tree as a new frame '"
-            << optimized_base_frame_name_ << "'." << std::endl;
+  std::cout << "The HAL routine is now completed. The optimized pose of the base and the "
+               "end-effector are published on the TF tree as respectively the new frame '"
+            << optimized_base_frame_name_ << "' and the new frame '"
+            << optimized_endeffector_frame_name_ << "'." << std::endl;
 
-  geometry_msgs::TransformStamped stamped_transform_msg;
-  stamped_transform_msg.header.frame_id = "map";
-  stamped_transform_msg.child_frame_id = optimized_base_frame_name_;
-  stamped_transform_msg.transform = hal_optimize_srv.response.corrected_base_pose_in_map;
+  geometry_msgs::TransformStamped corrected_map_to_base_msg, corrected_marker_to_endeffector_msg;
+  corrected_map_to_base_msg.header.frame_id = "map";
+  corrected_map_to_base_msg.child_frame_id = optimized_base_frame_name_;
+  corrected_map_to_base_msg.transform = hal_optimize_srv.response.corrected_base_pose_in_map;
+  corrected_marker_to_endeffector_msg.header.frame_id = "marker";
+  corrected_marker_to_endeffector_msg.child_frame_id = optimized_endeffector_frame_name_;
+  corrected_marker_to_endeffector_msg.transform =
+      hal_optimize_srv.response.corrected_endeffector_pose_in_marker;
   ros::Rate rate(10.0);
   // Keep publishing the optimized pose until the node is killed.
   do {
-    stamped_transform_msg.header.stamp = ros::Time::now();
-    tf_broadcaster_.sendTransform(stamped_transform_msg);
+    corrected_map_to_base_msg.header.stamp = ros::Time::now();
+    corrected_marker_to_endeffector_msg.header.stamp = ros::Time::now();
+    tf_broadcaster_.sendTransform(corrected_map_to_base_msg);
+    tf_broadcaster_.sendTransform(corrected_marker_to_endeffector_msg);
     rate.sleep();
   } while (nh_.ok());
 }

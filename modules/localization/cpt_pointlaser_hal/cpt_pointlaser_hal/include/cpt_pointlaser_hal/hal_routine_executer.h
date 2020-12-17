@@ -29,7 +29,7 @@ class HALRoutineExecuter {
   ros::ServiceClient hal_move_arm_to_initial_pose_client_, hal_initialize_localization_client_,
       hal_visit_poses_client_, hal_optimize_client_;
   // Internal parameters.
-  std::string optimized_base_frame_name_;
+  std::string optimized_base_frame_name_, optimized_endeffector_frame_name_;
 };
 }  // namespace pointlaser_hal
 }  // namespace cad_percept
