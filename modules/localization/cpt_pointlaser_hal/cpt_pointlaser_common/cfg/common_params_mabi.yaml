@@ -2,8 +2,9 @@
 reference_link_topic_name: WRIST_2
 # Topic name of the end effector.
 end_effector_topic_name: ENDEFFECTOR
-# Frame name for the optimized robot-base pose at the end of the HAL routine.
+# Frame names for the optimized robot-base pose and end-effector pose at the end of the HAL routine.
 optimized_base_frame_name: optimized_base
+optimized_endeffector_frame_name: optimized_ee
 # Collections of possible movements.
 # NOTE: These movements are *relative* to the previous pose of the
 # end-effector!

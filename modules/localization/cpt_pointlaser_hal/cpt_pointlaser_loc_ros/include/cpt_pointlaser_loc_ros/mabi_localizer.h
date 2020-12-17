@@ -78,8 +78,6 @@ class MabiLocalizer {
   ros::Publisher intersection_normals_pub_;
   // - Publisher of the mesh with intersected faces being colored, for debug purposes.
   ros::Publisher mesh_with_intersections_pub_;
-  // - Publisher of the pose from marker to end-effector.
-  ros::Publisher endeffector_pose_pub_;
   // - Subscriber to the CAD model.
   ros::Subscriber cad_model_sub_;
   // Service clients and server.
