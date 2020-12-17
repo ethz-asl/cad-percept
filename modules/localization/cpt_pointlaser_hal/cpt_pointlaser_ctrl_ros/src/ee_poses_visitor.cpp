@@ -2,6 +2,7 @@
 
 #include <cpt_pointlaser_common/utils.h>
 #include <glog/logging.h>
+#include <kindr/minimal/rotation-quaternion.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
@@ -18,6 +19,7 @@ EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       nh_private_(nh_private),
       transform_listener_(nh_),
       arm_in_initial_position_(false),
+      lasers_aligned_with_marker_(false),
       num_poses_visited_(0) {
   // Read whether or not the node is running in simulation.
   if (!nh_private.hasParam("simulation_mode")) {
@@ -206,6 +208,8 @@ void EEPosesVisitor::advertiseAndSubscribe() {
   // Advertise services to position the arm and move it through the poses.
   go_to_initial_position_service_ = nh_.advertiseService(
       "hal_move_arm_to_initial_pose", &EEPosesVisitor::goToArmInitialPosition, this);
+  align_lasers_to_marker_service_ =
+      nh_.advertiseService("align_lasers_to_marker", &EEPosesVisitor::alignLasersToMarker, this);
   visit_poses_service_ = nh_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
   // Advertise path topic.
   arm_movement_path_pub_ = nh_private_.advertise<nav_msgs::Path>(path_topic_name_, 1);
@@ -260,12 +264,74 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
   }
 }
 
+bool EEPosesVisitor::alignLasersToMarker(std_srvs::Empty::Request &request,
+                                         std_srvs::Empty::Response &response) {
+  if (!arm_in_initial_position_) {
+    ROS_WARN("Please move arm to initial position first. Not aligning the lasers.");
+    return false;
+  }
+  rocoma_msgs::SwitchController srv;
+  if (!simulation_mode_) {
+    // Switch combined controller on, which is only required on the real robot.
+    srv.request.name = combined_controller_;
+    if (!switch_combined_controller_client_.exists()) {
+      ROS_ERROR("The combined-controller service is not available.");
+      return false;
+    }
+    switch_combined_controller_client_.call(srv);
+    if (srv.response.status <= 0) {
+      ROS_ERROR("Failed to switch combined controller on.");
+      return false;
+    }
+  }
+  // Switch arm controller on.
+  srv.request.name = arm_controller_;
+  if (!switch_arm_controller_client_.exists()) {
+    ROS_ERROR("The arm-controller service is not available.");
+    return false;
+  }
+  switch_arm_controller_client_.call(srv);
+  if (srv.response.status <= 0) {
+    ROS_ERROR("Failed to switch arm controller on.");
+    return false;
+  }
+  // Move arm to initial position.
+  kindr::minimal::QuatTransformation base_to_marker_pose =
+      cad_percept::pointlaser_common::getTF(transform_listener_, "base", "marker");
+  // - Find offset of point laser A w.r.t. marker frame.
+  kindr::minimal::QuatTransformation current_marker_to_pointlaser_A_pose =
+      cad_percept::pointlaser_common::getTF(transform_listener_, "marker", "pointlaser_A");
+  kindr::minimal::QuatTransformation target_marker_to_pointlaser_A_pose(
+      kindr::minimal::RotationQuaternion(1., 0., 0., 0.),
+      current_marker_to_pointlaser_A_pose.getPosition());
+  kindr::minimal::QuatTransformation pointlaser_A_to_ee_pose =
+      cad_percept::pointlaser_common::getTF(transform_listener_, "pointlaser_A",
+                                            end_effector_topic_name_);
+
+  kindr::minimal::QuatTransformation target_base_to_ee_initial_hal_pose =
+      base_to_marker_pose * target_marker_to_pointlaser_A_pose * pointlaser_A_to_ee_pose;
+  if (setArmTo(target_base_to_ee_initial_hal_pose)) {
+    lasers_aligned_with_marker_ = true;
+    current_base_to_ee_pose_ = target_base_to_ee_initial_hal_pose;
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool EEPosesVisitor::visitPoses(cpt_pointlaser_msgs::EEVisitPose::Request &request,
                                 cpt_pointlaser_msgs::EEVisitPose::Response &response) {
   if (num_poses_visited_ == 0 && !arm_in_initial_position_) {
     ROS_ERROR(
         "The arm was not moved to its initial pose! Please call the service "
         "`hal_move_arm_to_initial_pose` first.");
+    return false;
+  }
+
+  if (lasers_aligned_with_marker_) {
+    ROS_ERROR(
+        "The lasers were aligned to the marker frame. This should not be done when performing the "
+        "actual HAL routine. Not visiting poses.");
     return false;
   }
 

@@ -53,6 +53,7 @@ class EEPosesVisitor {
 
   bool goToArmInitialPosition(std_srvs::Empty::Request &request,
                               std_srvs::Empty::Response &response);
+  bool alignLasersToMarker(std_srvs::Empty::Request &request, std_srvs::Empty::Response &response);
   bool visitPoses(cpt_pointlaser_msgs::EEVisitPose::Request &request,
                   cpt_pointlaser_msgs::EEVisitPose::Response &response);
 
@@ -67,7 +68,8 @@ class EEPosesVisitor {
   // Service clients and server.
   ros::ServiceClient switch_arm_controller_client_, switch_combined_controller_client_,
       hal_take_measurement_client_;
-  ros::ServiceServer go_to_initial_position_service_, visit_poses_service_;
+  ros::ServiceServer go_to_initial_position_service_, visit_poses_service_,
+      align_lasers_to_marker_service_;
   // Internal parameters.
   std::string arm_controller_, combined_controller_;
   std::string arm_controller_switch_service_name_, combined_controller_switch_service_name_,
@@ -79,6 +81,8 @@ class EEPosesVisitor {
   std::vector<kindr::minimal::QuatTransformation> relative_ee_poses_to_visit_;
   // Whether or not the arm was moved to the initial position.
   bool arm_in_initial_position_;
+  // Whether or not the lasers were aligned to the marker frame.
+  bool lasers_aligned_with_marker_;
   // Current pose of the end-effector in the robot-base frame.
   kindr::minimal::QuatTransformation current_base_to_ee_pose_;
   // Number of poses visited.
