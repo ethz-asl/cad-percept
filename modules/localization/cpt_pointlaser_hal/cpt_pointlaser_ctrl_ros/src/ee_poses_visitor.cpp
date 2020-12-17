@@ -272,31 +272,6 @@ bool EEPosesVisitor::alignLasersToMarker(
     ROS_WARN("Please move arm to initial position first. Not aligning the lasers.");
     return false;
   }
-  rocoma_msgs::SwitchController srv;
-  if (!simulation_mode_) {
-    // Switch combined controller on, which is only required on the real robot.
-    srv.request.name = combined_controller_;
-    if (!switch_combined_controller_client_.exists()) {
-      ROS_ERROR("The combined-controller service is not available.");
-      return false;
-    }
-    switch_combined_controller_client_.call(srv);
-    if (srv.response.status <= 0) {
-      ROS_ERROR("Failed to switch combined controller on.");
-      return false;
-    }
-  }
-  // Switch arm controller on.
-  srv.request.name = arm_controller_;
-  if (!switch_arm_controller_client_.exists()) {
-    ROS_ERROR("The arm-controller service is not available.");
-    return false;
-  }
-  switch_arm_controller_client_.call(srv);
-  if (srv.response.status <= 0) {
-    ROS_ERROR("Failed to switch arm controller on.");
-    return false;
-  }
   // Move arm to initial position.
   kindr::minimal::QuatTransformation base_to_marker_pose =
       cad_percept::pointlaser_common::getTF(transform_listener_, "base", "marker");
