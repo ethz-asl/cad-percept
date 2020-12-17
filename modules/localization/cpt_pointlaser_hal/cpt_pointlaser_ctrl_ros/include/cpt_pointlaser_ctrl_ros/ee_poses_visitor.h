@@ -1,7 +1,7 @@
 #ifndef CPT_POINTLASER_CTRL_ROS_EE_POSES_VISITOR_H_
 #define CPT_POINTLASER_CTRL_ROS_EE_POSES_VISITOR_H_
 
-#include <cpt_pointlaser_msgs/AlignLasersToMarker.h>
+#include <cpt_pointlaser_msgs/AlignPointlaserAToMarker.h>
 #include <cpt_pointlaser_msgs/EEVisitPose.h>
 #include <kindr/minimal/quat-transformation.h>
 #include <ros/ros.h>
@@ -54,8 +54,10 @@ class EEPosesVisitor {
 
   bool goToArmInitialPosition(std_srvs::Empty::Request &request,
                               std_srvs::Empty::Response &response);
-  bool alignLasersToMarker(cpt_pointlaser_msgs::AlignLasersToMarker::Request &request,
-                           cpt_pointlaser_msgs::AlignLasersToMarker::Response &response);
+  ///
+  /// \brief Aligns pointlaser A to the x axis of the marker frame.
+  bool alignPointlaserAToMarker(cpt_pointlaser_msgs::AlignPointlaserAToMarker::Request &request,
+                                cpt_pointlaser_msgs::AlignPointlaserAToMarker::Response &response);
   bool visitPoses(cpt_pointlaser_msgs::EEVisitPose::Request &request,
                   cpt_pointlaser_msgs::EEVisitPose::Response &response);
 
@@ -71,7 +73,7 @@ class EEPosesVisitor {
   ros::ServiceClient switch_arm_controller_client_, switch_combined_controller_client_,
       hal_take_measurement_client_;
   ros::ServiceServer go_to_initial_position_service_, visit_poses_service_,
-      align_lasers_to_marker_service_;
+      align_pointlaser_A_to_marker_service_;
   // Internal parameters.
   std::string arm_controller_, combined_controller_;
   std::string arm_controller_switch_service_name_, combined_controller_switch_service_name_,

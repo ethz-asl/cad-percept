@@ -209,8 +209,8 @@ void EEPosesVisitor::advertiseAndSubscribe() {
   // Advertise services to position the arm and move it through the poses.
   go_to_initial_position_service_ = nh_.advertiseService(
       "hal_move_arm_to_initial_pose", &EEPosesVisitor::goToArmInitialPosition, this);
-  align_lasers_to_marker_service_ =
-      nh_.advertiseService("align_lasers_to_marker", &EEPosesVisitor::alignLasersToMarker, this);
+  align_pointlaser_A_to_marker_service_ = nh_.advertiseService(
+      "align_pointlaser_A_to_marker", &EEPosesVisitor::alignPointlaserAToMarker, this);
   visit_poses_service_ = nh_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
   // Advertise path topic.
   arm_movement_path_pub_ = nh_private_.advertise<nav_msgs::Path>(path_topic_name_, 1);
@@ -265,28 +265,31 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
   }
 }
 
-bool EEPosesVisitor::alignLasersToMarker(
-    cpt_pointlaser_msgs::AlignLasersToMarker::Request &request,
-    cpt_pointlaser_msgs::AlignLasersToMarker::Response &response) {
+bool EEPosesVisitor::alignPointlaserAToMarker(
+    cpt_pointlaser_msgs::AlignPointlaserAToMarker::Request &request,
+    cpt_pointlaser_msgs::AlignPointlaserAToMarker::Response &response) {
   if (!arm_in_initial_position_) {
     ROS_WARN("Please move arm to initial position first. Not aligning the lasers.");
     return false;
   }
-  // Move arm to initial position.
+  // Obtain target pose of end-effector in the base frame.
   kindr::minimal::QuatTransformation base_to_marker_pose =
       cad_percept::pointlaser_common::getTF(transform_listener_, "base", "marker");
   // - Find offset of point laser A w.r.t. marker frame.
   kindr::minimal::QuatTransformation current_marker_to_pointlaser_A_pose =
       cad_percept::pointlaser_common::getTF(transform_listener_, "marker", "pointlaser_A");
+  // - Find target pose of point laser A w.r.t. marker frame.
   kindr::minimal::QuatTransformation target_marker_to_pointlaser_A_pose(
       kindr::minimal::RotationQuaternion(1., 0., 0., 0.),
       current_marker_to_pointlaser_A_pose.getPosition());
+  // - Compose it with the fixed transform to obtain the target pose of the end-effector in the base
+  //   frame.
   kindr::minimal::QuatTransformation pointlaser_A_to_ee_pose =
       cad_percept::pointlaser_common::getTF(transform_listener_, "pointlaser_A",
                                             end_effector_topic_name_);
-
   kindr::minimal::QuatTransformation target_base_to_ee_initial_hal_pose =
       base_to_marker_pose * target_marker_to_pointlaser_A_pose * pointlaser_A_to_ee_pose;
+  // Move arm to the initial position.
   if (setArmTo(target_base_to_ee_initial_hal_pose)) {
     lasers_aligned_with_marker_ = true;
     current_base_to_ee_pose_ = target_base_to_ee_initial_hal_pose;
