@@ -204,13 +204,13 @@ bool MabiLocalizer::highAccuracyLocalization(
   ROS_INFO_STREAM(map_to_armbase.getPosition().transpose() << "\n");
 
   // Send corrected pose of the robot base to the controller.
-  kindr::minimal::QuatTransformation base_pose_in_world = map_to_armbase * armbase_to_base_;
+  kindr::minimal::QuatTransformation base_pose_in_map = map_to_armbase * armbase_to_base_;
   ROS_INFO_STREAM("Updated base pose in map, t: "
-                  << base_pose_in_world.getPosition().transpose()
-                  << ", o: " << base_pose_in_world.getRotation().vector().transpose() << "\n");
+                  << base_pose_in_map.getPosition().transpose()
+                  << ", o: " << base_pose_in_map.getRotation().vector().transpose() << "\n");
   tf::transformKindrToMsg(corrected_endeffector_pose_in_marker,
                           &response.corrected_endeffector_pose_in_marker);
-  tf::transformKindrToMsg(base_pose_in_world, &response.corrected_base_pose_in_map);
+  tf::transformKindrToMsg(base_pose_in_map, &response.corrected_base_pose_in_map);
 
   // Set the HAL routine as completed.
   initialized_hal_routine_ = false;
