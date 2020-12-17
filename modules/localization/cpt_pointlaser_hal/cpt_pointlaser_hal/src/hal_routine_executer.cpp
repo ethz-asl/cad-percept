@@ -26,7 +26,7 @@ HALRoutineExecuter::HALRoutineExecuter(ros::NodeHandle &nh, ros::NodeHandle &nh_
   if (!nh.hasParam("end_effector_topic_name")) {
     ROS_ERROR("'end_effector_topic_name' not set as parameter.");
   }
-  optimized_ee_frame_name_ = nh.param<std::string>("optimized_ee_frame_name", "optimized_ee");
+  optimized_base_frame_name_ = nh.param<std::string>("optimized_base_frame_name", "optimized_base");
 
   assistUserThroughRoutine();
 }
@@ -110,12 +110,12 @@ void HALRoutineExecuter::assistUserThroughRoutine() {
   // Publish optimized pose.
   std::cout << "The HAL routine is now completed. The optimized pose of the base in the world "
                "frame is published on the TF tree as a new frame '"
-            << optimized_ee_frame_name_ << "'." << std::endl;
+            << optimized_base_frame_name_ << "'." << std::endl;
 
   geometry_msgs::TransformStamped stamped_transform_msg;
-  stamped_transform_msg.header.frame_id = "base";
-  stamped_transform_msg.child_frame_id = optimized_ee_frame_name_;
-  stamped_transform_msg.transform = hal_optimize_srv.response.corrected_base_pose_in_world;
+  stamped_transform_msg.header.frame_id = "map";
+  stamped_transform_msg.child_frame_id = optimized_base_frame_name_;
+  stamped_transform_msg.transform = hal_optimize_srv.response.corrected_base_pose_in_map;
   ros::Rate rate(10.0);
   // Keep publishing the optimized pose until the node is killed.
   do {
