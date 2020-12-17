@@ -1,9 +1,10 @@
 #include <mav_trajectory_generation/timing.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <chrono>
-#include <thread>
+
 #include <Eigen/Cholesky>
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 #include "cpt_chomp_planning/chomp_optimizer.h"
 
@@ -57,13 +58,15 @@ double CollisionFunc::potentialFunction(double distance) const {
   double abs_dist = std::abs(distance);
 
   if (abs_dist <= params_.epsilon * 0.1) {
-  } else if (abs_dist <= params_.epsilon * 1.1 ) {
+    result = 0.0;
+
+  } else if (abs_dist <= params_.epsilon * 1.1) {
     double eps_dist = abs_dist - 0.1 * params_.epsilon;
     result = 1 / (2 * params_.epsilon) * eps_dist * eps_dist;
     // result = 0.0;
 
   } else {
-    result = abs_dist - 0.5 * params_.epsilon;
+    result = abs_dist - 0.6 * params_.epsilon;
   }
   return result;
 }
@@ -200,7 +203,7 @@ double ChompOptimizer::getCost(const ChompTrajectory& traj) const {
     timer_cost_coll.Stop();
   }
   double cost = params_.w_smooth * cost_smooth + params_.w_collision * cost_collision;
-  //std::cout << "Smooth cost= " << cost_smooth << " coll cost = " << cost_collision << std::endl;
+  // std::cout << "Smooth cost= " << cost_smooth << " coll cost = " << cost_collision << std::endl;
   return cost;
 }
 
@@ -301,10 +304,10 @@ void ChompOptimizer::doGradientDescent(ChompTrajectory* traj) {
     marker_grad.scale.x = 0.1;
     marker_grad.scale.y = 0.0;
     marker_grad.scale.z = 0.0;
-    marker_grad.color.a = 1.0;  // Don't forget to set the alpha!
+    marker_grad.color.a = 0.5;  // Don't forget to set the alpha!
     marker_grad.color.r = 0.0;
-    marker_grad.color.g = 0.0;
-    marker_grad.color.b = 1.0;
+    marker_grad.color.g = 1.0;
+    marker_grad.color.b = 0.0;
 
     for (int i_row = 0; i_row < traj->trajectory.rows(); i_row++) {
       Eigen::Vector3d e_point = traj->trajectory.block<1, 3>(i_row, 0).transpose();
@@ -317,7 +320,7 @@ void ChompOptimizer::doGradientDescent(ChompTrajectory* traj) {
       marker_grad.points.push_back(g_point);  // start point
 
       Eigen::Vector3d e_grad = traj_increment.block<1, 3>(i_row, 0).transpose();
-      auto e_end_point = e_point - e_grad / 10.0;
+      auto e_end_point = e_point - e_grad * step_size;
       geometry_msgs::Point g_end_point;
       g_end_point.x = e_end_point.x();
       g_end_point.y = e_end_point.y();
@@ -329,7 +332,7 @@ void ChompOptimizer::doGradientDescent(ChompTrajectory* traj) {
     marker_array.markers.push_back(marker_pos);
     marker_array.markers.push_back(marker_grad);
 
-    //std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     pub_marker_.publish(marker_array);
 

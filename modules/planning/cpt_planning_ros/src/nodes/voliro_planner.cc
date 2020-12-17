@@ -15,6 +15,8 @@
 #include <rmpcpp/policies/simple_target_policy.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
 #include <visualization_msgs/MarkerArray.h>
 
 #include <iostream>
@@ -26,9 +28,8 @@ class VoliroPlanner {
     pub_mesh_3d_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
     pub_mesh_2d_ = cad_percept::MeshModelPublisher(nh, "mesh_2d");
     sub_spacenav_ = nh.subscribe("/joy", 1, &VoliroPlanner::callback, this);
-    pub_trajectory_ =
-        nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("/voliro_tri/command/trajectory", 1);
-    sub_odom_ = nh.subscribe("/voliro_tri/ground_truth/odometry", 1, &VoliroPlanner::odom, this);
+    pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
+    sub_odom_ = nh.subscribe("odometry", 1, &VoliroPlanner::odom, this);
     std::string path = nh_private.param<std::string>("off_path", "");
     double zero_angle = nh_private.param("zero_angle", 0.0);
     double zero_x = nh_private.param("zero_x", 0.0);
@@ -36,6 +37,18 @@ class VoliroPlanner {
     double zero_z = nh_private.param("zero_z", 0.0);
 
     cad_percept::cgal::MeshModel::create(path, &model_, true);
+
+    // transform model
+    Eigen::Affine3d tf_eigen;
+    tf::StampedTransform transform;
+
+    listener_.waitForTransform("mesh", "world",
+                              ros::Time(0), ros::Duration(3.0));
+
+    listener_.lookupTransform("mesh", "world", ros::Time(0), transform);
+    tf::transformTFToEigen(transform, tf_eigen);
+    model_->transform(
+        cad_percept::cgal::eigenTransformationToCgalTransformation(tf_eigen.matrix()));
 
     Eigen::Vector3d zero;
     zero << zero_x, zero_y, zero_z;
@@ -78,14 +91,30 @@ class VoliroPlanner {
     RMPG::VectorX x_target3, x_target2, x_vec, x_dot;
     Eigen::Vector3d end_tmp;
 
-    end_tmp << joy->axes[0] * 0.5, joy->axes[1] * 0.5, fmax(0, joy->axes[2] * 0.5);
-    //    end_tmp += start_uv_;
+    end_tmp << joy->axes[0]*0.5, -joy->axes[1]*0.5, 0.0;
+    end_tmp.x() += start_uv_.x();
+    end_tmp.y() += start_uv_.y();
+    end_tmp.z() = start_uv_.z();
+    std::cout << start_uv_.z();
+
+    // get z offset
+    if (joy->axes[5] < 0.0) {
+      end_tmp.z() -= joy->axes[5]*0.2;  // negative values -> subtract (want to go further away
+    } else if (joy->axes[2] < 0.0) {
+      end_tmp.z() = std::max(0.0, end_tmp.z() + joy->axes[2]*0.2);
+    }
+
+
+    std::cout << end_tmp << std::endl;
+
     if (!mapping_->onManifold((Eigen::Vector2d)end_tmp.topRows<2>())) {
       return;
     }
     target_ = end_tmp;
 
     RMPG::VectorQ target_xyz = mapping_->pointUVHto3D(target_);
+
+    std::cout << target_xyz << std::endl;
 
     Integrator integrator;
 
@@ -96,7 +125,7 @@ class VoliroPlanner {
     A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
     B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
     TargetPolicy pol2(target_, A, alpha, beta, c);  // goes to manifold as quick as possible
-    TargetPolicy pol3(Eigen::Vector3d::Zero(), B, alpha_z, beta_z, c_z);  // stays along it
+    TargetPolicy pol3(target_, B, alpha_z, beta_z, c_z);  // stays along it
     std::vector<TargetPolicy *> policies;
     policies.push_back(&pol2);
     policies.push_back(&pol3);
@@ -123,20 +152,23 @@ class VoliroPlanner {
       j.col(2).normalize();
 
       Eigen::Matrix3d R;
-      R.col(0) = -j.col(1);
-      R.col(2) = j.col(2);
-      R.col(1) = -R.col(0).cross(R.col(2));
-      // Rotate around x
-      Eigen::Affine3d rotx(Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::UnitZ()));
-      // Eigen::Affine3d roty(Eigen::AngleAxisd(-M_PI / 2.0, Eigen::Vector3d::UnitZ()));
 
+      R.col(0) = -j.col(2);
+      R.col(1) = j.col(1);
+      R.col(2) = -R.col(0).cross(R.col(1));
+      // Rotate around x
+      //Eigen::Affine3d rotx(Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::UnitZ()));
+      Eigen::Affine3d roty(Eigen::AngleAxisd(-M_PI / 2.0, Eigen::Vector3d::UnitZ()));
+
+      std::cout << R.determinant() << std::endl;
       pt.orientation_W_B = Eigen::Quaterniond(R);
+
 
       trajectory.push_back(pt);
 
       if (integrator.isDone()) {
-           ROS_INFO_STREAM("Integrator finished after " << t << " s with a distance of " <<
-           integrator.totalDistance());
+        ROS_INFO_STREAM("Integrator finished after " << t << " s with a distance of "
+                                                     << integrator.totalDistance());
         break;
       }
     }
@@ -147,7 +179,7 @@ class VoliroPlanner {
     mav_trajectory_generation::drawMavSampledTrajectory(trajectory, distance, frame_id, &markers);
 
     pub_marker_.publish(markers);
-    if (joy->buttons[0]) {  // Test
+    if (joy->buttons[5]) {  // Test
       trajectory_msgs::MultiDOFJointTrajectory msg;
       mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory, &msg);
       msg.header.frame_id = "world";
@@ -159,6 +191,7 @@ class VoliroPlanner {
   }
 
  private:
+  tf::TransformListener listener_;
   bool published_{false};
   bool do_distance_{false};
   bool do_field_{false};

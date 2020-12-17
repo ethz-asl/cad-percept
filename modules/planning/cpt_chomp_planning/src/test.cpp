@@ -17,12 +17,12 @@ int main(int argc, char *argv[]) {
   chomp::ChompParameters params;
   //params.lambda = 500;
   params.lambda = 1500;
-  //params.w_smooth = 0.01;
-  params.w_collision = 10;
   params.w_smooth = 0.01;
-  params.rel_tol = 1e-4;
-  params.max_iter = 1000;
-  params.epsilon = 0.5;
+  params.w_collision = 10;
+
+  params.rel_tol = 1e-6;
+  params.max_iter = 2500;
+  params.epsilon = 1.25;
   params.map_resolution = 0.01;
   params.verbose = true;
   ChompMeshPlanner planner(scenario_curve, params);
