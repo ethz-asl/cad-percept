@@ -98,7 +98,7 @@ bool MabiLocalizer::initializeHALLocalization(std_srvs::Empty::Request &request,
       nh_private_.param("only_optimize_translation", false));
   // We measure over different poses of the end effector and optimize for the pose of the reference
   // link w.r.t. the arm base. Eventually, this is used to retrieve the corrected pose of the robot
-  // base in the world frame (cf. `highAccuracyLocalization`).
+  // base in the map frame (cf. `highAccuracyLocalization`).
   current_armbase_to_ref_link_ = initial_pose;
 
   // Turn laser on.
@@ -183,9 +183,9 @@ bool MabiLocalizer::highAccuracyLocalization(
   // Optimize for the pose from the marker to the arm base.
   kindr::minimal::QuatTransformation marker_to_armbase_optimized =
       localizer_->optimizeForArmBasePoseInMap(nh_private_.param<bool>("verbose_optimizer", false));
-  // Translate the pose in the map into a pose in the world frame.
-  kindr::minimal::QuatTransformation world_to_armbase =
-      cad_percept::pointlaser_common::getTF(transform_listener_, "world", "marker") *
+  // Translate the pose in the map into a pose in the map frame.
+  kindr::minimal::QuatTransformation map_to_armbase =
+      cad_percept::pointlaser_common::getTF(transform_listener_, "map", "marker") *
       marker_to_armbase_optimized;
 
   // Publish pose of the end effector.
@@ -202,15 +202,15 @@ bool MabiLocalizer::highAccuracyLocalization(
   ROS_INFO_STREAM(marker_to_armbase_optimized.getPosition().transpose() << "\n");
   ROS_INFO("Initial arm base pose in marker frame from state estimation:");
   ROS_INFO_STREAM(initial_marker_to_armbase_.getPosition().transpose() << "\n");
-  ROS_INFO("Arm base pose in world frame:");
-  ROS_INFO_STREAM(world_to_armbase.getPosition().transpose() << "\n");
+  ROS_INFO("Arm base pose in map frame:");
+  ROS_INFO_STREAM(map_to_armbase.getPosition().transpose() << "\n");
 
   // Send corrected pose of the robot base to the controller.
-  kindr::minimal::QuatTransformation base_pose_in_world = world_to_armbase * armbase_to_base_;
-  ROS_INFO_STREAM("Updated base pose in world, t: "
+  kindr::minimal::QuatTransformation base_pose_in_world = map_to_armbase * armbase_to_base_;
+  ROS_INFO_STREAM("Updated base pose in map, t: "
                   << base_pose_in_world.getPosition().transpose()
                   << ", o: " << base_pose_in_world.getRotation().vector().transpose() << "\n");
-  tf::transformKindrToMsg(base_pose_in_world, &response.corrected_base_pose_in_world);
+  tf::transformKindrToMsg(base_pose_in_world, &response.corrected_base_pose_in_map);
 
   // Set the HAL routine as completed.
   initialized_hal_routine_ = false;
