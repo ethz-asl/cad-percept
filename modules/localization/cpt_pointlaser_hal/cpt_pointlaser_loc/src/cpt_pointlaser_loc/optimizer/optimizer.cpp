@@ -108,10 +108,10 @@ Eigen::Vector3d LocalizationOptimizer::addRelativeMeasurement(
 
   // For debug purposes, publish the intersection point, direction and plane.
   if (plane_normal != nullptr) {
-    *plane_normal = plane_normal_expr->value(values);
+    *plane_normal = getIntersectionNormal(intersection_plane);
   }
   if (plane_support != nullptr) {
-    *plane_support = plane_support_expr->value(values);
+    *plane_support = getIntersectionPoint(intersection_plane);
   }
 
   cad_percept::cgal::PointAndPrimitiveId closest_triangle =
