@@ -75,8 +75,6 @@ class MabiLocalizer {
   // Publisher, subscribers.
   // - Publishers of the intersections of the lasers with the model, for debug purposes.
   ros::Publisher intersection_a_pub_, intersection_b_pub_, intersection_c_pub_;
-  // - Publisher of the pose from marker to end-effector.
-  ros::Publisher endeffector_pose_pub_;
   // - Subscriber to the CAD model.
   ros::Subscriber cad_model_sub_;
   // Service clients and server.
