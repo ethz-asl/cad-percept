@@ -100,6 +100,11 @@ class EEPosesVisitor {
   // Initial pose of the pointlaser A w.r.t. the marker frame, after aligning the laser with the
   // marker frame. Used in RL tests as a reference w.r.t. compute the subsequent poses.
   kindr::minimal::QuatTransformation initial_marker_to_pointlaser_A_pose_;
+  // Pose of the marker in the robot base frame. It should be fixed, but in practice it varies
+  // slightly over time. Here it is measured when aligning the laser to the marker frame.
+  kindr::minimal::QuatTransformation base_to_marker_pose_;
+  // Fixed pose of the end-effector in the pointlaser-A frame.
+  kindr::minimal::QuatTransformation pointlaser_A_to_ee_pose_;
   // Number of poses visited.
   size_t num_poses_visited_;
   // Whether or not the node is running in simulation node (needed to select the controllers).
