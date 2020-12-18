@@ -79,18 +79,6 @@ modelify::CorrespondencesType computeCorrespondences(
     return *correspondences;
   }
   LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
-
-  // Filter correspondences
-  modelify::registration_toolbox::RansacParams ransac_params;
-  modelify::CorrespondencesTypePtr filtered_correspondences(new modelify::CorrespondencesType());
-  if (!modelify::registration_toolbox::filterCorrespondences(object_keypoints, detection_keypoints,
-                                                             ransac_params, correspondences,
-                                                             filtered_correspondences)) {
-    LOG(WARNING) << "Filtering correspondences failed!";
-  } else {
-    *correspondences = *filtered_correspondences;
-    LOG(INFO) << "Filtered correspondences to " << correspondences->size();
-  }
   LOG(INFO) << "Time correspondences: " << std::chrono::duration<float>(end - begin).count()
             << " s";
   return *correspondences;
@@ -112,35 +100,37 @@ Transformation computeTransformUsingGeometricConsistency(
     return Transformation();
   }
 
-  // Align features
+  // Get correspondences based on RANSAC model
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-  modelify::registration_toolbox::GeometricConsistencyParams consistency_params;
-  modelify::TransformationVector T_geometric_consistency;
-  std::vector<modelify::CorrespondencesType> clustered_correspondences;
-  if (!modelify::registration_toolbox::alignKeypointsGeometricConsistency(
-          object_keypoints, detection_keypoints, correspondences,
-          consistency_params.min_cluster_size, consistency_params.consensus_set_resolution_m,
-          &T_geometric_consistency, &clustered_correspondences)) {
-    LOG(ERROR) << "Keypoint alignment failed!";
+  modelify::registration_toolbox::RansacParams ransac_params;
+  ransac_params.refine_model = false;
+  ransac_params.max_correspondence_distance_m = 0.01;
+  ransac_params.max_number_iterations = 1e3;
+  modelify::CorrespondencesTypePtr ransac_correspondences(new modelify::CorrespondencesType());
+  Eigen::Matrix4f transform_ransac;
+  if (!modelify::registration_toolbox::filterCorrespondences(object_keypoints, detection_keypoints,
+                                                             ransac_params, correspondences,
+                                                             ransac_correspondences, &transform_ransac)) {
+    LOG(WARNING) << "Failed to find a RANSAC model!";
     return Transformation();
   }
-  *correspondences = clustered_correspondences[0];
-  LOG(INFO) << "Found transformation based on " << clustered_correspondences[0].size()
-            << " correspondences";
 
-  if (!Quaternion::isValidRotationMatrix(T_geometric_consistency[0].block<3, 3>(0, 0))) {
+  *correspondences = *ransac_correspondences;
+  LOG(INFO) << "Found RANSAC model based on " << correspondences->size() << " correspondences.";
+
+  if (!Quaternion::isValidRotationMatrix(transform_ransac.block<3, 3>(0, 0))) {
     for (int i = 0; i < 3; ++i) {
-      T_geometric_consistency[0].block<3, 1>(0, i) =
-          T_geometric_consistency[0].block<3, 1>(0, i).normalized();
+      transform_ransac.block<3, 1>(0, i) =
+          transform_ransac.block<3, 1>(0, i).normalized();
     }
     LOG(WARNING) << "Normalized rotation matrix, new transformation:\n"
-                 << T_geometric_consistency[0];
+                 << transform_ransac;
   }
 
   LOG(INFO) << "Time geometric consistency: "
             << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
             << " s";
-  return Transformation(T_geometric_consistency[0]);
+  return Transformation(transform_ransac);
 }
 
 template <typename descriptor_type>
