@@ -330,10 +330,15 @@ modelify::PointSurfelCloudType computeKeypoints(
     }
     case kUniform: {
       modelify::feature_toolbox::UniformDownsamplingParams uniform_params;
+      uniform_params.search_radius = 0.01;
       if (!modelify::feature_toolbox::getKeypointsFromUniformDownsampling(
               pointcloud_surfel_ptr, uniform_params, keypoints)) {
         LOG(WARNING) << "Could not extract uniform keypoints!";
       }
+      break;
+    }
+    case kAll: {
+      keypoints = pointcloud_surfel_ptr;
       break;
     }
     default:

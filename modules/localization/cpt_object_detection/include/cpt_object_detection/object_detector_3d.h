@@ -11,7 +11,8 @@ class ObjectDetector3D {
   std::map<size_t, std::string> KeypointNames = {
       {static_cast<size_t>(KeypointType::kIss), "ISS"},
       {static_cast<size_t>(KeypointType::kHarris), "Harris"},
-      {static_cast<size_t>(KeypointType::kUniform), "uniform"}};
+      {static_cast<size_t>(KeypointType::kUniform), "uniform"},
+      {static_cast<size_t>(KeypointType::kAll), "all"}};
   std::map<size_t, std::string> DescriptorNames = {
       {static_cast<size_t>(DescriptorType::kFpfh), "FPFH"},
       {static_cast<size_t>(DescriptorType::kShot), "SHOT"}};

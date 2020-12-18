@@ -14,10 +14,10 @@
        default="$(find cpt_object_detection)/resources/Y10148_Torus Thick.off"/>
   <arg name="object_frame_id" value="object_detection_mesh"/>
 
-  <arg name="use_3d_features" value="true"/>
+  <arg name="use_3d_features" default="true"/>
   <arg name="num_points_object_pointcloud" default="5000"/>
   <arg name="downsampling" default="0.001"/>
-  <arg name="keypoint_type" default="uniform"/> <!-- ISS or Harris or uniform-->
+  <arg name="keypoint_type" default="uniform"/> <!-- ISS or Harris or uniform or all -->
   <arg name="descriptor_type" default="FPFH"/> <!-- FPFH or SHOT -->
   <arg name="matching_method" default="Teaser"/> <!-- geometric_consistency or FGR or Teaser -->
   <arg name="correspondence_threshold" default="0.1"/>
