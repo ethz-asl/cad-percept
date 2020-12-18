@@ -1,6 +1,6 @@
 In the following, it will be assumed that a catkin workspace is available on the robot, that has the following packages installed (including the other packages on which the latter depend):
 - This repo (`cad_percept`);
-- The `mabi_mobile_robot` package from the `mabi_mobile` [repo](https://bitbucket.org/leggedrobotics/mabi_mobile/src/93e2ca550ebac4e64bb3330583959e7a88575aea/?at=feature%2Ftest_hal_routine), checked-out at branch `feature/test_hal_routine`.
+- The `mabi_mobile_robot` package from the `mabi_mobile` [repo](https://bitbucket.org/leggedrobotics/mabi_mobile/src/08f6e1dad2588fb3a13c20b605b8be46180a90d1/?at=feature%2Ftest_hal_routine), checked-out at branch `feature/test_hal_routine`.
 
 To do so, follow the instructions below:
 ```bash
