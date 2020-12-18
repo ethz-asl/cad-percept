@@ -3,6 +3,7 @@
 
 #include <cpt_object_detection/learned_descriptor.h>
 #include <cpt_object_detection/object_detection.h>
+#include <cpt_object_detection/unit_descriptor.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_srvs/Empty.h>
@@ -14,11 +15,13 @@ class ObjectDetector3D {
   std::map<size_t, std::string> KeypointNames = {
       {static_cast<size_t>(KeypointType::kIss), "ISS"},
       {static_cast<size_t>(KeypointType::kHarris), "Harris"},
-      {static_cast<size_t>(KeypointType::kUniform), "uniform"}};
+      {static_cast<size_t>(KeypointType::kUniform), "uniform"},
+      {static_cast<size_t>(KeypointType::kAll), "all"}};
   std::map<size_t, std::string> DescriptorNames = {
       {static_cast<size_t>(DescriptorType::kFpfh), "FPFH"},
       {static_cast<size_t>(DescriptorType::kShot), "SHOT"},
-      {static_cast<size_t>(DescriptorType::k3dSmoothNet), "3DSmoothNet"}};
+      {static_cast<size_t>(DescriptorType::k3dSmoothNet), "3DSmoothNet"},
+      {static_cast<size_t>(DescriptorType::kUnit), "unit"}};
   std::map<size_t, std::string> MatchingMethodNames = {
       {static_cast<size_t>(MatchingMethod::kGeometricConsistency), "geometric_consistency"},
       {static_cast<size_t>(MatchingMethod::kFastGlobalRegistration), "FGR"},
@@ -94,6 +97,7 @@ class ObjectDetector3D {
   modelify::DescriptorFPFHCloudType::Ptr object_descriptors_fpfh_;
   modelify::DescriptorSHOTCloudType::Ptr object_descriptors_shot_;
   pcl::PointCloud<LearnedDescriptor>::Ptr object_descriptors_learned_;
+  pcl::PointCloud<UnitDescriptor>::Ptr object_descriptors_unit_;
 
   // Detection
   std::string pointcloud_topic_;

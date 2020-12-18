@@ -17,11 +17,11 @@
   <arg name="reference_frame_id" default="base_link"/>
   <arg name="initialization_duration_s" default="1.0"/>
 
-  <arg name="use_3d_features" value="true"/>
+  <arg name="use_3d_features" default="true"/>
   <arg name="num_points_object_pointcloud" default="5000"/>
   <arg name="downsampling" default="0.001"/>
-  <arg name="keypoint_type" default="uniform"/> <!-- ISS or Harris or uniform-->
-  <arg name="descriptor_type" default="FPFH"/> <!-- FPFH or SHOT -->
+  <arg name="keypoint_type" default="uniform"/> <!-- ISS or Harris or uniform or all -->
+  <arg name="descriptor_type" default="FPFH"/> <!-- FPFH or SHOT or unit -->
   <arg name="matching_method" default="Teaser"/> <!-- geometric_consistency or FGR or Teaser -->
   <arg name="correspondence_threshold" default="0.1"/>
 

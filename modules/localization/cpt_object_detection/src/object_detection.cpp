@@ -2,6 +2,7 @@
 
 #include <CGAL/linear_least_squares_fitting_3.h>
 #include <cpt_object_detection/learned_descriptor.h>
+#include <cpt_object_detection/unit_descriptor.h>
 #include <cpt_utils/cpt_utils.h>
 #include <modelify/feature_toolbox/descriptor_toolbox_3d.h>
 #include <modelify/feature_toolbox/keypoint_toolbox_3d.h>
@@ -469,10 +470,15 @@ modelify::PointSurfelCloudType computeKeypoints(
     }
     case kUniform: {
       modelify::feature_toolbox::UniformDownsamplingParams uniform_params;
+      uniform_params.search_radius = 0.01;
       if (!modelify::feature_toolbox::getKeypointsFromUniformDownsampling(
               pointcloud_surfel_ptr, uniform_params, keypoints)) {
         LOG(WARNING) << "Could not extract uniform keypoints!";
       }
+      break;
+    }
+    case kAll: {
+      keypoints = pointcloud_surfel_ptr;
       break;
     }
     default:
@@ -627,6 +633,44 @@ pcl::PointCloud<LearnedDescriptor> computeDescriptors<LearnedDescriptor>(
   LOG(INFO) << "Got " << descriptors.size() << " descriptors.";
   LOG(INFO) << "For " << keypoints->size() << " keypoints";
   return descriptors;
+}
+
+template <>
+pcl::PointCloud<UnitDescriptor> computeDescriptors<UnitDescriptor>(
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+    const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  pcl::PointCloud<UnitDescriptor> descriptors;
+  for (size_t i = 0; i < keypoints->size(); ++i) {
+    descriptors.points.emplace_back(UnitDescriptor());
+  }
+  return descriptors;
+}
+
+template <>
+modelify::CorrespondencesType computeCorrespondences<UnitDescriptor>(
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<UnitDescriptor>::Ptr& detection_descriptors,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<UnitDescriptor>::Ptr& object_descriptors,
+    double similarity_threshold) {
+  LOG(INFO) << "Computing correspondence for uniform descriptor";
+  modelify::CorrespondencesTypePtr correspondences(new modelify::CorrespondencesType());
+
+  // Find all possible correspondences
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  correspondences->reserve(object_keypoints->size() * detection_keypoints->size());
+  for (size_t idx_object = 0; idx_object < object_keypoints->size(); ++idx_object) {
+    for (size_t idx_detection = 0; idx_detection < detection_keypoints->size(); ++idx_detection) {
+      pcl::Correspondence corr(idx_object, idx_detection, 0);
+      correspondences->emplace_back(corr);
+    }
+  }
+  LOG(INFO) << "Computed " << correspondences->size() << " correspondences.";
+
+  LOG(INFO) << "Time correspondences: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - begin).count()
+            << " s";
+  return *correspondences;
 }
 
 }  // namespace cad_percept::object_detection

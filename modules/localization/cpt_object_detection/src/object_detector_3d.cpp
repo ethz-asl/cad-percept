@@ -115,6 +115,11 @@ bool ObjectDetector3D::initializeObjectMesh() {
         success = compute3dFeatures<LearnedDescriptor>(
             keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_learned_);
         break;
+      case kUnit:
+        object_descriptors_unit_.reset(new pcl::PointCloud<UnitDescriptor>());
+        success = compute3dFeatures<UnitDescriptor>(
+            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_unit_);
+        break;
       default:
         LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
         LOG(INFO) << "Descriptor types:";
@@ -586,6 +591,17 @@ Transformation ObjectDetector3D::processDetectionUsing3dFeatures() {
       T_features = computeTransformUsing3dFeatures<LearnedDescriptor>(
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_learned,
           object_surfels_, object_keypoints_, object_descriptors_learned_,
+          correspondence_threshold_, correspondences);
+      break;
+    }
+    case kUnit: {
+      typename pcl::PointCloud<UnitDescriptor>::Ptr detection_descriptors_uniform(
+          new pcl::PointCloud<UnitDescriptor>());
+      compute3dFeatures<UnitDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
+                                           detection_descriptors_uniform);
+      T_features = computeTransformUsing3dFeatures<UnitDescriptor>(
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_uniform,
+          object_surfels_, object_keypoints_, object_descriptors_unit_,
           correspondence_threshold_, correspondences);
       break;
     }
