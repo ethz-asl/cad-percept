@@ -33,7 +33,7 @@ catkin build mabi_mobile_robot
 
 It will also be assumed that a catkin workspace is available on the local computer, with the following packages installed:
 - This repo (`cad_percept`);
-- The `mabi_sim` package from [`mabi_common`](https://bitbucket.org/leggedrobotics/mabi_common), installed according the instructions of the [README](https://bitbucket.org/leggedrobotics/mabi_common/src/master/README.md).
+- The `mabi_sim` package from [`mabi_common`](https://bitbucket.org/leggedrobotics/mabi_common), installed according the instructions of the [README](https://bitbucket.org/leggedrobotics/mabi_common/src/851ba711753c80204e4eefd785d05d0d97f1ebf4/README.md?at=feature%2Ftest_hal_routine), branch `feature/test_hal_routine`.
 
 
 Unless otherwise specified, *it is assumed that each of the terminals below have the catkin workspace sourced*.
