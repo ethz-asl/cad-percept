@@ -51,14 +51,18 @@ To run the HAL routine:
     # `true` in `cpt_pointlaser_ctrl_ros/cfg/ee_poses_visitor_params_mabi.yaml`.
     roslaunch cpt_pointlaser_hal run_hal_routine.launch
     ```
-  - In Terminal 2, launch the software stack for the robot:
+  - Now enable the hard remote e-stop (the orange one). In Terminal 2, launch the software stack for the robot:
     ```bash
+    # First disable the arm.
+    rosservice call /mabi_lowlevel_controller/enable_slave "id: 0 action: 0"
+    # Every time you restart the drivers also run this:
+    rosrun cosmo memory_remover
+    # Run the drivers.
     roslaunch mabi_mobile_robot hilti.launch
     ```
     This will launch:
     - The robot drivers;
     - The controllers;
-    - The state estimator;
     - The URDF visualization;
     - The robot state publisher.
 
@@ -68,6 +72,17 @@ To run the HAL routine:
     ```bash
     rosservice call /mabi_lowlevel_controller/enable_slave "id: 0 action: 1"
     ```
+    Also disable the hard remote e-stop.
+    You can also now manually move the arm to an initial position, e.g., using the joint position controller.
+    ```bash
+    # "Master" controller, allows to select the joint-position controller.
+    rosservice call /mabi_mobile_highlevel_controller/controller_manager/switch_controller MabiMobileCombinedController
+    # Joint-position controller.
+    rosservice call /mabi_highlevel_controller/controller_manager/switch_controller MabiJointPositionController
+    # Go to storage/home position.
+    rosrun mabi_joint_position_controller go_storage.py  # Use go_home.py instead to go to home.
+    ```
+    NOTE: you can skip this if you run the routine from the steps below, as it will automatically bring the robot to the initial position of the routine (which in general is not the home/storage position) and internally activate the controllers.
 - On the local computer:
   - In Terminal 1, launch the interface to align the building model to the robot.
     ```bash
