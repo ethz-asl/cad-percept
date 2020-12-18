@@ -102,6 +102,11 @@ bool ObjectDetector3D::initializeObject() {
         success = compute3dFeatures<modelify::DescriptorSHOT>(
             keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_shot_);
         break;
+      case kUnit:
+        object_descriptors_unit_.reset(new pcl::PointCloud<UnitDescriptor>());
+        success = compute3dFeatures<UnitDescriptor>(
+            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_unit_);
+        break;
       default:
         LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
         LOG(INFO) << "Descriptor types:";
@@ -329,6 +334,17 @@ void ObjectDetector3D::processDetectionUsing3dFeatures() {
           matching_method_, detection_surfels, detection_keypoints, detection_descriptors_shot,
           object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
           correspondences);
+      break;
+    }
+    case kUnit: {
+      typename pcl::PointCloud<UnitDescriptor>::Ptr detection_descriptors_uniform(
+          new pcl::PointCloud<UnitDescriptor>());
+      compute3dFeatures<UnitDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
+                                           detection_descriptors_uniform);
+      T_features = computeTransformUsing3dFeatures<UnitDescriptor>(
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_uniform,
+          object_surfels_, object_keypoints_, object_descriptors_unit_,
+          correspondence_threshold_, correspondences);
       break;
     }
     default: {

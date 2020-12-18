@@ -18,7 +18,7 @@
   <arg name="num_points_object_pointcloud" default="5000"/>
   <arg name="downsampling" default="0.001"/>
   <arg name="keypoint_type" default="uniform"/> <!-- ISS or Harris or uniform or all -->
-  <arg name="descriptor_type" default="FPFH"/> <!-- FPFH or SHOT -->
+  <arg name="descriptor_type" default="FPFH"/> <!-- FPFH or SHOT or unit -->
   <arg name="matching_method" default="Teaser"/> <!-- geometric_consistency or FGR or Teaser -->
   <arg name="correspondence_threshold" default="0.1"/>
 

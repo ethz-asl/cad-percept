@@ -2,6 +2,7 @@
 #define CPT_OBJECT_DETECTION_OBJECT_DETECTOR_3D_H_
 
 #include <cpt_object_detection/object_detection.h>
+#include <cpt_object_detection/unit_descriptor.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
@@ -15,7 +16,8 @@ class ObjectDetector3D {
       {static_cast<size_t>(KeypointType::kAll), "all"}};
   std::map<size_t, std::string> DescriptorNames = {
       {static_cast<size_t>(DescriptorType::kFpfh), "FPFH"},
-      {static_cast<size_t>(DescriptorType::kShot), "SHOT"}};
+      {static_cast<size_t>(DescriptorType::kShot), "SHOT"},
+      {static_cast<size_t>(DescriptorType::kUnit), "unit"}};
   std::map<size_t, std::string> MatchingMethodNames = {
       {static_cast<size_t>(MatchingMethod::kGeometricConsistency), "geometric_consistency"},
       {static_cast<size_t>(MatchingMethod::kFastGlobalRegistration), "FGR"},
@@ -76,6 +78,7 @@ class ObjectDetector3D {
   modelify::PointSurfelCloudType::Ptr object_keypoints_;
   modelify::DescriptorFPFHCloudType::Ptr object_descriptors_fpfh_;
   modelify::DescriptorSHOTCloudType::Ptr object_descriptors_shot_;
+  pcl::PointCloud<UnitDescriptor>::Ptr object_descriptors_unit_;
 
   // Detection
   std::string pointcloud_topic_;
