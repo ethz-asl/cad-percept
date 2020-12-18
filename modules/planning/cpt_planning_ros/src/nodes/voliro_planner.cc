@@ -42,8 +42,7 @@ class VoliroPlanner {
     Eigen::Affine3d tf_eigen;
     tf::StampedTransform transform;
 
-    listener_.waitForTransform("mesh", "world",
-                              ros::Time(0), ros::Duration(3.0));
+    listener_.waitForTransform("mesh", "world", ros::Time(0), ros::Duration(3.0));
 
     listener_.lookupTransform("mesh", "world", ros::Time(0), transform);
     tf::transformTFToEigen(transform, tf_eigen);
@@ -55,6 +54,7 @@ class VoliroPlanner {
     mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle);
     manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero, zero_angle);
     pub_mesh_3d_.publish(model_);
+    pub_mesh_2d_.publish(mapping_->mesh_2d_, "mesh2d");
 
     server_.setCallback(boost::bind(&VoliroPlanner::config_callback, this, _1, _2));
 
@@ -83,6 +83,68 @@ class VoliroPlanner {
     start_uv_ = mapping_->point3DtoUVH(start_);
   }
 
+  void publishMarker(Eigen::Vector3d pos_mesh, Eigen::Vector2d pos_mesh2d) {
+    visualization_msgs::Marker marker_mesh;
+    marker_mesh.header.frame_id = "world";
+    marker_mesh.header.stamp = ros::Time();
+    marker_mesh.ns = "meshmarker";
+    marker_mesh.id = 0;
+    marker_mesh.type = visualization_msgs::Marker::SPHERE_LIST;
+    marker_mesh.action = visualization_msgs::Marker::ADD;
+    marker_mesh.pose.position.x = 0.0;
+    marker_mesh.pose.position.y = 0.0;
+    marker_mesh.pose.position.z = 0.0;
+    marker_mesh.pose.orientation.x = 0.0;
+    marker_mesh.pose.orientation.y = 0.0;
+    marker_mesh.pose.orientation.z = 0.0;
+    marker_mesh.pose.orientation.w = 1.0;
+    marker_mesh.scale.x = 0.25;
+    marker_mesh.scale.y = 0.25;
+    marker_mesh.scale.z = 0.25;
+    marker_mesh.color.a = 1.0;  // Don't forget to set the alpha!
+    marker_mesh.color.r = 0.0;
+    marker_mesh.color.g = 1.0;
+    marker_mesh.color.b = 0.0;
+
+    geometry_msgs::Point pt3d;
+    pt3d.x = pos_mesh.x();
+    pt3d.y = pos_mesh.y();
+    pt3d.z = pos_mesh.z();
+    marker_mesh.points.push_back(pt3d);
+
+    visualization_msgs::Marker marker_mesh2d;
+    marker_mesh2d.header.frame_id = "mesh2d";
+    marker_mesh2d.header.stamp = ros::Time();
+    marker_mesh2d.ns = "meshmarker2d";
+    marker_mesh2d.id = 0;
+    marker_mesh2d.type = visualization_msgs::Marker::SPHERE_LIST;
+    marker_mesh2d.action = visualization_msgs::Marker::ADD;
+    marker_mesh2d.pose.position.x = 0.0;
+    marker_mesh2d.pose.position.y = 0.0;
+    marker_mesh2d.pose.position.z = 0.0;
+    marker_mesh2d.pose.orientation.x = 0.0;
+    marker_mesh2d.pose.orientation.y = 0.0;
+    marker_mesh2d.pose.orientation.z = 0.0;
+    marker_mesh2d.pose.orientation.w = 1.0;
+    marker_mesh2d.scale.x = 0.25;
+    marker_mesh2d.scale.y = 0.25;
+    marker_mesh2d.scale.z = 0.25;
+    marker_mesh2d.color.a = 1.0;  // Don't forget to set the alpha!
+    marker_mesh2d.color.r = 0.0;
+    marker_mesh2d.color.g = 1.0;
+    marker_mesh2d.color.b = 0.0;
+
+    geometry_msgs::Point pt2d;
+    pt2d.x = pos_mesh2d.x();
+    pt2d.y = pos_mesh2d.y();
+    marker_mesh.points.push_back(pt2d);
+
+    visualization_msgs::MarkerArray msg;
+    msg.markers.push_back(marker_mesh);
+    msg.markers.push_back(marker_mesh2d);
+    pub_marker_.publish(msg);
+  }
+
   void callback(const sensor_msgs::JoyConstPtr &joy) {
     using RMPG = cad_percept::planning::MeshManifoldInterface;
     using LinSpace = rmpcpp::Space<3>;
@@ -91,30 +153,26 @@ class VoliroPlanner {
     RMPG::VectorX x_target3, x_target2, x_vec, x_dot;
     Eigen::Vector3d end_tmp;
 
-    end_tmp << joy->axes[0]*0.5, -joy->axes[1]*0.5, 0.0;
+    end_tmp << joy->axes[0] * 0.5, -joy->axes[1] * 0.5, 0.0;
     end_tmp.x() += start_uv_.x();
     end_tmp.y() += start_uv_.y();
     end_tmp.z() = start_uv_.z();
-    std::cout << start_uv_.z();
 
     // get z offset
     if (joy->axes[5] < 0.0) {
-      end_tmp.z() -= joy->axes[5]*0.2;  // negative values -> subtract (want to go further away
+      end_tmp.z() -= joy->axes[5] * 0.2;  // negative values -> subtract (want to go further away
     } else if (joy->axes[2] < 0.0) {
-      end_tmp.z() = std::max(0.0, end_tmp.z() + joy->axes[2]*0.2);
+      end_tmp.z() = std::max(0.0, end_tmp.z() + joy->axes[2] * 0.2);
     }
 
+    end_tmp.topRows<2>() =
+        (Eigen::Vector2d)mapping_->clipToManifold((Eigen::Vector2d)end_tmp.topRows<2>());
 
-    std::cout << end_tmp << std::endl;
-
-    if (!mapping_->onManifold((Eigen::Vector2d)end_tmp.topRows<2>())) {
-      return;
-    }
     target_ = end_tmp;
 
     RMPG::VectorQ target_xyz = mapping_->pointUVHto3D(target_);
 
-    std::cout << target_xyz << std::endl;
+    publishMarker(target_xyz, end_tmp.topRows<2>());
 
     Integrator integrator;
 
@@ -124,7 +182,7 @@ class VoliroPlanner {
     Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
     A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
     B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
-    TargetPolicy pol2(target_, A, alpha, beta, c);  // goes to manifold as quick as possible
+    TargetPolicy pol2(target_, A, alpha, beta, c);        // goes to manifold as quick as possible
     TargetPolicy pol3(target_, B, alpha_z, beta_z, c_z);  // stays along it
     std::vector<TargetPolicy *> policies;
     policies.push_back(&pol2);
@@ -153,16 +211,28 @@ class VoliroPlanner {
 
       Eigen::Matrix3d R;
 
-      R.col(0) = -j.col(2);
-      R.col(1) = j.col(1);
-      R.col(2) = -R.col(0).cross(R.col(1));
-      // Rotate around x
-      //Eigen::Affine3d rotx(Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::UnitZ()));
-      Eigen::Affine3d roty(Eigen::AngleAxisd(-M_PI / 2.0, Eigen::Vector3d::UnitZ()));
+      // Important: only use normal + one other axis
+      // otherwise transformation could be a non-rectangular frame and an invalid
+      // transform.
+      R.col(0) = -j.col(2);                  // negative normal becomes x
+      R.col(2) = -j.col(1);                  // one axis becomes z
+      R.col(1) = -R.col(0).cross(R.col(2));  // do the rest
 
-      std::cout << R.determinant() << std::endl;
-      pt.orientation_W_B = Eigen::Quaterniond(R);
+      // add relative angle
+      if (joy->buttons[10]) {
+        relative_alpha_ = 0.0;
+        relative_beta_ = 0.0;
+      } else {
+        relative_alpha_ =
+            std::clamp(relative_alpha_ + joy->axes[4] * 0.05, -M_PI / 2.0, M_PI / 2.0);
+        relative_beta_ = std::clamp(relative_beta_ + joy->axes[3] * 0.05, -M_PI / 2.0, M_PI / 2.0);
+      }
 
+      Eigen::AngleAxisd alpha_rot(relative_alpha_, Eigen::Vector3d::UnitY());
+      Eigen::AngleAxisd beta_rot(relative_beta_, Eigen::Vector3d::UnitZ());
+      std::cout << relative_alpha_ << std::endl;
+      std::cout << relative_beta_ << std::endl;
+      pt.orientation_W_B = Eigen::Quaterniond(beta_rot * alpha_rot * R);
 
       trajectory.push_back(pt);
 
@@ -172,14 +242,15 @@ class VoliroPlanner {
         break;
       }
     }
+    std::cout << std::endl << std::endl;
     // Trajectory
     visualization_msgs::MarkerArray markers;
     double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
     std::string frame_id = "world";
-    mav_trajectory_generation::drawMavSampledTrajectory(trajectory, distance, frame_id, &markers);
 
-    pub_marker_.publish(markers);
-    if (joy->buttons[5]) {  // Test
+    mav_trajectory_generation::drawMavSampledTrajectory(trajectory, distance, frame_id, &markers);
+    // pub_marker_.publish(markers);
+    if (joy->buttons[5] && zeroed_) {  // Test
       trajectory_msgs::MultiDOFJointTrajectory msg;
       mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory, &msg);
       msg.header.frame_id = "world";
@@ -187,10 +258,19 @@ class VoliroPlanner {
       pub_trajectory_.publish(msg);
       published_ = true;
       ROS_WARN_STREAM("TRAJECTORY SENT");
+      zeroed_ = false;
+    }
+
+    if (!joy->buttons[5]) {
+      zeroed_ = true;
     }
   }
 
  private:
+  double relative_alpha_ = 0.0;
+  double relative_beta_ = 0.0;
+
+  bool zeroed_ = false;
   tf::TransformListener listener_;
   bool published_{false};
   bool do_distance_{false};

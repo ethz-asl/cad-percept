@@ -1,4 +1,5 @@
 #include <cpt_planning/coordinates/triangle_coords.h>
+#include <algorithm>
 
 namespace cad_percept {
 namespace planning {

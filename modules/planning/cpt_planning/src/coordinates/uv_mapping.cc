@@ -2,6 +2,8 @@
 #include <CGAL/Surface_mesh_parameterization/Discrete_authalic_parameterizer_3.h>
 #include <cpt_planning/coordinates/face_coords.h>
 #include <cpt_planning/coordinates/uv_mapping.h>
+
+#include <algorithm>
 namespace cad_percept {
 namespace planning {
 
@@ -99,6 +101,24 @@ std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(
     cad_percept::cgal::Vector2In vec_in) const {
   FaceCoords2d nearest_2d = nearestFaceUV(vec_in);
   return {nearest_2d, to3D(nearest_2d)};
+}
+
+cad_percept::cgal::Vector2Return UVMapping::clipToManifold(
+    cad_percept::cgal::Vector2In point_2d) const {
+  // get barycentric coords of this point w.r.t nearest face on manifold
+  FaceCoords2d face_2d = nearestFaceUV(point_2d);
+  Eigen::Vector3d barycentric = face_2d.toBarycentric(point_2d);
+
+  // clip all values to [0.0, 1.0]
+  // this results in the closest point inside / the border of the triangle.
+  barycentric.x() = std::clamp(barycentric.x(), 0.0, 1.0);
+  barycentric.y() = std::clamp(barycentric.y(), 0.0, 1.0);
+  barycentric.z() = std::clamp(barycentric.z(), 0.0, 1.0);
+  barycentric /= barycentric.sum();
+
+  std::cout << std::endl << barycentric << std::endl;
+  std::cout << barycentric.sum() << std::endl;
+  return face_2d.toCartesian(barycentric);
 }
 
 bool UVMapping::onManifold(cad_percept::cgal::Vector2In point_2d) const {

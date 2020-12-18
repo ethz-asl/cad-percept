@@ -6,14 +6,17 @@
     <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster"
           args="2 0 0 0 0 0 1 world mesh"/>
 
+    <node pkg="tf2_ros" type="static_transform_publisher" name="mesh2d_broadcaster"
+          args="-2 -2 0 0 0 0 1 world mesh2d"/>
+
     <node name="voliro_planner_node" pkg="cpt_planning_ros" type="voliro_planner_node"
           output="screen">
         <param name="zero_angle" value="0.8"/>
         <param name="zero_x" value="0.0"/>
         <param name="zero_y" value="0.0"/>
         <param name="zero_z" value="1.75"/>
-        <remap from="odometry" to="/ouzel/msf_core/odometry"/>
-        <remap from="cmd_trajectory" to="/ouzel/command/trajectory"/>
+        <remap from="odometry" to="/voliro_tri/ground_truth/odometry"/>
+        <remap from="cmd_trajectory" to="/voliro_tri/command/trajectory"/>
         <param name="off_path"
                value="$(find manifold_simulations)/models/vicon_wall/vicon_wall.off"/>
 
