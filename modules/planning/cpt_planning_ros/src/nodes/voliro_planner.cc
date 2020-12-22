@@ -17,6 +17,7 @@
 #include <sensor_msgs/Joy.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <geometry_msgs/PoseArray.h>
 #include <visualization_msgs/MarkerArray.h>
 
 #include <iostream>
@@ -25,6 +26,7 @@ class VoliroPlanner {
   VoliroPlanner(ros::NodeHandle nh) : nh_(nh) {
     ros::NodeHandle nh_private("~");
     pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
+    pub_pose_array_ = nh.advertise<geometry_msgs::PoseArray>("fieldconfig", 1);
     pub_mesh_3d_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
     pub_mesh_2d_ = cad_percept::MeshModelPublisher(nh, "mesh_2d");
     sub_spacenav_ = nh.subscribe("/joy", 1, &VoliroPlanner::callback, this);
@@ -58,8 +60,9 @@ class VoliroPlanner {
 
     server_.setCallback(boost::bind(&VoliroPlanner::config_callback, this, _1, _2));
 
-    start_ << 0.0, 0.0, 0.0;
-    target_ << 0.0, 0.0, 0.0;
+    random_sampler_ =
+        std::make_shared<CGAL::Random_points_in_triangle_mesh_3<cad_percept::cgal::Polyhedron>>(
+            model_->getMeshRef());
   }
 
   void config_callback(cpt_planning_ros::RMPConfigConfig &config, uint32_t level) {
@@ -76,11 +79,14 @@ class VoliroPlanner {
   }
 
   void odom(const nav_msgs::OdometryConstPtr &odom) {
-    start_.x() = odom->pose.pose.position.x;
-    start_.y() = odom->pose.pose.position.y;
-    start_.z() = odom->pose.pose.position.z;
+    last_odom_.x() = odom->pose.pose.position.x;
+    last_odom_.y() = odom->pose.pose.position.y;
+    last_odom_.z() = odom->pose.pose.position.z;
 
-    start_uv_ = mapping_->point3DtoUVH(start_);
+    last_vel_.x() = odom->twist.twist.linear.x;
+    last_vel_.y() = odom->twist.twist.linear.y;
+    last_vel_.z() = odom->twist.twist.linear.z;
+    // start_uv_ = mapping_->point3DtoUVH(start_);
   }
 
   void publishMarker(Eigen::Vector3d pos_mesh, Eigen::Vector2d pos_mesh2d) {
@@ -144,6 +150,23 @@ class VoliroPlanner {
     msg.markers.push_back(marker_mesh2d);
     pub_marker_.publish(msg);
   }
+  void getRandomPos(Eigen::Vector3d* pos_out) {
+    std::vector<cad_percept::cgal::Point> points;
+
+    // we always sample 2 points - somehow we don't get a new point when only sampling 1
+    std::copy_n(*random_sampler_, 2, std::back_inserter(points));
+    pos_out->x() = points[1].x();
+    pos_out->y() = points[1].y();
+    pos_out->z() = points[1].z();
+  }
+
+  geometry_msgs::Pose toPose(Eigen::Vector3d vect){
+    geometry_msgs::Pose retval;
+    retval.position.x = vect.x();
+    retval.position.y = vect.y();
+    retval.position.z = vect.z();
+    return retval;
+  }
 
   void callback(const sensor_msgs::JoyConstPtr &joy) {
     using RMPG = cad_percept::planning::MeshManifoldInterface;
@@ -153,50 +176,64 @@ class VoliroPlanner {
     RMPG::VectorX x_target3, x_target2, x_vec, x_dot;
     Eigen::Vector3d end_tmp;
 
-    end_tmp << joy->axes[0] * 0.5, -joy->axes[1] * 0.5, 0.0;
-    end_tmp.x() += start_uv_.x();
-    end_tmp.y() += start_uv_.y();
-    end_tmp.z() = start_uv_.z();
+    // use tf to get current reference
+    Eigen::Affine3d tf_eigen;
+    tf::StampedTransform transform;
+    listener_.lookupTransform("world", "current_reference", ros::Time(0), transform);
+    tf::transformTFToEigen(transform, tf_eigen);
+    last_odom_ = tf_eigen.translation();
 
-    // get z offset
-    if (joy->axes[5] < 0.0) {
-      end_tmp.z() -= joy->axes[5] * 0.2;  // negative values -> subtract (want to go further away
-    } else if (joy->axes[2] < 0.0) {
-      end_tmp.z() = std::max(0.0, end_tmp.z() + joy->axes[2] * 0.2);
+    if (joy->buttons[2]) {
+      //get random pos on mesh
+      Eigen::Vector3d random_start;
+      getRandomPos(&random_start);
+      Eigen::Vector3d random_start_uv = mapping_->point3DtoUVH(random_start);
+      end_tmp.x() = random_start_uv.x();
+      end_tmp.y() = random_start_uv.y();
+      end_tmp.z() = last_target_uv_.z();
+      std::cout << end_tmp << std::endl;
+
+    } else {
+      end_tmp << joy->axes[0] * 0.5, -joy->axes[1] * 0.5, -joy->axes[4] * 0.1;
+      end_tmp.x() += last_target_uv_.x();
+      end_tmp.y() += last_target_uv_.y();
+      end_tmp.z() += last_target_uv_.z();
     }
 
     end_tmp.topRows<2>() =
         (Eigen::Vector2d)mapping_->clipToManifold((Eigen::Vector2d)end_tmp.topRows<2>());
 
-    target_ = end_tmp;
+    last_target_uv_ = end_tmp;
+    last_target_uv_.z() = std::clamp(last_target_uv_.z(), 0.3, 3.0);
 
-    RMPG::VectorQ target_xyz = mapping_->pointUVHto3D(target_);
+    RMPG::VectorQ target_xyz = mapping_->pointUVHto3D(last_target_uv_);
 
     publishMarker(target_xyz, end_tmp.topRows<2>());
 
     Integrator integrator;
 
-    Eigen::Vector3d newpos = start_;
 
     Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
     Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
     A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
     B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
-    TargetPolicy pol2(target_, A, alpha, beta, c);        // goes to manifold as quick as possible
-    TargetPolicy pol3(target_, B, alpha_z, beta_z, c_z);  // stays along it
+    TargetPolicy pol2(last_target_uv_, A, alpha, beta, c);  // goes to manifold as quick as possible
+    TargetPolicy pol3(last_target_uv_, B, alpha_z, beta_z, c_z);  // stays along it
     std::vector<TargetPolicy *> policies;
     policies.push_back(&pol2);
     policies.push_back(&pol3);
 
     mav_msgs::EigenTrajectoryPoint::Vector trajectory;
-    integrator.resetTo(newpos);
+    integrator.resetTo(last_odom_, last_vel_);
+
+
+
+
+
+    Eigen::Vector3d temppos;
     double dt = 0.01;
-    for (double t = 0; t < 15.0; t += dt) {
-      geometry_msgs::Point pos;
-      pos.x = newpos.x();
-      pos.y = newpos.y();
-      pos.z = newpos.z();
-      newpos = integrator.forwardIntegrate(policies, manifold_, dt);
+    for (double t = 0; t < 25.0; t += dt) {
+      temppos = integrator.forwardIntegrate(policies, manifold_, dt);
 
       mav_msgs::EigenTrajectoryPoint pt;
       pt.time_from_start_ns = t * 1e9;
@@ -230,9 +267,7 @@ class VoliroPlanner {
 
       Eigen::AngleAxisd alpha_rot(relative_alpha_, Eigen::Vector3d::UnitY());
       Eigen::AngleAxisd beta_rot(relative_beta_, Eigen::Vector3d::UnitZ());
-      std::cout << relative_alpha_ << std::endl;
-      std::cout << relative_beta_ << std::endl;
-      pt.orientation_W_B = Eigen::Quaterniond(beta_rot * alpha_rot * R);
+      pt.orientation_W_B = Eigen::Quaterniond(R);
 
       trajectory.push_back(pt);
 
@@ -242,15 +277,15 @@ class VoliroPlanner {
         break;
       }
     }
-    std::cout << std::endl << std::endl;
     // Trajectory
     visualization_msgs::MarkerArray markers;
     double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
     std::string frame_id = "world";
 
     mav_trajectory_generation::drawMavSampledTrajectory(trajectory, distance, frame_id, &markers);
-    // pub_marker_.publish(markers);
-    if (joy->buttons[5] && zeroed_) {  // Test
+    pub_marker_.publish(markers);
+
+    if (joy->buttons[5] || (joy->buttons[2] && zeroed_)) {  // Test
       trajectory_msgs::MultiDOFJointTrajectory msg;
       mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory, &msg);
       msg.header.frame_id = "world";
@@ -259,29 +294,49 @@ class VoliroPlanner {
       published_ = true;
       ROS_WARN_STREAM("TRAJECTORY SENT");
       zeroed_ = false;
+
+
+      geometry_msgs::PoseArray msg_config;
+      msg_config.header.stamp = ros::Time::now();
+      msg_config.poses.push_back(toPose(last_target_uv_));  //0 = target in UV
+      msg_config.poses.push_back(toPose(target_xyz)); //1 = target in xyz
+      msg_config.poses.push_back(toPose(last_odom_)); //2 = start pos
+      msg_config.poses.push_back(toPose(last_vel_));  //3  = start_vel
+      msg_config.poses.push_back(toPose({alpha, beta, c}));  //4 = params policy A
+      msg_config.poses.push_back(toPose({alpha_z, beta_z, c_z}));  //4 = params policy B
+      pub_pose_array_.publish(msg_config);
     }
 
-    if (!joy->buttons[5]) {
-      zeroed_ = true;
+    if (joy->buttons[1] || !initialized_) {
+      last_target_uv_ = mapping_->point3DtoUVH(last_odom_);
+      ROS_WARN_STREAM("SETPOINT READ");
+
+      initialized_ = true;
+    }
+    if(!joy->buttons[2]){
+      zeroed_= true;
     }
   }
 
  private:
   double relative_alpha_ = 0.0;
   double relative_beta_ = 0.0;
-
+  bool initialized_ = false;
   bool zeroed_ = false;
   tf::TransformListener listener_;
   bool published_{false};
   bool do_distance_{false};
   bool do_field_{false};
   bool do_integrator_{false};
-  Eigen::Vector3d start_, start_uv_, target_;
+  std::shared_ptr<CGAL::Random_points_in_triangle_mesh_3<cad_percept::cgal::Polyhedron>>
+      random_sampler_;
+  Eigen::Vector3d last_odom_, last_vel_, last_target_uv_;
   double alpha, beta, c;
   double alpha_z, beta_z, c_z;
   ros::NodeHandle nh_;
   ros::Publisher pub_marker_;
   ros::Publisher pub_trajectory_;
+  ros::Publisher pub_pose_array_;
   ros::Subscriber sub_spacenav_, sub_odom_;
   cad_percept::MeshModelPublisher pub_mesh_3d_;
   cad_percept::MeshModelPublisher pub_mesh_2d_;
