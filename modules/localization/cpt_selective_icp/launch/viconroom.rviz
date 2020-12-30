@@ -7,7 +7,6 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1/Frames1
-        - /PointCloud26
       Splitter Ratio: 0.5
     Tree Height: 1688
   - Class: rviz/Selection
@@ -58,16 +57,28 @@ Visualization Manager:
       Enabled: true
       Frame Timeout: 15
       Frames:
+        2:
+          Value: true
         All Enabled: true
-        lidar:
+        camera_base:
+          Value: true
+        depth_camera_link:
+          Value: true
+        imu_link:
           Value: true
         map:
           Value: true
         marker:
           Value: true
+        points:
+          Value: true
         rgb_camera_link:
           Value: true
         rslidar:
+          Value: true
+        vicon/azure/azure:
+          Value: true
+        world:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -78,8 +89,19 @@ Visualization Manager:
         map:
           marker:
             {}
-          rgb_camera_link:
-            {}
+        world:
+          vicon/azure/azure:
+            camera_base:
+              depth_camera_link:
+                imu_link:
+                  {}
+                rgb_camera_link:
+                  {}
+              points:
+                2:
+                  {}
+              rslidar:
+                {}
       Update Interval: 0
       Value: true
     - Alpha: 0.800000011920929
@@ -280,36 +302,6 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: false
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 1.1881769895553589
-      Min Color: 0; 0; 0
-      Min Intensity: 3.4855897865782026e-6
-      Name: PointCloud2
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.05000000074505806
-      Style: Flat Squares
-      Topic: /distance_pc
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -338,7 +330,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 14.503220558166504
+      Distance: 12.797452926635742
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -353,10 +345,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: -0.6997964382171631
+      Pitch: -1.5697963237762451
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.80308997631073
+      Yaw: 6.168086051940918
     Saved: ~
 Window Geometry:
   Displays:

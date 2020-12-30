@@ -5,7 +5,7 @@ Launch file for Selective ICP
 
 <launch>
 
-	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
+	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/vicon.json" />
 
 	<node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen" >
     <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
@@ -47,5 +47,13 @@ Launch file for Selective ICP
   	</node>
 
 	<node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
+
+
+<!-- {'position': [-1.0313398838043213, 4.110291957855225, -0.001566961407661438], 'orientation': [0.004674730822443962, 0.004674763418734074, 0.7070915102958679, 0.7070913910865784]} -->
+
+
+
+	
+	<node pkg="tf" type="static_transform_publisher" name="wer" args="0 0 0 0 0 0 1  /lidar /camera_base  100"/>
 
 </launch>

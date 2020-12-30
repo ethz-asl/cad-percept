@@ -70,6 +70,8 @@ class Mapper {
   ros::Time last_point_cloud_time_;
   uint32_t last_point_cloud_seq_;
 
+  int dims = -1;
+
   bool cad_trigger;
   bool selective_icp_trigger;
   bool full_icp_trigger;

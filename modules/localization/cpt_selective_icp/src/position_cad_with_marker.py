@@ -26,13 +26,15 @@ def frame_callback(marker_msg, tf_broadcaster, map_frame):
 if __name__ == "__main__":
     rospy.init_node("mesh_postitioning")
 
-    initial_state = {'position': [0, 0, 0], 'orientation': [0, 0, 1, 1]}
+    initial_state = {'position': [-4.080807685852051, 0.22544816136360168, 0.08275765180587769], 'orientation': [0.0, -0.02488364279270172, -0.9996903538703918, 0.0]}
+
+
     # load state from last execution
     r = RosPack()
-    state_file = path.join(r.get_path('cpt_selective_icp'), 'state', 'cad_marker.pkl')
-    if path.exists(state_file):
-        with open(state_file, 'r') as f:
-            initial_state = pickle.load(f)
+    #state_file = path.join(r.get_path('cpt_selective_icp'), 'state', 'cad_marker.pkl')
+    # if path.exists(state_file):
+    #     with open(state_file, 'r') as f:
+    #         initial_state = pickle.load(f)
 
     transform_pub = rospy.Publisher('/T_map_marker', Transform, queue_size=10)
     tf_broadcaster = TransformBroadcaster()
@@ -54,14 +56,19 @@ if __name__ == "__main__":
     def on_click_load_cad(msg):
         # save state such that for next executation the marker is initialized at this
         # position
-        if not path.exists(path.dirname(state_file)):
+        print("TEST")
+        pose = marker.marker.pose
+        print(  {'position': [pose.position.x, pose.position.y, pose.position.z],
+                 'orientation': [pose.orientation.x, pose.orientation.y,
+                                 pose.orientation.z, pose.orientation.w]})
+        """if not path.exists(path.dirname(state_file)):
             mkdir(path.dirname(state_file))
         with open(state_file, 'w') as f:
             pose = marker.marker.pose
             pickle.dump(
                 {'position': [pose.position.x, pose.position.y, pose.position.z],
                  'orientation': [pose.orientation.x, pose.orientation.y,
-                                 pose.orientation.z, pose.orientation.w]}, f)
+                                 pose.orientation.z, pose.orientation.w]}, f)"""
         load_cad()
     marker.add_menu_item('load CAD', on_click_load_cad)
 
@@ -70,7 +77,7 @@ if __name__ == "__main__":
         marker.marker, tf_broadcaster, 'map'))
 
     # republish mesh once when everything is set up
-    rospy.sleep(2)
+    rospy.sleep(0.1)
     if rospy.get_param('~load_cad_on_start', False):
         load_cad()
         print("Loaded CAD")

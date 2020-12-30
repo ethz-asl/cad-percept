@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Launch file for Selective ICP
+-->
+
+<launch>
+	<node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
+	<node pkg="tf" type="static_transform_publisher" name="whatever" args="0 0 0 0 0 0 /vicon/azure/azure  /camera_base  100"/>
+	<node pkg="tf" type="static_transform_publisher" name="whatewver" args="0 0 0 1.5708 0 1.5708  /camera_base  /rgb_camera_link  100"/>
+	<node pkg="tf" type="static_transform_publisher" name="points" args="0 0 0 0 0 0 1  /rgb_camera_link /kinectpc  100"/>
+	<node pkg="tf" type="static_transform_publisher" name="wrld" args="0 0 0 0 0 0 1  /map /world  100"/>
+</launch>

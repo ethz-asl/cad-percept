@@ -1,3 +1,11 @@
+- BoundingBoxDataPointsFilter:
+   xMin: -8.0
+   xMax: 8.0
+   yMin: -2.0
+   yMax: 2.5
+   zMin: -8.0
+   zMax: 8.0
+   removeInside: 0
 - RandomSamplingDataPointsFilter:
     prob: 0.5
 - SurfaceNormalDataPointsFilter:
@@ -9,3 +17,4 @@
 - OrientNormalsDataPointsFilter 
 - MaxDensityDataPointsFilter:
     maxDensity: 10000.0
+
