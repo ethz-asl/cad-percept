@@ -12,10 +12,15 @@ add_definitions(-std=c++17 -Wall -Wextra)
 # LIBRARIES #
 #############
 cs_add_executable(test_node
-        src/chomp_mesh_planner.cpp
-        src/chomp.cpp
-        src/test.cpp)
+       src/test.cpp)
 
+cs_add_library(${PROJECT_NAME}
+        src/chomp_mesh_planner.cpp
+        src/chomp.cpp)
+
+target_link_libraries(test_node
+        ${PROJECT_NAME}
+        cgal_definitions)
 ##########
 # EXPORT #
 ##########

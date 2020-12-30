@@ -186,7 +186,7 @@ class ChompOptimizer {
     f_collision_.setParameters(params_);
   }
 
-  void solveProblem(const Eigen::VectorXd& start, const Eigen::VectorXd& goal, int N,
+  bool solveProblem(const Eigen::VectorXd& start, const Eigen::VectorXd& goal, int N,
                     ChompTrajectory* solution);
 
   // Setup.
@@ -208,7 +208,7 @@ class ChompOptimizer {
   double getCost(const ChompTrajectory& traj) const;
 
   // Actual optimization.
-  void doGradientDescent(ChompTrajectory* traj);
+  bool doGradientDescent(ChompTrajectory* traj);
 
   // For testing.
   void setM(const Eigen::MatrixXd& M) { M_ = M; }

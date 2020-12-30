@@ -9,14 +9,14 @@ import copy
 
 columns = [2, 3]
 scenarios = ["curve", "hilo", "rhone"]
-planners = ["RMP8", "DGEO", "RRTConnect1000", "RRTStar1000", "RRTMeshProj1000", "RRTStar250", "RRTMeshProj250"]
+planners = ["RMP8", "DGEO", "RRTConnect1000", "RRTStar1000", "RRTMeshProj1000", "RRTStar250", "RRTMeshProj250", "CHOMP"]
 planners_latex = ["\\textbf{Ours}", "DGEO", "\shortstack{RRT$^{*}$ \\\\ Con-$1$}",
                   "\shortstack{RRT$^{*}$ \\\\ Sam-$1$}",
                   "\shortstack{RRT$^{*}$ \\\\ Pro-$1$}", "\shortstack{RRT$^{*}$ \\\\ Sam-$\\sfrac{1}{4}$}",
-                  "\shortstack{RRT$^{*}$ \\\\ Pro-$\\sfrac{1}{4}$}"]
+                  "\shortstack{RRT$^{*}$ \\\\ Pro-$\\sfrac{1}{4}$}", "CHOMP"]
 data = []
 for scenario in scenarios:
-    df = read_csv(scenario + "_data.log", delimiter="\t")
+    df = read_csv(scenario + "_data.log", delimiter="\t", header=None)
     df.columns = ["scenario", "planner", "success", "duration", "length", "dist_surf", "smoothness", "segments", "rowid", "runid"]
     df["scenario"] = scenario
     df["duration"] = df["duration"] / 1000.0
@@ -41,7 +41,6 @@ for index, row in all_data.iterrows():
 
 all_data = all_data.assign(len_ratio = rel_length)
 alpha_stripplot = 0.25
-
 success_rates = all_data.groupby(["planner", "scenario"], as_index=False).agg(
     {"success": [lambda x: np.count_nonzero(x) / np.alen(x)],
      "duration": [np.average]})
@@ -104,6 +103,8 @@ for scenario in scenarios:
     for planner in planners:
         filtered = success_rates[(success_rates["scenario"] == scenario) & (success_rates["planner"] == planner)][
             "success_rate"]
+        print(scenario)
+        print(planner)
         assert len(filtered) == 1
         max_val = success_rates[(success_rates["scenario"] == scenario)]["success_rate"].max()
         curr_val = filtered.values[0]

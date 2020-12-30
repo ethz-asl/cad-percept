@@ -2,7 +2,7 @@
 
 
     <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster"
-          args="2.5 0 0 0 0 0 1 world mesh"/>
+          args="2.163 -0.049 -0.138 0.011 0.011 -0.049 0.999 world mesh"/>
 
     <node pkg="tf2_ros" type="static_transform_publisher" name="mesh2d_broadcaster"
           args="-4 -2 0 0 0 0 1 world mesh2d"/>
@@ -19,7 +19,7 @@
         <remap from="odometry" to="/xoliro/vrpn_client/estimated_odometry"/>
         <remap from="cmd_trajectory" to="/xoliro/command/trajectory"/>
         <param name="off_path"
-               value="$(find manifold_simulations)/models/vicon_wall/vicon_wall.off"/>
+               value="/home/darpa/catkin_ws/src/manifold_simulations/models/vicon_wall/vicon_wall.off"/>
 
     </node>
 

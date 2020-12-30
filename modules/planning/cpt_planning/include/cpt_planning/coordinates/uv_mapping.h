@@ -56,7 +56,6 @@ class UVMapping {
       FloaterSquareArc;
 
   /*
-  /*
    * Internal class that handles build up of the flattened coordinate representation.
    */
   class CoordinateMeshBuilder : public CGAL::Modifier_base<cgal::HalfedgeDS> {

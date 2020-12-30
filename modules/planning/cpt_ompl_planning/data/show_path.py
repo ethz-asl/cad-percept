@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from pandas import read_csv
 import seaborn as sns
+import sys
+
 
 
 hilo_path="/home/mpantic/ws/rmp/src/manifold_simulations/models/hilo_roof/meshes/hilo_reconstructed.off"
@@ -18,9 +20,9 @@ wireframe.paint_uniform_color([0.4, 0.4, 0.4])
 
 
 scenario = "hilo"
-base_path = "/home/mpantic/ws/rmp/src/cad-percept/modules/planning/cpt_ompl_planning/evaluation/Okt12-1759_100/"
+base_path = "/home/mpantic/ws/rmp/src/cad-percept/modules/planning/cpt_ompl_planning/evaluation/Dez30-0958_100/"
 #rowid = 27
-rowid = 88
+rowid = int(sys.argv[1])
 
 vis = o3d.visualization.Visualizer()
 vis.create_window()
@@ -35,7 +37,7 @@ print(ctr.get_field_of_view())
 vis.add_geometry(wireframe)
 
 
-def drawPath(vis, runid, radius=0.05, color=[1.0, 0.0, 0.0], skip=1):
+def drawPath(vis, runid, radius=0.01, color=[1.0, 0.0, 0.0], skip=1):
     file_path = base_path + "paths/path_" + runid + ".log"
     points = np.genfromtxt(file_path, delimiter='\t')
 
@@ -74,6 +76,7 @@ def read_files():
 
     planners = [["RMP8", palette[5], 10],
                 ["DGEO", palette[3], 1],
+		["CHOMP", palette[8], 1],
                 ["RRTConnect1000",  palette[11], 1],
                 ["RRTStar1000", palette[1],1 ],
                 ["RRTMeshProj1000",palette[7], 1],
@@ -87,7 +90,7 @@ def read_files():
             continue
         run_id = (df[(df["planner"] == planner)]["runid"].values[0])
 
-        drawPath(vis, run_id, 0.05, np.array(color), skip)
+        drawPath(vis, run_id, 0.025, np.array(color), skip)
 
 read_files()
 

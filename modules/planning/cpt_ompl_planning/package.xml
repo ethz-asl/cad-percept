@@ -20,6 +20,7 @@
     <depend>cpt_planning</depend>
     <depend>cpt_utils</depend>
     <depend>cpt_ros</depend>
+    <depend>cpt_chomp_planning</depend>
     <depend>cpt_planning_ros</depend>
     <depend>visualization_msgs</depend>
     <depend>cgal_catkin</depend>

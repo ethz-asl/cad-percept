@@ -5,7 +5,11 @@ const cad_percept::planning::SurfacePlanner::Result ChompMeshPlanner::plan(
     std::vector<Eigen::Vector3d>* states_out) {
   cad_percept::planning::SurfacePlanner::Result result;
   chomp::ChompTrajectory traject;
-  chomper_.solveProblem(start, goal, 150, &traject);
+
+  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+  result.success = chomper_.solveProblem(start, goal, 150, &traject);
+  std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+  result.duration = end_time - start_time;
 
   for (int i = 0; i < traject.trajectory.rows(); i++) {
     states_out->push_back(traject.trajectory.block<1, 3>(i, 0).transpose());

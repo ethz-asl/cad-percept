@@ -161,6 +161,8 @@ class EvaluationNode {
       start_ = start;
       goal_ = goal;
     }
+    std::cout << start_ << std::endl;
+    std::cout << goal_ << std::endl;
 
     for (auto planner : planners_) {
       std::vector<Eigen::Vector3d> path;

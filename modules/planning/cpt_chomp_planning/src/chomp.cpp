@@ -207,15 +207,16 @@ double ChompOptimizer::getCost(const ChompTrajectory& traj) const {
   return cost;
 }
 
-void ChompOptimizer::solveProblem(const Eigen::VectorXd& start, const Eigen::VectorXd& goal, int N,
+bool ChompOptimizer::solveProblem(const Eigen::VectorXd& start, const Eigen::VectorXd& goal, int N,
                                   ChompTrajectory* solution) {
   // TODO(helenol): verify inputs!!!! That they match ChompParams.
   ChompTrajectory traj;
   createTrajectory(start, goal, N, &traj);
   setupFromTrajectory(traj);
 
-  doGradientDescent(&traj);
+  bool converged = doGradientDescent(&traj);
   *solution = traj;
+  return converged;
 }
 
 void ChompOptimizer::setupFromTrajectory(const ChompTrajectory& traj) {
@@ -226,7 +227,7 @@ void ChompOptimizer::setupFromTrajectory(const ChompTrajectory& traj) {
   M_ = f_smooth_.getA();
 }
 
-void ChompOptimizer::doGradientDescent(ChompTrajectory* traj) {
+bool ChompOptimizer::doGradientDescent(ChompTrajectory* traj) {
   mav_trajectory_generation::timing::Timer timer_optimize("chomp/optimize");
 
   // TODO: fill in M.
@@ -266,75 +267,79 @@ void ChompOptimizer::doGradientDescent(ChompTrajectory* traj) {
 
     // Horrible place to implement this, but here we are
     // create marker for each position in trajectory
-    visualization_msgs::Marker marker_pos;
-    marker_pos.header.frame_id = "world";
-    marker_pos.header.stamp = ros::Time();
-    marker_pos.ns = "trajectory";
-    marker_pos.id = 0;
-    marker_pos.type = visualization_msgs::Marker::SPHERE_LIST;
-    marker_pos.action = visualization_msgs::Marker::ADD;
-    marker_pos.pose.position.x = 0;
-    marker_pos.pose.position.y = 0;
-    marker_pos.pose.position.z = 0;
-    marker_pos.pose.orientation.x = 0.0;
-    marker_pos.pose.orientation.y = 0.0;
-    marker_pos.pose.orientation.z = 0.0;
-    marker_pos.pose.orientation.w = 1.0;
-    marker_pos.scale.x = 0.25;
-    marker_pos.scale.y = 0.25;
-    marker_pos.scale.z = 0.25;
-    marker_pos.color.a = 1.0;  // Don't forget to set the alpha!
-    marker_pos.color.r = 1.0;
-    marker_pos.color.g = 0.0;
-    marker_pos.color.b = 0.0;
-    visualization_msgs::Marker marker_grad;
-    marker_grad.header.frame_id = "world";
-    marker_grad.header.stamp = ros::Time();
-    marker_grad.ns = "grad";
-    marker_grad.id = 0;
-    marker_grad.type = visualization_msgs::Marker::LINE_LIST;
-    marker_grad.action = visualization_msgs::Marker::ADD;
-    marker_grad.pose.position.x = 0;
-    marker_grad.pose.position.y = 0;
-    marker_grad.pose.position.z = 0;
-    marker_grad.pose.orientation.x = 0.0;
-    marker_grad.pose.orientation.y = 0.0;
-    marker_grad.pose.orientation.z = 0.0;
-    marker_grad.pose.orientation.w = 1.0;
-    marker_grad.scale.x = 0.1;
-    marker_grad.scale.y = 0.0;
-    marker_grad.scale.z = 0.0;
-    marker_grad.color.a = 0.5;  // Don't forget to set the alpha!
-    marker_grad.color.r = 0.0;
-    marker_grad.color.g = 1.0;
-    marker_grad.color.b = 0.0;
 
-    for (int i_row = 0; i_row < traj->trajectory.rows(); i_row++) {
-      Eigen::Vector3d e_point = traj->trajectory.block<1, 3>(i_row, 0).transpose();
-      geometry_msgs::Point g_point;
-      g_point.x = e_point.x();
-      g_point.y = e_point.y();
-      g_point.z = e_point.z();
-      marker_pos.points.push_back(g_point);
+    if (params_.verbose) {
+      visualization_msgs::Marker marker_pos;
+      marker_pos.header.frame_id = "world";
+      marker_pos.header.stamp = ros::Time();
+      marker_pos.ns = "trajectory";
+      marker_pos.id = 0;
+      marker_pos.type = visualization_msgs::Marker::SPHERE_LIST;
+      marker_pos.action = visualization_msgs::Marker::ADD;
+      marker_pos.pose.position.x = 0;
+      marker_pos.pose.position.y = 0;
+      marker_pos.pose.position.z = 0;
+      marker_pos.pose.orientation.x = 0.0;
+      marker_pos.pose.orientation.y = 0.0;
+      marker_pos.pose.orientation.z = 0.0;
+      marker_pos.pose.orientation.w = 1.0;
+      marker_pos.scale.x = 0.25;
+      marker_pos.scale.y = 0.25;
+      marker_pos.scale.z = 0.25;
+      marker_pos.color.a = 1.0;  // Don't forget to set the alpha!
+      marker_pos.color.r = 1.0;
+      marker_pos.color.g = 0.0;
+      marker_pos.color.b = 0.0;
+      visualization_msgs::Marker marker_grad;
+      marker_grad.header.frame_id = "world";
+      marker_grad.header.stamp = ros::Time();
+      marker_grad.ns = "grad";
+      marker_grad.id = 0;
+      marker_grad.type = visualization_msgs::Marker::LINE_LIST;
+      marker_grad.action = visualization_msgs::Marker::ADD;
+      marker_grad.pose.position.x = 0;
+      marker_grad.pose.position.y = 0;
+      marker_grad.pose.position.z = 0;
+      marker_grad.pose.orientation.x = 0.0;
+      marker_grad.pose.orientation.y = 0.0;
+      marker_grad.pose.orientation.z = 0.0;
+      marker_grad.pose.orientation.w = 1.0;
+      marker_grad.scale.x = 0.1;
+      marker_grad.scale.y = 0.0;
+      marker_grad.scale.z = 0.0;
+      marker_grad.color.a = 0.5;  // Don't forget to set the alpha!
+      marker_grad.color.r = 0.0;
+      marker_grad.color.g = 1.0;
+      marker_grad.color.b = 0.0;
 
-      marker_grad.points.push_back(g_point);  // start point
+      for (int i_row = 0; i_row < traj->trajectory.rows(); i_row++) {
+        Eigen::Vector3d e_point = traj->trajectory.block<1, 3>(i_row, 0).transpose();
+        geometry_msgs::Point g_point;
+        g_point.x = e_point.x();
+        g_point.y = e_point.y();
+        g_point.z = e_point.z();
 
-      Eigen::Vector3d e_grad = traj_increment.block<1, 3>(i_row, 0).transpose();
-      auto e_end_point = e_point - e_grad * step_size;
-      geometry_msgs::Point g_end_point;
-      g_end_point.x = e_end_point.x();
-      g_end_point.y = e_end_point.y();
-      g_end_point.z = e_end_point.z();
-      marker_grad.points.push_back(g_end_point);  // start point
+        marker_pos.points.push_back(g_point);
+
+        marker_grad.points.push_back(g_point);  // start point
+
+        Eigen::Vector3d e_grad = traj_increment.block<1, 3>(i_row, 0).transpose();
+        auto e_end_point = e_point - e_grad * step_size;
+        geometry_msgs::Point g_end_point;
+        g_end_point.x = e_end_point.x();
+        g_end_point.y = e_end_point.y();
+        g_end_point.z = e_end_point.z();
+        marker_grad.points.push_back(g_end_point);  // start point
+      }
+
+      visualization_msgs::MarkerArray marker_array;
+      marker_array.markers.push_back(marker_pos);
+      marker_array.markers.push_back(marker_grad);
+
+      // std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+      pub_marker_.publish(marker_array);
     }
-
-    visualization_msgs::MarkerArray marker_array;
-    marker_array.markers.push_back(marker_pos);
-    marker_array.markers.push_back(marker_grad);
-
-    // std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
-    pub_marker_.publish(marker_array);
 
     traj->trajectory -= step_size * traj_increment;
 
@@ -358,11 +363,12 @@ void ChompOptimizer::doGradientDescent(ChompTrajectory* traj) {
     }
   }
 
-  if (params_.verbose) {
+  //if (params_.verbose) {
     std::cout << "[GD][Finished][Iter] Final cost after " << i << " iterations: " << cost
               << std::endl;
-  }
+  //}
   timer_optimize.Stop();
+  return i < params_.max_iter;
 }
 
 }  //  namespace chomp
