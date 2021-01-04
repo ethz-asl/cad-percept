@@ -24,6 +24,9 @@ struct MapperParameters {
   bool update_icp_ref_trigger;
   bool full_icp_primer_trigger;
   bool standalone_icp;
+  // If using standalone ICP: if true, publishes transform from map to scanner (e.g., for use with
+  // HAL routine); if false, publishes transform from scanner to map (for back-compatibility).
+  bool map_to_scanner_true_scanner_to_map_false;
   std::string path;
   bool output;
   bool publish_distance;

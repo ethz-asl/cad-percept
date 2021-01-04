@@ -10,6 +10,7 @@ Launch file for Selective ICP with rviz
   <node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen">
     <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters_hal_routine.yaml" />
                 <param name="standaloneICP" value="true" />
+                <param name="mapToScannerTrueScannerToMapFalse" value="true" />
                 <param name="scanTopic" value="/rslidar_points" />
 		<param name="cadTopic" value="mesh_publisher/mesh_out" />
 		<param name="icpConfig"
