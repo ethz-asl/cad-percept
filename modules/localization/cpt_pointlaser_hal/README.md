@@ -44,60 +44,68 @@ connect-smb
 ```
 
 To run the HAL routine:
-- On the robot:
-  - In Terminal 1, launch the HAL module and the interface to the arm controller:
+1. Turn the robot on. Note: both the base and the computer need to be turned on, and all the e-stop need to be not enabled before turning the computer on.
+2. On the robot:
+    - Enable (i.e., push the red button) the hard remote e-stop (the orange one).
+    - In Terminal 1, launch the software stack for the robot:
+      ```bash
+      # Every time you restart the drivers also run this:
+      rosrun cosmo memory_remover
+      # Run the drivers.
+      roslaunch mabi_mobile_robot hilti.launch
+      ```
+      This will launch:
+      - The robot drivers;
+      - The controllers;
+      - The URDF visualization;
+      - The robot state publisher.
+
+      NOTE: you should *not* hear any clicks in the robot arm at this point.
+      
+      In alternative, to run the software in simulation, cf. Terminal 2 in step 3. below.
+
+      In case this launch file is terminated (e.g., `Ctrl+C`) or some of its nodes crashes, you might have to fix some memory errors, by running `rosrun cosmo memory_remover`, which should display `Sucessfully removed shared memory pool 'COSMO_SHM'` in return.
+    - Enable the arm as follows. NOTE: Make sure you know what you're doing:
+      - In Terminal 2, run:
+        ```bash
+        # First disable the arm (in case it not disabled).
+        rosservice call /mabi_lowlevel_controller/enable_slave "id: 0 action: 0"
+        ```
+      - Disable (i.e., pull the red button out) the hard remote e-stop (the orange one).
+      - In Terminal 2, run:
+        ```bash
+        # Enable all joints in the arm.
+        rosservice call /mabi_lowlevel_controller/enable_slave "id: 0 action: 1"
+        ```  
+        NOTE: you should now hear "clicks" in the robot arm.
+      - You can now also manually move the arm to an initial position, e.g., using the joint position controller.
+        ```bash
+        # "Master" controller, allows to select the joint-position controller.
+        rosservice call /mabi_mobile_highlevel_controller/controller_manager/switch_controller MabiMobileCombinedController
+        # Joint-position controller.
+        rosservice call /mabi_highlevel_controller/controller_manager/switch_controller MabiJointPositionController
+        # Go to storage/home position.
+        rosrun mabi_joint_position_controller go_storage.py  # Use go_home.py instead to go to home.
+        ```
+        NOTE: you can skip this if you run the routine from the steps below, as it will automatically bring the robot to the initial position of the routine (which in general is not the home/storage position) and internally activate the controllers.
+3. On the local computer:
+    - In Terminal 1, launch the interface to align the building model to the robot.
+      ```bash
+      roslaunch cpt_selective_icp cpt_selective_icp_hal_routine.launch
+      ```
+    - Align the mesh model to the laser measurements from the robot, using the interface launched by the previous step.
+    - If the software should be run in simulation, in Terminal 2, launch the simulation GUI:
+      ```bash
+      roslaunch mabi_sim run_sim_hal_routine.launch
+      ```
+      Also, change `arm_controller_switch_service_name` to `/mabi_highlevel_controller/controller_manager/switch_controller` in `cpt_pointlaser_ctrl_ros/cfg/ee_poses_visitor_params_mabi.yaml`.
+4. On the robot, either in Terminal 2 or in a new Terminal, launch the actual HAL module:
     ```bash
     # If running in simulation, use argument `simulation:=true` and set the parameter `simulation_mode` to
     # `true` in `cpt_pointlaser_ctrl_ros/cfg/ee_poses_visitor_params_mabi.yaml`.
     roslaunch cpt_pointlaser_hal run_hal_routine.launch
     ```
-  - Now enable the hard remote e-stop (the orange one). In Terminal 2, launch the software stack for the robot:
-    ```bash
-    # First disable the arm.
-    rosservice call /mabi_lowlevel_controller/enable_slave "id: 0 action: 0"
-    # Every time you restart the drivers also run this:
-    rosrun cosmo memory_remover
-    # Run the drivers.
-    roslaunch mabi_mobile_robot hilti.launch
-    ```
-    This will launch:
-    - The robot drivers;
-    - The controllers;
-    - The URDF visualization;
-    - The robot state publisher.
-
-    In alternative, to run the software in simulation, cf. Terminal 2 below.
-    In case this launch file is terminated (e.g., `Ctrl+C`) or some of its nodes crashes, you might have to fix some memory errors, by running `rosrun cosmo memory_remover`, which should display `Sucessfully removed shared memory pool 'COSMO_SHM'` in return.
-  - In Terminal 3, enable the robot. NOTE: Make sure you know what you're doing.
-    ```bash
-    rosservice call /mabi_lowlevel_controller/enable_slave "id: 0 action: 1"
-    ```
-    Also disable the hard remote e-stop.
-    You can also now manually move the arm to an initial position, e.g., using the joint position controller.
-    ```bash
-    # "Master" controller, allows to select the joint-position controller.
-    rosservice call /mabi_mobile_highlevel_controller/controller_manager/switch_controller MabiMobileCombinedController
-    # Joint-position controller.
-    rosservice call /mabi_highlevel_controller/controller_manager/switch_controller MabiJointPositionController
-    # Go to storage/home position.
-    rosrun mabi_joint_position_controller go_storage.py  # Use go_home.py instead to go to home.
-    ```
-    NOTE: you can skip this if you run the routine from the steps below, as it will automatically bring the robot to the initial position of the routine (which in general is not the home/storage position) and internally activate the controllers.
-- On the local computer:
-  - In Terminal 1, launch the interface to align the building model to the robot.
-    ```bash
-    roslaunch cpt_selective_icp cpt_selective_icp_hal_routine.launch
-    ```
-  - If the software should be run in simulation, in Terminal 2, launch the simulation GUI:
-    ```bash
-    roslaunch mabi_sim run_sim_hal_routine.launch
-    ```
-    Also, change `arm_controller_switch_service_name` to `/mabi_highlevel_controller/controller_manager/switch_controller` in `cpt_pointlaser_ctrl_ros/cfg/ee_poses_visitor_params_mabi.yaml`.
-  - In Terminal 3, launch the interface that will guide the user through the routine:
+5. Either on the robot or on the local computer, in a new terminal launch the interface that will guide the user through the routine, and follow the instructions to execute the routine:
     ```bash
     roslaunch cpt_pointlaser_hal hal_routine_guide.launch
     ```
-
-To execute the routine:
-1. Align mesh model to the robot.
-2. Follow the instructions in Terminal 3 on the local computer.
