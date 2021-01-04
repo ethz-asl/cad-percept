@@ -61,6 +61,11 @@ static EVector3 getIntersectionPoint(
   return EVector3(&getIntersectionPointImplementation, intersection);
 }
 
+static Eigen::Vector3d getIntersectionPoint(const cad_percept::cgal::Intersection &intersection) {
+  return Eigen::Vector3d(intersection.intersected_point.x(), intersection.intersected_point.y(),
+                         intersection.intersected_point.z());
+}
+
 static Eigen::Vector3d getIntersectionNormalImplementation(
     const Eigen::Matrix<double, 6, 1> &intersection, gtsam::OptionalJacobian<3, 6> H) {
   if (H) {
@@ -75,10 +80,18 @@ static EVector3 getIntersectionNormal(
   return EVector3(&getIntersectionNormalImplementation, intersection);
 }
 
+static Eigen::Vector3d getIntersectionNormal(const cad_percept::cgal::Intersection &intersection) {
+  return Eigen::Vector3d(intersection.surface_normal.x(), intersection.surface_normal.y(),
+                         intersection.surface_normal.z());
+}
+
 Eigen::Matrix<double, 6, 1> getIntersectionPlaneImplementation(
     const kindr::minimal::QuatTransformation &sensor_pose,
     const cad_percept::cgal::MeshModel::Ptr model, gtsam::OptionalJacobian<6, 6> H,
     gtsam::OptionalJacobian<6, 1> H_ignored);
+
+cad_percept::cgal::Intersection intersectionFromIntersectionExpr(
+    const gtsam::Expression<Eigen::Matrix<double, 6, 1>> &intersection_expr);
 
 gtsam::Expression<Eigen::Matrix<double, 6, 1>> getIntersectionPlane(
     const ETransformation &sensor_pose,

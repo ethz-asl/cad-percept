@@ -25,7 +25,10 @@ class LocalizationOptimizer {
                         const double pointlaser_noise_std, const bool fix_retrieved_planes,
                         const bool add_prior, const bool only_optimize_translation);
   Eigen::Vector3d addRelativeMeasurement(const double distance,
-                                         const kindr::minimal::QuatTransformation &joint2sensor);
+                                         const kindr::minimal::QuatTransformation &joint2sensor,
+                                         Eigen::Vector3d *plane_normal = nullptr,
+                                         Eigen::Vector3d *plane_support = nullptr,
+                                         std::string *closest_triangle_id = nullptr);
   void addOdometry(const kindr::minimal::QuatTransformation &odometry);
   kindr::minimal::QuatTransformation optimize(const bool verbose = false);
 

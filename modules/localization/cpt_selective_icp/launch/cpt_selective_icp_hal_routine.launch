@@ -48,6 +48,6 @@ Launch file for Selective ICP with rviz
     	<param name="frame_name" value="marker"/>
   </node>
 
-	<node type="rviz" name="rviz_mesh_model" pkg="rviz" args="-d $(find cpt_selective_icp)/launch/rviz.rviz" />
+	<node type="rviz" name="rviz_mesh_model" pkg="rviz" args="-d $(find cpt_selective_icp)/launch/rviz_hal_routine.rviz" />
 
 </launch>

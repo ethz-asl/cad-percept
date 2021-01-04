@@ -1,7 +1,10 @@
 #include "cpt_pointlaser_ctrl_ros/ee_poses_visitor.h"
 
 #include <cpt_pointlaser_common/utils.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/Quaternion.h>
 #include <glog/logging.h>
+#include <kindr/minimal/rotation-quaternion.h>
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
 #include <nav_msgs/Path.h>
@@ -18,6 +21,7 @@ EEPosesVisitor::EEPosesVisitor(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       nh_private_(nh_private),
       transform_listener_(nh_),
       arm_in_initial_position_(false),
+      lasers_aligned_with_marker_(false),
       num_poses_visited_(0) {
   // Read whether or not the node is running in simulation.
   if (!nh_private.hasParam("simulation_mode")) {
@@ -206,6 +210,10 @@ void EEPosesVisitor::advertiseAndSubscribe() {
   // Advertise services to position the arm and move it through the poses.
   go_to_initial_position_service_ = nh_.advertiseService(
       "hal_move_arm_to_initial_pose", &EEPosesVisitor::goToArmInitialPosition, this);
+  align_pointlaser_A_to_marker_service_ = nh_.advertiseService(
+      "align_pointlaser_A_to_marker", &EEPosesVisitor::alignPointlaserAToMarker, this);
+  rotate_pointlaser_A_service_ =
+      nh_.advertiseService("rotate_pointlaser_A", &EEPosesVisitor::rotatePointlaserA, this);
   visit_poses_service_ = nh_.advertiseService("hal_visit_poses", &EEPosesVisitor::visitPoses, this);
   // Advertise path topic.
   arm_movement_path_pub_ = nh_private_.advertise<nav_msgs::Path>(path_topic_name_, 1);
@@ -260,12 +268,85 @@ bool EEPosesVisitor::goToArmInitialPosition(std_srvs::Empty::Request &request,
   }
 }
 
+bool EEPosesVisitor::alignPointlaserAToMarker(
+    cpt_pointlaser_msgs::AlignPointlaserAToMarker::Request &request,
+    cpt_pointlaser_msgs::AlignPointlaserAToMarker::Response &response) {
+  if (!arm_in_initial_position_) {
+    ROS_WARN("Please move arm to initial position first. Not aligning the lasers.");
+    return false;
+  }
+  // Obtain target pose of end-effector in the base frame.
+  base_to_marker_pose_ =
+      cad_percept::pointlaser_common::getTF(transform_listener_, "base", "marker");
+  // - Find offset of point laser A w.r.t. marker frame.
+  kindr::minimal::QuatTransformation current_marker_to_pointlaser_A_pose =
+      cad_percept::pointlaser_common::getTF(transform_listener_, "marker", "pointlaser_A");
+  // - Find target pose of point laser A w.r.t. marker frame.
+  kindr::minimal::QuatTransformation target_marker_to_pointlaser_A_pose(
+      kindr::minimal::RotationQuaternion(1., 0., 0., 0.),
+      current_marker_to_pointlaser_A_pose.getPosition());
+  // - Compose it with the fixed transform to obtain the target pose of the end-effector in the base
+  //   frame.
+  pointlaser_A_to_ee_pose_ = cad_percept::pointlaser_common::getTF(
+      transform_listener_, "pointlaser_A", end_effector_topic_name_);
+  kindr::minimal::QuatTransformation target_base_to_ee_initial_hal_pose =
+      base_to_marker_pose_ * target_marker_to_pointlaser_A_pose * pointlaser_A_to_ee_pose_;
+  // Move arm to the initial position.
+  if (setArmTo(target_base_to_ee_initial_hal_pose)) {
+    lasers_aligned_with_marker_ = true;
+    current_base_to_ee_pose_ = target_base_to_ee_initial_hal_pose;
+    geometry_msgs::Point initial_marker_to_pointlaser_A_msg;
+    tf::pointKindrToMsg(target_marker_to_pointlaser_A_pose.getPosition(),
+                        &initial_marker_to_pointlaser_A_msg);
+    initial_marker_to_pointlaser_A_pose_ = target_marker_to_pointlaser_A_pose;
+    response.initial_marker_to_pointlaser_A = initial_marker_to_pointlaser_A_msg;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool EEPosesVisitor::rotatePointlaserA(cpt_pointlaser_msgs::RotatePointlaserA::Request &request,
+                                       cpt_pointlaser_msgs::RotatePointlaserA::Response &response) {
+  if (!lasers_aligned_with_marker_) {
+    ROS_WARN("Please align the lasers with the marker first. Not rotating the point laser.");
+    return false;
+  }
+  geometry_msgs::Quaternion rotation_wrt_initial_pose_msg = request.rotation_wrt_initial_pose;
+  kindr::minimal::RotationQuaternion rotation_wrt_initial_pose;
+  tf::quaternionMsgToKindr(rotation_wrt_initial_pose_msg, &rotation_wrt_initial_pose);
+  // Obtain target pose of end-effector in the base frame.
+  // - Find the target pose of the pointlaser A in the marker frame.
+  kindr::minimal::QuatTransformation transformation_wrt_initial_pose(
+      rotation_wrt_initial_pose, kindr::minimal::Position(0., 0., 0.));
+  kindr::minimal::QuatTransformation target_marker_to_pointlaser_A_pose =
+      initial_marker_to_pointlaser_A_pose_ * transformation_wrt_initial_pose;
+  // - Compose it with the fixed transform to obtain the target pose of the end-effector in the base
+  //   frame.
+  kindr::minimal::QuatTransformation target_base_to_ee_initial_hal_pose =
+      base_to_marker_pose_ * target_marker_to_pointlaser_A_pose * pointlaser_A_to_ee_pose_;
+  // Move arm to the new target position.
+  if (setArmTo(target_base_to_ee_initial_hal_pose)) {
+    current_base_to_ee_pose_ = target_base_to_ee_initial_hal_pose;
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool EEPosesVisitor::visitPoses(cpt_pointlaser_msgs::EEVisitPose::Request &request,
                                 cpt_pointlaser_msgs::EEVisitPose::Response &response) {
   if (num_poses_visited_ == 0 && !arm_in_initial_position_) {
     ROS_ERROR(
         "The arm was not moved to its initial pose! Please call the service "
         "`hal_move_arm_to_initial_pose` first.");
+    return false;
+  }
+
+  if (lasers_aligned_with_marker_) {
+    ROS_ERROR(
+        "The lasers were aligned to the marker frame. This should not be done when performing the "
+        "actual HAL routine. Not visiting poses.");
     return false;
   }
 

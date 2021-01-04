@@ -6,6 +6,7 @@
 #include <kindr/minimal/quat-transformation.h>
 
 #include <Eigen/Geometry>
+#include <vector>
 
 #include "cpt_pointlaser_loc/optimizer/optimizer.h"
 
@@ -64,12 +65,23 @@ class PointLaserLocalizer {
 
   /// \brief Adds laser measurements to the optimization.
   ///
-  /// \param distance_a  Distance measured by laser A (in 1/10 mm).
-  /// \param distance_b  Distance measured by laser B (in 1/10 mm).
-  /// \param distance_c  Distance measured by laser C (in 1/10 mm).
+  /// \param distance_a                  Distance measured by laser A (in 1/10 mm).
+  /// \param distance_b                  Distance measured by laser B (in 1/10 mm).
+  /// \param distance_c                  Distance measured by laser C (in 1/10 mm).
+  /// \param intersected_plane_normals   (Optional) Pointer to a vector that should store the
+  ///   normals of the planes (in the mesh model frame) intersected by the point lasers (A, B, and C
+  ///   respectively).
+  /// \param intersected_plane_supports  (Optional) Pointer to a vector that should store the
+  ///   of the supports (in the mesh model frame) intersected by the point lasers (A, B, and C
+  ///   respectively).
+  /// \param intersected_face_ids        (Optional) Pointer to a vector that should store the IDs
+  ///   of the faces in the mesh model intersected by the point lasers (A, B, and C respectively).
   ///
   /// \return None.
-  void addLaserMeasurements(uint32_t distance_a, uint32_t distance_b, uint32_t distance_c);
+  void addLaserMeasurements(uint32_t distance_a, uint32_t distance_b, uint32_t distance_c,
+                            std::vector<Eigen::Vector3d>* intersected_plane_normals = nullptr,
+                            std::vector<Eigen::Vector3d>* intersected_plane_supports = nullptr,
+                            std::vector<std::string>* intersected_face_ids = nullptr);
 
   /// \brief Returns the intersections of the 3 lasers with the model.
   ///
