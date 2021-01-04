@@ -72,7 +72,7 @@
     version: df22d1a1428b5c3ebd61d0ecc65db04c1d73a7b2
 - git:
     local-name: rocoma
-    uri: git@bitbucket.org:leggedrobotics/rocoma.git
+    uri: https://bitbucket.org/leggedrobotics/rocoma.git
     version: 33f8c9768578ea8acc00df16a47557fe70480923
 - git:
    local-name: serial
