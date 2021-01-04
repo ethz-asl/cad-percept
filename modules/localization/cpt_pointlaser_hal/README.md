@@ -15,7 +15,7 @@ cd src
 # Clone and build cad-percept.
 git clone git@github.com:ethz-asl/cad-percept.git
 cd cad-percept
-git checkout fmilano/cpt_pointlaser_EE_poses_visitor
+git checkout fmilano/cpt_pointlaser_EE_align_laser_with_marker
 cd ..
 wstool init
 wstool merge cad-percept/dependencies.rosinstall
