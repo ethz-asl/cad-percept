@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+  <arg name="simulation" default="false"/>
+  <!-- Nodes that handle the laser measurements and the HAL optimizer -->
+  <include file="$(find cpt_pointlaser_loc_ros)/launch/high_accuracy_localization_mabi.launch">
+  </include>
+  <!-- Node that handles the control of the arm -->
+  <include file="$(find cpt_pointlaser_ctrl_ros)/launch/ee_poses_visitor.launch">
+  </include>
+  <node pkg="tf2_ros"
+    type="static_transform_publisher"
+    name="base_calibration"
+    args="0 0.1 -0.416 0 0 0.707 0.707 arm_base base"
+    if="$(arg simulation)"
+  />
+</launch>

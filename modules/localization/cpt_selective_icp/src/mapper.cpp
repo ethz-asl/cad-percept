@@ -1,4 +1,5 @@
 #include "cpt_selective_icp/mapper.h"
+
 #include "cpt_selective_icp/utils.h"
 
 namespace cad_percept {
@@ -153,8 +154,16 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       // Publish pose. Same as odometry, but different msg type.
       auto tf_scanner_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
           T_scanner_to_map_, parameters_.lidar_frame, parameters_.tf_map_frame, stamp);
+
       if (parameters_.standalone_icp) {
-        tf_broadcaster_.sendTransform(tf_scanner_to_map);
+        if (parameters_.map_to_scanner_true_scanner_to_map_false) {
+          auto tf_map_to_scanner = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+              T_scanner_to_map_.inverse(), parameters_.tf_map_frame, parameters_.lidar_frame,
+              stamp);
+          tf_broadcaster_.sendTransform(tf_map_to_scanner);
+        } else {
+          tf_broadcaster_.sendTransform(tf_scanner_to_map);
+        }
       }
       if (pose_pub_.getNumSubscribers()) {
         pose_pub_.publish(tf_scanner_to_map);
@@ -266,7 +275,14 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     auto tf_scanner_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
         T_updated_scanner_to_map, parameters_.lidar_frame, parameters_.tf_map_frame, stamp);
     if (parameters_.standalone_icp) {
-      tf_broadcaster_.sendTransform(tf_scanner_to_map);
+      if (parameters_.map_to_scanner_true_scanner_to_map_false) {
+        auto tf_map_to_scanner = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+            T_updated_scanner_to_map.inverse(), parameters_.tf_map_frame, parameters_.lidar_frame,
+            stamp);
+        tf_broadcaster_.sendTransform(tf_map_to_scanner);
+      } else {
+        tf_broadcaster_.sendTransform(tf_scanner_to_map);
+      }
     }
     if (pose_pub_.getNumSubscribers()) {
       pose_pub_.publish(tf_scanner_to_map);

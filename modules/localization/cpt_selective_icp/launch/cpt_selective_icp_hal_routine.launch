@@ -5,12 +5,12 @@ Launch file for Selective ICP with rviz
 
 <launch>
 
-		<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
+	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/Lee_H_Demo_2.off" />
 
-	<node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen" launch-prefix="tmux split-window" >
-    <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
+  <node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen">
+    <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters_hal_routine.yaml" />
                 <param name="standaloneICP" value="true" />
-                <param name="mapToScannerTrueScannerToMapFalse" value="false" />
+                <param name="mapToScannerTrueScannerToMapFalse" value="true" />
                 <param name="scanTopic" value="/rslidar_points" />
 		<param name="cadTopic" value="mesh_publisher/mesh_out" />
 		<param name="icpConfig"
@@ -28,28 +28,26 @@ Launch file for Selective ICP with rviz
 	</node>
 
 	<node name="mesh_positioning"
-          pkg="cpt_selective_icp"
-          type="position_cad_with_marker.py"
-          output="screen">
-    	<param name="marker_parent_frame" value="map" />
+        pkg="cpt_selective_icp"
+        type="position_cad_with_marker.py"
+        output="screen">
+    <param name="marker_parent_frame" value="map" />
 		<param name="marker_frame_name" value="marker" />
-  	</node>
+  </node>
 
 	<node name="find_id_in_mesh"
-          pkg="cpt_utils"
-          type="find_closest_id_in_mesh.py"
-          output="screen">
-		<param name="marker_parent_frame" value="marker" />
-  	</node>
+        pkg="cpt_utils"
+        type="find_closest_id_in_mesh.py"
+        output="screen">
+    <param name="marker_parent_frame" value="marker" />
+  </node>
 
 	<node name="mesh_publisher" pkg="cpt_utils" type="mesh_publisher_node" output="screen">
     	<param name="publish_on_start" value="true"/>
     	<param name="default_filename" value="$(arg cad_file)"/>
     	<param name="frame_name" value="marker"/>
-  	</node>
+  </node>
 
-	<node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
-
-	<node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_selective_icp)/launch/rviz.rviz" />
+	<node type="rviz" name="rviz_mesh_model" pkg="rviz" args="-d $(find cpt_selective_icp)/launch/rviz.rviz" />
 
 </launch>

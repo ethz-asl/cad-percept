@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+  <!-- Node that assists the user through the routine -->
+  <node name="pointlaser_hal"
+        pkg="cpt_pointlaser_hal"
+        type="hal_routine_executer"
+        output="screen">
+    <rosparam command="load" file="$(find cpt_pointlaser_hal)/cfg/hal_routine_executer.yaml" />
+  </node>
+</launch>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+<!-- First Laser (A): Finger pointing towards endeffector.
+      Should be connected to topmost connector board. -->
+<node pkg="tf2_ros" type="static_transform_publisher"
+      name="pointlaser_calibration_a"
+      args="0.0082 -0.0353 -0.1446 0 0.707 0 0.707  kinova_link_6 pointlaser_A"/>
+<!-- Second Laser: Finger pointing towards distobox.
+      Should be connected to middle connector board. -->
+<node pkg="tf2_ros" type="static_transform_publisher"
+      name="pointlaser_calibration_b"
+      args="0.023 0.0353 -0.1402 0 0 0 1  kinova_link_6 pointlaser_B"/>
+<!-- Third Laser: "The Crown", not one of the other two.
+      Should be connected to down connector board. -->
+<node pkg="tf2_ros" type="static_transform_publisher"
+      name="pointlaser_calibration_c"
+      args="0.0353 -0.018 -0.1402 0  0 -0.707 0.707  kinova_link_6 pointlaser_C"/>
+</launch>

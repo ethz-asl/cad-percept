@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>cpt_pointlaser_hal</name>
+  <version>0.0.1</version>
+  <description>Main package for HAL routine</description>
+
+  <maintainer email="fmilano@ethz.ch">Francesco Milano</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>cpt_pointlaser_ctrl_ros</depend>
+  <depend>cpt_pointlaser_loc_ros</depend>
+  <depend>cpt_pointlaser_msgs</depend> 
+  <depend>geometry_msgs</depend> 
+  <depend>glog_catkin</depend>
+
+  <exec_depend>cpt_selective_icp</exec_depend>
+</package>

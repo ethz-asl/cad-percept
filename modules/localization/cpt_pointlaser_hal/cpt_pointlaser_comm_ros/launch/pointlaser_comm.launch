@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+  <arg name="distobox_usb_port"
+       default="/dev/serial/by-id/usb-Silicon_Labs_CP2103_USB_to_UART_Bridge_Controller_0001-if00-port0"
+       doc="Path of the USB port that the distobox is connected at."/>
+  <!-- pointlaser_comm node -->
+  <node name="pointlaser_comm"
+        pkg="cpt_pointlaser_comm_ros"
+        type="distobox_comm_node"
+        output="screen"
+        respawn="true">
+    <param name="port" value="$(arg distobox_usb_port)"/>
+  </node>
+</launch>

@@ -1,6 +1,6 @@
-#include <pointmatcher_ros/get_params_from_server.h>
-
 #include "cpt_selective_icp/mapper_parameters.h"
+
+#include <pointmatcher_ros/get_params_from_server.h>
 
 namespace cad_percept {
 namespace selective_icp {
@@ -18,6 +18,8 @@ MapperParameters::MapperParameters()
       update_icp_ref_trigger(getParam<bool>("updateICPRefTrigger", false)),
       full_icp_primer_trigger(getParam<bool>("fullICPPrimerTrigger", false)),
       standalone_icp(getParam<bool>("standaloneICP", false)),
+      map_to_scanner_true_scanner_to_map_false(
+          getParam<bool>("mapToScannerTrueScannerToMapFalse", false)),
       path(getParam<std::string>("path", "fail")),
       output(getParam<bool>("output", false)) {}
 MapperParameters::~MapperParameters() {}

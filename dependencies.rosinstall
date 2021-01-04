@@ -11,9 +11,11 @@
 - git:
     local-name: go_icp_catkin
     uri: git@github.com:ethz-asl/go_icp_catkin.git
+    version: 16d29b6cda7a956055ee88f0aa6685f31931a9f4
 - git:
     local-name: minkindr
     uri: git@github.com:ethz-asl/minkindr.git
+    version: 420dc9c1b62d445f0583aa28d15ec458f474721e
 - git:
     local-name: gflags_catkin
     uri: git@github.com:ethz-asl/gflags_catkin.git
@@ -26,21 +28,27 @@
 - git:
     local-name: gtsam_catkin
     uri: git@github.com:ethz-asl/gtsam_catkin.git
+    version: 7484e51353dc27a6310bcb3c61edf629942599e1
 - git:
     local-name: metis_catkin
     uri: git@github.com:ethz-asl/metis_catkin.git
+    version: c5c839c0739141b755f4589ade38b99caaf5ae23
 - git:
     local-name: minkindr_gtsam
     uri: git@github.com:ethz-asl/minkindr_gtsam.git
+    version: 07d060d444cb9d5381c0ab2420a758a9002a75ee
 - git:
     local-name: minkindr_ros
     uri: git@github.com:ethz-asl/minkindr_ros.git
+    version: 8ef67b01c76e6dcba69dc5143692989b6a8dbc32
 - git:
     local-name: libpointmatcher
     uri: https://github.com/ethz-asl/libpointmatcher.git
+    version: 95647d37abf783f91e2a5e6ae906740860d10494
 - git:
     local-name: libnabo
     uri: https://github.com/ethz-asl/libnabo.git
+    version: 16250bf064bf96702baaacc509c9b22f829fe154
 - git:
     local-name: ethzasl_icp_mapping
     uri: https://github.com/gawela/ethzasl_icp_mapping.git
@@ -54,9 +62,12 @@
 - git:
     local-name: json_catkin
     uri: git@github.com:ethz-asl/json_catkin.git
+    version: df22d1a1428b5c3ebd61d0ecc65db04c1d73a7b2
+- git:
+    local-name: rocoma
+    uri: https://bitbucket.org/leggedrobotics/rocoma.git
+    version: 33f8c9768578ea8acc00df16a47557fe70480923
 - git:
    local-name: serial
    uri: git@github.com:wjwwood/serial.git
-- git:
-    local-name: any_tools
-    uri: git@bitbucket.org:leggedrobotics/any_tools.git
+   version: cbcca7c83745fedd75afb7a0a27ee5c4112435c2

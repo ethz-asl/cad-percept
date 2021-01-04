@@ -1,0 +1,8 @@
+initial_pose_std: [10, 10, 10, 0.01, 0.01, 0.01]
+initial_pose_prior: false
+pointlaser_noise_std: 0.002
+arm_odometry_std: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
+fix_cad_planes: false
+only_optimize_translation: true
+# If true, the HAL optimizer is run in verbose mode.
+verbose_optimizer: false
