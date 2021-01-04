@@ -2,6 +2,8 @@
 #ifndef CPT_SELECTIVE_ICP_MAPPER_PARAMETERS_H_
 #define CPT_SELECTIVE_ICP_MAPPER_PARAMETERS_H_
 
+#include <string>
+
 namespace cad_percept {
 namespace selective_icp {
 
