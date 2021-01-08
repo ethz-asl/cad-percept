@@ -15,6 +15,14 @@ Transformation computeTransformUsing3dFeatures(
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
     double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+  CHECK(detection_surfels);
+  CHECK(detection_keypoints);
+  CHECK(detection_descriptors);
+  CHECK(object_surfels);
+  CHECK(object_keypoints);
+  CHECK(object_descriptors);
+  CHECK(correspondences);
+
   if (object_descriptors->empty()) {
     LOG(ERROR) << "Object pointcloud has no features!";
     return Transformation();
@@ -52,6 +60,11 @@ modelify::CorrespondencesType computeCorrespondences(
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
     double similarity_threshold) {
+  CHECK(detection_keypoints);
+  CHECK(detection_descriptors);
+  CHECK(object_keypoints);
+  CHECK(object_descriptors);
+
   modelify::CorrespondencesTypePtr correspondences(new modelify::CorrespondencesType());
 
   // Find correspondences
@@ -91,6 +104,12 @@ Transformation computeTransformUsingGeometricConsistency(
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
     double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+  CHECK(detection_keypoints);
+  CHECK(detection_descriptors);
+  CHECK(object_keypoints);
+  CHECK(object_descriptors);
+  CHECK(correspondences);
+
   // Get correspondences
   *correspondences = computeCorrespondences<descriptor_type>(
       detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
@@ -142,6 +161,14 @@ Transformation computeTransformUsingFgr(
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
     const modelify::CorrespondencesTypePtr& correspondences) {
+  CHECK(detection_surfels);
+  CHECK(detection_keypoints);
+  CHECK(detection_descriptors);
+  CHECK(object_surfels);
+  CHECK(object_keypoints);
+  CHECK(object_descriptors);
+  CHECK(correspondences);
+
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   modelify::registration_toolbox::FastGlobalRegistrationParams fgr_params;
   fgr_params.crosscheck_test = true;  // 300 -> 30
@@ -178,6 +205,12 @@ Transformation computeTransformUsingTeaser(
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
     double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+  CHECK(detection_keypoints);
+  CHECK(detection_descriptors);
+  CHECK(object_keypoints);
+  CHECK(object_descriptors);
+  CHECK(correspondences);
+
   // Get correspondences
   *correspondences = computeCorrespondences<descriptor_type>(
       detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
@@ -230,6 +263,10 @@ bool compute3dFeatures(const KeypointType& keypoint_type,
                        const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
                        const modelify::PointSurfelCloudType::Ptr& keypoints,
                        const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors) {
+  CHECK(pointcloud_surfel_ptr);
+  CHECK(keypoints);
+  CHECK(descriptors);
+
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   *keypoints = computeKeypoints(keypoint_type, pointcloud_surfel_ptr);
   LOG(INFO) << "Time keypoints: "

@@ -46,6 +46,12 @@ PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model);
 PM::DataPoints convertMeshPointsToDataPoints(const cgal::MeshModel::Ptr& mesh_model,
                                              const std::vector<cgal::Point>& points);
 PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& pointcloud);
+PM::DataPoints convertPclToDataPoints(const modelify::PointSurfelCloudType& pointcloud);
+modelify::PointSurfelCloudType estimateNormals(
+    const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz);
+modelify::PointSurfelCloudType estimateNormals(const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz,
+                                               const cgal::MeshModel& mesh_model);
+void removeNanFromPointcloud(modelify::PointSurfelCloudType& pointcloud_surfels);
 
 template <typename descriptor_type>
 Transformation computeTransformUsing3dFeatures(
@@ -92,8 +98,6 @@ bool compute3dFeatures(const KeypointType& keypoint_type,
                        const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
                        const modelify::PointSurfelCloudType::Ptr& keypoints,
                        const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors);
-modelify::PointSurfelCloudType estimateNormals(
-    const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz);
 modelify::PointSurfelCloudType computeKeypoints(
     const KeypointType& keypoint_type,
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr);
