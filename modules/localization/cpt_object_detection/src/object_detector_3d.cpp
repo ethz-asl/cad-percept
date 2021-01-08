@@ -87,8 +87,8 @@ bool ObjectDetector3D::initializeObject() {
 
   // Get 3D features of object pointcloud
   if (use_3d_features_) {
-    object_surfels_ =
-        boost::make_shared<modelify::PointSurfelCloudType>(estimateNormals(object_pointcloud_));
+    object_surfels_ = boost::make_shared<modelify::PointSurfelCloudType>(
+        estimateNormals(object_pointcloud_, *mesh_model_));
     object_keypoints_.reset(new modelify::PointSurfelCloudType());
     bool success = false;
     switch (descriptor_type_) {

@@ -264,6 +264,116 @@ PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& poin
   return PM::DataPoints(features, feature_labels);
 }
 
+PM::DataPoints convertPclToDataPoints(const modelify::PointSurfelCloudType& pointcloud) {
+  // Define feature labels
+  PM::DataPoints::Labels feature_labels;
+  feature_labels.push_back(PM::DataPoints::Label("x", 1));
+  feature_labels.push_back(PM::DataPoints::Label("y", 1));
+  feature_labels.push_back(PM::DataPoints::Label("z", 1));
+  feature_labels.push_back(PM::DataPoints::Label("pad", 1));
+
+  // Define descriptor labels
+  PM::DataPoints::Labels descriptor_labels;
+  descriptor_labels.push_back(PM::DataPoints::Label("normals", 3));
+
+  // Get features and descriptors from pointcloud
+  PM::Matrix features(feature_labels.totalDim(), pointcloud.size());
+  PM::Matrix descriptors(descriptor_labels.totalDim(), pointcloud.size());
+  std::chrono::steady_clock::time_point conversion_start = std::chrono::steady_clock::now();
+  for (uint i = 0; i < pointcloud.size(); ++i) {
+    features.col(i) =
+        Eigen::Vector4f(pointcloud.points[i].x, pointcloud.points[i].y, pointcloud.points[i].z, 1);
+    descriptors.col(i) =
+        Eigen::Vector3f(pointcloud.points[i].normal_x, pointcloud.points[i].normal_y,
+                        pointcloud.points[i].normal_z);
+  }
+  LOG(INFO)
+      << "Time conversion PCL  to pointmatcher: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - conversion_start).count()
+      << " s";
+
+  return PM::DataPoints(features, feature_labels, descriptors, descriptor_labels);
+}
+
+modelify::PointSurfelCloudType convertDataPointsToPointSurfels(const PM::DataPoints& data_points) {
+  std::chrono::steady_clock::time_point conversion_start = std::chrono::steady_clock::now();
+
+  // Get indices of coordinates and normal
+  int index_x, index_y, index_z;
+  int count = 0;
+  for (size_t i = 0; i < data_points.featureLabels.size(); ++i) {
+    if (data_points.featureLabels[i].text == "x") {
+      index_x = count;
+    } else if (data_points.featureLabels[i].text == "y") {
+      index_y = count;
+    } else if (data_points.featureLabels[i].text == "z") {
+      index_z = count;
+    }
+    count += data_points.featureLabels[i].span;
+  }
+  int index_normals = -1;
+  count = 0;
+  for (size_t i = 0; i < data_points.descriptorLabels.size(); ++i) {
+    if (data_points.descriptorLabels[i].text == "normal") {
+      index_normals = count;
+    }
+    count += data_points.descriptorLabels[i].span;
+  }
+  bool use_normals = index_normals == -1;
+  if (use_normals) {
+    LOG(WARNING) << "Data points do not contain a normal descriptor!";
+  }
+
+  // Convert to pointcloud
+  modelify::PointSurfelCloudType pointcloud;
+  for (size_t i = 0; i < data_points.getNbPoints(); ++i) {
+    pcl::PointSurfel point;
+    point.x = data_points.features.col(i)[index_x];
+    point.y = data_points.features.col(i)[index_y];
+    point.z = data_points.features.col(i)[index_z];
+    if (use_normals) {
+      point.normal_x = data_points.descriptors.col(i)[index_normals + 0];
+      point.normal_y = data_points.descriptors.col(i)[index_normals + 1];
+      point.normal_z = data_points.descriptors.col(i)[index_normals + 2];
+    }
+    pointcloud.emplace_back(point);
+  }
+
+  LOG(INFO)
+      << "Time conversion PCL to pointmatcher: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - conversion_start).count()
+      << " s";
+  return pointcloud;
+}
+
+modelify::PointSurfelCloudType estimateNormals(const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz,
+                                               const cgal::MeshModel& mesh_model) {
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
+  // Get normals from mesh
+  modelify::PointSurfelCloudType pointcloud_surfels;
+  for (const auto& point : pointcloud_xyz) {
+    // Use normal of closest mesh triangle
+    const cgal::PointAndPrimitiveId& ppid =
+        mesh_model.getClosestTriangle(point.x, point.y, point.z);
+    const cgal::Vector& normal = mesh_model.getNormal(ppid);
+
+    // Add to pointcloud
+    modelify::PointSurfelType surfel;
+    pcl::copyPoint(point, surfel);
+    surfel.normal_x = normal.x();
+    surfel.normal_y = normal.y();
+    surfel.normal_z = normal.z();
+    pointcloud_surfels.emplace_back(surfel);
+  }
+  removeNanFromPointcloud(pointcloud_surfels);
+
+  LOG(INFO) << "Time normals: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+            << " s";
+  return pointcloud_surfels;
+}
+
 modelify::PointSurfelCloudType estimateNormals(
     const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz) {
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -284,7 +394,15 @@ modelify::PointSurfelCloudType estimateNormals(
     pointcloud_surfels.points[i].y = pointcloud_xyz.points[i].y;
     pointcloud_surfels.points[i].z = pointcloud_xyz.points[i].z;
   }
+  removeNanFromPointcloud(pointcloud_surfels);
 
+  LOG(INFO) << "Time normals: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+            << " s";
+  return pointcloud_surfels;
+}
+
+void removeNanFromPointcloud(modelify::PointSurfelCloudType& pointcloud_surfels) {
   size_t size_before = pointcloud_surfels.size();
   size_t i = 0;
   while (i < pointcloud_surfels.size()) {
@@ -302,10 +420,6 @@ modelify::PointSurfelCloudType estimateNormals(
     LOG(INFO) << "Filtered " << size_before - pointcloud_surfels.size()
               << " points with NaN points or normals";
   }
-  LOG(INFO) << "Time normals: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
-            << " s";
-  return pointcloud_surfels;
 }
 
 modelify::PointSurfelCloudType computeKeypoints(
