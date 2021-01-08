@@ -195,7 +195,7 @@ PM::DataPoints convertMeshPointsToDataPoints(const cgal::MeshModel::Ptr& mesh_mo
 
   PM::Matrix features(feature_labels.totalDim(), points.size());
   PM::Matrix descriptors(descriptor_labels.totalDim(), points.size());
-  for (int i = 0; i < points.size(); ++i) {
+  for (size_t i = 0; i < points.size(); ++i) {
     features.col(i) = Eigen::Vector4f(points[i].x(), points[i].y(), points[i].z(), 1);
     cgal::PointAndPrimitiveId ppid = mesh_model->getClosestTriangle(points[i]);
     cgal::Vector normal = mesh_model->getNormal(ppid);
@@ -425,6 +425,8 @@ void removeNanFromPointcloud(modelify::PointSurfelCloudType& pointcloud_surfels)
 modelify::PointSurfelCloudType computeKeypoints(
     const KeypointType& keypoint_type,
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr) {
+  CHECK(pointcloud_surfel_ptr);
+
   modelify::PointSurfelCloudType::Ptr keypoints(new modelify::PointSurfelCloudType());
   switch (keypoint_type) {
     case kIss: {
@@ -468,6 +470,9 @@ template <>
 pcl::PointCloud<modelify::DescriptorSHOT> computeDescriptors<modelify::DescriptorSHOT>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  CHECK(pointcloud_surfel_ptr);
+  CHECK(keypoints);
+
   modelify::feature_toolbox::SHOTParams shot_params;
   const pcl::PointCloud<modelify::DescriptorSHOT>::Ptr descriptors(
       new pcl::PointCloud<modelify::DescriptorSHOT>());
@@ -481,6 +486,9 @@ template <>
 pcl::PointCloud<modelify::DescriptorFPFH> computeDescriptors<modelify::DescriptorFPFH>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  CHECK(pointcloud_surfel_ptr);
+  CHECK(keypoints);
+
   modelify::feature_toolbox::FPFHParams fpfh_params;
   const pcl::PointCloud<modelify::DescriptorFPFH>::Ptr descriptors(
       new pcl::PointCloud<modelify::DescriptorFPFH>());
@@ -492,8 +500,10 @@ pcl::PointCloud<modelify::DescriptorFPFH> computeDescriptors<modelify::Descripto
 
 template <>
 pcl::PointCloud<UnitDescriptor> computeDescriptors<UnitDescriptor>(
-    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+    const modelify::PointSurfelCloudType::Ptr& /*pointcloud_surfel_ptr*/,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  CHECK(keypoints);
+
   pcl::PointCloud<UnitDescriptor> descriptors;
   for (size_t i = 0; i < keypoints->size(); ++i) {
     descriptors.points.emplace_back(UnitDescriptor());
@@ -504,10 +514,13 @@ pcl::PointCloud<UnitDescriptor> computeDescriptors<UnitDescriptor>(
 template <>
 modelify::CorrespondencesType computeCorrespondences<UnitDescriptor>(
     const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
-    const typename pcl::PointCloud<UnitDescriptor>::Ptr& detection_descriptors,
+    const typename pcl::PointCloud<UnitDescriptor>::Ptr& /*detection_descriptors*/,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
-    const typename pcl::PointCloud<UnitDescriptor>::Ptr& object_descriptors,
-    double similarity_threshold) {
+    const typename pcl::PointCloud<UnitDescriptor>::Ptr& /*object_descriptors*/,
+    double /*similarity_threshold*/) {
+  CHECK(detection_keypoints);
+  CHECK(object_keypoints);
+
   LOG(INFO) << "Computing correspondence for uniform descriptor";
   modelify::CorrespondencesTypePtr correspondences(new modelify::CorrespondencesType());
 
