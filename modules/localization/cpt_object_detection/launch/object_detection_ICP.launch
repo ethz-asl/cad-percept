@@ -2,26 +2,27 @@
 
 <launch>
   <param name="use_sim_time" value="true"/>
-  <arg name="visualize" default="true"/>
+  <arg name="visualize" default="false"/>
 
-  <arg name="play_rosbag" default="true"/>
+  <arg name="play_rosbag" default="false"/>
   <arg name="rosbag_file"
-       default="$(find cpt_object_detection)/resources/detection_torus.bag"/>
+       default="$(find cpt_object_detection)/resources/detection_pawn_sampseg.bag"/>
 
   <arg name="detection_pointcloud_topic"
        default="/detection_projector/object_pcl_3d"/>
   <arg name="object_off_path"
-       default="$(find cpt_object_detection)/resources/Y10148_Torus Thick.off"/>
-  <arg name="object_frame_id" value="object_detection_mesh"/>
+       default="/media/laura/Elements/Work/PILOTING_demo/meshes/handwheel_mockup.off"/>
+  <arg name="object_type" default="valve"/>
+  <arg name="object_frame_id" default="object_detection_mesh"/>
   <arg name="publish_static_transform" default="true"/>
   <arg name="reference_frame_id" default="base_link"/>
   <arg name="initialization_duration_s" default="1.0"/>
 
-  <arg name="use_3d_features" default="true"/>
-  <arg name="num_points_object_pointcloud" default="5000"/>
-  <arg name="downsampling" default="0.001"/>
+  <arg name="use_3d_features" default="false"/>
+  <arg name="num_points_object_pointcloud" default="20"/>
+  <arg name="downsampling" default="0.00"/>
   <arg name="keypoint_type" default="uniform"/> <!-- ISS or Harris or uniform or all -->
-  <arg name="descriptor_type" default="FPFH"/> <!-- FPFH or SHOT or unit -->
+  <arg name="descriptor_type" default="unit"/> <!-- FPFH or SHOT or 3DSmoothNet or unit -->
   <arg name="matching_method" default="Teaser"/> <!-- geometric_consistency or FGR or Teaser -->
   <arg name="correspondence_threshold" default="0.1"/>
 

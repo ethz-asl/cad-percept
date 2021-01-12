@@ -117,8 +117,8 @@ bool ObjectDetector3D::initializeObjectMesh() {
         break;
       case kUnit:
         object_descriptors_unit_.reset(new pcl::PointCloud<UnitDescriptor>());
-        success = compute3dFeatures<UnitDescriptor>(
-            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_unit_);
+        success = compute3dFeatures<UnitDescriptor>(keypoint_type_, object_surfels_,
+                                                    object_keypoints_, object_descriptors_unit_);
         break;
       default:
         LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
@@ -169,6 +169,18 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("downsampling", downsampling_resolution_, downsampling_resolution_);
   nh_private_.param("initialization_duration_s", initialization_duration_s_,
                     initialization_duration_s_);
+
+  LOG(INFO) << "Parameters:"
+            << "\n - pointcloud_topic: " << pointcloud_topic_
+            << "\n - object_frame_id: " << object_frame_id_
+            << "\n - use_3d_features: " << use_3d_features_
+            << "\n - publish_static_transform: " << publish_static_transform_
+            << "\n - reference_frame_id: " << reference_frame_id_
+            << "\n - refine_using_icp: " << refine_using_icp_
+            << "\n - use_icp_on_pointcloud: " << use_icp_on_pointcloud_
+            << "\n - icp_config_file: " << icp_config_file_
+            << "\n - correspondence_threshold: " << correspondence_threshold_
+            << "\n - downsampling_resolution: " << downsampling_resolution_;
 
   std::string keypoint_type;
   nh_private_.param("keypoint_type", keypoint_type, keypoint_type);
@@ -238,22 +250,15 @@ void ObjectDetector3D::subscribeToTopics() {
 
 void ObjectDetector3D::advertiseTopics() {
   object_pointcloud_pub_ = nh_private_.advertise<sensor_msgs::PointCloud2>("object_pcl", 1, true);
-  LOG(INFO) << "Publishing object pointcloud to topic [" << object_pointcloud_pub_.getTopic()
-            << "]";
+
   object_mesh_pub_ = nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh", 1, true);
-  LOG(INFO) << "Publishing object mesh to topic [" << object_mesh_pub_.getTopic() << "]";
   object_mesh_init_pub_ =
       nh_private_.advertise<cgal_msgs::TriangleMeshStamped>("object_mesh_init", 1, true);
-  LOG(INFO) << "Publishing init object mesh to topic [" << object_mesh_init_pub_.getTopic() << "]";
 
   object_keypoint_pub_ =
       nh_private_.advertise<sensor_msgs::PointCloud2>("object_keypoints", 1, true);
-  LOG(INFO) << "[ObjectDetector3D] Publishing object_keypoints to topic ["
-            << object_keypoint_pub_.getTopic() << "]";
   detection_keypoint_pub_ =
       nh_private_.advertise<sensor_msgs::PointCloud2>("detection_keypoints", 1, true);
-  LOG(INFO) << "[ObjectDetector3D] Publishing detection_keypoints to topic ["
-            << detection_keypoint_pub_.getTopic() << "]";
 
   correspondences_pub_ =
       nh_private_.advertise<visualization_msgs::MarkerArray>("correspondences", 1, true);
@@ -261,10 +266,22 @@ void ObjectDetector3D::advertiseTopics() {
 
   initialization_detection_pointcloud_pub_ =
       nh_private_.advertise<sensor_msgs::PointCloud2>("initialization_pointcloud", 1, true);
-  LOG(INFO) << "[ObjectDetector3D] Publishing initialization pointcloud to topic ["
-            << initialization_detection_pointcloud_pub_.getTopic() << "]";
   initialization_srv_ = nh_private_.advertiseService(
       "start_initialization", &ObjectDetector3D::startInitializationCallback, this);
+
+  constexpr bool verbose = true;
+  if (verbose) {
+    LOG(INFO) << "Publishing object pointcloud to topic [" << object_pointcloud_pub_.getTopic()
+              << "]";
+    LOG(INFO) << "Publishing object mesh to topic [" << object_mesh_pub_.getTopic() << "]";
+    LOG(INFO) << "Publishing init object mesh to topic [" << object_mesh_init_pub_.getTopic() << "]";
+    LOG(INFO) << "[ObjectDetector3D] Publishing object_keypoints to topic ["
+              << object_keypoint_pub_.getTopic() << "]";
+    LOG(INFO) << "[ObjectDetector3D] Publishing detection_keypoints to topic ["
+              << detection_keypoint_pub_.getTopic() << "]";
+    LOG(INFO) << "[ObjectDetector3D] Publishing initialization pointcloud to topic ["
+              << initialization_detection_pointcloud_pub_.getTopic() << "]";
+  }
 }
 
 void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in) {
@@ -314,8 +331,8 @@ void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& c
   }
 }
 
-bool ObjectDetector3D::startInitializationCallback(std_srvs::Empty::Request& req,
-                                                   std_srvs::Empty::Response& res) {
+bool ObjectDetector3D::startInitializationCallback(std_srvs::Empty::Request& /*req*/,
+                                                   std_srvs::Empty::Response& /*res*/) {
   if (initializing_) {
     LOG(WARNING) << "Initialization is already activated!";
   } else {
@@ -390,7 +407,6 @@ void ObjectDetector3D::processInitialization() {
     size_t num_inlier = 0;
     double squared_distance = 0;
     for (const auto& point : cumulative_pcl.points) {
-      std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
       cgal::PointAndPrimitiveId ppid =
           mesh_model_->getClosestTriangle(cgal::Point(point.x, point.y, point.z));
       double dist = (Eigen::Vector3d(ppid.first.x(), ppid.first.y(), ppid.first.z()) -
@@ -414,13 +430,26 @@ void ObjectDetector3D::processInitialization() {
       << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_comparison).count()
       << " s";
 
+  // Get transform between detection and reference frame
+  Transformation T_detection_world;
+  ros::Time stamp_T;
+  bool success_T_detection_world = lookupTransform(reference_frame_id_, detection_frame_id_,
+                                                   detection_stamp_, T_detection_world, stamp_T);
+
   // optimize again using icp
   Transformation T_object_detection_icp;
-  if (use_icp_on_pointcloud_) {
-    T_object_detection_icp = icp(object_pointcloud_, cumulative_pcl, initialization_object_pose_);
+  if (success_T_detection_world) {
+    Transformation T_object_detection_init =
+        T_detection_world.inverse() * initialization_object_pose_;
+    if (use_icp_on_pointcloud_) {
+      T_object_detection_icp = icp(object_pointcloud_, cumulative_pcl, T_object_detection_init);
+    } else {
+      T_object_detection_icp =
+          icp(mesh_model_, cumulative_pcl, T_object_detection_init, icp_config_file_);
+    }
+    initialization_object_pose_ = T_detection_world * T_object_detection_icp;
   } else {
-    T_object_detection_icp =
-        icp(mesh_model_, cumulative_pcl, initialization_object_pose_, icp_config_file_);
+    LOG(WARNING) << "Could not improve initialization object pose with ICP, using unrefined pose.";
   }
 
   // Publish result
@@ -484,9 +513,30 @@ Transformation ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   // Get initial guess with PCA
   Transformation T_object_detection_init = pca(mesh_model_, detection_pointcloud_);
 
-  // Optimize orientation
-  T_object_detection_init =
-      optimizeTransformation(*mesh_model_, detection_pointcloud_, T_object_detection_init);
+  // Optimize PCA orientation
+  try {
+    if (use_icp_on_pointcloud_) {
+      // Add normals to pointcloud
+      modelify::PointSurfelCloudType::Ptr object_surfels =
+          boost::make_shared<modelify::PointSurfelCloudType>(
+              estimateNormals(object_pointcloud_, *mesh_model_));
+      modelify::PointSurfelCloudType::Ptr detection_surfels =
+          boost::make_shared<modelify::PointSurfelCloudType>(
+              estimateNormals(detection_pointcloud_));
+      T_object_detection_init =
+          optimizeTransformation(object_surfels, detection_surfels, T_object_detection_init);
+    } else {
+      T_object_detection_init =
+          optimizeTransformation(*mesh_model_, detection_pointcloud_, T_object_detection_init);
+    }
+  } catch (...) {
+    LOG(WARNING) << "Alignment optimization failed!";
+  }
+
+  // Publish initial alignment
+  publishTransformation(T_object_detection_init, detection_stamp_, detection_frame_id_,
+                        object_frame_id_ + "_init");
+  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
 
   // Get final alignment with ICP
   Transformation T_object_detection;
@@ -502,8 +552,6 @@ Transformation ObjectDetector3D::processDetectionUsingPcaAndIcp() {
             << " s";
 
   // Publish transformations to TF
-  publishTransformation(T_object_detection_init, detection_stamp_, detection_frame_id_,
-                        object_frame_id_ + "_init");
   Transformation T_object_world;
   if (publish_static_transform_) {
     Transformation T_detection_world;
@@ -525,7 +573,6 @@ Transformation ObjectDetector3D::processDetectionUsingPcaAndIcp() {
   }
 
   // Visualize object
-  visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_, object_mesh_pub_);
 
   return T_object_world;
@@ -595,14 +642,14 @@ Transformation ObjectDetector3D::processDetectionUsing3dFeatures() {
       break;
     }
     case kUnit: {
-      typename pcl::PointCloud<UnitDescriptor>::Ptr detection_descriptors_uniform(
+      typename pcl::PointCloud<UnitDescriptor>::Ptr detection_descriptors_unit(
           new pcl::PointCloud<UnitDescriptor>());
       compute3dFeatures<UnitDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
-                                           detection_descriptors_uniform);
+                                        detection_descriptors_unit);
       T_features = computeTransformUsing3dFeatures<UnitDescriptor>(
-          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_uniform,
-          object_surfels_, object_keypoints_, object_descriptors_unit_,
-          correspondence_threshold_, correspondences);
+          matching_method_, detection_surfels, detection_keypoints, detection_descriptors_unit,
+          object_surfels_, object_keypoints_, object_descriptors_unit_, correspondence_threshold_,
+          correspondences);
       break;
     }
     default: {
@@ -613,12 +660,6 @@ Transformation ObjectDetector3D::processDetectionUsing3dFeatures() {
       }
       return Transformation();
     }
-  }
-
-  if (!T_features.getTransformationMatrix().allFinite() ||
-      !Quaternion::isValidRotationMatrix(T_features.getRotationMatrix())) {
-    LOG(ERROR) << "Transformation from 3D features is not valid!\n" << T_features;
-    return Transformation();
   }
 
   // Visualizations
@@ -647,12 +688,18 @@ Transformation ObjectDetector3D::processDetectionUsing3dFeatures() {
     double mean_squared_distance;
     double inlier_ratio;
     std::vector<size_t> outlier_indices;
-    modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-        object_surfels_, detection_surfels, T_features.getTransformationMatrix(), icp_params,
-        cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
-    LOG(INFO) << "Initial validation results: \n"
-              << mean_squared_distance << " mean squared distance, " << inlier_ratio
-              << " inlier ratio";
+    bool success = false;
+    try {
+      modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+          object_surfels_, detection_surfels, T_features.getTransformationMatrix(), icp_params,
+          cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
+      LOG(INFO) << "Initial validation results: \n"
+                << mean_squared_distance << " mean squared distance, " << inlier_ratio
+                << " inlier ratio";
+      success = true;
+    } catch (...) {
+      LOG(ERROR) << "Validation of alignment failed!";
+    }
 
     // Refine transformation with ICP
     Transformation T_icp;
@@ -665,15 +712,20 @@ Transformation ObjectDetector3D::processDetectionUsing3dFeatures() {
     // Validate alignment ICP
     double mean_squared_distance_icp;
     double inlier_ratio_icp;
-    modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-        object_surfels_, detection_surfels, T_icp.getTransformationMatrix(), icp_params,
-        cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
-    LOG(INFO) << "ICP validation results: \n"
-              << mean_squared_distance_icp << " mean squared distance, " << inlier_ratio_icp
-              << " inlier ratio";
+    try {
+      modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+          object_surfels_, detection_surfels, T_icp.getTransformationMatrix(), icp_params,
+          cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
+      LOG(INFO) << "ICP validation results: \n"
+                << mean_squared_distance_icp << " mean squared distance, " << inlier_ratio_icp
+                << " inlier ratio";
+      success &= true;
+    } catch (...) {
+      LOG(ERROR) << "Validation of alignment failed!";
+    }
 
     // Set refined transformation
-    if (inlier_ratio_icp >= inlier_ratio) {
+    if (inlier_ratio_icp >= inlier_ratio || !success) {
       // TODO(gasserl): include mean_squared_distance_icp < mean_squared_distance
       T_refined = T_icp;
     } else {

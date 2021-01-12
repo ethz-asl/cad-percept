@@ -1,13 +1,13 @@
 Panels:
   - Class: rviz/Displays
-    Help Height: 0
+    Help Height: 70
     Name: Displays
     Property Tree Widget:
       Expanded:
         - /TF1/Frames1
         - /TF1/Tree1
-      Splitter Ratio: 0.5941176414489746
-    Tree Height: 311
+      Splitter Ratio: 0.6352941393852234
+    Tree Height: 549
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -27,7 +27,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Detection pointcloud
+    SyncSource: RealSense image color
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -54,19 +54,109 @@ Visualization Manager:
       Reference Frame: <Fixed Frame>
       Value: true
     - Class: rviz/TF
-      Enabled: false
+      Enabled: true
       Frame Timeout: 15
       Frames:
         All Enabled: false
-      Marker Scale: 1
+        base_link:
+          Value: true
+        base_link_dummy:
+          Value: true
+        bracelet_link:
+          Value: true
+        camera_color_frame:
+          Value: true
+        camera_depth_frame:
+          Value: true
+        camera_link:
+          Value: true
+        end_effector_link:
+          Value: true
+        forearm_link:
+          Value: true
+        half_arm_1_link:
+          Value: true
+        half_arm_2_link:
+          Value: true
+        left_inner_finger:
+          Value: true
+        left_inner_finger_pad:
+          Value: true
+        left_inner_knuckle:
+          Value: true
+        left_outer_finger:
+          Value: true
+        left_outer_knuckle:
+          Value: true
+        object_detection_mesh:
+          Value: true
+        object_detection_mesh_init:
+          Value: true
+        right_inner_finger:
+          Value: true
+        right_inner_finger_pad:
+          Value: true
+        right_inner_knuckle:
+          Value: true
+        right_outer_finger:
+          Value: true
+        right_outer_knuckle:
+          Value: true
+        robotiq_arg2f_base_link:
+          Value: true
+        shoulder_link:
+          Value: true
+        spherical_wrist_1_link:
+          Value: true
+        spherical_wrist_2_link:
+          Value: true
+        tool_frame:
+          Value: true
+      Marker Scale: 0.10000000149011612
       Name: TF
       Show Arrows: true
-      Show Axes: false
-      Show Names: false
+      Show Axes: true
+      Show Names: true
       Tree:
-        {}
+        base_link:
+          base_link_dummy:
+            {}
+          shoulder_link:
+            half_arm_1_link:
+              half_arm_2_link:
+                forearm_link:
+                  spherical_wrist_1_link:
+                    spherical_wrist_2_link:
+                      bracelet_link:
+                        end_effector_link:
+                          camera_color_frame:
+                            {}
+                          camera_depth_frame:
+                            object_detection_mesh:
+                              {}
+                            object_detection_mesh_init:
+                              {}
+                          camera_link:
+                            {}
+                          robotiq_arg2f_base_link:
+                            left_inner_knuckle:
+                              {}
+                            left_outer_knuckle:
+                              left_outer_finger:
+                                left_inner_finger:
+                                  left_inner_finger_pad:
+                                    {}
+                            right_inner_knuckle:
+                              {}
+                            right_outer_knuckle:
+                              right_outer_finger:
+                                right_inner_finger:
+                                  right_inner_finger_pad:
+                                    {}
+                          tool_frame:
+                            {}
       Update Interval: 0
-      Value: false
+      Value: true
     - Class: rviz/Image
       Enabled: true
       Image Topic: /camera/color/image_raw
@@ -89,9 +179,9 @@ Visualization Manager:
       Channel Name: intensity
       Class: rviz/PointCloud2
       Color: 255; 255; 255
-      Color Transformer: RGB8
+      Color Transformer: Intensity
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -102,13 +192,13 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.0024999999441206455
+      Size (m): 0.0010000000474974513
       Style: Flat Squares
-      Topic: /camera/depth/color/points
+      Topic: /camera/depth/points
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Class: rviz/Image
       Enabled: true
       Image Topic: /detection_projector/detection_image
@@ -138,8 +228,8 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: RGB8
+      Color: 28; 247; 248
+      Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -152,7 +242,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.0010000000474974513
+      Size (m): 0.0020000000949949026
       Style: Flat Squares
       Topic: /detection_projector/object_pcl_3d
       Unreliable: false
@@ -162,38 +252,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: RGB8
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: Detection pointcloud filtered
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.009999999776482582
-      Style: Flat Squares
-      Topic: /object_detection_matcher/detection_pcl
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 0.014725252985954285
-        Min Value: -0.09940770268440247
+        Max Value: 0.09614682197570801
+        Min Value: -0.7770763039588928
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -201,7 +261,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: AxisColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -218,7 +278,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -231,7 +291,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -248,12 +308,12 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 0.029338553547859192
-        Min Value: -0.029060404747724533
+        Max Value: 0.6518546938896179
+        Min Value: 0.5769118070602417
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -261,7 +321,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: AxisColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -278,7 +338,37 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: Detection (transformed)
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.0010000000474974513
+      Style: Flat Squares
+      Topic: /object_detection_matcher/sanity_pcl
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: false
       Marker Topic: /object_detection_matcher/surface_normals
@@ -295,23 +385,23 @@ Visualization Manager:
         {}
       Queue Size: 100
       Value: false
-    - Alpha: 0.800000011920929
+    - Alpha: 0.25
       Backface Culling: false
       Class: cgal_visualizations/TriangleMeshDisplay
       Edge Color: 93; 237; 218
       Enabled: true
       Name: Object mesh init
-      Surface Color: 255; 255; 255
+      Surface Color: 93; 237; 218
       Topic: /object_detection_matcher/object_mesh_init
       Unreliable: false
       Value: true
-    - Alpha: 1
+    - Alpha: 0.25
       Backface Culling: false
       Class: cgal_visualizations/TriangleMeshDisplay
       Edge Color: 247; 27; 172
       Enabled: true
       Name: Object mesh
-      Surface Color: 255; 255; 255
+      Surface Color: 247; 27; 172
       Topic: /object_detection_matcher/object_mesh
       Unreliable: false
       Value: true
@@ -319,7 +409,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: camera_depth_frame
+    Fixed Frame: base_link
     Frame Rate: 30
   Name: root
   Tools:
@@ -343,37 +433,37 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.5240910053253174
+      Distance: 1.274482011795044
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.20499515533447266
-        Y: -0.0880340114235878
-        Z: -0.08690831065177917
+        X: 0.5063436627388
+        Y: -1.8624238967895508
+        Z: 0.40055400133132935
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.0010000000474974513
-      Pitch: 0.49479997158050537
+      Pitch: 0.4297967851161957
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.4654009342193604
+      Yaw: 1.6303964853286743
     Saved: ~
 Window Geometry:
   Detection image:
-    collapsed: false
+    collapsed: true
   Displays:
-    collapsed: false
-  Height: 1145
-  Hide Left Dock: false
+    collapsed: true
+  Height: 1143
+  Hide Left Dock: true
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd000000040000000000000156000003e0fc0200000018fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000174000000c900fffffffb0000002a005200650061006c00530065006e0073006500200069006d00610067006500200063006f006c006f007201000001b7000001300000001600fffffffb0000001e0044006500740065006300740069006f006e00200069006d00610067006501000002ed000001300000001600fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d006100670065000000034e000000570000000000000000fb0000000a0049006d006100670065000000013d000000610000000000000000fb0000000a0049006d006100670065000000015f0000006c0000000000000000fb0000000a0049006d006100670065000000018a000001ab0000000000000000fb0000000a0049006d00610067006501000002d1000000d40000000000000000fb0000000a0049006d006100670065010000027b0000012a0000000000000000fb0000000a0049006d006100670065010000025c000001490000000000000000fb0000000a0049006d00610067006501000001920000010d0000000000000000fb0000000a0049006d0061006700650100000136000001340000000000000000fb0000000a0049006d0061006700650100000270000001350000000000000000fb0000000a0049006d00610067006501000002e6000000bf0000000000000000fb0000000a0049006d00610067006501000002de000000c70000000000000000fb0000000a0049006d006100670065010000025a0000014b0000000000000000fb0000000a0049006d0061006700650000000360000000bb0000000000000000000000010000019100000230fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000017300000230000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b20000000000000000000000020000073d00000130fc0100000009fb0000002a005200650061006c00530065006e0073006500200069006d00610067006500200063006f006c006f00720100000000000000e20000000000000000fb0000001e0044006500740065006300740069006f006e00200069006d00610067006501000000e8000000e50000000000000000fb000000120069006d006100670065005f0072006100770000000000000000df0000000000000000fb000000120069006d006100670065005f0072006100770100000000000001ca0000000000000000fb0000001e005200650061006c00530065006e0073006500200063006f006c006f00720100000000000001cf0000000000000000fb0000000c00430061006d006500720061000000015d000000d70000000000000000fb0000001e005200650061006c00530065006e0073006500200069006e00660072006101000001c7000001d80000000000000000fb000000120064006500740065006300740069006f006e000000026b000001340000000000000000fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000073d00000039fc0100000002fb0000000800540069006d006501000000000000073d000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000005e1000003e000000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000156000002a8fc0200000016fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730000000173000002a8000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d006100670065000000034e000000570000000000000000fb0000000a0049006d006100670065000000013d000000610000000000000000fb0000000a0049006d006100670065000000015f0000006c0000000000000000fb0000000a0049006d006100670065000000018a000001ab0000000000000000fb0000000a0049006d00610067006501000002d1000000d40000000000000000fb0000000a0049006d006100670065010000027b0000012a0000000000000000fb0000000a0049006d006100670065010000025c000001490000000000000000fb0000000a0049006d00610067006501000001920000010d0000000000000000fb0000000a0049006d0061006700650100000136000001340000000000000000fb0000000a0049006d0061006700650100000270000001350000000000000000fb0000000a0049006d00610067006501000002e6000000bf0000000000000000fb0000000a0049006d00610067006501000002de000000c70000000000000000fb0000000a0049006d006100670065010000025a0000014b0000000000000000fb0000000a0049006d0061006700650000000360000000bb0000000000000000000000010000019100000230fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000017300000230000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b20000000000000000000000020000039f00000130fc010000000bfb0000002a005200650061006c00530065006e0073006500200069006d00610067006500200063006f006c006f00720100000000000001cc000000cd00fffffffb0000001e0044006500740065006300740069006f006e00200069006d00610067006501000001d2000001cd000000a500fffffffb0000002a005200650061006c00530065006e0073006500200069006d00610067006500200063006f006c006f00720100000000000000e20000000000000000fb0000001e0044006500740065006300740069006f006e00200069006d00610067006501000000e8000000e50000000000000000fb000000120069006d006100670065005f0072006100770000000000000000df0000000000000000fb000000120069006d006100670065005f0072006100770100000000000001ca0000000000000000fb0000001e005200650061006c00530065006e0073006500200063006f006c006f00720100000000000001cf0000000000000000fb0000000c00430061006d006500720061000000015d000000d70000000000000000fb0000001e005200650061006c00530065006e0073006500200069006e00660072006101000001c7000001d80000000000000000fb000000120064006500740065006300740069006f006e000000026b000001340000000000000000fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000039f00000039fc0100000002fb0000000800540069006d006501000000000000039f000002eb00fffffffb0000000800540069006d006501000000000000045000000000000000000000039f000002a800000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   RealSense image color:
-    collapsed: false
+    collapsed: true
   Selection:
     collapsed: false
   Time:
@@ -382,6 +472,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1853
-  X: 1987
+  Width: 927
+  X: 2913
   Y: 27

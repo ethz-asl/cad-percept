@@ -220,6 +220,25 @@ Transformation computeTransformUsingTeaser(
     return Transformation();
   }
 
+  // Limit number of correspondences
+  constexpr size_t max_correspondences = 5e3;
+  if (correspondences->size() > max_correspondences) {
+    if ((correspondences->size() - max_correspondences) < max_correspondences) {
+      while (correspondences->size() > max_correspondences) {
+        size_t idx = std::rand()/RAND_MAX;
+        correspondences->erase(correspondences->begin() + idx);
+      }
+    } else {
+      modelify::CorrespondencesType corr;
+      for (size_t i = 0; i < max_correspondences; ++i) {
+        size_t idx = std::rand()/RAND_MAX;
+        corr.template emplace_back(correspondences->at(idx));
+      }
+      *correspondences = corr;
+    }
+    LOG(WARNING) << "Limited correspondences to " << correspondences->size() << " for Teaser.";
+  }
+
   // Convert keypoints into matrix
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   Eigen::Matrix<double, 3, Eigen::Dynamic> object_matrix(3, correspondences->size());

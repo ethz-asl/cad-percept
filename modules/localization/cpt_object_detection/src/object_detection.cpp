@@ -140,6 +140,7 @@ Transformation optimizeTransformation(const modelify::PointSurfelCloudType::Ptr&
     inlier_ratios.emplace_back(inlier_ratio);
     mean_squared_distances.emplace_back(mean_squared_distance);
     optimization_criteria.emplace_back(inlier_ratio / mean_squared_distance);
+    LOG(INFO) << "Inliers v" << i << ": " << inlier_ratio;
   }
   LOG(INFO) << "Time optimization: "
             << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
@@ -196,7 +197,6 @@ Transformation optimizeTransformation(const cgal::MeshModel& mesh_model,
     size_t num_inlier = 0;
     double squared_distance = 0;
     for (const auto& point : transformed_pcl.points) {
-      std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
       cgal::PointAndPrimitiveId ppid =
           mesh_model.getClosestTriangle(cgal::Point(point.x, point.y, point.z));
       double dist = (Eigen::Vector3d(ppid.first.x(), ppid.first.y(), ppid.first.z()) -
@@ -246,6 +246,12 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
     icp.setDefault();
   }
 
+  // estimate normals if necessary
+  if (icp.errorMinimizer->className == "PointToPlaneErrorMinimizer") {
+    modelify::PointSurfelCloudType detection_surfels = estimateNormals(detection_pointcloud);
+    points_detection = convertPclToDataPoints(detection_surfels);
+  }
+
   // icp: reference - object mesh, data - detection cloud
   PM::TransformationParameters T_object_detection_icp;
   try {
@@ -278,6 +284,7 @@ Transformation icp(const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
   std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
 
   pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+  icp.setMaximumIterations(30);
   icp.setInputSource(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(object_pointcloud));
   icp.setInputTarget(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(detection_pointcloud));
 
@@ -629,6 +636,7 @@ pcl::PointCloud<modelify::DescriptorFPFH> computeDescriptors<modelify::Descripto
   CHECK(keypoints);
 
   modelify::feature_toolbox::FPFHParams fpfh_params;
+  fpfh_params.search_radius = 0.01;
   const pcl::PointCloud<modelify::DescriptorFPFH>::Ptr descriptors(
       new pcl::PointCloud<modelify::DescriptorFPFH>());
   modelify::feature_toolbox::describeKeypoints<modelify::DescriptorFPFH>(
@@ -642,7 +650,8 @@ pcl::PointCloud<LearnedDescriptor> computeDescriptors<LearnedDescriptor>(
     const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
     const modelify::PointSurfelCloudType::Ptr& keypoints) {
   // Parameters
-  float radius = 0.002;
+  float voxel_size = 0.001;
+  float kernel_size = 0.005;
 
   // Clean files
   std::string filename_pointcloud = "/home/laura/bags/matching/pointcloud.ply";
@@ -650,14 +659,18 @@ pcl::PointCloud<LearnedDescriptor> computeDescriptors<LearnedDescriptor>(
   std::string filename_keypoints = "/home/laura/bags/matching/keypoints.txt";
   std::remove(filename_keypoints.c_str());
   std::string filepath_input = "/home/laura/bags/matching/sdv/";
-  char radius_char[100];
-  std::sprintf(radius_char, "%.6f", radius);
-  std::string radius_str(radius_char);
-  std::string filename_csv = filepath_input + "pointcloud_" + radius_str + "_16_1.750000.csv";
+  char voxel_size_char[100];
+  std::sprintf(voxel_size_char, "%.6f", voxel_size);
+  std::string voxel_size_str(voxel_size_char);
+  char kernel_size_char[100];
+  std::sprintf(kernel_size_char, "%.6f", kernel_size);
+  std::string kernel_size_str(kernel_size_char);
+  std::string filename_csv =
+      filepath_input + "pointcloud_" + voxel_size_str + "_16_" + kernel_size_str + ".csv";
   std::remove(filename_csv.c_str());
   std::string filepath_output = "/home/laura/bags/matching";
-  std::string filename_descriptor =
-      filepath_output + "/32_dim/pointcloud_" + radius_str + "_16_1.750000_3DSmoothNet.txt";
+  std::string filename_descriptor = filepath_output + "/32_dim/pointcloud_" + voxel_size_str +
+                                    "_16_" + kernel_size_str + "_3DSmoothNet.txt";
   std::remove(filename_descriptor.c_str());
 
   // Write to file
@@ -690,9 +703,9 @@ pcl::PointCloud<LearnedDescriptor> computeDescriptors<LearnedDescriptor>(
 
   // Prep input
   std::string python_path = "/home/laura/pilot_ws/src/3DSmoothNet";
-  std::string command_parametrize = python_path + "/3DSmoothNet -r " + radius_str + " -f " +
-                                    filename_pointcloud + " -k " + filename_keypoints + " -o " +
-                                    filepath_input;
+  std::string command_parametrize = python_path + "/3DSmoothNet -r " + voxel_size_str + " -h " +
+                                    kernel_size_str + " -f " + filename_pointcloud + " -k " +
+                                    filename_keypoints + " -o " + filepath_input;
 
   LOG(INFO) << "\n------------------------------------------------PYHTON------------------------"
                "-----------------------\n"
@@ -737,7 +750,7 @@ pcl::PointCloud<LearnedDescriptor> computeDescriptors<LearnedDescriptor>(
     std::string line_str;
     while (std::getline(descriptor_file, line_str)) {
       LearnedDescriptor point{};
-      int i = 0;
+      size_t i = 0;
       while (!line_str.empty() && i < LearnedDescriptor::descriptorSize()) {
         size_t idx = line_str.find_first_of(',');
         point.learned_descriptor[i] = std::stof(line_str.substr(0, idx));
@@ -793,6 +806,25 @@ modelify::CorrespondencesType computeCorrespondences<UnitDescriptor>(
     }
   }
   LOG(INFO) << "Computed " << correspondences->size() << " correspondences.";
+
+  // Select number of correspondences
+  const size_t max_correspondences = correspondences->size();
+  if (correspondences->size() > max_correspondences) {
+    if (correspondences->size() - max_correspondences > max_correspondences) {
+      modelify::CorrespondencesType corr_filtered;
+      for (size_t i = 0; i < max_correspondences; ++i) {
+        int idx = std::rand() / RAND_MAX;
+        corr_filtered.emplace_back(correspondences->at(idx));
+      }
+      *correspondences = corr_filtered;
+    } else {
+      while (correspondences->size() > max_correspondences) {
+        int idx = std::rand() / RAND_MAX;
+        correspondences->erase(correspondences->begin() + idx);
+      }
+    }
+    LOG(INFO) << "Reduced to " << correspondences->size() << " correspondences.";
+  }
 
   LOG(INFO) << "Time correspondences: "
             << std::chrono::duration<float>(std::chrono::steady_clock::now() - begin).count()
