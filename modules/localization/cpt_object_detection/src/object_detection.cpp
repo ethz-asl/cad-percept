@@ -474,6 +474,7 @@ pcl::PointCloud<modelify::DescriptorSHOT> computeDescriptors<modelify::Descripto
   CHECK(keypoints);
 
   modelify::feature_toolbox::SHOTParams shot_params;
+  shot_params.search_radius = 0.01;
   const pcl::PointCloud<modelify::DescriptorSHOT>::Ptr descriptors(
       new pcl::PointCloud<modelify::DescriptorSHOT>());
   modelify::feature_toolbox::describeKeypoints<modelify::DescriptorSHOT>(
@@ -490,6 +491,7 @@ pcl::PointCloud<modelify::DescriptorFPFH> computeDescriptors<modelify::Descripto
   CHECK(keypoints);
 
   modelify::feature_toolbox::FPFHParams fpfh_params;
+  fpfh_params.search_radius = 0.015;
   const pcl::PointCloud<modelify::DescriptorFPFH>::Ptr descriptors(
       new pcl::PointCloud<modelify::DescriptorFPFH>());
   modelify::feature_toolbox::describeKeypoints<modelify::DescriptorFPFH>(

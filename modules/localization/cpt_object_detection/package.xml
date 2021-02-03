@@ -27,7 +27,6 @@
   <depend>cgal_msgs</depend>
   <depend>cpt_utils</depend>
   <depend>libpointmatcher</depend>
-  <depend>libpointmatcher_ros</depend>
 
   <depend>modelify_common</depend>
   <depend>feature_toolbox</depend>
