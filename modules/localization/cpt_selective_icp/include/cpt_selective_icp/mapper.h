@@ -42,7 +42,6 @@ class Mapper {
   tf::TransformListener tf_listener_;
   tf::TransformBroadcaster tf_broadcaster_;
   MapperParameters parameters_;
-  ros::Time stamp;
   int odom_received_;
 
   /**
@@ -196,7 +195,8 @@ class Mapper {
   /**
    * Calculates the distance to the closest point of the reference mesh and publishes all points
    */
-  void publishDistanceToMeshAsPC(const DP &aligned_cloud, const ros::Publisher &pub);
+  void publishDistanceToMeshAsPC(const DP &aligned_cloud, const ros::Publisher &pub,
+                                 const ros::Time &stamp);
 };
 
 }  // namespace selective_icp
