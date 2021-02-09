@@ -135,7 +135,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       odom_received_++;
     }
   } else {
-    stamp = cloud_msg_in.header.stamp;
+    const ros::Time stamp = cloud_msg_in.header.stamp;
     uint32_t seq = cloud_msg_in.header.seq;
 
     /**
@@ -304,7 +304,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       if (icp_.hasMap()) {
         DP originalCloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(cloud_msg_in));
         DP pc_original = transformation_->compute(originalCloud, T_updated_scanner_to_map);
-        publishDistanceToMeshAsPC(pc_original, distance_pc_pub_);
+        publishDistanceToMeshAsPC(pc_original, distance_pc_pub_, stamp);
         std::cout << "published pc with distance information" << std::endl;
       } else {
         ROS_ERROR_STREAM("[Selective ICP] Can't publish distance to mesh. No map found");
@@ -332,7 +332,8 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
   }
 }  // namespace selective_icp
 
-void Mapper::publishDistanceToMeshAsPC(const DP &aligned_cloud, const ros::Publisher &pub) {
+void Mapper::publishDistanceToMeshAsPC(const DP &aligned_cloud, const ros::Publisher &pub,
+                                       const ros::Time &stamp) {
   // Convert DP to PC
   PointCloud aligned_pc = utils::dpToPointCloud(aligned_cloud);
 
