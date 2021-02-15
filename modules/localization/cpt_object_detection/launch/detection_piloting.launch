@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+  <!-- 2D -->
+  <arg name="find_object" default="true"/>
+  <arg name="yolo" default="false"/>
+  <arg name="use_depth_image" default="true"/>
+  <arg name="camera_name" default="arm_camera"/>
+  <arg name="aligned_depth_topic" default="depth"/>
+  <arg name="depth_point_topic" default="depth"/>
+  <arg name="verbose" default="false"/>
+  <arg name="verbose_debug" default="false"/>
+
+  <!-- 3D -->
+  <arg name="use_3d_features" default="false"/>
+  <arg name="refine_using_icp" default="true"/>
+  <arg name="use_icp_on_pointcloud" default="true"/>
+  <arg name="reference_frame_id" default=""/>
+  <arg name="object_frame_id" default="object_detection_mesh"/>
+
+  <!-- Detect object in image and find pointcloud -->
+  <include file="$(find piloting_detector)/launch/master.launch">
+    <arg name="find_object" default="$(arg find_object)"/>
+    <arg name="yolo" default="$(arg yolo)"/>
+    <arg name="use_depth_image" default="$(arg use_depth_image)"/>
+    <arg name="camera_name" default="$(arg camera_name)"/>
+    <arg name="aligned_depth_topic" default="$(arg aligned_depth_topic)"/>
+    <arg name="depth_point_topic" default="$(arg depth_point_topic)"/>
+    <arg name="verbose" default="$(arg verbose)"/>
+    <arg name="verbose_debug" default="$(arg verbose_debug)"/>
+  </include>
+
+  <!-- Get 6D pose and fit mesh -->
+  <include file="$(find cpt_object_detection)/launch/object_detection_ICP.launch">
+    <arg name="use_3d_features" value="$(arg use_3d_features)"/>
+    <arg name="refine_using_icp" value="$(arg refine_using_icp)"/>
+    <arg name="use_icp_on_pointcloud" value="$(arg use_icp_on_pointcloud)"/>
+    <arg name="reference_frame_id" value="$(arg reference_frame_id)"/>
+    <arg name="object_frame_id" value="$(arg object_frame_id)"/>
+  </include>
+
+</launch>

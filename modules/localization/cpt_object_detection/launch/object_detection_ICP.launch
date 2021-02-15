@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <launch>
-  <param name="use_sim_time" value="true"/>
+  <param name="use_sim_time" value="false"/>
   <arg name="visualize" default="false"/>
 
   <arg name="play_rosbag" default="false"/>
@@ -11,15 +11,15 @@
   <arg name="detection_pointcloud_topic"
        default="/detection_projector/object_pcl_3d"/>
   <arg name="object_off_path"
-       default="/media/laura/Elements/Work/PILOTING_demo/meshes/handwheel_mockup.off"/>
+       default="$(find cpt_object_detection)/resources/handwheel_mockup_24cm_scaled.off"/>
   <arg name="object_type" default="valve"/>
   <arg name="object_frame_id" default="object_detection_mesh"/>
   <arg name="publish_static_transform" default="true"/>
-  <arg name="reference_frame_id" default="base_link"/>
+  <arg name="reference_frame_id" default="tracking_cam_odom_frame"/>
   <arg name="initialization_duration_s" default="1.0"/>
 
   <arg name="use_3d_features" default="false"/>
-  <arg name="num_points_object_pointcloud" default="20"/>
+  <arg name="num_points_object_pointcloud" default="5000"/>
   <arg name="downsampling" default="0.00"/>
   <arg name="keypoint_type" default="uniform"/> <!-- ISS or Harris or uniform or all -->
   <arg name="descriptor_type" default="unit"/> <!-- FPFH or SHOT or 3DSmoothNet or unit -->
