@@ -36,8 +36,7 @@ class ObjectDetector3D {
 
   bool initializeObjectMesh();
   bool processDetectionUsingInitializationAndIcp(Transformation* T_object_world);
-  Transformation processDetectionUsingPcaAndIcp();
-  Transformation processDetectionUsing3dFeatures();
+  Transformation processDetection();
   void processInitialization();
 
   bool lookupTransform(const std::string& target_frame, const std::string& source_frame,
