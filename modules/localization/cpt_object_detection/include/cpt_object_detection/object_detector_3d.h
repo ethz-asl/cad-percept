@@ -116,6 +116,8 @@ class ObjectDetector3D {
 
   // Parameters: General options
   bool use_3d_features_;
+  bool use_kalman_filter_;
+  bool use_inlier_ratio_filter_;
   bool publish_static_transform_;
   std::string reference_frame_id_;
 
@@ -130,6 +132,14 @@ class ObjectDetector3D {
   bool refine_using_icp_;
   bool use_icp_on_pointcloud_;
   std::string icp_config_file_;
+
+  // Parameters: Filter
+  Eigen::MatrixXf P_kalman_;
+  Eigen::MatrixXf K_kalman_;
+  Eigen::VectorXf x_kalman_;
+  Eigen::MatrixXf R_kalman_;
+  double inlier_ratio_;
+  double inlier_ratio_decay_;
 };
 
 }  // namespace cad_percept::object_detection

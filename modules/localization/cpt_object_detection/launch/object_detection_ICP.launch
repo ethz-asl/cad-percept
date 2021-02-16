@@ -18,6 +18,15 @@
   <arg name="reference_frame_id" default="tracking_cam_odom_frame"/>
   <arg name="initialization_duration_s" default="1.0"/>
 
+  <!-- Filters -->
+  <arg name="use_inlier_ratio_filter" default="false"/>
+  <arg name="inlier_ratio_decay" default="0.95"/>
+  <arg name="use_kalman_filter" default="false"/>
+  <arg name="kf_p_translation" default="0"/>
+  <arg name="kf_p_rotation" default="10"/>
+  <arg name="kf_r_translation" default="0.1"/>
+  <arg name="kf_r_rotation" default="1"/>
+
   <arg name="use_3d_features" default="false"/>
   <arg name="num_points_object_pointcloud" default="5000"/>
   <arg name="downsampling" default="0.00"/>
@@ -41,6 +50,14 @@
     <param name="publish_static_transform" value="$(arg publish_static_transform)"/>
     <param name="reference_frame_id" value="$(arg reference_frame_id)"/>
     <param name="initialization_duration_s" value="$(arg initialization_duration_s)"/>
+
+    <param name="use_inlier_ratio_filter" value="$(arg use_inlier_ratio_filter)"/>
+    <param name="inlier_ratio_decay" value="$(arg use_inlier_ratio_filter)"/>
+    <param name="use_kalman_filter" value="$(arg use_kalman_filter)"/>
+    <param name="kf_p_translation" value="$(arg kf_p_translation)"/>
+    <param name="kf_p_rotation" value="$(arg kf_p_rotation)"/>
+    <param name="kf_r_translation" value="$(arg kf_r_translation)"/>
+    <param name="kf_r_rotation" value="$(arg kf_r_rotation)"/>
 
     <param name="use_3d_features" value="$(arg use_3d_features)"/>
     <param name="num_points_object_pointcloud"

@@ -23,6 +23,8 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       initializing_(false),
       initialization_duration_s_(3.0),
       use_3d_features_(true),
+      use_kalman_filter_(false),
+      use_inlier_ratio_filter_(false),
       publish_static_transform_(true),
       reference_frame_id_("world"),
       keypoint_type_(kIss),
@@ -31,10 +33,32 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       correspondence_threshold_(0.1),
       downsampling_resolution_(0.001),
       refine_using_icp_(true),
-      use_icp_on_pointcloud_(false) {
+      use_icp_on_pointcloud_(false),
+      inlier_ratio_(0),
+      inlier_ratio_decay_(0.95) {
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
+
+  // Kalman initialization
+  nh_private_.param("use_kalman_filter", use_kalman_filter_, use_kalman_filter_);
+  float kf_p_translation = 1;
+  float kf_p_rotation = 10;
+  nh_private_.param("kf_p_translation", kf_p_translation, kf_p_translation);
+  nh_private_.param("kf_p_rotation", kf_p_rotation, kf_p_rotation);
+  float kf_r_rotation = 1;
+  float kf_r_translation = 0.1;
+  nh_private_.param("kf_r_rotation", kf_r_rotation, kf_r_rotation);
+  nh_private_.param("kf_r_translation", kf_r_translation, kf_r_translation);
+  P_kalman_.setIdentity(7, 7);
+  P_kalman_.block<3, 3>(0, 0) *= kf_p_translation;
+  P_kalman_.block<4, 4>(3, 3) *= kf_p_rotation;
+  x_kalman_.setZero(7);
+  // q0 = 0 1 0 0
+  x_kalman_(4) = 1;
+  R_kalman_ = Eigen::MatrixXf::Identity(7, 7);
+  R_kalman_.block<3, 3>(0, 0) *= kf_r_rotation;
+  R_kalman_.block<4, 4>(3, 3) *= kf_r_rotation;
 
   if (!initializeObjectMesh()) {
     std::cerr << "Could not initialize object!";
@@ -160,6 +184,8 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
   nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
+  nh_private_.param("use_inlier_ratio_filter", use_inlier_ratio_filter_, use_inlier_ratio_filter_);
+  nh_private_.param("use_kalman_filter", use_kalman_filter_, use_kalman_filter_);
   nh_private_.param("publish_static_transform", publish_static_transform_,
                     publish_static_transform_);
   nh_private_.param("reference_frame_id", reference_frame_id_, reference_frame_id_);
@@ -171,18 +197,22 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("downsampling", downsampling_resolution_, downsampling_resolution_);
   nh_private_.param("initialization_duration_s", initialization_duration_s_,
                     initialization_duration_s_);
+  nh_private_.param("inlier_ratio_decay", inlier_ratio_decay_, inlier_ratio_decay_);
 
   LOG(INFO) << "Parameters:"
             << "\n - pointcloud_topic: " << pointcloud_topic_
             << "\n - object_frame_id: " << object_frame_id_
             << "\n - use_3d_features: " << use_3d_features_
+            << "\n - use_inlier_ratio_filter: " << use_inlier_ratio_filter_
+            << "\n - use_kalman_filter: " << use_kalman_filter_
             << "\n - publish_static_transform: " << publish_static_transform_
             << "\n - reference_frame_id: " << reference_frame_id_
             << "\n - refine_using_icp: " << refine_using_icp_
             << "\n - use_icp_on_pointcloud: " << use_icp_on_pointcloud_
             << "\n - icp_config_file: " << icp_config_file_
             << "\n - correspondence_threshold: " << correspondence_threshold_
-            << "\n - downsampling_resolution: " << downsampling_resolution_;
+            << "\n - downsampling_resolution: " << downsampling_resolution_
+            << "\n - inlier_ratio_decay: " << inlier_ratio_decay_;
 
   std::string keypoint_type;
   nh_private_.param("keypoint_type", keypoint_type, keypoint_type);
@@ -276,7 +306,8 @@ void ObjectDetector3D::advertiseTopics() {
     LOG(INFO) << "Publishing object pointcloud to topic [" << object_pointcloud_pub_.getTopic()
               << "]";
     LOG(INFO) << "Publishing object mesh to topic [" << object_mesh_pub_.getTopic() << "]";
-    LOG(INFO) << "Publishing init object mesh to topic [" << object_mesh_init_pub_.getTopic() << "]";
+    LOG(INFO) << "Publishing init object mesh to topic [" << object_mesh_init_pub_.getTopic()
+              << "]";
     LOG(INFO) << "[ObjectDetector3D] Publishing object_keypoints to topic ["
               << object_keypoint_pub_.getTopic() << "]";
     LOG(INFO) << "[ObjectDetector3D] Publishing detection_keypoints to topic ["
@@ -646,6 +677,37 @@ Transformation ObjectDetector3D::processDetection() {
                         object_frame_id_ + "_init");
   visualizeMesh(mesh_model_, detection_stamp_, object_frame_id_ + "_init", object_mesh_init_pub_);
 
+  // Pseudo update kalman filter
+  if (use_kalman_filter_ && valid_transform_to_reference) {
+    // Get "measured" state
+    Transformation T_kalman(T_detection_world * T_object_detection_init);
+    Eigen::VectorXf z_kalman(7);
+    z_kalman << T_kalman.getPosition().x(), T_kalman.getPosition().y(), T_kalman.getPosition().z(),
+        T_kalman.getRotation().w(), T_kalman.getRotation().x(), T_kalman.getRotation().y(),
+        T_kalman.getRotation().z();
+
+    // Perform temporary Kalman update
+    Eigen::MatrixXf K(7, 7);
+    K = P_kalman_ * (P_kalman_ + R_kalman_).inverse();
+    Eigen::VectorXf x(7);
+    x = x_kalman_ + K * (z_kalman - x_kalman_);
+    LOG(INFO) << "Temporary Kalman update:";
+    LOG(INFO) << "Observation z:\n" << z_kalman.transpose();
+    LOG(INFO) << "State x before:\n" << x_kalman_.transpose();
+    LOG(INFO) << "State x after:\n" << x.transpose();
+
+    T_kalman.getPosition().x() = x_kalman_(0);
+    T_kalman.getPosition().y() = x_kalman_(1);
+    T_kalman.getPosition().z() = x_kalman_(2);
+    Eigen::VectorXf quaternion(4);
+    quaternion << x_kalman_(3), x_kalman_(4), x_kalman_(5), x_kalman_(6);
+    quaternion.normalize();
+    T_kalman.getRotation().setValues(quaternion(0), quaternion(1), quaternion(2), quaternion(3));
+
+    // Transform back to local frame
+    T_object_detection_init = T_detection_world.inverse() * T_kalman;
+  }
+
   // Get final alignment
   Transformation T_object_detection(T_object_detection_init);
   if (refine_using_icp_) {
@@ -720,6 +782,83 @@ Transformation ObjectDetector3D::processDetection() {
             icp(mesh_model_, detection_pointcloud_, T_object_detection_init, icp_config_file_);
       }
     }
+  }
+
+  // Update kalman filter
+  if (use_kalman_filter_ && valid_transform_to_reference) {
+    // Get measured state
+    Transformation T_kalman(T_detection_world * T_object_detection);
+    Eigen::VectorXf z_kalman(7);
+    z_kalman << T_kalman.getPosition().x(), T_kalman.getPosition().y(), T_kalman.getPosition().z(),
+        T_kalman.getRotation().w(), T_kalman.getRotation().x(), T_kalman.getRotation().y(),
+        T_kalman.getRotation().z();
+
+    // Perform Kalman update
+    LOG(INFO) << "Kalman update:";
+    LOG(INFO) << "Covariance P before:\n" << P_kalman_;
+    LOG(INFO) << "Observation z:\n" << z_kalman.transpose();
+    LOG(INFO) << "State x before:\n" << x_kalman_.transpose();
+
+    K_kalman_ = P_kalman_ * (P_kalman_ + R_kalman_).inverse();
+    x_kalman_ = x_kalman_ + K_kalman_ * (z_kalman - x_kalman_);
+    P_kalman_ = (Eigen::MatrixXf::Identity(7, 7) - K_kalman_) * P_kalman_;
+    LOG(INFO) << "State x after:\n" << x_kalman_.transpose();
+    LOG(INFO) << "Measurement uncertainty R:\n" << R_kalman_;
+    LOG(INFO) << "Gain K:\n" << K_kalman_;
+    LOG(INFO) << "Covariance P:\n" << P_kalman_;
+
+    T_kalman.getPosition().x() = x_kalman_(0);
+    T_kalman.getPosition().y() = x_kalman_(1);
+    T_kalman.getPosition().z() = x_kalman_(2);
+    Eigen::VectorXf quaternion(4);
+    quaternion << x_kalman_(3), x_kalman_(4), x_kalman_(5), x_kalman_(6);
+    quaternion.normalize();
+    T_kalman.getRotation().setValues(quaternion(0), quaternion(1), quaternion(2), quaternion(3));
+  }
+
+  // Inlier ratio filter
+  if (use_inlier_ratio_filter_) {
+    double inlier_ratio = 0;
+    if (use_icp_on_pointcloud_) {
+      // Compute inliers
+      modelify::registration_toolbox::ICPParams icp_params;
+      icp_params.inlier_distance_threshold_m = 0.01;
+      double cloud_resolution = modelify::kInvalidCloudResolution;
+      double mean_squared_distance;
+      std::vector<size_t> outlier_indices;
+      modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+          object_surfels_, detection_surfels, T_object_detection.getTransformationMatrix(),
+          icp_params, cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
+    } else {
+      pcl::PointCloud<pcl::PointXYZ> transformed_pcl;
+      Eigen::Affine3f transform_eigen((T_object_detection).inverse().getTransformationMatrix());
+      pcl::transformPointCloud(detection_pointcloud_, transformed_pcl, transform_eigen);
+
+      constexpr double inlier_dist = 0.01;
+      size_t num_inlier = 0;
+      double squared_distance = 0;
+      for (const auto& point : transformed_pcl.points) {
+        cgal::PointAndPrimitiveId ppid =
+            mesh_model_->getClosestTriangle(cgal::Point(point.x, point.y, point.z));
+        double dist = (Eigen::Vector3d(ppid.first.x(), ppid.first.y(), ppid.first.z()) -
+                       Eigen::Vector3d(point.x, point.y, point.z))
+                          .norm();
+        num_inlier += dist < inlier_dist;
+        squared_distance += dist * dist;
+      }
+      inlier_ratio =
+          static_cast<double>(num_inlier) / static_cast<double>(detection_pointcloud_.size());
+    }
+
+    LOG(INFO) << "Old inlier ratio: " << inlier_ratio_;
+    LOG(INFO) << "Current inlier ratio: " << inlier_ratio;
+    if (inlier_ratio_ > inlier_ratio) {
+      inlier_ratio_ *= inlier_ratio_decay_;
+      LOG(INFO) << "Decayed inlier ratio: " << inlier_ratio_;
+      return Transformation();
+    }
+    inlier_ratio_ = inlier_ratio;
+    LOG(INFO) << "New inlier ratio: " << inlier_ratio_;
   }
 
   LOG(INFO) << "Time matching total: "

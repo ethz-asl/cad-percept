@@ -13,6 +13,8 @@
   <arg name="verbose_debug" default="false"/>
 
   <!-- 3D -->
+  <arg name="use_inlier_ratio_filter" default="false"/>
+  <arg name="use_kalman_filter" default="false"/>
   <arg name="use_3d_features" default="false"/>
   <arg name="refine_using_icp" default="true"/>
   <arg name="use_icp_on_pointcloud" default="true"/>
@@ -33,6 +35,8 @@
 
   <!-- Get 6D pose and fit mesh -->
   <include file="$(find cpt_object_detection)/launch/object_detection_ICP.launch">
+    <arg name="use_inlier_ratio_filter" value="$(arg use_inlier_ratio_filter)"/>
+    <arg name="use_kalman_filter" value="$(arg use_kalman_filter)"/>
     <arg name="use_3d_features" value="$(arg use_3d_features)"/>
     <arg name="refine_using_icp" value="$(arg refine_using_icp)"/>
     <arg name="use_icp_on_pointcloud" value="$(arg use_icp_on_pointcloud)"/>
