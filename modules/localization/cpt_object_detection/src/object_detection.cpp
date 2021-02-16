@@ -1,47 +1,14 @@
 #include "cpt_object_detection/object_detection.h"
 
 #include <CGAL/linear_least_squares_fitting_3.h>
+#include <cpt_object_detection/unit_descriptor.h>
 #include <cpt_utils/cpt_utils.h>
+#include <modelify/feature_toolbox/descriptor_toolbox_3d.h>
+#include <modelify/feature_toolbox/keypoint_toolbox_3d.h>
+#include <modelify/registration_toolbox/registration_toolbox.h>
 #include <pcl/common/pca.h>
 
-namespace cad_percept {
-namespace object_detection {
-
-Transformation alignDetectionUsingPcaAndIcp(
-    const cgal::MeshModel::Ptr& mesh_model,
-    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud, const std::string& config_file,
-    Transformation* T_object_detection_init) {
-  CHECK(T_object_detection_init);
-  std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
-
-  // Get initial guess with PCA
-  Transformation T_detection_object_pca = pca(mesh_model, detection_pointcloud);
-  *T_object_detection_init = T_detection_object_pca.inverse();
-
-  // Get final alignment with ICP
-  Transformation T_object_detection =
-      icp(mesh_model, detection_pointcloud, *T_object_detection_init, config_file);
-
-  LOG(INFO) << "Time matching total: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
-            << " s";
-  return T_object_detection;
-}
-
-Transformation alignDetectionUsingPcaAndIcp(
-    const cgal::MeshModel::Ptr& mesh_model,
-    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
-  Transformation T;
-  std::string config_file;
-  return alignDetectionUsingPcaAndIcp(mesh_model, detection_pointcloud, config_file, &T);
-}
-
-Transformation alignDetectionUsingPcaAndIcp(
-    const cgal::MeshModel::Ptr& mesh_model,
-    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud, const std::string& config_file) {
-  Transformation T;
-  return alignDetectionUsingPcaAndIcp(mesh_model, detection_pointcloud, config_file, &T);
-}
+namespace cad_percept::object_detection {
 
 Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
                    const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud) {
@@ -78,9 +45,11 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
 
   // Compute PCA for object triangles
   CGAL::Simple_cartesian<double>::Plane_3 plane;
-  CGAL::Simple_cartesian<double>::Point_3 object_centroid;
-  CGAL::linear_least_squares_fitting_3(triangles.begin(), triangles.end(), plane, object_centroid,
+  CGAL::Simple_cartesian<double>::Point_3 object_centroid_cgal;
+  CGAL::linear_least_squares_fitting_3(triangles.begin(), triangles.end(), plane, object_centroid_cgal,
                                        CGAL::Dimension_tag<2>());
+  Eigen::Vector3f object_centroid(object_centroid_cgal.x(), object_centroid_cgal.y(),
+                                  object_centroid_cgal.z());
 
   // Get coordinate system from PCA
   Eigen::Matrix3f object_vectors;
@@ -93,13 +62,13 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
                       plane.orthogonal_vector().z())
           .normalized();
 
-  // Translation from mean of pointclouds det_r_obj_det
-  kindr::minimal::PositionTemplate<float> translation(
-      detection_centroid.head(3) -
-      Eigen::Vector3f(object_centroid.x(), object_centroid.y(), object_centroid.z()));
-
   // Get rotation between detection and object pointcloud
   Eigen::Matrix3f rotation_matrix = detection_vectors * object_vectors.transpose();
+
+  // Translation from mean of pointclouds det_r_obj_det
+  object_centroid = rotation_matrix * object_centroid;
+  kindr::minimal::PositionTemplate<float> translation(
+      detection_centroid.head(3) - object_centroid);
 
   Quaternion rotation;
   rotation.setIdentity();
@@ -148,7 +117,7 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
   // icp: reference - object mesh, data - detection cloud
   PM::TransformationParameters T_object_detection_icp;
   try {
-    T_object_detection_icp = icp.compute(points_detection, points_object,
+    T_object_detection_icp = icp.compute(points_object, points_detection,
                                          T_object_detection_init.getTransformationMatrix());
   } catch (PM::ConvergenceError& error_msg) {
     LOG(ERROR) << "ICP was not successful!";
@@ -158,6 +127,36 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
   if (icp.getMaxNumIterationsReached()) {
     LOG(WARNING) << "ICP reached maximum number of iterations!";
   }
+
+  if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {
+    LOG(ERROR) << "Invalid rotation matrix!";
+    return T_object_detection_init;
+  }
+  Transformation::TransformationMatrix Tmatrix(T_object_detection_icp);
+
+  LOG(INFO) << "Time ICP: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+            << " s";
+  return Transformation(Tmatrix);
+}
+
+Transformation icp(const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
+                   const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+                   const Transformation& T_object_detection_init) {
+  std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
+
+  pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+  icp.setInputSource(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(object_pointcloud));
+  icp.setInputTarget(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(detection_pointcloud));
+
+  pcl::PointCloud<pcl::PointXYZ> pcl;
+  icp.align(pcl, T_object_detection_init.getTransformationMatrix());
+
+  if (!icp.hasConverged()) {
+    LOG(WARNING) << "ICP hasn't converged!";
+  }
+
+  Eigen::Matrix4f T_object_detection_icp = icp.getFinalTransformation();
 
   if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {
     LOG(ERROR) << "Invalid rotation matrix!";
@@ -196,7 +195,7 @@ PM::DataPoints convertMeshPointsToDataPoints(const cgal::MeshModel::Ptr& mesh_mo
 
   PM::Matrix features(feature_labels.totalDim(), points.size());
   PM::Matrix descriptors(descriptor_labels.totalDim(), points.size());
-  for (int i = 0; i < points.size(); ++i) {
+  for (size_t i = 0; i < points.size(); ++i) {
     features.col(i) = Eigen::Vector4f(points[i].x(), points[i].y(), points[i].z(), 1);
     cgal::PointAndPrimitiveId ppid = mesh_model->getClosestTriangle(points[i]);
     cgal::Vector normal = mesh_model->getNormal(ppid);
@@ -226,8 +225,7 @@ PM::DataPoints convertMeshToDataPoints(const cgal::MeshModel::Ptr& mesh_model) {
   std::chrono::steady_clock::time_point conversion_start = std::chrono::steady_clock::now();
   for (const auto& id : mesh_model->getFacetIds()) {
     CGAL::Simple_cartesian<double>::Triangle_3 triangle = mesh_model->getTriangle(id);
-    CGAL::Simple_cartesian<double>::Point_3 centroid =
-        CGAL::centroid(triangle);  // TODO(gasserl): replace with just a vertex?
+    CGAL::Simple_cartesian<double>::Point_3 centroid = CGAL::centroid(triangle);
     CGAL::Simple_cartesian<double>::Vector_3 normal =
         triangle.supporting_plane().orthogonal_vector();
 
@@ -266,5 +264,283 @@ PM::DataPoints convertPclToDataPoints(const pcl::PointCloud<pcl::PointXYZ>& poin
   return PM::DataPoints(features, feature_labels);
 }
 
-}  // namespace object_detection
-}  // namespace cad_percept
+PM::DataPoints convertPclToDataPoints(const modelify::PointSurfelCloudType& pointcloud) {
+  // Define feature labels
+  PM::DataPoints::Labels feature_labels;
+  feature_labels.push_back(PM::DataPoints::Label("x", 1));
+  feature_labels.push_back(PM::DataPoints::Label("y", 1));
+  feature_labels.push_back(PM::DataPoints::Label("z", 1));
+  feature_labels.push_back(PM::DataPoints::Label("pad", 1));
+
+  // Define descriptor labels
+  PM::DataPoints::Labels descriptor_labels;
+  descriptor_labels.push_back(PM::DataPoints::Label("normals", 3));
+
+  // Get features and descriptors from pointcloud
+  PM::Matrix features(feature_labels.totalDim(), pointcloud.size());
+  PM::Matrix descriptors(descriptor_labels.totalDim(), pointcloud.size());
+  std::chrono::steady_clock::time_point conversion_start = std::chrono::steady_clock::now();
+  for (uint i = 0; i < pointcloud.size(); ++i) {
+    features.col(i) =
+        Eigen::Vector4f(pointcloud.points[i].x, pointcloud.points[i].y, pointcloud.points[i].z, 1);
+    descriptors.col(i) =
+        Eigen::Vector3f(pointcloud.points[i].normal_x, pointcloud.points[i].normal_y,
+                        pointcloud.points[i].normal_z);
+  }
+  LOG(INFO)
+      << "Time conversion PCL  to pointmatcher: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - conversion_start).count()
+      << " s";
+
+  return PM::DataPoints(features, feature_labels, descriptors, descriptor_labels);
+}
+
+modelify::PointSurfelCloudType convertDataPointsToPointSurfels(const PM::DataPoints& data_points) {
+  std::chrono::steady_clock::time_point conversion_start = std::chrono::steady_clock::now();
+
+  // Get indices of coordinates and normal
+  int index_x, index_y, index_z;
+  int count = 0;
+  for (size_t i = 0; i < data_points.featureLabels.size(); ++i) {
+    if (data_points.featureLabels[i].text == "x") {
+      index_x = count;
+    } else if (data_points.featureLabels[i].text == "y") {
+      index_y = count;
+    } else if (data_points.featureLabels[i].text == "z") {
+      index_z = count;
+    }
+    count += data_points.featureLabels[i].span;
+  }
+  int index_normals = -1;
+  count = 0;
+  for (size_t i = 0; i < data_points.descriptorLabels.size(); ++i) {
+    if (data_points.descriptorLabels[i].text == "normal") {
+      index_normals = count;
+    }
+    count += data_points.descriptorLabels[i].span;
+  }
+  bool use_normals = index_normals == -1;
+  if (use_normals) {
+    LOG(WARNING) << "Data points do not contain a normal descriptor!";
+  }
+
+  // Convert to pointcloud
+  modelify::PointSurfelCloudType pointcloud;
+  for (size_t i = 0; i < data_points.getNbPoints(); ++i) {
+    pcl::PointSurfel point;
+    point.x = data_points.features.col(i)[index_x];
+    point.y = data_points.features.col(i)[index_y];
+    point.z = data_points.features.col(i)[index_z];
+    if (use_normals) {
+      point.normal_x = data_points.descriptors.col(i)[index_normals + 0];
+      point.normal_y = data_points.descriptors.col(i)[index_normals + 1];
+      point.normal_z = data_points.descriptors.col(i)[index_normals + 2];
+    }
+    pointcloud.emplace_back(point);
+  }
+
+  LOG(INFO)
+      << "Time conversion PCL to pointmatcher: "
+      << std::chrono::duration<float>(std::chrono::steady_clock::now() - conversion_start).count()
+      << " s";
+  return pointcloud;
+}
+
+modelify::PointSurfelCloudType estimateNormals(const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz,
+                                               const cgal::MeshModel& mesh_model) {
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
+  // Get normals from mesh
+  modelify::PointSurfelCloudType pointcloud_surfels;
+  for (const auto& point : pointcloud_xyz) {
+    // Use normal of closest mesh triangle
+    const cgal::PointAndPrimitiveId& ppid =
+        mesh_model.getClosestTriangle(point.x, point.y, point.z);
+    const cgal::Vector& normal = mesh_model.getNormal(ppid);
+
+    // Add to pointcloud
+    modelify::PointSurfelType surfel;
+    pcl::copyPoint(point, surfel);
+    surfel.normal_x = normal.x();
+    surfel.normal_y = normal.y();
+    surfel.normal_z = normal.z();
+    pointcloud_surfels.emplace_back(surfel);
+  }
+  removeNanFromPointcloud(pointcloud_surfels);
+
+  LOG(INFO) << "Time normals: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+            << " s";
+  return pointcloud_surfels;
+}
+
+modelify::PointSurfelCloudType estimateNormals(
+    const pcl::PointCloud<pcl::PointXYZ>& pointcloud_xyz) {
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  // Get surfels
+  pcl::NormalEstimation<pcl::PointXYZ, modelify::PointSurfelType> normal_estimator;
+  pcl::PointCloud<pcl::PointXYZ>::ConstPtr pcl_ptr =
+      boost::make_shared<const pcl::PointCloud<pcl::PointXYZ>>(pointcloud_xyz);
+  normal_estimator.setInputCloud(pcl_ptr);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(new pcl::search::KdTree<pcl::PointXYZ>());
+  normal_estimator.setSearchMethod(kd_tree);
+  constexpr int k_radius = 4;
+  normal_estimator.setKSearch(k_radius);
+
+  modelify::PointSurfelCloudType pointcloud_surfels;
+  normal_estimator.compute(pointcloud_surfels);
+  for (size_t i = 0; i < pointcloud_xyz.size(); ++i) {
+    pointcloud_surfels.points[i].x = pointcloud_xyz.points[i].x;
+    pointcloud_surfels.points[i].y = pointcloud_xyz.points[i].y;
+    pointcloud_surfels.points[i].z = pointcloud_xyz.points[i].z;
+  }
+  removeNanFromPointcloud(pointcloud_surfels);
+
+  LOG(INFO) << "Time normals: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+            << " s";
+  return pointcloud_surfels;
+}
+
+void removeNanFromPointcloud(modelify::PointSurfelCloudType& pointcloud_surfels) {
+  size_t size_before = pointcloud_surfels.size();
+  size_t i = 0;
+  while (i < pointcloud_surfels.size()) {
+    if (std::isnan(pointcloud_surfels.points[i].normal_x) ||
+        std::isnan(pointcloud_surfels.points[i].normal_y) ||
+        std::isnan(pointcloud_surfels.points[i].normal_z) ||
+        std::isnan(pointcloud_surfels.points[i].x) || std::isnan(pointcloud_surfels.points[i].y) ||
+        std::isnan(pointcloud_surfels.points[i].z)) {
+      pointcloud_surfels.points.erase(pointcloud_surfels.points.begin() + i);
+    } else {
+      ++i;
+    }
+  }
+  if (size_before > pointcloud_surfels.size()) {
+    LOG(INFO) << "Filtered " << size_before - pointcloud_surfels.size()
+              << " points with NaN points or normals";
+  }
+}
+
+modelify::PointSurfelCloudType computeKeypoints(
+    const KeypointType& keypoint_type,
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr) {
+  CHECK(pointcloud_surfel_ptr);
+
+  modelify::PointSurfelCloudType::Ptr keypoints(new modelify::PointSurfelCloudType());
+  switch (keypoint_type) {
+    case kIss: {
+      modelify::feature_toolbox::IssParams iss_params;
+      if (!modelify::feature_toolbox::detectKeypointsISS(pointcloud_surfel_ptr, iss_params,
+                                                         keypoints)) {
+        LOG(WARNING) << "Could not extract ISS keypoints!";
+      }
+      break;
+    }
+    case kHarris: {
+      modelify::feature_toolbox::Harris3dParams harris_params;
+      if (!modelify::feature_toolbox::extractHarrisKeypoints(harris_params, pointcloud_surfel_ptr,
+                                                             keypoints)) {
+        LOG(WARNING) << "Could not extract Harris keypoints!";
+      }
+      break;
+    }
+    case kUniform: {
+      modelify::feature_toolbox::UniformDownsamplingParams uniform_params;
+      uniform_params.search_radius = 0.01;
+      if (!modelify::feature_toolbox::getKeypointsFromUniformDownsampling(
+              pointcloud_surfel_ptr, uniform_params, keypoints)) {
+        LOG(WARNING) << "Could not extract uniform keypoints!";
+      }
+      break;
+    }
+    case kAll: {
+      keypoints = pointcloud_surfel_ptr;
+      break;
+    }
+    default:
+      LOG(ERROR) << "Unknown keypoint type! " << keypoint_type;
+      return *keypoints;
+  }
+  LOG(INFO) << "Extracted " << keypoints->size() << " keypoints";
+  return *keypoints;
+}
+
+template <>
+pcl::PointCloud<modelify::DescriptorSHOT> computeDescriptors<modelify::DescriptorSHOT>(
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+    const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  CHECK(pointcloud_surfel_ptr);
+  CHECK(keypoints);
+
+  modelify::feature_toolbox::SHOTParams shot_params;
+  shot_params.search_radius = 0.01;
+  const pcl::PointCloud<modelify::DescriptorSHOT>::Ptr descriptors(
+      new pcl::PointCloud<modelify::DescriptorSHOT>());
+  modelify::feature_toolbox::describeKeypoints<modelify::DescriptorSHOT>(
+      pointcloud_surfel_ptr, modelify::kInvalidCloudResolution, shot_params, keypoints,
+      descriptors);
+  return *descriptors;
+}
+
+template <>
+pcl::PointCloud<modelify::DescriptorFPFH> computeDescriptors<modelify::DescriptorFPFH>(
+    const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
+    const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  CHECK(pointcloud_surfel_ptr);
+  CHECK(keypoints);
+
+  modelify::feature_toolbox::FPFHParams fpfh_params;
+  fpfh_params.search_radius = 0.015;
+  const pcl::PointCloud<modelify::DescriptorFPFH>::Ptr descriptors(
+      new pcl::PointCloud<modelify::DescriptorFPFH>());
+  modelify::feature_toolbox::describeKeypoints<modelify::DescriptorFPFH>(
+      pointcloud_surfel_ptr, modelify::kInvalidCloudResolution, fpfh_params, keypoints,
+      descriptors);
+  return *descriptors;
+}
+
+template <>
+pcl::PointCloud<UnitDescriptor> computeDescriptors<UnitDescriptor>(
+    const modelify::PointSurfelCloudType::Ptr& /*pointcloud_surfel_ptr*/,
+    const modelify::PointSurfelCloudType::Ptr& keypoints) {
+  CHECK(keypoints);
+
+  pcl::PointCloud<UnitDescriptor> descriptors;
+  for (size_t i = 0; i < keypoints->size(); ++i) {
+    descriptors.points.emplace_back(UnitDescriptor());
+  }
+  return descriptors;
+}
+
+template <>
+modelify::CorrespondencesType computeCorrespondences<UnitDescriptor>(
+    const modelify::PointSurfelCloudType::Ptr& detection_keypoints,
+    const typename pcl::PointCloud<UnitDescriptor>::Ptr& /*detection_descriptors*/,
+    const modelify::PointSurfelCloudType::Ptr& object_keypoints,
+    const typename pcl::PointCloud<UnitDescriptor>::Ptr& /*object_descriptors*/,
+    double /*similarity_threshold*/) {
+  CHECK(detection_keypoints);
+  CHECK(object_keypoints);
+
+  LOG(INFO) << "Computing correspondence for uniform descriptor";
+  modelify::CorrespondencesTypePtr correspondences(new modelify::CorrespondencesType());
+
+  // Find all possible correspondences
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  correspondences->reserve(object_keypoints->size() * detection_keypoints->size());
+  for (size_t idx_object = 0; idx_object < object_keypoints->size(); ++idx_object) {
+    for (size_t idx_detection = 0; idx_detection < detection_keypoints->size(); ++idx_detection) {
+      pcl::Correspondence corr(idx_object, idx_detection, 0);
+      correspondences->emplace_back(corr);
+    }
+  }
+  LOG(INFO) << "Computed " << correspondences->size() << " correspondences.";
+
+  LOG(INFO) << "Time correspondences: "
+            << std::chrono::duration<float>(std::chrono::steady_clock::now() - begin).count()
+            << " s";
+  return *correspondences;
+}
+
+}  // namespace cad_percept::object_detection
