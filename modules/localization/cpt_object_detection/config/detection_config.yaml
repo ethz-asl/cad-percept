@@ -1,0 +1,32 @@
+# ROS
+detection_pointcloud_topic: /detection_projector/object_pcl_3d
+scene_pointcloud_topic: /detection_projector/scene_pcl
+publish_static_transform: true
+reference_frame_id: arm_base_link
+downsampling: 0.0
+
+# Object
+object_type: valve
+object_frame_id: object_detection_mesh
+visualize_object_on_startup: true
+num_points_object_pointcloud: 5000
+
+# Alignment Method
+use_3d_features: false
+keypoint_type: Harris # ISS, Harris, uniform, all
+descriptor_type: unit # FPFH, SHOT, 3DSmoothNet, unit
+matching_method: Teaser # geometric_consistency, FGR, Teaser
+correspondence_threshold: 0.1
+
+refine_using_icp: true
+use_icp_on_pointcloud: true
+
+# Detection Filter
+use_inlier_ratio_filter: false
+min_inlier_ratio: 0.0
+
+use_kalman_filter: false
+kf_p_translation: 1
+kf_p_rotation: 10
+kf_r_translation: 0.1
+kf_r_rotation: 1
