@@ -29,6 +29,12 @@ Transformation pca(const cgal::MeshModel::Ptr& mesh_model,
 Transformation optimizeTransformation(const cgal::MeshModel& mesh_model,
                                       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
                                       const Transformation& T_init);
+double computeInlierRatio(const bool use_pointcloud,
+                          const modelify::PointSurfelCloudType::Ptr& object_surfels,
+                          const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+                          const cgal::MeshModel& mesh_model,
+                          const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+                          const Transformation& T_object_detection);
 Transformation optimizeTransformation(const modelify::PointSurfelCloudType::Ptr& object_surfels,
                                       const modelify::PointSurfelCloudType::Ptr& detection_surfels,
                                       const Transformation& T_init);

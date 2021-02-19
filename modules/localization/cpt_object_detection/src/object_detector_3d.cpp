@@ -34,8 +34,8 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       downsampling_resolution_(0.001),
       refine_using_icp_(true),
       use_icp_on_pointcloud_(false),
-      inlier_ratio_(0),
-      inlier_ratio_decay_(0.95) {
+      inlier_ratio_filter_(0),
+      min_inlier_ratio_(0.25) {
   getParamsFromRos();
   subscribeToTopics();
   advertiseTopics();
@@ -185,6 +185,7 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
   nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
   nh_private_.param("use_inlier_ratio_filter", use_inlier_ratio_filter_, use_inlier_ratio_filter_);
+  nh_private_.param("min_inlier_ratio", min_inlier_ratio_, min_inlier_ratio_);
   nh_private_.param("use_kalman_filter", use_kalman_filter_, use_kalman_filter_);
   nh_private_.param("publish_static_transform", publish_static_transform_,
                     publish_static_transform_);
@@ -197,13 +198,13 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("downsampling", downsampling_resolution_, downsampling_resolution_);
   nh_private_.param("initialization_duration_s", initialization_duration_s_,
                     initialization_duration_s_);
-  nh_private_.param("inlier_ratio_decay", inlier_ratio_decay_, inlier_ratio_decay_);
 
   LOG(INFO) << "Parameters:"
             << "\n - pointcloud_topic: " << pointcloud_topic_
             << "\n - object_frame_id: " << object_frame_id_
             << "\n - use_3d_features: " << use_3d_features_
             << "\n - use_inlier_ratio_filter: " << use_inlier_ratio_filter_
+            << "\n - min_inlier_ratio: " << min_inlier_ratio_
             << "\n - use_kalman_filter: " << use_kalman_filter_
             << "\n - publish_static_transform: " << publish_static_transform_
             << "\n - reference_frame_id: " << reference_frame_id_
@@ -211,8 +212,7 @@ void ObjectDetector3D::getParamsFromRos() {
             << "\n - use_icp_on_pointcloud: " << use_icp_on_pointcloud_
             << "\n - icp_config_file: " << icp_config_file_
             << "\n - correspondence_threshold: " << correspondence_threshold_
-            << "\n - downsampling_resolution: " << downsampling_resolution_
-            << "\n - inlier_ratio_decay: " << inlier_ratio_decay_;
+            << "\n - downsampling_resolution: " << downsampling_resolution_;
 
   std::string keypoint_type;
   nh_private_.param("keypoint_type", keypoint_type, keypoint_type);
@@ -539,6 +539,14 @@ bool ObjectDetector3D::processDetectionUsingInitializationAndIcp(Transformation*
 Transformation ObjectDetector3D::processDetection() {
   std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
 
+  // Check pointclouds
+  if (detection_pointcloud_.empty()) {
+    LOG(ERROR) << "Empty detection pointcloud!";
+  }
+  if (object_pointcloud_.empty()) {
+    LOG(ERROR) << "Empty object pointcloud!";
+  }
+
   // Get transformation to reference frame
   Transformation T_detection_world;
   ros::Time stamp_T;
@@ -552,7 +560,7 @@ Transformation ObjectDetector3D::processDetection() {
                  << " and reference frame " << reference_frame_id_ << "!";
   }
 
-  // Get initial alignment
+  // Prepare pointclouds
   Transformation T_object_detection_init;
   modelify::PointSurfelCloudType::Ptr detection_surfels;
   if (use_3d_features_ || use_icp_on_pointcloud_) {
@@ -563,6 +571,7 @@ Transformation ObjectDetector3D::processDetection() {
         boost::make_shared<modelify::PointSurfelCloudType>(estimateNormals(detection_pointcloud_));
   }
 
+  // Get initial alignment
   if (use_3d_features_) {
     // Downsampling detection pointcloud
     if (downsampling_resolution_ > 0) {
@@ -708,6 +717,26 @@ Transformation ObjectDetector3D::processDetection() {
     T_object_detection_init = T_detection_world.inverse() * T_kalman;
   }
 
+  // Compare inlier ratio
+  if (use_inlier_ratio_filter_) {
+    double inlier_ratio_pca =
+        computeInlierRatio(use_icp_on_pointcloud_, object_surfels_, detection_surfels, *mesh_model_,
+                           detection_pointcloud_, T_object_detection_init);
+    inlier_ratio_filter_ =
+        computeInlierRatio(use_icp_on_pointcloud_, object_surfels_, detection_surfels, *mesh_model_,
+                           detection_pointcloud_, T_object_detection_filter_);
+    if (use_3d_features_) {
+      LOG(INFO) << "Inlier ratio features: " << inlier_ratio_pca;
+      LOG(INFO) << "Inlier ratio filter:   " << inlier_ratio_filter_;
+    } else {
+      LOG(INFO) << "Inlier ratio PCA:    " << inlier_ratio_pca;
+      LOG(INFO) << "Inlier ratio filter: " << inlier_ratio_filter_;
+    }
+    if (inlier_ratio_filter_ > inlier_ratio_pca) {
+      T_object_detection_init = T_object_detection_filter_;
+    }
+  }
+
   // Get final alignment
   Transformation T_object_detection(T_object_detection_init);
   if (refine_using_icp_) {
@@ -818,47 +847,25 @@ Transformation ObjectDetector3D::processDetection() {
 
   // Inlier ratio filter
   if (use_inlier_ratio_filter_) {
-    double inlier_ratio = 0;
-    if (use_icp_on_pointcloud_) {
-      // Compute inliers
-      modelify::registration_toolbox::ICPParams icp_params;
-      icp_params.inlier_distance_threshold_m = 0.01;
-      double cloud_resolution = modelify::kInvalidCloudResolution;
-      double mean_squared_distance;
-      std::vector<size_t> outlier_indices;
-      modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
-          object_surfels_, detection_surfels, T_object_detection.getTransformationMatrix(),
-          icp_params, cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
+    double inlier_ratio_icp =
+        computeInlierRatio(use_icp_on_pointcloud_, object_surfels_, detection_surfels, *mesh_model_,
+                           detection_pointcloud_, T_object_detection);
+    LOG(INFO) << "Inlier ratio ICP:    " << inlier_ratio_icp;
+    LOG(INFO) << "Inlier ratio filter: " << inlier_ratio_filter_;
+
+    // Check minimum inier ratio
+    const double inlier_ratio = std::max(inlier_ratio_filter_, inlier_ratio_icp);
+    if (inlier_ratio < min_inlier_ratio_) {
+      LOG(ERROR) << "Inlier ratio too low! " << inlier_ratio << " < " << min_inlier_ratio_;
+      return false;
+    }
+
+    // Update filter transform
+    if (inlier_ratio_filter_ > inlier_ratio_icp) {
+      T_object_detection = T_object_detection_filter_;
     } else {
-      pcl::PointCloud<pcl::PointXYZ> transformed_pcl;
-      Eigen::Affine3f transform_eigen((T_object_detection).inverse().getTransformationMatrix());
-      pcl::transformPointCloud(detection_pointcloud_, transformed_pcl, transform_eigen);
-
-      constexpr double inlier_dist = 0.01;
-      size_t num_inlier = 0;
-      double squared_distance = 0;
-      for (const auto& point : transformed_pcl.points) {
-        cgal::PointAndPrimitiveId ppid =
-            mesh_model_->getClosestTriangle(cgal::Point(point.x, point.y, point.z));
-        double dist = (Eigen::Vector3d(ppid.first.x(), ppid.first.y(), ppid.first.z()) -
-                       Eigen::Vector3d(point.x, point.y, point.z))
-                          .norm();
-        num_inlier += dist < inlier_dist;
-        squared_distance += dist * dist;
-      }
-      inlier_ratio =
-          static_cast<double>(num_inlier) / static_cast<double>(detection_pointcloud_.size());
+      T_object_detection_filter_ = T_object_detection;
     }
-
-    LOG(INFO) << "Old inlier ratio: " << inlier_ratio_;
-    LOG(INFO) << "Current inlier ratio: " << inlier_ratio;
-    if (inlier_ratio_ > inlier_ratio) {
-      inlier_ratio_ *= inlier_ratio_decay_;
-      LOG(INFO) << "Decayed inlier ratio: " << inlier_ratio_;
-      return Transformation();
-    }
-    inlier_ratio_ = inlier_ratio;
-    LOG(INFO) << "New inlier ratio: " << inlier_ratio_;
   }
 
   LOG(INFO) << "Time matching total: "

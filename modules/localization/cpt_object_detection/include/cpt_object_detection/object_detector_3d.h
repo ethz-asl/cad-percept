@@ -138,8 +138,9 @@ class ObjectDetector3D {
   Eigen::MatrixXf K_kalman_;
   Eigen::VectorXf x_kalman_;
   Eigen::MatrixXf R_kalman_;
-  double inlier_ratio_;
-  double inlier_ratio_decay_;
+  Transformation T_object_detection_filter_;
+  double inlier_ratio_filter_;
+  double min_inlier_ratio_;
 };
 
 }  // namespace cad_percept::object_detection

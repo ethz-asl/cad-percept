@@ -152,6 +152,48 @@ Transformation optimizeTransformation(const modelify::PointSurfelCloudType::Ptr&
   return T_init * transformations[std::distance(inlier_ratios.begin(), most_inliers)];
 }
 
+double computeInlierRatio(const bool use_pointcloud,
+                          const modelify::PointSurfelCloudType::Ptr& object_surfels,
+                          const modelify::PointSurfelCloudType::Ptr& detection_surfels,
+                          const cgal::MeshModel& mesh_model,
+                          const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
+                          const Transformation& T_object_detection) {
+  double inlier_ratio = 0;
+  constexpr double inlier_dist = 0.01;
+
+  if (use_pointcloud) {
+    // Compute inliers
+    modelify::registration_toolbox::ICPParams icp_params;
+    icp_params.inlier_distance_threshold_m = inlier_dist;
+    double cloud_resolution = modelify::kInvalidCloudResolution;
+    double mean_squared_distance;
+    std::vector<size_t> outlier_indices;
+    modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
+        object_surfels, detection_surfels, T_object_detection.getTransformationMatrix(),
+        icp_params, cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
+  } else {
+    pcl::PointCloud<pcl::PointXYZ> transformed_pcl;
+    Eigen::Affine3f transform_eigen((T_object_detection).inverse().getTransformationMatrix());
+    pcl::transformPointCloud(detection_pointcloud, transformed_pcl, transform_eigen);
+
+    size_t num_inlier = 0;
+    double squared_distance = 0;
+    for (const auto& point : transformed_pcl.points) {
+      cgal::PointAndPrimitiveId ppid =
+          mesh_model.getClosestTriangle(cgal::Point(point.x, point.y, point.z));
+      double dist = (Eigen::Vector3d(ppid.first.x(), ppid.first.y(), ppid.first.z()) -
+                     Eigen::Vector3d(point.x, point.y, point.z))
+                        .norm();
+      num_inlier += dist < inlier_dist;
+      squared_distance += dist * dist;
+    }
+    inlier_ratio =
+        static_cast<double>(num_inlier) / static_cast<double>(detection_pointcloud.size());
+  }
+
+  return inlier_ratio;
+}
+
 Transformation optimizeTransformation(const cgal::MeshModel& mesh_model,
                                       const pcl::PointCloud<pcl::PointXYZ>& detection_pointcloud,
                                       const Transformation& T_init) {
@@ -242,7 +284,7 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
       icp.setDefault();
     }
   } else {
-    LOG(INFO) << "No ICP config file given, using default ICP settings";
+    LOG(WARNING) << "No ICP config file given, using default ICP settings";
     icp.setDefault();
   }
 
@@ -267,8 +309,15 @@ Transformation icp(const cgal::MeshModel::Ptr& mesh_model,
   }
 
   if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {
-    LOG(ERROR) << "Invalid rotation matrix!";
-    return T_object_detection_init;
+    for (int i = 0; i < 3; ++i) {
+      T_object_detection_icp.block<3, 1>(0, i) =
+          T_object_detection_icp.block<3, 1>(0, i).normalized();
+    }
+
+    if (!Quaternion::isValidRotationMatrix(T_object_detection_icp.block<3, 3>(0, 0))) {
+      LOG(ERROR) << "No valid rotation matrix possible!";
+      return T_object_detection_init;
+    }
   }
   Transformation::TransformationMatrix Tmatrix(T_object_detection_icp);
 
