@@ -33,6 +33,7 @@ class ObjectDetector3D {
 
   void objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
   bool startInitializationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+  void sceneCallback(const sensor_msgs::PointCloud2& cloud_msg_in);
 
   bool initializeObjectMesh();
   bool processDetectionUsingInitializationAndIcp(Transformation* T_object_world);
@@ -75,6 +76,7 @@ class ObjectDetector3D {
   ros::NodeHandle nh_private_;
 
   ros::Subscriber detection_pointcloud_sub_;
+  ros::Subscriber scene_pointcloud_sub_;
   ros::Publisher object_pointcloud_pub_;
   ros::Publisher object_mesh_pub_;
   ros::Publisher object_mesh_init_pub_;
@@ -100,9 +102,11 @@ class ObjectDetector3D {
 
   // Detection
   std::string pointcloud_topic_;
+  std::string scene_topic_;
   ros::Time detection_stamp_;
   std::string detection_frame_id_;
   pcl::PointCloud<pcl::PointXYZ> detection_pointcloud_;
+  pcl::PointCloud<pcl::PointXYZ> scene_pointcloud_;
 
   // Initialization
   bool initialized_;

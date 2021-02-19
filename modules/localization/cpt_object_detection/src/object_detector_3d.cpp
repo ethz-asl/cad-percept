@@ -181,7 +181,8 @@ bool ObjectDetector3D::initializeObjectMesh() {
 }
 
 void ObjectDetector3D::getParamsFromRos() {
-  nh_private_.param("pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
+  nh_private_.param("detection_pointcloud_topic", pointcloud_topic_, pointcloud_topic_);
+  nh_private_.param("scene_pointcloud_topic", scene_topic_, scene_topic_);
   nh_private_.param("object_frame_id", object_frame_id_, object_frame_id_);
   nh_private_.param("use_3d_features", use_3d_features_, use_3d_features_);
   nh_private_.param("use_inlier_ratio_filter", use_inlier_ratio_filter_, use_inlier_ratio_filter_);
@@ -201,7 +202,7 @@ void ObjectDetector3D::getParamsFromRos() {
 
   LOG(INFO) << "Parameters:"
             << "\n - pointcloud_topic: " << pointcloud_topic_
-            << "\n - object_frame_id: " << object_frame_id_
+            << "\n - scene_topic: " << scene_topic_ << "\n - object_frame_id: " << object_frame_id_
             << "\n - use_3d_features: " << use_3d_features_
             << "\n - use_inlier_ratio_filter: " << use_inlier_ratio_filter_
             << "\n - min_inlier_ratio: " << min_inlier_ratio_
@@ -277,7 +278,10 @@ void ObjectDetector3D::subscribeToTopics() {
   nh_private_.param("queue_size", queue_size, queue_size);
   detection_pointcloud_sub_ = nh_.subscribe(pointcloud_topic_, queue_size,
                                             &ObjectDetector3D::objectDetectionCallback, this);
+  scene_pointcloud_sub_ =
+      nh_.subscribe(scene_topic_, queue_size, &ObjectDetector3D::sceneCallback, this);
   LOG(INFO) << "Subscribed to pointcloud topic [" << detection_pointcloud_sub_.getTopic() << "]";
+  LOG(INFO) << "Subscribed to scene topic [" << scene_pointcloud_sub_.getTopic() << "]";
 }
 
 void ObjectDetector3D::advertiseTopics() {
@@ -315,6 +319,10 @@ void ObjectDetector3D::advertiseTopics() {
     LOG(INFO) << "[ObjectDetector3D] Publishing initialization pointcloud to topic ["
               << initialization_detection_pointcloud_pub_.getTopic() << "]";
   }
+}
+
+void ObjectDetector3D::sceneCallback(const sensor_msgs::PointCloud2& cloud_msg_in) {
+  pcl::fromROSMsg(cloud_msg_in, scene_pointcloud_);
 }
 
 void ObjectDetector3D::objectDetectionCallback(const sensor_msgs::PointCloud2& cloud_msg_in) {
@@ -546,6 +554,9 @@ Transformation ObjectDetector3D::processDetection() {
   if (object_pointcloud_.empty()) {
     LOG(ERROR) << "Empty object pointcloud!";
   }
+  if (scene_pointcloud_.empty()) {
+    scene_pointcloud_ = detection_pointcloud_;
+  }
 
   // Get transformation to reference frame
   Transformation T_detection_world;
@@ -742,6 +753,8 @@ Transformation ObjectDetector3D::processDetection() {
   if (refine_using_icp_) {
     if (use_3d_features_) {
       // Refine using ICP
+      modelify::PointSurfelCloudType::Ptr scene_surfels(
+          boost::make_shared<modelify::PointSurfelCloudType>(estimateNormals(scene_pointcloud_)));
       // Validate initial alignment
       modelify::registration_toolbox::ICPParams icp_params;
       double cloud_resolution = modelify::kInvalidCloudResolution;
@@ -764,9 +777,9 @@ Transformation ObjectDetector3D::processDetection() {
       // Refine transformation with ICP
       Transformation T_icp;
       if (use_icp_on_pointcloud_) {
-        T_icp = icp(object_pointcloud_, detection_pointcloud_, T_object_detection_init);
+        T_icp = icp(object_pointcloud_, scene_pointcloud_, T_object_detection_init);
       } else {
-        T_icp = icp(mesh_model_, detection_pointcloud_, T_object_detection_init, icp_config_file_);
+        T_icp = icp(mesh_model_, scene_pointcloud_, T_object_detection_init, icp_config_file_);
       }
 
       // Validate alignment ICP
@@ -804,11 +817,10 @@ Transformation ObjectDetector3D::processDetection() {
     } else {
       // Get final alignment with ICP
       if (use_icp_on_pointcloud_) {
-        T_object_detection =
-            icp(object_pointcloud_, detection_pointcloud_, T_object_detection_init);
+        T_object_detection = icp(object_pointcloud_, scene_pointcloud_, T_object_detection_init);
       } else {
         T_object_detection =
-            icp(mesh_model_, detection_pointcloud_, T_object_detection_init, icp_config_file_);
+            icp(mesh_model_, scene_pointcloud_, T_object_detection_init, icp_config_file_);
       }
     }
   }
