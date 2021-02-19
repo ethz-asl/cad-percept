@@ -140,7 +140,6 @@ Transformation optimizeTransformation(const modelify::PointSurfelCloudType::Ptr&
     inlier_ratios.emplace_back(inlier_ratio);
     mean_squared_distances.emplace_back(mean_squared_distance);
     optimization_criteria.emplace_back(inlier_ratio / mean_squared_distance);
-    LOG(INFO) << "Inliers v" << i << ": " << inlier_ratio;
   }
   LOG(INFO) << "Time optimization: "
             << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
@@ -333,7 +332,7 @@ Transformation icp(const pcl::PointCloud<pcl::PointXYZ>& object_pointcloud,
   std::chrono::steady_clock::time_point time_start = std::chrono::steady_clock::now();
 
   pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-  icp.setMaximumIterations(30);
+  icp.setMaximumIterations(50);
   icp.setInputSource(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(object_pointcloud));
   icp.setInputTarget(boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>(detection_pointcloud));
 
