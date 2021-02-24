@@ -14,7 +14,8 @@ Transformation computeTransformUsing3dFeatures(
     const modelify::PointSurfelCloudType::Ptr& object_surfels,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences,
+    bool verbose) {
   CHECK(detection_surfels);
   CHECK(detection_keypoints);
   CHECK(detection_descriptors);
@@ -38,15 +39,15 @@ Transformation computeTransformUsing3dFeatures(
     case kGeometricConsistency:
       return computeTransformUsingGeometricConsistency<descriptor_type>(
           detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
-          similarity_threshold, correspondences);
+          similarity_threshold, correspondences, verbose);
     case kFastGlobalRegistration:
       return computeTransformUsingFgr<descriptor_type>(
           detection_surfels, detection_keypoints, detection_descriptors, object_surfels,
-          object_keypoints, object_descriptors, correspondences);
+          object_keypoints, object_descriptors, correspondences, verbose);
     case kTeaser:
       return computeTransformUsingTeaser<descriptor_type>(
           detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
-          similarity_threshold, correspondences);
+          similarity_threshold, correspondences, verbose);
     default:
       LOG(ERROR) << "Unknown matching method! " << matching_method;
       return Transformation();
@@ -59,7 +60,7 @@ modelify::CorrespondencesType computeCorrespondences(
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double similarity_threshold) {
+    double similarity_threshold, bool verbose) {
   CHECK(detection_keypoints);
   CHECK(detection_descriptors);
   CHECK(object_keypoints);
@@ -91,9 +92,11 @@ modelify::CorrespondencesType computeCorrespondences(
     LOG(ERROR) << "No correspondences found!";
     return *correspondences;
   }
-  LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
-  LOG(INFO) << "Time correspondences: " << std::chrono::duration<float>(end - begin).count()
-            << " s";
+  if (verbose) {
+    LOG(INFO) << "Found " << correspondences->size() << " correspondences.";
+    LOG(INFO) << "Time correspondences: " << std::chrono::duration<float>(end - begin).count()
+              << " s";
+  }
   return *correspondences;
 }
 
@@ -103,7 +106,8 @@ Transformation computeTransformUsingGeometricConsistency(
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences,
+    bool verbose) {
   CHECK(detection_keypoints);
   CHECK(detection_descriptors);
   CHECK(object_keypoints);
@@ -113,7 +117,7 @@ Transformation computeTransformUsingGeometricConsistency(
   // Get correspondences
   *correspondences = computeCorrespondences<descriptor_type>(
       detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
-      similarity_threshold);
+      similarity_threshold, verbose);
   if (correspondences->empty()) {
     LOG(ERROR) << "No correspondences found!";
     return Transformation();
@@ -127,28 +131,30 @@ Transformation computeTransformUsingGeometricConsistency(
   ransac_params.max_number_iterations = 1e3;
   modelify::CorrespondencesTypePtr ransac_correspondences(new modelify::CorrespondencesType());
   Eigen::Matrix4f transform_ransac;
-  if (!modelify::registration_toolbox::filterCorrespondences(object_keypoints, detection_keypoints,
-                                                             ransac_params, correspondences,
-                                                             ransac_correspondences, &transform_ransac)) {
+  if (!modelify::registration_toolbox::filterCorrespondences(
+          object_keypoints, detection_keypoints, ransac_params, correspondences,
+          ransac_correspondences, &transform_ransac)) {
     LOG(WARNING) << "Failed to find a RANSAC model!";
     return Transformation();
   }
 
   *correspondences = *ransac_correspondences;
-  LOG(INFO) << "Found RANSAC model based on " << correspondences->size() << " correspondences.";
+  if (verbose) {
+    LOG(INFO) << "Found RANSAC model based on " << correspondences->size() << " correspondences.";
+  }
 
   if (!Quaternion::isValidRotationMatrix(transform_ransac.block<3, 3>(0, 0))) {
     for (int i = 0; i < 3; ++i) {
-      transform_ransac.block<3, 1>(0, i) =
-          transform_ransac.block<3, 1>(0, i).normalized();
+      transform_ransac.block<3, 1>(0, i) = transform_ransac.block<3, 1>(0, i).normalized();
     }
-    LOG(WARNING) << "Normalized rotation matrix, new transformation:\n"
-                 << transform_ransac;
+    LOG(WARNING) << "Normalized rotation matrix, new transformation:\n" << transform_ransac;
   }
 
-  LOG(INFO) << "Time geometric consistency: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
-            << " s";
+  if (verbose) {
+    LOG(INFO) << "Time geometric consistency: "
+              << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+              << " s";
+  }
   return Transformation(transform_ransac);
 }
 
@@ -160,7 +166,7 @@ Transformation computeTransformUsingFgr(
     const modelify::PointSurfelCloudType::Ptr& object_surfels,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    const modelify::CorrespondencesTypePtr& correspondences) {
+    const modelify::CorrespondencesTypePtr& correspondences, bool verbose) {
   CHECK(detection_surfels);
   CHECK(detection_keypoints);
   CHECK(detection_descriptors);
@@ -184,9 +190,11 @@ Transformation computeTransformUsingFgr(
     LOG(ERROR) << "Fast global registration was not successful!";
     return Transformation();
   }
-  LOG(INFO) << "Time FGR: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
-            << " s";
+  if (verbose) {
+    LOG(INFO) << "Time FGR: "
+              << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+              << " s";
+  }
 
   for (const modelify::CorrespondencePair& correspondence : corrs) {
     pcl::Correspondence corr;
@@ -204,7 +212,8 @@ Transformation computeTransformUsingTeaser(
     const typename pcl::PointCloud<descriptor_type>::Ptr& detection_descriptors,
     const modelify::PointSurfelCloudType::Ptr& object_keypoints,
     const typename pcl::PointCloud<descriptor_type>::Ptr& object_descriptors,
-    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences) {
+    double similarity_threshold, const modelify::CorrespondencesTypePtr& correspondences,
+    bool verbose) {
   CHECK(detection_keypoints);
   CHECK(detection_descriptors);
   CHECK(object_keypoints);
@@ -214,7 +223,7 @@ Transformation computeTransformUsingTeaser(
   // Get correspondences
   *correspondences = computeCorrespondences<descriptor_type>(
       detection_keypoints, detection_descriptors, object_keypoints, object_descriptors,
-      similarity_threshold);
+      similarity_threshold, verbose);
   if (correspondences->empty()) {
     LOG(ERROR) << "No correspondences found!";
     return Transformation();
@@ -225,13 +234,13 @@ Transformation computeTransformUsingTeaser(
   if (correspondences->size() > max_correspondences) {
     if ((correspondences->size() - max_correspondences) < max_correspondences) {
       while (correspondences->size() > max_correspondences) {
-        size_t idx = std::rand()/RAND_MAX;
+        size_t idx = std::rand() / RAND_MAX;
         correspondences->erase(correspondences->begin() + idx);
       }
     } else {
       modelify::CorrespondencesType corr;
       for (size_t i = 0; i < max_correspondences; ++i) {
-        size_t idx = std::rand()/RAND_MAX;
+        size_t idx = std::rand() / RAND_MAX;
         corr.template emplace_back(correspondences->at(idx));
       }
       *correspondences = corr;
@@ -254,7 +263,9 @@ Transformation computeTransformUsingTeaser(
     ++idx;
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Time conversion: " << std::chrono::duration<float>(end - begin).count() << " s";
+  if (verbose) {
+    LOG(INFO) << "Time conversion: " << std::chrono::duration<float>(end - begin).count() << " s";
+  }
 
   // Solve with TEASER++
   teaser::RobustRegistrationSolver::Params params;
@@ -264,7 +275,9 @@ Transformation computeTransformUsingTeaser(
   begin = std::chrono::steady_clock::now();
   teaser::RegistrationSolution solution = solver.solve(object_matrix, detection_matrix);
   end = std::chrono::steady_clock::now();
-  LOG(INFO) << "Time teaser: " << std::chrono::duration<float>(end - begin).count() << " s";
+  if (verbose) {
+    LOG(INFO) << "Time teaser: " << std::chrono::duration<float>(end - begin).count() << " s";
+  }
 
   if (!solution.valid) {
     LOG(ERROR) << "Registration using Teaser failed!";
@@ -281,26 +294,32 @@ template <typename descriptor_type>
 bool compute3dFeatures(const KeypointType& keypoint_type,
                        const modelify::PointSurfelCloudType::Ptr& pointcloud_surfel_ptr,
                        const modelify::PointSurfelCloudType::Ptr& keypoints,
-                       const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors) {
+                       const typename pcl::PointCloud<descriptor_type>::Ptr& descriptors,
+                       bool verbose) {
   CHECK(pointcloud_surfel_ptr);
   CHECK(keypoints);
   CHECK(descriptors);
 
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   *keypoints = computeKeypoints(keypoint_type, pointcloud_surfel_ptr);
-  LOG(INFO) << "Time keypoints: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
-            << " s";
+  if (verbose) {
+    LOG(INFO) << "Extracted " << keypoints->size() << " keypoints";
+    LOG(INFO) << "Time keypoints: "
+              << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+              << " s";
+  }
 
   std::chrono::steady_clock::time_point start_descriptors = std::chrono::steady_clock::now();
-  *descriptors = computeDescriptors<descriptor_type>(pointcloud_surfel_ptr, keypoints);
-  LOG(INFO)
-      << "Time descriptors: "
-      << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_descriptors).count()
-      << " s";
-  LOG(INFO) << "Time 3D features: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
-            << " s";
+  *descriptors = computeDescriptors<descriptor_type>(pointcloud_surfel_ptr, keypoints, verbose);
+  if (verbose) {
+    LOG(INFO) << "Time descriptors: "
+              << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_descriptors)
+                     .count()
+              << " s";
+    LOG(INFO) << "Time 3D features: "
+              << std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count()
+              << " s";
+  }
   return true;
 }
 

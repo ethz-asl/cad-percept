@@ -11,8 +11,7 @@ struct UnitDescriptor {
   PCL_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
 
-POINT_CLOUD_REGISTER_POINT_STRUCT(UnitDescriptor,
-                                  (float, unit_descriptor, unit_descriptor));
+POINT_CLOUD_REGISTER_POINT_STRUCT(UnitDescriptor, (float, unit_descriptor, unit_descriptor));
 
 namespace modelify {
 

@@ -109,6 +109,7 @@ class ObjectDetector3D {
   bool use_inlier_ratio_filter_;
   bool publish_static_transform_;
   std::string reference_frame_id_;
+  bool verbose_;
 
   // Parameters: 3D Features
   KeypointType keypoint_type_;

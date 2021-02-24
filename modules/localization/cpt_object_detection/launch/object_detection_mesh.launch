@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <launch>
+  <arg name="verbose" default="false"/>
+
   <!-- Object and Preparation -->
   <arg name="object_off_path"
        default="$(find cpt_object_detection)/resources/handwheel_mockup_24cm_scaled.off"/>
@@ -22,6 +24,8 @@
         args="--colorlogtostderr" output="screen">
     <rosparam command="load"
               file="$(find cpt_object_detection)/config/detection_config.yaml"/>
+
+    <param name="verbose" value="$(arg verbose)"/>
 
     <param name="off_model" value="$(arg object_off_path)"/>
     <param name="reference_frame_id" value="$(arg reference_frame_id)"/>

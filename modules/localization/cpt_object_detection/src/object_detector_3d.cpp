@@ -24,6 +24,7 @@ ObjectDetector3D::ObjectDetector3D(const ros::NodeHandle& nh, const ros::NodeHan
       use_inlier_ratio_filter_(false),
       publish_static_transform_(true),
       reference_frame_id_("world"),
+      verbose_(true),
       keypoint_type_(kIss),
       descriptor_type_(kFpfh),
       matching_method_(kGeometricConsistency),
@@ -49,8 +50,10 @@ bool ObjectDetector3D::initializeObjectMesh() {
     LOG(FATAL) << "Could not get mesh model from off file at " << off_file << "!";
     return false;
   }
-  LOG(INFO) << "Object mesh with " << mesh_model_->getMesh().size_of_facets() << " facets and "
-            << mesh_model_->getMesh().size_of_vertices() << " vertices";
+  if (verbose_) {
+    LOG(INFO) << "Object mesh with " << mesh_model_->getMesh().size_of_facets() << " facets and "
+              << mesh_model_->getMesh().size_of_vertices() << " vertices";
+  }
 
   // Sample pointcloud from object mesh
   if (use_3d_features_ || use_icp_on_pointcloud_) {
@@ -62,16 +65,18 @@ bool ObjectDetector3D::initializeObjectMesh() {
                                    &object_pointcloud_);
 
     if (object_pointcloud_.empty()) {
-      LOG(ERROR) << "Could not sample pointcloud from object mesh!";
+      LOG(FATAL) << "Could not sample pointcloud from object mesh!";
       return false;
     }
 
-    LOG(INFO) << "Converted object mesh to a pointcloud with " << object_pointcloud_.size()
-              << " points";
-    LOG(INFO)
-        << "Time sampling mesh: "
-        << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count()
-        << " s";
+    if (verbose_) {
+      LOG(INFO) << "Converted object mesh to a pointcloud with " << object_pointcloud_.size()
+                << " points";
+      LOG(INFO)
+          << "Time sampling mesh: "
+          << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count()
+          << " s";
+    }
 
     // Downsampling pointcloud resolution
     if (downsampling_resolution_ > 0) {
@@ -85,19 +90,21 @@ bool ObjectDetector3D::initializeObjectMesh() {
       pcl::PointCloud<pcl::PointXYZ> filtered_pointcloud;
       voxel_grid_filter.filter(filtered_pointcloud);
       object_pointcloud_ = filtered_pointcloud;
-      LOG(INFO) << "Object pointcloud downsampled to resolution of " << downsampling_resolution_
-                << " m, resulting in " << object_pointcloud_.size() << " points";
-      LOG(INFO)
-          << "Time downsampling: "
-          << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count()
-          << " s";
+      if (verbose_) {
+        LOG(INFO) << "Object pointcloud downsampled to resolution of " << downsampling_resolution_
+                  << " m, resulting in " << object_pointcloud_.size() << " points";
+        LOG(INFO) << "Time downsampling: "
+                  << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling)
+                         .count()
+                  << " s";
+      }
     }
   }
 
   // Get 3D features of object pointcloud
   if (use_3d_features_ || use_icp_on_pointcloud_) {
     object_surfels_ = boost::make_shared<modelify::PointSurfelCloudType>(
-        estimateNormals(object_pointcloud_, *mesh_model_));
+        estimateNormals(object_pointcloud_, *mesh_model_, verbose_));
   }
   if (use_3d_features_) {
     object_keypoints_.reset(new modelify::PointSurfelCloudType());
@@ -106,22 +113,23 @@ bool ObjectDetector3D::initializeObjectMesh() {
       case kFpfh:
         object_descriptors_fpfh_.reset(new modelify::DescriptorFPFHCloudType());
         success = compute3dFeatures<modelify::DescriptorFPFH>(
-            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_fpfh_);
+            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_fpfh_, verbose_);
         break;
       case kShot:
         object_descriptors_shot_.reset(new modelify::DescriptorSHOTCloudType());
         success = compute3dFeatures<modelify::DescriptorSHOT>(
-            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_shot_);
+            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_shot_, verbose_);
         break;
       case k3dSmoothNet:
         object_descriptors_learned_.reset(new pcl::PointCloud<LearnedDescriptor>());
-        success = compute3dFeatures<LearnedDescriptor>(
-            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_learned_);
+        success =
+            compute3dFeatures<LearnedDescriptor>(keypoint_type_, object_surfels_, object_keypoints_,
+                                                 object_descriptors_learned_, verbose_);
         break;
       case kUnit:
         object_descriptors_unit_.reset(new pcl::PointCloud<UnitDescriptor>());
-        success = compute3dFeatures<UnitDescriptor>(keypoint_type_, object_surfels_,
-                                                    object_keypoints_, object_descriptors_unit_);
+        success = compute3dFeatures<UnitDescriptor>(
+            keypoint_type_, object_surfels_, object_keypoints_, object_descriptors_unit_, verbose_);
         break;
       default:
         LOG(ERROR) << "Unknown descriptor type! " << descriptor_type_;
@@ -136,7 +144,9 @@ bool ObjectDetector3D::initializeObjectMesh() {
       LOG(ERROR) << "Could not compute 3D features of object pointcloud!";
       return false;
     }
-    LOG(INFO) << "Obtained 3D features of object pointcloud";
+    if (verbose_) {
+      LOG(INFO) << "Obtained 3D features of object pointcloud";
+    }
   }
 
   // Visualize object
@@ -151,7 +161,9 @@ bool ObjectDetector3D::initializeObjectMesh() {
       visualizeKeypoints(object_keypoints_, ros::Time::now(), detection_frame_id_,
                          object_keypoint_pub_);
     }
-    LOG(INFO) << "Visualizing object";
+    if (verbose_) {
+      LOG(INFO) << "Visualizing object";
+    }
   }
 
   return true;
@@ -168,6 +180,7 @@ void ObjectDetector3D::getParamsFromRos() {
   nh_private_.param("publish_static_transform", publish_static_transform_,
                     publish_static_transform_);
   nh_private_.param("reference_frame_id", reference_frame_id_, reference_frame_id_);
+  nh_private_.param("verbose", verbose_, verbose_);
   nh_private_.param("refine_using_icp", refine_using_icp_, refine_using_icp_);
   nh_private_.param("use_icp_on_pointcloud", use_icp_on_pointcloud_, use_icp_on_pointcloud_);
   nh_private_.param("icp_config_file", icp_config_file_, icp_config_file_);
@@ -175,20 +188,23 @@ void ObjectDetector3D::getParamsFromRos() {
                     correspondence_threshold_);
   nh_private_.param("downsampling", downsampling_resolution_, downsampling_resolution_);
 
-  LOG(INFO) << "Parameters:"
-            << "\n - pointcloud_topic: " << pointcloud_topic_
-            << "\n - scene_topic: " << scene_topic_ << "\n - object_frame_id: " << object_frame_id_
-            << "\n - use_3d_features: " << use_3d_features_
-            << "\n - use_inlier_ratio_filter: " << use_inlier_ratio_filter_
-            << "\n - min_inlier_ratio: " << min_inlier_ratio_
-            << "\n - use_kalman_filter: " << use_kalman_filter_
-            << "\n - publish_static_transform: " << publish_static_transform_
-            << "\n - reference_frame_id: " << reference_frame_id_
-            << "\n - refine_using_icp: " << refine_using_icp_
-            << "\n - use_icp_on_pointcloud: " << use_icp_on_pointcloud_
-            << "\n - icp_config_file: " << icp_config_file_
-            << "\n - correspondence_threshold: " << correspondence_threshold_
-            << "\n - downsampling_resolution: " << downsampling_resolution_;
+  if (verbose_) {
+    LOG(INFO) << "Parameters:"
+              << "\n - pointcloud_topic: " << pointcloud_topic_
+              << "\n - scene_topic: " << scene_topic_
+              << "\n - object_frame_id: " << object_frame_id_
+              << "\n - use_3d_features: " << use_3d_features_
+              << "\n - use_inlier_ratio_filter: " << use_inlier_ratio_filter_
+              << "\n - min_inlier_ratio: " << min_inlier_ratio_
+              << "\n - use_kalman_filter: " << use_kalman_filter_
+              << "\n - publish_static_transform: " << publish_static_transform_
+              << "\n - reference_frame_id: " << reference_frame_id_ << "\n - verbose: " << verbose_
+              << "\n - refine_using_icp: " << refine_using_icp_
+              << "\n - use_icp_on_pointcloud: " << use_icp_on_pointcloud_
+              << "\n - icp_config_file: " << icp_config_file_
+              << "\n - correspondence_threshold: " << correspondence_threshold_
+              << "\n - downsampling: " << downsampling_resolution_;
+  }
 
   std::string keypoint_type;
   nh_private_.param("keypoint_type", keypoint_type, keypoint_type);
@@ -207,7 +223,9 @@ void ObjectDetector3D::getParamsFromRos() {
       LOG(INFO) << KeypointNames[i];
     }
   }
-  LOG(INFO) << "Using keypoint type " << KeypointNames[keypoint_type_];
+  if (verbose_) {
+    LOG(INFO) << "Using keypoint type " << KeypointNames[keypoint_type_];
+  }
 
   std::string descriptor_type;
   nh_private_.param("descriptor_type", descriptor_type, descriptor_type);
@@ -226,7 +244,9 @@ void ObjectDetector3D::getParamsFromRos() {
       LOG(INFO) << DescriptorNames[i];
     }
   }
-  LOG(INFO) << "Using descriptor type " << DescriptorNames[descriptor_type_];
+  if (verbose_) {
+    LOG(INFO) << "Using descriptor type " << DescriptorNames[descriptor_type_];
+  }
 
   std::string matching_method;
   nh_private_.param("matching_method", matching_method, matching_method);
@@ -245,7 +265,9 @@ void ObjectDetector3D::getParamsFromRos() {
       LOG(INFO) << MatchingMethodNames[i];
     }
   }
-  LOG(INFO) << "Using matching method " << MatchingMethodNames[matching_method_];
+  if (verbose_) {
+    LOG(INFO) << "Using matching method " << MatchingMethodNames[matching_method_];
+  }
 
   // Kalman initialization
   nh_private_.param("use_kalman_filter", use_kalman_filter_, use_kalman_filter_);
@@ -277,8 +299,10 @@ void ObjectDetector3D::subscribeToTopics() {
                                             &ObjectDetector3D::objectDetectionCallback, this);
   scene_pointcloud_sub_ =
       nh_.subscribe(scene_topic_, queue_size, &ObjectDetector3D::sceneCallback, this);
-  LOG(INFO) << "Subscribed to pointcloud topic [" << detection_pointcloud_sub_.getTopic() << "]";
-  LOG(INFO) << "Subscribed to scene topic [" << scene_pointcloud_sub_.getTopic() << "]";
+  if (verbose_) {
+    LOG(INFO) << "Subscribed to pointcloud topic [" << detection_pointcloud_sub_.getTopic() << "]";
+    LOG(INFO) << "Subscribed to scene topic [" << scene_pointcloud_sub_.getTopic() << "]";
+  }
 }
 
 void ObjectDetector3D::advertiseTopics() {
@@ -297,8 +321,7 @@ void ObjectDetector3D::advertiseTopics() {
       nh_private_.advertise<visualization_msgs::MarkerArray>("correspondences", 1, true);
   normals_pub_ = nh_private_.advertise<visualization_msgs::MarkerArray>("surface_normals", 1, true);
 
-  constexpr bool verbose = true;
-  if (verbose) {
+  if (verbose_) {
     LOG(INFO) << "Publishing object pointcloud to topic [" << object_pointcloud_pub_.getTopic()
               << "]";
     LOG(INFO) << "Publishing object mesh to topic [" << object_mesh_pub_.getTopic() << "]";
@@ -358,9 +381,9 @@ bool ObjectDetector3D::processDetection() {
   if (use_3d_features_ || use_icp_on_pointcloud_) {
     modelify::PointSurfelCloudType::Ptr object_surfels =
         boost::make_shared<modelify::PointSurfelCloudType>(
-            estimateNormals(object_pointcloud_, *mesh_model_));
-    detection_surfels =
-        boost::make_shared<modelify::PointSurfelCloudType>(estimateNormals(detection_pointcloud_));
+            estimateNormals(object_pointcloud_, *mesh_model_, verbose_));
+    detection_surfels = boost::make_shared<modelify::PointSurfelCloudType>(
+        estimateNormals(detection_pointcloud_, verbose_));
   }
 
   // Get initial alignment
@@ -377,12 +400,15 @@ bool ObjectDetector3D::processDetection() {
       pcl::PointCloud<pcl::PointXYZ> filtered_pointcloud;
       voxel_grid_filter.filter(filtered_pointcloud);
       detection_pointcloud_ = filtered_pointcloud;
-      LOG(INFO) << "Detection pointcloud downsampled to resolution of " << downsampling_resolution_
-                << " m, resulting in " << detection_pointcloud_.size() << " points";
-      LOG(INFO)
-          << "Time downsampling: "
-          << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling).count()
-          << " s";
+      if (verbose_) {
+        LOG(INFO) << "Detection pointcloud downsampled to resolution of "
+                  << downsampling_resolution_ << " m, resulting in " << detection_pointcloud_.size()
+                  << " points";
+        LOG(INFO) << "Time downsampling: "
+                  << std::chrono::duration<float>(std::chrono::steady_clock::now() - start_sampling)
+                         .count()
+                  << " s";
+      }
     }
 
     // Compute transform between detection and object
@@ -392,45 +418,47 @@ bool ObjectDetector3D::processDetection() {
       case kFpfh: {
         typename pcl::PointCloud<modelify::DescriptorFPFH>::Ptr detection_descriptors_fpfh(
             new pcl::PointCloud<modelify::DescriptorFPFH>());
-        compute3dFeatures<modelify::DescriptorFPFH>(
-            keypoint_type_, detection_surfels, detection_keypoints, detection_descriptors_fpfh);
+        compute3dFeatures<modelify::DescriptorFPFH>(keypoint_type_, detection_surfels,
+                                                    detection_keypoints, detection_descriptors_fpfh,
+                                                    verbose_);
         T_object_detection_init = computeTransformUsing3dFeatures<modelify::DescriptorFPFH>(
             matching_method_, detection_surfels, detection_keypoints, detection_descriptors_fpfh,
             object_surfels_, object_keypoints_, object_descriptors_fpfh_, correspondence_threshold_,
-            correspondences);
+            correspondences, verbose_);
         break;
       }
       case kShot: {
         typename pcl::PointCloud<modelify::DescriptorSHOT>::Ptr detection_descriptors_shot(
             new pcl::PointCloud<modelify::DescriptorSHOT>());
-        compute3dFeatures<modelify::DescriptorSHOT>(
-            keypoint_type_, detection_surfels, detection_keypoints, detection_descriptors_shot);
+        compute3dFeatures<modelify::DescriptorSHOT>(keypoint_type_, detection_surfels,
+                                                    detection_keypoints, detection_descriptors_shot,
+                                                    verbose_);
         T_object_detection_init = computeTransformUsing3dFeatures<modelify::DescriptorSHOT>(
             matching_method_, detection_surfels, detection_keypoints, detection_descriptors_shot,
             object_surfels_, object_keypoints_, object_descriptors_shot_, correspondence_threshold_,
-            correspondences);
+            correspondences, verbose_);
         break;
       }
       case k3dSmoothNet: {
         typename pcl::PointCloud<LearnedDescriptor>::Ptr detection_descriptors_learned(
             new pcl::PointCloud<LearnedDescriptor>());
         compute3dFeatures<LearnedDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
-                                             detection_descriptors_learned);
+                                             detection_descriptors_learned, verbose_);
         T_object_detection_init = computeTransformUsing3dFeatures<LearnedDescriptor>(
             matching_method_, detection_surfels, detection_keypoints, detection_descriptors_learned,
             object_surfels_, object_keypoints_, object_descriptors_learned_,
-            correspondence_threshold_, correspondences);
+            correspondence_threshold_, correspondences, verbose_);
         break;
       }
       case kUnit: {
         typename pcl::PointCloud<UnitDescriptor>::Ptr detection_descriptors_unit(
             new pcl::PointCloud<UnitDescriptor>());
         compute3dFeatures<UnitDescriptor>(keypoint_type_, detection_surfels, detection_keypoints,
-                                          detection_descriptors_unit);
+                                          detection_descriptors_unit, verbose_);
         T_object_detection_init = computeTransformUsing3dFeatures<UnitDescriptor>(
             matching_method_, detection_surfels, detection_keypoints, detection_descriptors_unit,
             object_surfels_, object_keypoints_, object_descriptors_unit_, correspondence_threshold_,
-            correspondences);
+            correspondences, verbose_);
         break;
       }
       default: {
@@ -442,7 +470,7 @@ bool ObjectDetector3D::processDetection() {
         return false;
       }
 
-      T_object_detection_init = T_object_detection_init.inverse();
+        T_object_detection_init = T_object_detection_init.inverse();
     }
 
     // Visualizations
@@ -458,17 +486,17 @@ bool ObjectDetector3D::processDetection() {
                              detection_frame_id_, correspondences_pub_);
   } else {
     // Get initial guess with PCA
-    T_object_detection_init = pca(mesh_model_, detection_pointcloud_);
+    T_object_detection_init = pca(mesh_model_, detection_pointcloud_, verbose_);
 
     // Optimize PCA orientation
     try {
       if (use_icp_on_pointcloud_) {
         // Add normals to pointcloud
-        T_object_detection_init =
-            optimizeTransformation(object_surfels_, detection_surfels, T_object_detection_init);
+        T_object_detection_init = optimizeTransformation(object_surfels_, detection_surfels,
+                                                         T_object_detection_init, verbose_);
       } else {
-        T_object_detection_init =
-            optimizeTransformation(*mesh_model_, detection_pointcloud_, T_object_detection_init);
+        T_object_detection_init = optimizeTransformation(*mesh_model_, detection_pointcloud_,
+                                                         T_object_detection_init, verbose_);
       }
     } catch (...) {
       LOG(WARNING) << "Alignment optimization failed!";
@@ -494,10 +522,12 @@ bool ObjectDetector3D::processDetection() {
     K = P_kalman_ * (P_kalman_ + R_kalman_).inverse();
     Eigen::VectorXf x(7);
     x = x_kalman_ + K * (z_kalman - x_kalman_);
-    LOG(INFO) << "Temporary Kalman update:";
-    LOG(INFO) << "Observation z:\n" << z_kalman.transpose();
-    LOG(INFO) << "State x before:\n" << x_kalman_.transpose();
-    LOG(INFO) << "State x after:\n" << x.transpose();
+    if (verbose_) {
+      LOG(INFO) << "Temporary Kalman update:";
+      LOG(INFO) << "Observation z:\n" << z_kalman.transpose();
+      LOG(INFO) << "State x before:\n" << x_kalman_.transpose();
+      LOG(INFO) << "State x after:\n" << x.transpose();
+    }
 
     T_kalman.getPosition().x() = x_kalman_(0);
     T_kalman.getPosition().y() = x_kalman_(1);
@@ -519,12 +549,14 @@ bool ObjectDetector3D::processDetection() {
     inlier_ratio_filter_ =
         computeInlierRatio(use_icp_on_pointcloud_, object_surfels_, detection_surfels, *mesh_model_,
                            detection_pointcloud_, T_object_detection_filter_);
-    if (use_3d_features_) {
-      LOG(INFO) << "Inlier ratio features: " << inlier_ratio_pca;
-      LOG(INFO) << "Inlier ratio filter:   " << inlier_ratio_filter_;
-    } else {
-      LOG(INFO) << "Inlier ratio PCA:    " << inlier_ratio_pca;
-      LOG(INFO) << "Inlier ratio filter: " << inlier_ratio_filter_;
+    if (verbose_) {
+      if (use_3d_features_) {
+        LOG(INFO) << "Inlier ratio features: " << inlier_ratio_pca;
+        LOG(INFO) << "Inlier ratio filter:   " << inlier_ratio_filter_;
+      } else {
+        LOG(INFO) << "Inlier ratio PCA:    " << inlier_ratio_pca;
+        LOG(INFO) << "Inlier ratio filter: " << inlier_ratio_filter_;
+      }
     }
     if (inlier_ratio_filter_ > inlier_ratio_pca) {
       T_object_detection_init = T_object_detection_filter_;
@@ -537,7 +569,8 @@ bool ObjectDetector3D::processDetection() {
     if (use_3d_features_) {
       // Refine using ICP
       modelify::PointSurfelCloudType::Ptr scene_surfels(
-          boost::make_shared<modelify::PointSurfelCloudType>(estimateNormals(scene_pointcloud_)));
+          boost::make_shared<modelify::PointSurfelCloudType>(
+              estimateNormals(scene_pointcloud_, verbose_)));
       // Validate initial alignment
       modelify::registration_toolbox::ICPParams icp_params;
       double cloud_resolution = modelify::kInvalidCloudResolution;
@@ -549,9 +582,11 @@ bool ObjectDetector3D::processDetection() {
         modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
             object_surfels_, detection_surfels, T_object_detection_init.getTransformationMatrix(),
             icp_params, cloud_resolution, &mean_squared_distance, &inlier_ratio, &outlier_indices);
-        LOG(INFO) << "Initial validation results: \n"
-                  << mean_squared_distance << " mean squared distance, " << inlier_ratio
-                  << " inlier ratio";
+        if (verbose_) {
+          LOG(INFO) << "Initial validation results: \n"
+                    << mean_squared_distance << " mean squared distance, " << inlier_ratio
+                    << " inlier ratio";
+        }
         success = true;
       } catch (...) {
         LOG(ERROR) << "Validation of alignment failed!";
@@ -560,9 +595,10 @@ bool ObjectDetector3D::processDetection() {
       // Refine transformation with ICP
       Transformation T_icp;
       if (use_icp_on_pointcloud_) {
-        T_icp = icp(object_pointcloud_, scene_pointcloud_, T_object_detection_init);
+        T_icp = icp(object_pointcloud_, scene_pointcloud_, T_object_detection_init, verbose_);
       } else {
-        T_icp = icp(mesh_model_, scene_pointcloud_, T_object_detection_init, icp_config_file_);
+        T_icp = icp(mesh_model_, scene_pointcloud_, T_object_detection_init, icp_config_file_,
+                    verbose_);
       }
 
       // Validate alignment ICP
@@ -573,9 +609,11 @@ bool ObjectDetector3D::processDetection() {
         modelify::registration_toolbox::validateAlignment<modelify::PointSurfelType>(
             object_surfels_, detection_surfels, T_icp.getTransformationMatrix(), icp_params,
             cloud_resolution, &mean_squared_distance_icp, &inlier_ratio_icp, &outlier_indices);
-        LOG(INFO) << "ICP validation results: \n"
-                  << mean_squared_distance_icp << " mean squared distance, " << inlier_ratio_icp
-                  << " inlier ratio";
+        if (verbose_) {
+          LOG(INFO) << "ICP validation results: \n"
+                    << mean_squared_distance_icp << " mean squared distance, " << inlier_ratio_icp
+                    << " inlier ratio";
+        }
         success &= true;
       } catch (...) {
         LOG(ERROR) << "Validation of alignment failed!";
@@ -600,10 +638,11 @@ bool ObjectDetector3D::processDetection() {
     } else {
       // Get final alignment with ICP
       if (use_icp_on_pointcloud_) {
-        T_object_detection = icp(object_pointcloud_, scene_pointcloud_, T_object_detection_init);
-      } else {
         T_object_detection =
-            icp(mesh_model_, scene_pointcloud_, T_object_detection_init, icp_config_file_);
+            icp(object_pointcloud_, scene_pointcloud_, T_object_detection_init, verbose_);
+      } else {
+        T_object_detection = icp(mesh_model_, scene_pointcloud_, T_object_detection_init,
+                                 icp_config_file_, verbose_);
       }
     }
   }
@@ -618,18 +657,22 @@ bool ObjectDetector3D::processDetection() {
         T_kalman.getRotation().z();
 
     // Perform Kalman update
-    LOG(INFO) << "Kalman update:";
-    LOG(INFO) << "Covariance P before:\n" << P_kalman_;
-    LOG(INFO) << "Observation z:\n" << z_kalman.transpose();
-    LOG(INFO) << "State x before:\n" << x_kalman_.transpose();
+    if (verbose_) {
+      LOG(INFO) << "Kalman update:";
+      LOG(INFO) << "Covariance P before:\n" << P_kalman_;
+      LOG(INFO) << "Observation z:\n" << z_kalman.transpose();
+      LOG(INFO) << "State x before:\n" << x_kalman_.transpose();
+    }
 
     K_kalman_ = P_kalman_ * (P_kalman_ + R_kalman_).inverse();
     x_kalman_ = x_kalman_ + K_kalman_ * (z_kalman - x_kalman_);
     P_kalman_ = (Eigen::MatrixXf::Identity(7, 7) - K_kalman_) * P_kalman_;
-    LOG(INFO) << "State x after:\n" << x_kalman_.transpose();
-    LOG(INFO) << "Measurement uncertainty R:\n" << R_kalman_;
-    LOG(INFO) << "Gain K:\n" << K_kalman_;
-    LOG(INFO) << "Covariance P:\n" << P_kalman_;
+    if (verbose_) {
+      LOG(INFO) << "State x after:\n" << x_kalman_.transpose();
+      LOG(INFO) << "Measurement uncertainty R:\n" << R_kalman_;
+      LOG(INFO) << "Gain K:\n" << K_kalman_;
+      LOG(INFO) << "Covariance P:\n" << P_kalman_;
+    }
 
     T_kalman.getPosition().x() = x_kalman_(0);
     T_kalman.getPosition().y() = x_kalman_(1);
@@ -645,8 +688,10 @@ bool ObjectDetector3D::processDetection() {
     double inlier_ratio_icp =
         computeInlierRatio(use_icp_on_pointcloud_, object_surfels_, detection_surfels, *mesh_model_,
                            detection_pointcloud_, T_object_detection);
-    LOG(INFO) << "Inlier ratio ICP:    " << inlier_ratio_icp;
-    LOG(INFO) << "Inlier ratio filter: " << inlier_ratio_filter_;
+    if (verbose_) {
+      LOG(INFO) << "Inlier ratio ICP:    " << inlier_ratio_icp;
+      LOG(INFO) << "Inlier ratio filter: " << inlier_ratio_filter_;
+    }
 
     // Check minimum inier ratio
     const double inlier_ratio = std::max(inlier_ratio_filter_, inlier_ratio_icp);
@@ -663,9 +708,11 @@ bool ObjectDetector3D::processDetection() {
     }
   }
 
-  LOG(INFO) << "Time matching total: "
-            << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
-            << " s";
+  if (verbose_) {
+    LOG(INFO) << "Time matching total: "
+              << std::chrono::duration<float>(std::chrono::steady_clock::now() - time_start).count()
+              << " s";
+  }
 
   // Publish transformations to TF
   Transformation T_object_world;
@@ -708,8 +755,7 @@ bool ObjectDetector3D::lookupTransform(const std::string& target_frame,
     return true;
   } else {
     LOG(ERROR) << "Could not get transform from frame " << target_frame << " to frame "
-               << source_frame << " at time " << timestamp << "!";
-    LOG(INFO) << "Error message: " << tf_error_str;
+               << source_frame << " at time " << timestamp << "!\nMessage: " << tf_error_str;
     return false;
   }
 }

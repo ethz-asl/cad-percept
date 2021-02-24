@@ -34,6 +34,7 @@
     <arg name="use_inlier_ratio_filter" value="$(arg use_inlier_ratio_filter)"/>
     <arg name="use_kalman_filter" value="$(arg use_kalman_filter)"/>
     <arg name="use_3d_features" value="$(arg use_3d_features)"/>
+    <arg name="verbose" default="$(arg verbose)"/>
     <arg name="refine_using_icp" value="$(arg refine_using_icp)"/>
     <arg name="use_icp_on_pointcloud" value="$(arg use_icp_on_pointcloud)"/>
   </include>
