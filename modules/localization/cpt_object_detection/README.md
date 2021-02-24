@@ -1,11 +1,11 @@
-# cpt object detection
+# cpt_object_detection
 This package contains a node refining object detections from a rough pointcloud 
 to the exact position of the provided object mesh.
 
 ## Basic usage
 A demo of the usage of this package can be launched with
 ```
-roslaunch cpt_object_detection object_detection_ICP.launch
+roslaunch cpt_object_detection object_detection_mesh.launch
 ```
 This will start the object detection node `cpt_object_detection_node`, together
 with an RVIZ visualization and a rosbag containing the previous detection steps.
@@ -24,7 +24,9 @@ its detection in space.
 The object mesh is loaded from an .off file, where the filepath is given in the
 parameter ``off_model``.
 The node subscribes to a pointcloud via the ROS network. 
-The topic name is set using the parameter ``pointcloud_topic``.
+The topic name is set using the parameter ``detection_pointcloud_topic``.
+For better alignment, a pointcloud of the scene of the detection may additionally
+be provided, using the topic ``scene_pointcloud_topic``.
 
 ### Output
 As a result of the object detection matching, we publish the transform from the 
@@ -83,17 +85,27 @@ Matching
 - Fast Global Registration
 - Teaser
 
+### Detection Filters
+To make the detections more stable with time, two filters are implemented:
+* Inlier Ratio, using a minimum inlier ratio and determining the initial transformation for the final ICP alignment based on the higher inlier ratio, and
+* Kalman Filter.
+
 ### Parameters
 The following list summarizes the parameters that can be set in the launch file:
 - `off_model`  
   The filepath where the object mesh is stored as a `.off` file.
   No default value.
   
-- `pointcloud_topic`  
+- `detection_pointcloud_topic`  
   The name of the topic we subscribe to containing the 
   preprocessed pointclouds of the object detection.  
-  Default value: `/camera/depth/color/points`
-  
+  Default value: `/detection_projector/object_pcl_3d`
+
+- `scene_pointcloud_topic`  
+  The name of the topic we subscribe to containing the
+  preprocessed pointclouds of the object detection.  
+  Default value: `/detection_projector/scene_pcl`
+
 - `icp_config_file`  
   The filepath of the config file for ICP used by 
   `libpointmatcher`.  
