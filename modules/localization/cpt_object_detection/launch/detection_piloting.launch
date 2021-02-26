@@ -3,16 +3,16 @@
 <launch>
 
   <!-- 2D -->
-  <arg name="verbose" default="true"/>
+  <arg name="verbose" default="false"/>
   <arg name="verbose_debug" default="false"/>
   <arg name="find_object" default="true"/>
   <arg name="yolo" default="false"/>
-  <arg name="use_depth_image" default="true"/>
+  <arg name="use_depth_image" default="false"/>
   <arg name="camera_name" default="arm_camera"/>
 
   <!-- 3D -->
   <arg name="reference_frame_id" default="arm_base_link"/>
-  <arg name="use_3d_features" default="true"/>
+  <arg name="use_3d_features" default="false"/>
   <arg name="refine_using_icp" default="true"/>
   <arg name="use_icp_on_pointcloud" default="true"/>
   <arg name="use_inlier_ratio_filter" default="false"/>

@@ -8,7 +8,6 @@ downsampling: 0.0
 # Object
 object_type: valve
 object_frame_id: object_detection_mesh
-visualize_object_on_startup: true
 num_points_object_pointcloud: 5000
 
 # Alignment Method
@@ -30,3 +29,7 @@ kf_p_translation: 1
 kf_p_rotation: 10
 kf_r_translation: 0.1
 kf_r_rotation: 1
+
+# Additional parameters
+queue_size: 1
+visualize_object_on_startup: true

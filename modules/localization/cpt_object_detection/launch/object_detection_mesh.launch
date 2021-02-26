@@ -4,10 +4,9 @@
   <arg name="verbose" default="false"/>
 
   <!-- Object and Preparation -->
-  <arg name="object_off_path"
+  <arg name="off_model"
        default="$(find cpt_object_detection)/resources/handwheel_mockup_24cm_scaled.off"/>
   <arg name="reference_frame_id" default="arm_base_link"/>
-  <arg name="num_points_object_pointcloud" default="5000"/>
 
   <!-- Alignment Method -->
   <arg name="use_3d_features" default="false"/>
@@ -27,7 +26,7 @@
 
     <param name="verbose" value="$(arg verbose)"/>
 
-    <param name="off_model" value="$(arg object_off_path)"/>
+    <param name="off_model" value="$(arg off_model)"/>
     <param name="reference_frame_id" value="$(arg reference_frame_id)"/>
 
     <param name="use_inlier_ratio_filter" value="$(arg use_inlier_ratio_filter)"/>
