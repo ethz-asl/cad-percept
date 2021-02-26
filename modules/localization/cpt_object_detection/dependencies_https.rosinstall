@@ -1,0 +1,64 @@
+- git:
+    local-name: catkin_simple
+    uri: https://github.com/catkin/catkin_simple.git
+- git:
+    local-name: ceres_catkin
+    uri: https://github.com/ethz-asl/ceres_catkin.git
+- git:
+    local-name: cgal_catkin
+    uri: https://github.com/ethz-asl/cgal_catkin.git
+    version: 88b1804b1c678f3ac24ebd3dd1dcfbbc1534c3a0
+- git:
+    local-name: eigen_catkin
+    uri: https://github.com/ethz-asl/eigen_catkin.git
+- git:
+    local-name: eigen_checks
+    uri: https://github.com/ethz-asl/eigen_checks.git
+- git:
+    local-name: gflags_catkin
+    uri: https://github.com/ethz-asl/gflags_catkin.git
+- git:
+    local-name: glog_catkin
+    uri: https://github.com/ethz-asl/glog_catkin.git
+- git:
+    local-name: json_catkin
+    uri: https://github.com/ethz-asl/json_catkin.git
+- git:
+    local-name: minkindr_ros
+    uri: https://github.com/ethz-asl/minkindr_ros.git
+- git:
+    local-name: libnabo
+    uri: https://github.com/ethz-asl/libnabo.git
+- git:
+    local-name: libpointmatcher
+    uri: https://github.com/ethz-asl/libpointmatcher.git
+- git:
+    local-name: minkindr
+    uri: https://github.com/ethz-asl/minkindr.git
+- git:
+    local-name: minkindr_ros
+    uri: https://github.com/ethz-asl/minkindr_ros.git
+- git:
+    local-name: modelify
+    uri: https://github.com/ethz-asl/modelify.git
+- git:
+    local-name: opencv3_catkin
+    uri: https://github.com/ethz-asl/opencv3_catkin.git
+- git:
+    local-name: pcl_catkin
+    uri: https://github.com/ethz-asl/pcl_catkin.git
+- git:
+    local-name: protobuf_catkin
+    uri: https://github.com/ethz-asl/protobuf_catkin.git
+- git:
+    local-name: suitesparse
+    uri: https://github.com/ethz-asl/suitesparse.git
+- git:
+    local-name: TEASER-plusplus
+    uri: https://github.com/MIT-SPARK/TEASER-plusplus.git
+- git:
+    local-name: voxblox
+    uri: https://github.com/ethz-asl/voxblox.git
+- git:
+    local-name: yaml_cpp_catkin
+    uri: https://github.com/ethz-asl/yaml_cpp_catkin.git

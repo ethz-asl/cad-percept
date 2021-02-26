@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+  <!-- 2D -->
+  <arg name="verbose" default="false"/>
+  <arg name="verbose_debug" default="false"/>
+  <arg name="find_object" default="true"/>
+  <arg name="yolo" default="false"/>
+  <arg name="use_depth_image" default="false"/>
+  <arg name="camera_name" default="arm_camera"/>
+
+  <!-- 3D -->
+  <arg name="reference_frame_id" default="arm_base_link"/>
+  <arg name="use_3d_features" default="false"/>
+  <arg name="refine_using_icp" default="true"/>
+  <arg name="use_icp_on_pointcloud" default="true"/>
+  <arg name="use_inlier_ratio_filter" default="false"/>
+  <arg name="use_kalman_filter" default="false"/>
+
+  <!-- Detect object in image and find pointcloud -->
+  <include file="$(find piloting_detector)/launch/master.launch">
+    <arg name="find_object" default="$(arg find_object)"/>
+    <arg name="yolo" default="$(arg yolo)"/>
+    <arg name="verbose" default="$(arg verbose)"/>
+    <arg name="verbose_debug" default="$(arg verbose_debug)"/>
+    <arg name="use_depth_image" default="$(arg use_depth_image)"/>
+    <arg name="camera_name" default="$(arg camera_name)"/>
+  </include>
+
+  <!-- Get 6D pose and fit mesh -->
+  <include file="$(find cpt_object_detection)/launch/object_detection_mesh.launch">
+    <arg name="reference_frame_id" value="$(arg reference_frame_id)"/>
+    <arg name="use_inlier_ratio_filter" value="$(arg use_inlier_ratio_filter)"/>
+    <arg name="use_kalman_filter" value="$(arg use_kalman_filter)"/>
+    <arg name="use_3d_features" value="$(arg use_3d_features)"/>
+    <arg name="verbose" default="$(arg verbose)"/>
+    <arg name="refine_using_icp" value="$(arg refine_using_icp)"/>
+    <arg name="use_icp_on_pointcloud" value="$(arg use_icp_on_pointcloud)"/>
+  </include>
+
+</launch>
