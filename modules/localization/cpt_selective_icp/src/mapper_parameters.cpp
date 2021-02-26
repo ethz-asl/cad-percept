@@ -19,7 +19,8 @@ MapperParameters::MapperParameters()
       full_icp_primer_trigger(getParam<bool>("fullICPPrimerTrigger", false)),
       standalone_icp(getParam<bool>("standaloneICP", false)),
       path(getParam<std::string>("path", "fail")),
-      output(getParam<bool>("output", false)) {}
+      output(getParam<bool>("output", false)),
+      publish_distance(getParam<bool>("publishDistance", false)) {}
 MapperParameters::~MapperParameters() {}
 
 }  // namespace selective_icp
