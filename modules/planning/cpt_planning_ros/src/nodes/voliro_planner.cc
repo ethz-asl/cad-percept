@@ -44,9 +44,9 @@ class VoliroPlanner {
     Eigen::Affine3d tf_eigen;
     tf::StampedTransform transform;
 
-    listener_.waitForTransform("mesh", "world", ros::Time(0), ros::Duration(3.0));
+    listener_.waitForTransform("world", "mesh", ros::Time(0), ros::Duration(3.0));
 
-    listener_.lookupTransform("mesh", "world", ros::Time(0), transform);
+    listener_.lookupTransform("world", "mesh", ros::Time(0), transform);
     tf::transformTFToEigen(transform, tf_eigen);
     model_->transform(
         cad_percept::cgal::eigenTransformationToCgalTransformation(tf_eigen.matrix()));
@@ -183,6 +183,8 @@ class VoliroPlanner {
     tf::transformTFToEigen(transform, tf_eigen);
     last_odom_ = tf_eigen.translation();
 
+
+    auto cache_last_target = last_target_uv_;
     if (joy->buttons[2]) {
       //get random pos on mesh
       Eigen::Vector3d random_start;
@@ -194,7 +196,7 @@ class VoliroPlanner {
       std::cout << end_tmp << std::endl;
 
     } else {
-      end_tmp << joy->axes[0] * 0.5, -joy->axes[1] * 0.5, -joy->axes[4] * 0.1;
+      end_tmp << joy->axes[0] * 0.1, -joy->axes[1] * 0.1, -joy->axes[4] * 0.1;
       end_tmp.x() += last_target_uv_.x();
       end_tmp.y() += last_target_uv_.y();
       end_tmp.z() += last_target_uv_.z();
@@ -204,7 +206,7 @@ class VoliroPlanner {
         (Eigen::Vector2d)mapping_->clipToManifold((Eigen::Vector2d)end_tmp.topRows<2>());
 
     last_target_uv_ = end_tmp;
-    last_target_uv_.z() = std::clamp(last_target_uv_.z(), 0.3, 3.0);
+    last_target_uv_.z() = std::clamp(last_target_uv_.z(), 0.0, 3.0);
 
     RMPG::VectorQ target_xyz = mapping_->pointUVHto3D(last_target_uv_);
 
@@ -227,7 +229,17 @@ class VoliroPlanner {
     integrator.resetTo(last_odom_, last_vel_);
 
 
+    // add relative angle
+    //relative_alpha_ += joy->axes[7] * 0.1;
+    relative_beta_ += joy->axes[6] * 0.1;
 
+    relative_alpha_ =
+        std::clamp(relative_alpha_, -M_PI / 4.0, M_PI / 4.0);
+
+    std::cout << relative_alpha_ << std::endl;
+
+    Eigen::AngleAxisd alpha_rot(relative_alpha_, Eigen::Vector3d::UnitY());
+    Eigen::AngleAxisd beta_rot(relative_beta_, Eigen::Vector3d::UnitZ());
 
 
     Eigen::Vector3d temppos;
@@ -235,6 +247,12 @@ class VoliroPlanner {
     for (double t = 0; t < 25.0; t += dt) {
       temppos = integrator.forwardIntegrate(policies, manifold_, dt);
 
+      if(!temppos.allFinite()){
+        last_target_uv_ = cache_last_target;
+        ROS_WARN("Error, stopping integration");
+        return;
+
+      }
       mav_msgs::EigenTrajectoryPoint pt;
       pt.time_from_start_ns = t * 1e9;
       integrator.getState(&pt.position_W, &pt.velocity_W, &pt.acceleration_W);
@@ -251,23 +269,16 @@ class VoliroPlanner {
       // Important: only use normal + one other axis
       // otherwise transformation could be a non-rectangular frame and an invalid
       // transform.
-      R.col(0) = -j.col(2);                  // negative normal becomes x
-      R.col(2) = -j.col(1);                  // one axis becomes z
+      R.col(0) =   -j.col(1);                  // one axis becomes x
+      R.col(2) =  -j.col(2);                  // negative normal becomes z
       R.col(1) = -R.col(0).cross(R.col(2));  // do the rest
 
-      // add relative angle
-      if (joy->buttons[10]) {
-        relative_alpha_ = 0.0;
-        relative_beta_ = 0.0;
-      } else {
-        relative_alpha_ =
-            std::clamp(relative_alpha_ + joy->axes[4] * 0.05, -M_PI / 2.0, M_PI / 2.0);
-        relative_beta_ = std::clamp(relative_beta_ + joy->axes[3] * 0.05, -M_PI / 2.0, M_PI / 2.0);
-      }
 
-      Eigen::AngleAxisd alpha_rot(relative_alpha_, Eigen::Vector3d::UnitY());
-      Eigen::AngleAxisd beta_rot(relative_beta_, Eigen::Vector3d::UnitZ());
-      pt.orientation_W_B = Eigen::Quaterniond(R);
+      pt.orientation_W_B = Eigen::Quaterniond(alpha_rot * beta_rot);
+      //pt.orientation_W_B.x() = 0.0;
+      //pt.orientation_W_B.y() = 0.0;
+      //pt.orientation_W_B.z() = 0.0;
+      //pt.orientation_W_B.w() = 1.0;
 
       trajectory.push_back(pt);
 
