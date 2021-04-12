@@ -8,6 +8,7 @@ namespace cad_percept {
 namespace cpt_reconstruction {
 class ReconstructionPointsPublisher {
  public:
+  ReconstructionPointsPublisher() = delete;
   ReconstructionPointsPublisher(ros::NodeHandle nodeHandle, std::string filename, int batch_size);
   void publishPoints();
 

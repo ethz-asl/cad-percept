@@ -33,7 +33,7 @@ void ReconstructionPointsPublisher::publishPoints() {
 
   ros::Publisher chatter_publisher =
       nodeHandle_.advertise<::cpt_reconstruction::coordinates>("point", 1000);
-  ros::Rate loop_rate(0.5);
+  ros::Rate loop_rate(3000);
 
   int count = 0;
   while (ros::ok() && count < cloud_scan->size()) {
