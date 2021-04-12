@@ -1,0 +1,15 @@
+digraph G {
+"IMUFRAME" -> "cam0"[label="Broadcaster: /imu_cam0_transformer\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1612783945.679 sec old)\nBuffer length: 0.000 sec\n"];
+"rslidar" -> "IMUFRAME"[label="Broadcaster: /imu_lidar_broadcaster\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1612783945.679 sec old)\nBuffer length: 0.000 sec\n"];
+"IMUFRAME" -> "cam2"[label="Broadcaster: /imu_cam2_transformer\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1612783945.679 sec old)\nBuffer length: 0.000 sec\n"];
+"IMUFRAME" -> "cam1"[label="Broadcaster: /imu_cam1_transformer\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1612783945.679 sec old)\nBuffer length: 0.000 sec\n"];
+"map" -> "rslidar"[label="Broadcaster: /mapper\nAverage rate: 10000.000 Hz\nMost recent transform: 1612783945.349 ( 0.331 sec old)\nBuffer length: 0.000 sec\n"];
+"map" -> "marker"[label="Broadcaster: /mesh_positioning\nAverage rate: 10000.000 Hz\nMost recent transform: 0.000 ( 1612783945.679 sec old)\nBuffer length: 0.000 sec\n"];
+"cam2" -> "cam2_rectified_frame"[label="Broadcaster: /pickelhaube_camera_manager\nAverage rate: 25.005 Hz\nMost recent transform: 1612783945.547 ( 0.133 sec old)\nBuffer length: 0.200 sec\n"];
+"cam0" -> "cam0_rectified_frame"[label="Broadcaster: /pickelhaube_camera_manager\nAverage rate: 25.005 Hz\nMost recent transform: 1612783945.596 ( 0.083 sec old)\nBuffer length: 0.200 sec\n"];
+"cam1" -> "cam1_rectified_frame"[label="Broadcaster: /pickelhaube_camera_manager\nAverage rate: 25.005 Hz\nMost recent transform: 1612783945.597 ( 0.083 sec old)\nBuffer length: 0.200 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1612783945.679"[ shape=plaintext ] ;
+ }->"map";
+}

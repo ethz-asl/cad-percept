@@ -29,6 +29,11 @@
 #include "cpt_selective_icp_dyn/References.h"
 #include "cpt_selective_icp_dyn/mapper_parameters.h"
 #include "utils.h"
+// new
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Quaternion.h>
 
 namespace cad_percept {
 namespace selective_icp_dyn {
@@ -63,7 +68,12 @@ class Mapper {
   PM::DataPointsFilters map_pre_filters_;
   PM::DataPointsFilters map_post_filters_;
   PM::TransformationParameters T_scanner_to_map_;
+  // new (2)
+  PM::TransformationParameters T_scanner_to_odom_;
+  PM::TransformationParameters T_odom_to_map_;
   std::shared_ptr<PM::Transformation> transformation_;
+  // new
+  int dimp1_;
 
   // Time
   ros::Time last_point_cloud_time_;
@@ -86,6 +96,8 @@ class Mapper {
   // Subscribers
   ros::Subscriber cloud_sub_;
   ros::Subscriber cad_sub_;
+  // new
+  ros::Subscriber odom_sub_;
 
   // Publishers
   ros::Publisher ref_mesh_pub_;
@@ -99,6 +111,9 @@ class Mapper {
   ros::Publisher point_pub_;
   ros::Publisher map_pub_;
   ros::Publisher distance_pc_pub_;
+  // new (2)
+  ros::Publisher odom_base_pub_;
+  ros::Publisher pose_base_pub_;
 
   // Services
   ros::ServiceServer load_published_map_srv_;
@@ -197,6 +212,11 @@ class Mapper {
    */
   void publishDistanceToMeshAsPC(const DP &aligned_cloud, const ros::Publisher &pub,
                                  const ros::Time &stamp);
+
+    // new
+    void publishTransforms(const ros::Time &stamp);
+    void publishCallback(const ros::Time& event);
+    void gotOdom(const nav_msgs::Odometry &odom_msg_in);
 };
 
 }  // namespace selective_icp_dyn

@@ -19,6 +19,9 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       nh_.subscribe(parameters_.scan_topic, parameters_.input_queue_size, &Mapper::gotCloud, this);
   cad_sub_ =
       nh_.subscribe(parameters_.cad_topic, parameters_.input_queue_size, &Mapper::gotCAD, this);
+  //new: odom subscribe
+  odom_sub_ = 
+      nh_.subscribe("/camera/odom/sample", parameters_.input_queue_size, &Mapper::gotOdom, this);
 
   load_published_map_srv_ =
       nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
@@ -114,6 +117,26 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     cad_trigger = false;
   }
 }
+
+//new
+void Mapper::gotOdom(const nav_msgs::Odometry &odom_msg_in){
+  std::string child_frame_id = odom_msg_in.child_frame_id;
+  std::string parent_frame_id = odom_msg_in.header.frame_id;
+
+  tf::Transform transform;
+  geometry_msgs::Pose pose = odom_msg_in.pose.pose;
+  geometry_msgs::Point position = pose.position;
+  geometry_msgs::Quaternion orientation = pose.orientation;
+
+  transform.setOrigin( tf::Vector3(position.x, position.y, position.z));
+  transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w));
+
+  tf_broadcaster_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_pose_frame", "camera_odom_frame"));
+
+  ROS_INFO("Broadcasted Odom Transform");
+
+}
+
 
 // TODO (Hermann) Rename to 'gotScan'?
 void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
@@ -267,6 +290,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         T_updated_scanner_to_map, parameters_.lidar_frame, parameters_.tf_map_frame, stamp);
     if (parameters_.standalone_icp) {
       tf_broadcaster_.sendTransform(tf_scanner_to_map);
+      ROS_INFO_STREAM("Scanner to map published");
     }
     if (pose_pub_.getNumSubscribers()) {
       pose_pub_.publish(tf_scanner_to_map);
