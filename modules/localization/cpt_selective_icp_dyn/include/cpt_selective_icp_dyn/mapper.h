@@ -67,8 +67,8 @@ class Mapper {
   PM::DataPointsFilters input_filters_;
   PM::DataPointsFilters map_pre_filters_;
   PM::DataPointsFilters map_post_filters_;
-  PM::TransformationParameters T_scanner_to_map_;
   // new (2)
+  PM::TransformationParameters T_scanner_to_map_;
   PM::TransformationParameters T_scanner_to_odom_;
   PM::TransformationParameters T_odom_to_map_;
   std::shared_ptr<PM::Transformation> transformation_;
@@ -111,9 +111,6 @@ class Mapper {
   ros::Publisher point_pub_;
   ros::Publisher map_pub_;
   ros::Publisher distance_pc_pub_;
-  // new (2)
-  ros::Publisher odom_base_pub_;
-  ros::Publisher pose_base_pub_;
 
   // Services
   ros::ServiceServer load_published_map_srv_;

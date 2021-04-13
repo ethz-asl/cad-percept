@@ -9,19 +9,28 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       nh_private_(nh_private),
       tf_listener_(ros::Duration(30)),
       odom_received_(0),
-      T_scanner_to_map_(PM::TransformationParameters::Identity(4, 4)),
+      T_scanner_to_map_(PM::TransformationParameters::Identity(4, 4)), 
+      T_scanner_to_odom_(PM::TransformationParameters::Identity(4, 4)),
+      T_odom_to_map_(PM::TransformationParameters::Identity(4, 4)),
       transformation_(PM::get().REG(Transformation).create("RigidTransformation")),
       cad_trigger(false),
       selective_icp_trigger(false),
       ref_mesh_ready(false),
       projection_count(0) {
+  
+  //Initially, odom position needs to be rotated to map by 90 degrees
+  T_odom_to_map_(0,0) = 0;
+  T_odom_to_map_(1,1) = 0;
+  T_odom_to_map_(0,1) = -1;
+  T_odom_to_map_(1,0) = 1;
+
   cloud_sub_ =
       nh_.subscribe(parameters_.scan_topic, parameters_.input_queue_size, &Mapper::gotCloud, this);
   cad_sub_ =
       nh_.subscribe(parameters_.cad_topic, parameters_.input_queue_size, &Mapper::gotCAD, this);
-  //new: odom subscribe
+  //subscibe to odom_topic from RealSense
   odom_sub_ = 
-      nh_.subscribe("/camera/odom/sample", parameters_.input_queue_size, &Mapper::gotOdom, this);
+      nh_.subscribe(parameters_.odom_topic, parameters_.input_queue_size, &Mapper::gotOdom, this);
 
   load_published_map_srv_ =
       nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
@@ -115,10 +124,11 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
     icp_.setMap(ref_dp);
 
     cad_trigger = false;
+    ROS_INFO("Ending gotCAD");
   }
 }
 
-//new
+// Callback function for broadcasting the odometry message from Realsense to tf
 void Mapper::gotOdom(const nav_msgs::Odometry &odom_msg_in){
   std::string child_frame_id = odom_msg_in.child_frame_id;
   std::string parent_frame_id = odom_msg_in.header.frame_id;
@@ -131,7 +141,7 @@ void Mapper::gotOdom(const nav_msgs::Odometry &odom_msg_in){
   transform.setOrigin( tf::Vector3(position.x, position.y, position.z));
   transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w));
 
-  tf_broadcaster_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_pose_frame", "camera_odom_frame"));
+  tf_broadcaster_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), parameters_.camera_odom_frame, parameters_.camera_pose_frame));
 
   ROS_INFO("Broadcasted Odom Transform");
 
@@ -143,17 +153,17 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
   /**
    * Wait until tf_listener gets results
    */
-  if (odom_received_ < 3) {
+  if (odom_received_ < 3) { 
     try {
       tf::StampedTransform transform;
-      tf_listener_.lookupTransform(parameters_.tf_map_frame, parameters_.lidar_frame,
+      tf_listener_.lookupTransform(parameters_.camera_odom_frame, parameters_.lidar_frame, 
                                    cloud_msg_in.header.stamp, transform);
       odom_received_++;
     } catch (tf::TransformException ex) {
       ROS_WARN_STREAM("Transformations still initializing (dyn).");
       // publish for state estimator
       pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
-          T_scanner_to_map_.inverse(), parameters_.lidar_frame, parameters_.tf_map_frame,
+          T_scanner_to_odom_.inverse(), parameters_.lidar_frame, parameters_.camera_odom_frame, 
           cloud_msg_in.header.stamp));
       odom_received_++;
     }
@@ -203,14 +213,15 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     }
 
     /**
-     * Get transform
+     * Get transform between Odom and Lidar frame (estimate from Realsense)
      */
+    // set standalone_icp to false for Realsense to work!
     if (!parameters_.standalone_icp) {
       try {
-        T_scanner_to_map_ = PointMatcher_ros::eigenMatrixToDim<float>(
+        T_scanner_to_odom_ = PointMatcher_ros::eigenMatrixToDim<float>( 
             PointMatcher_ros::transformListenerToEigenMatrix<float>(
                 tf_listener_,
-                parameters_.tf_map_frame,  // to
+                parameters_.camera_odom_frame,  // to 
                 parameters_.lidar_frame,   // from
                 stamp),
             dimp1);
@@ -226,12 +237,13 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         return;
       }
     }
-    ROS_DEBUG_STREAM("[ICP] T_scanner_to_map (" << parameters_.lidar_frame << " to "
-                                                << parameters_.tf_map_frame << "):\n"
-                                                << T_scanner_to_map_);
+    ROS_DEBUG_STREAM("[ICP] T_odom_to_map (" << parameters_.lidar_frame << " to "
+                                                << parameters_.camera_odom_frame << "):\n"
+                                                << T_scanner_to_odom_); 
 
     // correctParameters: force orthogonality of rotation matrix
-    T_scanner_to_map_ = transformation_->correctParameters(T_scanner_to_map_);
+    // Get new estimate for transform between scanner and map from Realsense odometry and previous error between odometry and map
+    T_scanner_to_map_ = transformation_->correctParameters(T_odom_to_map_ * T_scanner_to_odom_); 
 
     // Check dimension
     if (cloud.getEuclideanDim() !=
@@ -244,8 +256,8 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     }
 
     PM::TransformationParameters T_updated_scanner_to_map =
-        T_scanner_to_map_;  // not sure if copy is necessary
-
+        T_scanner_to_map_;  // not sure if copy is necessary 
+    ROS_INFO("gotCloud start ICP");
     /**
      * Full ICP Primer
      */
@@ -276,22 +288,25 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
       }
     }
 
+    // Compute updated error between odom and map based on ICP pose
+    T_odom_to_map_ = T_updated_scanner_to_map * T_scanner_to_odom_.inverse(); 
     /**
      * Publish
      */
-
     // Publish odometry.
     if (odom_pub_.getNumSubscribers()) {
       odom_pub_.publish(PointMatcher_ros::eigenMatrixToOdomMsg<float>(
           T_updated_scanner_to_map, parameters_.tf_map_frame, stamp));
     }
-    // Publish pose
-    auto tf_scanner_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
-        T_updated_scanner_to_map, parameters_.lidar_frame, parameters_.tf_map_frame, stamp);
-    if (parameters_.standalone_icp) {
-      tf_broadcaster_.sendTransform(tf_scanner_to_map);
-      ROS_INFO_STREAM("Scanner to map published");
+    // Publish pose and updated error between odom and map
+    auto tf_odom_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+        T_odom_to_map_, parameters_.camera_odom_frame, parameters_.tf_map_frame, stamp); 
+    if (!parameters_.standalone_icp) { //set standalone_icp to false for Realsense to work
+      tf_broadcaster_.sendTransform(tf_odom_to_map);
+      ROS_INFO_STREAM("Odom to map published");
     }
+    auto tf_scanner_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+        T_updated_scanner_to_map, parameters_.lidar_frame, parameters_.tf_map_frame, stamp); 
     if (pose_pub_.getNumSubscribers()) {
       pose_pub_.publish(tf_scanner_to_map);
     }

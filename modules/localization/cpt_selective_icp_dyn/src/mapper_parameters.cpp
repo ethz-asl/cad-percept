@@ -8,11 +8,14 @@ namespace selective_icp_dyn {
 MapperParameters::MapperParameters()
     : scan_topic(getParam<std::string>("scanTopic", "fail")),
       cad_topic(getParam<std::string>("cadTopic", "fail")),
+      odom_topic(getParam<std::string>("odomTopic", "fail")),
       min_reading_point_count(getParam<int>("minReadingPointCount", 2000)),
       input_queue_size(getParam<int>("inputQueueSize", 10)),
       map_sampling_density(getParam<int>("mapSamplingDensity", 100)),  // Points per square meter
       tf_map_frame(getParam<std::string>("tfMapFrame", "/map")),
       lidar_frame(getParam<std::string>("lidarFrame", "lidar")),
+      camera_pose_frame(getParam<std::string>("cameraPoseFrame", "camera_pose_frame")),
+      camera_odom_frame(getParam<std::string>("cameraOdomFrame", "camera_odom_frame")),
       min_overlap(getParam<double>("minOverlap", 0.5)),
       mapping_trigger(getParam<bool>("mappingTrigger", false)),
       update_icp_ref_trigger(getParam<bool>("updateICPRefTrigger", false)),
