@@ -27,20 +27,22 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 
-PreprocessModel::PreprocessModel(std::string filename, Eigen::Matrix4d transformation)
-    : meshing_points_(new pcl::PointCloud<pcl::PointXYZ>) {
-  filename_ = filename;
-  transformation_ = transformation;
-}
+PreprocessModel::PreprocessModel(std::string filename,
+                                 Eigen::Matrix4d transformation)
+    : meshing_points_(new pcl::PointCloud<pcl::PointXYZ>),
+      filename_(filename),
+      transformation_(transformation) {}
 
 void PreprocessModel::preprocess() {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr model_points(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr model_points(
+      new pcl::PointCloud<pcl::PointXYZ>);
   pcl::PLYReader reader;
   reader.read(filename_, *model_points);
   model_points_ = model_points;
 
   // Build Search Tree
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(new pcl::search::KdTree<pcl::PointXYZ>());
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
+      new pcl::search::KdTree<pcl::PointXYZ>());
   searchTree->setInputCloud(model_points_);
   searchTree_ = searchTree;
 }
@@ -56,8 +58,10 @@ void PreprocessModel::addOutlier(int i, pcl::PointXYZ p) {
 
 // Source:https://github.com/tttamaki/ICP-test/blob/master/src/icp3_with_normal_iterative_view.cpp
 void PreprocessModel::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                                 pcl::PointCloud<pcl::Normal>::Ptr normals, int k) {
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(new pcl::search::KdTree<pcl::PointXYZ>);
+                                 pcl::PointCloud<pcl::Normal>::Ptr normals,
+                                 int k) {
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
+      new pcl::search::KdTree<pcl::PointXYZ>);
   searchTree->setInputCloud(cloud);
 
   pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
@@ -65,11 +69,12 @@ void PreprocessModel::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
   normalEstimator.setSearchMethod(searchTree);
   normalEstimator.setKSearch(k);
   normalEstimator.compute(*normals);
+  ROS_INFO("[Done] Build up search tree\n");
 }
 
 void PreprocessModel::efficientRANSAC() {
   pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-  this->addNormals(meshing_points_, normals, 6);
+  this->addNormals(meshing_points_, normals, 8);
 
   std::vector<Point_with_normal> outliers(meshing_points_->size());
   for (unsigned i = 0; i < meshing_points_->size(); i++) {
@@ -102,7 +107,8 @@ void PreprocessModel::efficientRANSAC() {
 
   ransac.detect(parameters);
 
-  ROS_INFO("Detected Shapes: %d\n", ransac.shapes().end() - ransac.shapes().begin());
+  ROS_INFO("Detected Shapes: %d\n",
+           ransac.shapes().end() - ransac.shapes().begin());
   ROS_INFO("Unassigned Points: %d\n", ransac.number_of_unassigned_points());
 
   pcl::PointIndices::Ptr detected_points(new pcl::PointIndices());
@@ -115,16 +121,17 @@ void PreprocessModel::efficientRANSAC() {
   while (it != shapes.end()) {
     // Get specific parameters depending on the detected shape.
     if (Plane* plane = dynamic_cast<Plane*>(it->get())) {
-      const std::vector<std::size_t> idx_assigned_points = plane->indices_of_assigned_points();
+      const std::vector<std::size_t> idx_assigned_points =
+          plane->indices_of_assigned_points();
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
         Kernel::Point_3 p = point_with_normal.first;
         file << p.x() << " " << p.y() << " " << p.z() << "\n";
       }
-
     } else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
-      const std::vector<std::size_t> idx_assigned_points = cyl->indices_of_assigned_points();
+      const std::vector<std::size_t> idx_assigned_points =
+          cyl->indices_of_assigned_points();
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];

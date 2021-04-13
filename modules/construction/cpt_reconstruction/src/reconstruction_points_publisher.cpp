@@ -19,15 +19,16 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 
-ReconstructionPointsPublisher::ReconstructionPointsPublisher(ros::NodeHandle nodeHandle,
-                                                             std::string filename, int batch_size) {
+ReconstructionPointsPublisher::ReconstructionPointsPublisher(
+    ros::NodeHandle nodeHandle, std::string filename, int batch_size) {
   nodeHandle_ = nodeHandle;
   filename_ = filename;
   batch_size = batch_size;
 }
 
 void ReconstructionPointsPublisher::publishPoints() {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_scan(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_scan(
+      new pcl::PointCloud<pcl::PointXYZ>);
   pcl::PLYReader reader;
   reader.read(filename_, *cloud_scan);
 
@@ -45,7 +46,8 @@ void ReconstructionPointsPublisher::publishPoints() {
     msg.y = p.y;
     msg.z = p.z;
 
-    ROS_INFO("[Publisher] published Point %d at %f %f %f\n", msg.idx, msg.x, msg.y, msg.z);
+    ROS_INFO("[Publisher] published Point %d at %f %f %f\n", msg.idx, msg.x,
+             msg.y, msg.z);
 
     publisher.publish(msg);
 

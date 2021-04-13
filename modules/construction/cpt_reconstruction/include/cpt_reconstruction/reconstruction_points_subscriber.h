@@ -12,7 +12,8 @@ namespace cpt_reconstruction {
 class ReconstructionPointsSubscriber {
  public:
   ReconstructionPointsSubscriber() = delete;
-  ReconstructionPointsSubscriber(ros::NodeHandle nodeHandle, PreprocessModel* model);
+  ReconstructionPointsSubscriber(ros::NodeHandle nodeHandle,
+                                 PreprocessModel* model);
   void startReceiving();
 
  private:

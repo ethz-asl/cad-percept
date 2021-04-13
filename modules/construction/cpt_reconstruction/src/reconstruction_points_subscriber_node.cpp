@@ -11,13 +11,16 @@ int main(int argc, char** argv) {
   ros::NodeHandle nodeHandle;
 
   std::string model_path =
-      "/home/philipp/Schreibtisch/cla_c_vf_20150815_2020_demo_upsa_edited_2m.ply";
+      "/home/philipp/Schreibtisch/"
+      "cla_c_vf_20150815_2020_demo_upsa_edited_2m.ply";
   Eigen::Matrix4d transformation;
   transformation.setIdentity();
-  cad_percept::cpt_reconstruction::PreprocessModel model(model_path, transformation);
+  cad_percept::cpt_reconstruction::PreprocessModel model(model_path,
+                                                         transformation);
   model.preprocess();
 
-  cad_percept::cpt_reconstruction::ReconstructionPointsSubscriber subscriber(nodeHandle, &model);
+  cad_percept::cpt_reconstruction::ReconstructionPointsSubscriber subscriber(
+      nodeHandle, &model);
 
   return 0;
 }
