@@ -52,9 +52,13 @@ class PreprocessModel {
                   pcl::PointCloud<pcl::Normal>::Ptr normals, int k);
   void efficientRANSAC();
 
+  std::vector<Eigen::MatrixXd>* getPointShapes();
+  std::vector<int>* getShapeIDs();
+
   int getOutlierCount();
   float getMinDistance();
   int getIndex();
+  void clearRansacShapes();
 
   void printOutliers();
 
@@ -67,6 +71,8 @@ class PreprocessModel {
   std::vector<int> nn_indices_{1};
   std::vector<float> nn_dists_{1};
   std::vector<int> idx_outliers_;
+  std::vector<Eigen::MatrixXd> points_shape_;
+  std::vector<int> shape_id_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

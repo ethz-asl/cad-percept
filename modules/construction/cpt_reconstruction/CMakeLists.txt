@@ -7,7 +7,6 @@ catkin_simple(ALL_DEPS_REQUIRED)
 
 add_definitions(-std=c++11 -Wall -Wextra)
 
-
 #############
 # LIBRARIES #
 #############

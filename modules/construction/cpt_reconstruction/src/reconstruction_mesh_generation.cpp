@@ -1,5 +1,7 @@
 #include <cpt_reconstruction/reconstruction_mesh_generation.h>
 
+#include <geometry_msgs/Vector3.h>
+#include "cpt_reconstruction/shape.h"
 #include "std_msgs/String.h"
 
 namespace cad_percept {
@@ -11,9 +13,14 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle)
   ros::spin();
 }
 
-void MeshGeneration::messageCallback(const std_msgs::String& msg) {
-  ROS_INFO("[Mesh Generation]\n");
-  ROS_INFO("[Mesh Generation] %s", msg.data.c_str());
+void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape& msg) {
+  ROS_INFO("[Mesh Generation] Id: %d with size: %d", msg.id,
+           msg.vectors.size());
+  std::vector<geometry_msgs::Vector3> pub_vectors = msg.vectors;
+  for (unsigned i = 0; i < pub_vectors.size(); i++) {
+    geometry_msgs::Vector3 v = pub_vectors.at(i);
+    ROS_INFO("[Point] %f %f %f", v.x, v.y, v.z);
+  }
 }
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

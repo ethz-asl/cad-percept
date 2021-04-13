@@ -122,22 +122,31 @@ void PreprocessModel::efficientRANSAC() {
     if (Plane* plane = dynamic_cast<Plane*>(it->get())) {
       const std::vector<std::size_t> idx_assigned_points =
           plane->indices_of_assigned_points();
+
+      Eigen::MatrixXd points(3, idx_assigned_points.size());
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
         Kernel::Point_3 p = point_with_normal.first;
         file << p.x() << " " << p.y() << " " << p.z() << "\n";
+        points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
       }
+      points_shape_.push_back(points);
+      shape_id_.push_back(0);
 
     } else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
       const std::vector<std::size_t> idx_assigned_points =
           cyl->indices_of_assigned_points();
+      Eigen::MatrixXd points(3, idx_assigned_points.size());
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
         Kernel::Point_3 p = point_with_normal.first;
         file << p.x() << " " << p.y() << " " << p.z() << "\n";
+        points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
       }
+      points_shape_.push_back(points);
+      shape_id_.push_back(1);
     }
     it++;
   }
@@ -149,6 +158,12 @@ void PreprocessModel::efficientRANSAC() {
   extract.filter(*meshing_points_);
 }
 
+std::vector<Eigen::MatrixXd>* PreprocessModel::getPointShapes() {
+  return &points_shape_;
+}
+
+std::vector<int>* PreprocessModel::getShapeIDs() { return &shape_id_; }
+
 int PreprocessModel::getOutlierCount() { return meshing_points_->size(); }
 
 float PreprocessModel::getMinDistance() { return nn_dists_[0]; }
@@ -159,6 +174,11 @@ void PreprocessModel::printOutliers() {
   for (unsigned i = 0; i < idx_outliers_.size(); i++) {
     ROS_INFO("Outlier idx: %d\n", idx_outliers_.at(i));
   }
+}
+
+void PreprocessModel::clearRansacShapes() {
+  points_shape_.clear();
+  shape_id_.clear();
 }
 
 }  // namespace cpt_reconstruction
