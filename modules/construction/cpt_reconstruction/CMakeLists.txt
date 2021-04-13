@@ -14,7 +14,8 @@ add_definitions(-std=c++11 -Wall -Wextra)
 cs_add_library(${PROJECT_NAME}
         src/reconstruction_points_publisher.cpp
         src/reconstruction_points_subscriber.cpp
-	src/preprocessModel.cpp
+		src/reconstruction_preprocess_model.cpp
+		src/reconstruction_mesh_generation.cpp
         )
 
 ############
@@ -30,6 +31,10 @@ cs_add_executable(reconstruction_points_subscriber_node
         )
 target_link_libraries(reconstruction_points_subscriber_node ${PROJECT_NAME})
 
+cs_add_executable(reconstruction_mesh_generation_node
+		src/reconstruction_mesh_generation_node.cpp
+		)
+target_link_libraries(reconstruction_mesh_generation_node ${PROJECT_NAME})
 
 ##########
 # EXPORT #

@@ -1,7 +1,7 @@
 #ifndef CPT_RECONSTRUCTION_RECONSTRUCTION_POINTS_SUBSCRIBER_H
 #define CPT_RECONSTRUCTION_RECONSTRUCTION_POINTS_SUBSCRIBER_H
 
-#include <cpt_reconstruction/preprocessModel.h>
+#include <cpt_reconstruction/reconstruction_preprocess_model.h>
 
 #include "cpt_reconstruction/coordinates.h"
 #include "ros/ros.h"

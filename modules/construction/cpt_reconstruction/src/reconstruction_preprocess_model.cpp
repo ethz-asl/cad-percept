@@ -1,4 +1,4 @@
-#include <cpt_reconstruction/preprocessModel.h>
+#include <cpt_reconstruction/reconstruction_preprocess_model.h>
 
 #include "ros/ros.h"
 
@@ -45,6 +45,7 @@ void PreprocessModel::preprocess() {
       new pcl::search::KdTree<pcl::PointXYZ>());
   searchTree->setInputCloud(model_points_);
   searchTree_ = searchTree;
+  ROS_INFO("[Done] Build up search tree\n");
 }
 
 void PreprocessModel::queryTree(pcl::PointXYZ p) {
@@ -69,7 +70,6 @@ void PreprocessModel::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
   normalEstimator.setSearchMethod(searchTree);
   normalEstimator.setKSearch(k);
   normalEstimator.compute(*normals);
-  ROS_INFO("[Done] Build up search tree\n");
 }
 
 void PreprocessModel::efficientRANSAC() {
@@ -119,7 +119,6 @@ void PreprocessModel::efficientRANSAC() {
   Efficient_ransac::Shape_range shapes = ransac.shapes();
   Efficient_ransac::Shape_range::iterator it = shapes.begin();
   while (it != shapes.end()) {
-    // Get specific parameters depending on the detected shape.
     if (Plane* plane = dynamic_cast<Plane*>(it->get())) {
       const std::vector<std::size_t> idx_assigned_points =
           plane->indices_of_assigned_points();

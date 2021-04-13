@@ -1,4 +1,4 @@
-#include <cpt_reconstruction/preprocessModel.h>
+#include <cpt_reconstruction/reconstruction_preprocess_model.h>
 #include <cpt_reconstruction/reconstruction_points_subscriber.h>
 
 #include <pcl/point_types.h>
