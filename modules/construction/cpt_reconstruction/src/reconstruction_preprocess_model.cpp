@@ -128,6 +128,7 @@ void PreprocessModel::efficientRANSAC() {
         Kernel::Point_3 p = point_with_normal.first;
         file << p.x() << " " << p.y() << " " << p.z() << "\n";
       }
+
     } else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
       const std::vector<std::size_t> idx_assigned_points =
           cyl->indices_of_assigned_points();

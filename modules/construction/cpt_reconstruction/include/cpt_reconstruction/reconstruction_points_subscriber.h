@@ -12,14 +12,17 @@ namespace cpt_reconstruction {
 class ReconstructionPointsSubscriber {
  public:
   ReconstructionPointsSubscriber() = delete;
-  ReconstructionPointsSubscriber(ros::NodeHandle nodeHandle,
+  ReconstructionPointsSubscriber(ros::NodeHandle nodeHandle1,
+                                 ros::NodeHandle nodeHandle2,
                                  PreprocessModel* model);
   void startReceiving();
 
  private:
   void messageCallback(const ::cpt_reconstruction::coordinates& msg);
-  ros::NodeHandle nodeHandle_;
+  ros::NodeHandle nodeHandle1_;
+  ros::NodeHandle nodeHandle2_;
   ros::Subscriber subscriber_;
+  ros::Publisher publisher_;
   PreprocessModel* model_;
 };
 }  // namespace cpt_reconstruction

@@ -1,6 +1,8 @@
 #ifndef CPT_RECONSTRUCTION_PREPROCESSMODEL_H
 #define CPT_RECONSTRUCTION_PREPROCESSMODEL_H
 
+#include "ros/ros.h"
+
 #include <vector>
 
 #include <pcl/features/normal_3d.h>

@@ -6,13 +6,12 @@
 #include "std_msgs/String.h"
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "mesh_generation_node");
+  ros::init(argc, argv, "reconstruction_mesh_generation_node");
   ros::NodeHandle nodeHandle;
 
-  //std::string path_scan = "/home/philipp/Schreibtisch/scan23.ply";
+  // std::string path_scan = "/home/philipp/Schreibtisch/scan23.ply";
 
-  cad_percept::cpt_reconstruction::MeshGeneration meshGeneration();
+  cad_percept::cpt_reconstruction::MeshGeneration meshGeneration(nodeHandle);
 
   return 0;
 }
-

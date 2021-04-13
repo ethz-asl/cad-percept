@@ -2,15 +2,19 @@
 #define CPT_RECONSTRUCTION_MESHGENERATION_H
 
 #include "ros/ros.h"
+#include "std_msgs/String.h"
 
 namespace cad_percept {
-    namespace cpt_reconstruction {
-        class MeshGeneration {
-        public:
-            MeshGeneration();
-        private:
-            ros::NodeHandle nodeHandle_;
-        };
-    }  // namespace cpt_reconstruction
+namespace cpt_reconstruction {
+class MeshGeneration {
+ public:
+  MeshGeneration(ros::NodeHandle nodeHandle_);
+
+ private:
+  void messageCallback(const std_msgs::String& msg);
+  ros::NodeHandle nodeHandle_;
+  ros::Subscriber subscriber_;
+};
+}  // namespace cpt_reconstruction
 }  // namespace cad_percept
-#endif //CPT_RECONSTRUCTION_MESHGENERATION_H
+#endif  // CPT_RECONSTRUCTION_MESHGENERATION_H
