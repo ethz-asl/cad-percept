@@ -10,7 +10,8 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "reconstruction_subscriber_node");
   ros::NodeHandle nodeHandle;
 
-  std::string model_path = "/home/philipp/Schreibtisch/cla_c_vf_20150815_2020_demo_upsa_2m.ply";
+  std::string model_path =
+      "/home/philipp/Schreibtisch/cla_c_vf_20150815_2020_demo_upsa_edited_2m.ply";
   Eigen::Matrix4d transformation;
   transformation.setIdentity();
   cad_percept::cpt_reconstruction::PreprocessModel model(model_path, transformation);

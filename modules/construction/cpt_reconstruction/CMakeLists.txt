@@ -14,6 +14,7 @@ add_definitions(-std=c++11 -Wall -Wextra)
 cs_add_library(${PROJECT_NAME}
         src/reconstruction_points_publisher.cpp
         src/reconstruction_points_subscriber.cpp
+	src/preprocessModel.cpp
         )
 
 ############

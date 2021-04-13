@@ -31,22 +31,23 @@ void ReconstructionPointsPublisher::publishPoints() {
   pcl::PLYReader reader;
   reader.read(filename_, *cloud_scan);
 
-  ros::Publisher chatter_publisher =
+  ros::Publisher publisher =
       nodeHandle_.advertise<::cpt_reconstruction::coordinates>("point", 1000);
-  ros::Rate loop_rate(3000);
+  ros::Rate loop_rate(5000);
 
   int count = 0;
   while (ros::ok() && count < cloud_scan->size()) {
     pcl::PointXYZ p = (*cloud_scan)[count];
 
     ::cpt_reconstruction::coordinates msg;
+    msg.idx = count;
     msg.x = p.x;
     msg.y = p.y;
     msg.z = p.z;
 
-    ROS_INFO("[Talker] I published %f %f %f\n", msg.x, msg.y, msg.z);
+    ROS_INFO("[Publisher] published Point %d at %f %f %f\n", msg.idx, msg.x, msg.y, msg.z);
 
-    chatter_publisher.publish(msg);
+    publisher.publish(msg);
 
     ros::spinOnce();
 
