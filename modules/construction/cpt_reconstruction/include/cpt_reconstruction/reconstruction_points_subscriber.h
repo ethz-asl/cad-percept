@@ -6,6 +6,11 @@
 #include "cpt_reconstruction/coordinates.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include <sensor_msgs/PointCloud2.h>
+
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
 
 namespace cad_percept {
 namespace cpt_reconstruction {
@@ -18,12 +23,15 @@ class ReconstructionPointsSubscriber {
   void startReceiving();
 
  private:
-  void messageCallback(const ::cpt_reconstruction::coordinates& msg);
+  void messageCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
   ros::NodeHandle nodeHandle1_;
   ros::NodeHandle nodeHandle2_;
-  ros::Subscriber subscriber_;
-  ros::Publisher publisher_;
+  ros::Subscriber subscriber1_;
+  tf::TransformListener tf_listener_;
   PreprocessModel* model_;
+  Eigen::Matrix4d transformation_;
+  bool update_transformation_;
+  Eigen::Matrix4d transformation_inv_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

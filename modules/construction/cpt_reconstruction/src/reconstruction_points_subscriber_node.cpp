@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 
   std::string model_path =
       "/home/philipp/Schreibtisch/"
-      "cla_c_vf_20150815_2020_demo_upsa_edited_2m.ply";
+      "cla_c_vf_20150815_2020_demo_5m.ply";
   Eigen::Matrix4d transformation;
   transformation.setIdentity();
   cad_percept::cpt_reconstruction::PreprocessModel model(model_path,

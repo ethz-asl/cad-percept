@@ -33,7 +33,7 @@ void ReconstructionPointsPublisher::publishPoints() {
   reader.read(filename_, *cloud_scan);
 
   ros::Publisher publisher =
-      nodeHandle_.advertise<::cpt_reconstruction::coordinates>("point", 1000);
+      nodeHandle_.advertise<::cpt_reconstruction::coordinates>("points", 1000);
   ros::Rate loop_rate(8000);
 
   int count = 0;
