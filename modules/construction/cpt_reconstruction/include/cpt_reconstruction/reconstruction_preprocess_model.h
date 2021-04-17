@@ -47,10 +47,11 @@ class PreprocessModel {
 
   void preprocess();
   void queryTree(pcl::PointXYZ p);
-  void addOutlier(int i, pcl::PointXYZ p);
+  void addOutlier(pcl::PointXYZ p);
   void addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                   pcl::PointCloud<pcl::Normal>::Ptr normals, int k);
   void efficientRANSAC();
+  void applyFilter();
 
   std::vector<Eigen::MatrixXd>* getPointShapes();
   std::vector<int>* getShapeIDs();
@@ -59,6 +60,7 @@ class PreprocessModel {
   float getMinDistance();
   int getIndex();
   void clearRansacShapes();
+  void clearBuffer();
 
   void printOutliers();
 
@@ -73,6 +75,8 @@ class PreprocessModel {
   std::vector<int> idx_outliers_;
   std::vector<Eigen::MatrixXd> points_shape_;
   std::vector<int> shape_id_;
+  std::vector<Eigen::Vector4d> param_plane_;
+  std::vector<Eigen::Vector4d> param_cyl_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

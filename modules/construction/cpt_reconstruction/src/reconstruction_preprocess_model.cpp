@@ -17,9 +17,11 @@
 
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/octree/octree_pointcloud_voxelcentroid.h>
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/kdtree/impl/kdtree_flann.hpp>
@@ -52,7 +54,7 @@ void PreprocessModel::queryTree(pcl::PointXYZ p) {
   searchTree_->nearestKSearch(p, 1, nn_indices_, nn_dists_);
 }
 
-void PreprocessModel::addOutlier(int i, pcl::PointXYZ p) {
+void PreprocessModel::addOutlier(pcl::PointXYZ p) {
   // idx_outliers_.push_back(i);
   meshing_points_->push_back(p);
 }
@@ -74,7 +76,7 @@ void PreprocessModel::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 
 void PreprocessModel::efficientRANSAC() {
   pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-  this->addNormals(meshing_points_, normals, 8);
+  this->addNormals(meshing_points_, normals, 10);
 
   std::vector<Point_with_normal> outliers(meshing_points_->size());
   for (unsigned i = 0; i < meshing_points_->size(); i++) {
@@ -99,11 +101,11 @@ void PreprocessModel::efficientRANSAC() {
   ransac.add_shape_factory<Cylinder>();
 
   Efficient_ransac::Parameters parameters;
-  parameters.probability = 0.01;
-  parameters.min_points = 100;
-  parameters.epsilon = 0.03;
+  parameters.probability = 0.0001;
+  parameters.min_points = 5000;
+  parameters.epsilon = 0.02;
   parameters.cluster_epsilon = 0.1;
-  parameters.normal_threshold = 0.9;
+  parameters.normal_threshold = 0.85;
 
   ransac.detect(parameters);
 
@@ -123,6 +125,14 @@ void PreprocessModel::efficientRANSAC() {
       const std::vector<std::size_t> idx_assigned_points =
           plane->indices_of_assigned_points();
 
+      Kernel::Plane_3 plane_3 = static_cast<Kernel::Plane_3>(*plane);
+      Eigen::Vector4d coeff_plane(plane_3.a(), plane_3.b(), plane_3.c(),
+                                  plane_3.d());
+
+      Kernel::Plane_3 plane_3_opp = plane_3_opp.opposite();
+      param_plane_.push_back(coeff_plane);
+      ROS_INFO("[Done] Param: %f %f %f %f\n", plane_3.a(), plane_3.b(),
+               plane_3.c(), plane_3.d());
       Eigen::MatrixXd points(3, idx_assigned_points.size());
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
@@ -131,6 +141,7 @@ void PreprocessModel::efficientRANSAC() {
         file << p.x() << " " << p.y() << " " << p.z() << "\n";
         points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
       }
+
       points_shape_.push_back(points);
       shape_id_.push_back(0);
 
@@ -158,9 +169,26 @@ void PreprocessModel::efficientRANSAC() {
   extract.filter(*meshing_points_);
 }
 
+void PreprocessModel::applyFilter() {
+  ROS_INFO("Size before filtering: %d\n", meshing_points_->size());
+  pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(
+      0.01f);
+  octree_filter.setInputCloud(meshing_points_);
+  octree_filter.addPointsFromInputCloud();
+  pcl::PointCloud<pcl::PointXYZ>::VectorType voxelCentroids;
+  octree_filter.getVoxelCentroids(voxelCentroids);
+  meshing_points_->clear();
+  for (int i = 0; i < voxelCentroids.size(); i++) {
+    meshing_points_->push_back(voxelCentroids[i]);
+  }
+  ROS_INFO("Size after filtering: %d\n", meshing_points_->size());
+};
+
 std::vector<Eigen::MatrixXd>* PreprocessModel::getPointShapes() {
   return &points_shape_;
 }
+
+void PreprocessModel::clearBuffer() { meshing_points_->clear(); }
 
 std::vector<int>* PreprocessModel::getShapeIDs() { return &shape_id_; }
 

@@ -3,10 +3,10 @@
 
 #include <cpt_reconstruction/reconstruction_preprocess_model.h>
 
+#include <sensor_msgs/PointCloud2.h>
 #include "cpt_reconstruction/coordinates.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include <sensor_msgs/PointCloud2.h>
 
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
@@ -32,6 +32,9 @@ class ReconstructionPointsSubscriber {
   Eigen::Matrix4d transformation_;
   bool update_transformation_;
   Eigen::Matrix4d transformation_inv_;
+  int counter_planes_;
+  int counter_cyl_;
+  int iteration_counter_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

@@ -6,6 +6,7 @@
 #include "std_msgs/String.h"
 
 // STD
+#include <fstream>
 #include <iostream>
 #include <string>
 

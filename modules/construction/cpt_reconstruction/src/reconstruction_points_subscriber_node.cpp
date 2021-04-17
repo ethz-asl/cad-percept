@@ -12,8 +12,8 @@ int main(int argc, char** argv) {
   ros::NodeHandle nodeHandle2;
 
   std::string model_path =
-      "/home/philipp/Schreibtisch/"
-      "cla_c_vf_20150815_2020_demo_5m.ply";
+      "/home/philipp/Schreibtisch/data/"
+      "CLA_MissingParts_1_8m.ply";
   Eigen::Matrix4d transformation;
   transformation.setIdentity();
   cad_percept::cpt_reconstruction::PreprocessModel model(model_path,
