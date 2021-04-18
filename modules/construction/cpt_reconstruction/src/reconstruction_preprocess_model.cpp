@@ -141,7 +141,6 @@ void PreprocessModel::efficientRANSAC() {
         file << p.x() << " " << p.y() << " " << p.z() << "\n";
         points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
       }
-
       points_shape_.push_back(points);
       shape_id_.push_back(0);
 
@@ -171,6 +170,7 @@ void PreprocessModel::efficientRANSAC() {
 
 void PreprocessModel::applyFilter() {
   ROS_INFO("Size before filtering: %d\n", meshing_points_->size());
+
   pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(
       0.01f);
   octree_filter.setInputCloud(meshing_points_);
@@ -181,6 +181,13 @@ void PreprocessModel::applyFilter() {
   for (int i = 0; i < voxelCentroids.size(); i++) {
     meshing_points_->push_back(voxelCentroids[i]);
   }
+
+  /* [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset. Integer indices would overflow.[
+  pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
+  voxel_grid.setInputCloud(meshing_points_);
+  voxel_grid.setLeafSize(0.01f, 0.01f, 0.01f);
+  voxel_grid.filter(*meshing_points_);
+  */
   ROS_INFO("Size after filtering: %d\n", meshing_points_->size());
 };
 

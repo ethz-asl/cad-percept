@@ -46,6 +46,7 @@ ReconstructionPointsSubscriber::ReconstructionPointsSubscriber(
   subscriber1_ = nodeHandle1_.subscribe(
       "corrected_scan", 10, &ReconstructionPointsSubscriber::messageCallback,
       this);
+  publisher_ = nodeHandle2_.advertise<::cpt_reconstruction::shape>("ransac_shape", 1000);
   ros::spin();
 }
 
@@ -81,13 +82,6 @@ void ReconstructionPointsSubscriber::messageCallback(
   pcl::transformPointCloud(*pcl_cloud, *pcl_cloud_transformed,
                            transformation_inv_);
 
-  /*
-  pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
-  voxel_grid.setInputCloud(pcl_cloud_transformed);
-  voxel_grid.setLeafSize(0.01f, 0.01f, 0.01f);
-  voxel_grid.filter(*pcl_cloud_transformed);
-  */
-
   ROS_INFO("[Subscriber] Received cloud with size: %d\n", pcl_cloud->size());
 
   std::ofstream file1;
@@ -110,11 +104,7 @@ void ReconstructionPointsSubscriber::messageCallback(
   file1.close();
   file2.close();
 
-  // Cluster the data
-  // Plane segmentation
-  // Source:
-  // https://pointclouds.org/documentation/tutorials/extract_indices.html#extract-indices
-  // Source - Start
+
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
   if (model_->getOutlierCount() > 100000) {
     model_->clearRansacShapes();
@@ -124,6 +114,24 @@ void ReconstructionPointsSubscriber::messageCallback(
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
     std::vector<int>* shapes_ids = model_->getShapeIDs();
 
+    // Publish mesh to mesh_gereration
+    for (int i = 0; i < shapes_ids->size(); i++) {
+      std::vector<geometry_msgs::Vector3> pub_vectors;
+      for (int j = 0; j < points_shape->at(i).cols(); j++) {
+        geometry_msgs::Vector3 vec;
+        vec.x = (*points_shape)[i](0, j);
+        vec.y = (*points_shape)[i](1, j);
+        vec.z = (*points_shape)[i](2, j);
+        pub_vectors.push_back(vec);
+      }
+      ::cpt_reconstruction::shape shape_msg;
+      shape_msg.vectors = pub_vectors;
+      shape_msg.id = shapes_ids->at(i);
+      publisher_.publish(shape_msg);
+    }
+
+    // Save points to file
+    // TODO: Remove
     for (int i = 0; i < shapes_ids->size(); i++) {
       std::ofstream file_shape;
       if (shapes_ids->at(i) == 0) {
@@ -147,38 +155,6 @@ void ReconstructionPointsSubscriber::messageCallback(
     }
     iteration_counter_++;
   }
-  // Source - End
-  /*
-  pcl::PointXYZ p(msg.x, msg.y, msg.z);
-  model_->queryTree(p);
-  float min_dist = model_->getMinDistance();
-  if (std::abs(min_dist) >= 0.015) {
-    model_->addOutlier(msg.idx, p);
-    ROS_INFO("[Subscriber] Received %f %f %f with min_dist %f and nr: %d\n",
-             msg.x, msg.y, msg.z, min_dist, model_->getOutlierCount());
-    if (model_->getOutlierCount() > 500) {
-      model_->clearRansacShapes();
-      model_->efficientRANSAC();
-
-      std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
-      std::vector<int>* shapes_ids = model_->getShapeIDs();
-
-      for (int i = 0; i < shapes_ids->size(); i++) {
-        std::vector<geometry_msgs::Vector3> pub_vectors;
-        for (int j = 0; j < points_shape->at(i).cols(); j++) {
-          geometry_msgs::Vector3 vec;
-          vec.x = (*points_shape)[i](0, j);
-          vec.y = (*points_shape)[i](1, j);
-          vec.z = (*points_shape)[i](2, j);
-          pub_vectors.push_back(vec);
-        }
-        ::cpt_reconstruction::shape msg;
-        msg.vectors = pub_vectors;
-        msg.id = shapes_ids->at(i);
-        publisher_.publish(msg);
-      }
-    }
-  }*/
 }
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

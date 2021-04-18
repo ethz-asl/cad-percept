@@ -27,6 +27,7 @@ class ReconstructionPointsSubscriber {
   ros::NodeHandle nodeHandle1_;
   ros::NodeHandle nodeHandle2_;
   ros::Subscriber subscriber1_;
+  ros::Publisher publisher_;
   tf::TransformListener tf_listener_;
   PreprocessModel* model_;
   Eigen::Matrix4d transformation_;

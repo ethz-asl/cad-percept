@@ -16,10 +16,18 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle)
 void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape& msg) {
   ROS_INFO("[Mesh Generation] Id: %d with size: %d", msg.id,
            msg.vectors.size());
-  std::vector<geometry_msgs::Vector3> pub_vectors = msg.vectors;
-  for (unsigned i = 0; i < pub_vectors.size(); i++) {
-    geometry_msgs::Vector3 v = pub_vectors.at(i);
-    ROS_INFO("[Point] %f %f %f", v.x, v.y, v.z);
+
+  // Plane
+  if (msg.id == 0){
+    std::vector<geometry_msgs::Vector3> pub_vectors = msg.vectors;
+    for (unsigned i = 0; i < pub_vectors.size(); i++) {
+      geometry_msgs::Vector3 v = pub_vectors.at(i);
+      // Meshing here
+    }
+  } else if (msg.id == 0){
+
+  } else {
+    ROS_INFO("Unknown shape\n");
   }
 }
 }  // namespace cpt_reconstruction
