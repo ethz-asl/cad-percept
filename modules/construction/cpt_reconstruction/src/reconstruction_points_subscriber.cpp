@@ -116,9 +116,9 @@ void ReconstructionPointsSubscriber::messageCallback(
   // https://pointclouds.org/documentation/tutorials/extract_indices.html#extract-indices
   // Source - Start
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
-  if (model_->getOutlierCount() > 4000000) {
+  if (model_->getOutlierCount() > 100000) {
     model_->clearRansacShapes();
-    // model_->applyFilter();
+    model_->applyFilter();
     model_->efficientRANSAC();
 
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
@@ -142,7 +142,7 @@ void ReconstructionPointsSubscriber::messageCallback(
         file_shape << vec.x() << " " << vec.y() << " " << vec.z() << "\n";
       }
     }
-    if ((iteration_counter_ >= 10) && (iteration_counter_ % 10 == 0)) {
+    if ((iteration_counter_ >= 5) && (iteration_counter_ % 5 == 0)) {
       model_->clearBuffer();
     }
     iteration_counter_++;

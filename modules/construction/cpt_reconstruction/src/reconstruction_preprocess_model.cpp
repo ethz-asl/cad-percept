@@ -101,11 +101,11 @@ void PreprocessModel::efficientRANSAC() {
   ransac.add_shape_factory<Cylinder>();
 
   Efficient_ransac::Parameters parameters;
-  parameters.probability = 0.0001;
-  parameters.min_points = 5000;
-  parameters.epsilon = 0.02;
-  parameters.cluster_epsilon = 0.1;
-  parameters.normal_threshold = 0.85;
+  parameters.probability = 0.005;
+  parameters.min_points = 100;
+  parameters.epsilon = 0.03;
+  parameters.cluster_epsilon = 0.5;
+  parameters.normal_threshold = 0.9;
 
   ransac.detect(parameters);
 
