@@ -108,24 +108,40 @@ void ReconstructionPointsSubscriber::messageCallback(
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
   if (model_->getOutlierCount() > 100000) {
     model_->clearRansacShapes();
-    model_->applyFilter();
+    //model_->applyFilter();
     model_->efficientRANSAC();
 
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
+    std::vector<Eigen::MatrixXd>* normals_shape = model_->getNormalShapes();
+    std::vector<Eigen::Vector3d>* ransac_normal = model_->getRansacNormals();
     std::vector<int>* shapes_ids = model_->getShapeIDs();
 
     // Publish mesh to mesh_gereration
     for (int i = 0; i < shapes_ids->size(); i++) {
-      std::vector<geometry_msgs::Vector3> pub_vectors;
+      std::vector<geometry_msgs::Vector3> pub_points;
+      std::vector<geometry_msgs::Vector3> pub_normals;
       for (int j = 0; j < points_shape->at(i).cols(); j++) {
-        geometry_msgs::Vector3 vec;
-        vec.x = (*points_shape)[i](0, j);
-        vec.y = (*points_shape)[i](1, j);
-        vec.z = (*points_shape)[i](2, j);
-        pub_vectors.push_back(vec);
+        geometry_msgs::Vector3 p;
+        geometry_msgs::Vector3 n;
+        p.x = (*points_shape)[i](0, j);
+        p.y = (*points_shape)[i](1, j);
+        p.z = (*points_shape)[i](2, j);
+        n.x = (*normals_shape)[i](0, j);
+        n.y = (*normals_shape)[i](1, j);
+        n.z = (*normals_shape)[i](2, j);
+        pub_points.push_back(p);
+        pub_normals.push_back(n);
       }
+      Eigen::Vector3d ransac_n_temp = (*ransac_normal).at(i);
+      geometry_msgs::Vector3 ransac_n;
+      ransac_n.x = ransac_n_temp.x();
+      ransac_n.y = ransac_n_temp.y();
+      ransac_n.z = ransac_n_temp.z();
+
       ::cpt_reconstruction::shape shape_msg;
-      shape_msg.vectors = pub_vectors;
+      shape_msg.points_msg = pub_points;
+      shape_msg.normals_msg = pub_normals;
+      shape_msg.ransac_normal = ransac_n;
       shape_msg.id = shapes_ids->at(i);
       publisher_.publish(shape_msg);
     }
@@ -147,7 +163,7 @@ void ReconstructionPointsSubscriber::messageCallback(
       }
       for (int j = 0; j < points_shape->at(i).cols(); j++) {
         Eigen::Vector3d vec = (*points_shape)[i].col(j);
-        file_shape << vec.x() << " " << vec.y() << " " << vec.z() << "\n";
+        file_shape << vec.x() << " " << vec.y() << " " << vec.z() << " " << (*ransac_normal).at(i).x() << " " << (*ransac_normal).at(i).y() << " " << (*ransac_normal).at(i).z() << "\n";
       }
     }
     if ((iteration_counter_ >= 5) && (iteration_counter_ % 5 == 0)) {

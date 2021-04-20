@@ -7,6 +7,7 @@
 #include <list>
 #include <utility>
 #include <vector>
+#include <tuple>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/IO/write_xyz_points.h>
@@ -98,13 +99,13 @@ void PreprocessModel::efficientRANSAC() {
   Efficient_ransac ransac;
   ransac.set_input(outliers);
   ransac.add_shape_factory<Plane>();
-  ransac.add_shape_factory<Cylinder>();
+  //ransac.add_shape_factory<Cylinder>();
 
   Efficient_ransac::Parameters parameters;
-  parameters.probability = 0.005;
-  parameters.min_points = 100;
-  parameters.epsilon = 0.03;
-  parameters.cluster_epsilon = 0.5;
+  parameters.probability = 0.01;
+  parameters.min_points = 200;
+  parameters.epsilon = 0.025;
+  parameters.cluster_epsilon = 0.1;//0.5
   parameters.normal_threshold = 0.9;
 
   ransac.detect(parameters);
@@ -120,44 +121,56 @@ void PreprocessModel::efficientRANSAC() {
   file.open("/home/philipp/Schreibtisch/outliers_ros.xyz", std::ofstream::app);
   Efficient_ransac::Shape_range shapes = ransac.shapes();
   Efficient_ransac::Shape_range::iterator it = shapes.begin();
+
   while (it != shapes.end()) {
     if (Plane* plane = dynamic_cast<Plane*>(it->get())) {
       const std::vector<std::size_t> idx_assigned_points =
           plane->indices_of_assigned_points();
 
+      // TODO: Remove
       Kernel::Plane_3 plane_3 = static_cast<Kernel::Plane_3>(*plane);
       Eigen::Vector4d coeff_plane(plane_3.a(), plane_3.b(), plane_3.c(),
                                   plane_3.d());
-
-      Kernel::Plane_3 plane_3_opp = plane_3_opp.opposite();
       param_plane_.push_back(coeff_plane);
-      ROS_INFO("[Done] Param: %f %f %f %f\n", plane_3.a(), plane_3.b(),
-               plane_3.c(), plane_3.d());
+
+      Kernel::Direction_3 ransac_normal_temp = plane_3.orthogonal_direction();
+      Eigen::Vector3d ransac_normal(ransac_normal_temp.dx(), ransac_normal_temp.dy(), ransac_normal_temp.dz());
+      ransac_normal = ransac_normal.normalized();
+      ransac_normals_.push_back(ransac_normal);
+
       Eigen::MatrixXd points(3, idx_assigned_points.size());
+      Eigen::MatrixXd normals(3, idx_assigned_points.size());
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
         Kernel::Point_3 p = point_with_normal.first;
+        Kernel::Vector_3 n = point_with_normal.second;
         file << p.x() << " " << p.y() << " " << p.z() << "\n";
         points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
+        normals.block<3, 1>(0, i) = Eigen::Vector3d(n.x(), n.y(), n.z());
       }
       points_shape_.push_back(points);
+      normals_shape_.push_back(points);
       shape_id_.push_back(0);
 
-    } else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
+    }/* else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
       const std::vector<std::size_t> idx_assigned_points =
           cyl->indices_of_assigned_points();
       Eigen::MatrixXd points(3, idx_assigned_points.size());
+      Eigen::MatrixXd normals(3, idx_assigned_points.size());
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
         Kernel::Point_3 p = point_with_normal.first;
+        Kernel::Vector_3 n = point_with_normal.second;
         file << p.x() << " " << p.y() << " " << p.z() << "\n";
         points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
+        normals.block<3, 1>(0, i) = Eigen::Vector3d(n.x(), n.y(), n.z());
       }
       points_shape_.push_back(points);
+      normals_shape_.push_back(points);
       shape_id_.push_back(1);
-    }
+    }*/
     it++;
   }
   file.close();
@@ -182,7 +195,9 @@ void PreprocessModel::applyFilter() {
     meshing_points_->push_back(voxelCentroids[i]);
   }
 
-  /* [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset. Integer indices would overflow.[
+  /*
+  Error for too big point clouds
+  [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset. Integer indices would overflow.[
   pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
   voxel_grid.setInputCloud(meshing_points_);
   voxel_grid.setLeafSize(0.01f, 0.01f, 0.01f);
@@ -194,6 +209,15 @@ void PreprocessModel::applyFilter() {
 std::vector<Eigen::MatrixXd>* PreprocessModel::getPointShapes() {
   return &points_shape_;
 }
+
+std::vector<Eigen::MatrixXd>* PreprocessModel::getNormalShapes() {
+  return &normals_shape_;
+}
+
+std::vector<Eigen::Vector3d>* PreprocessModel::getRansacNormals() {
+  return &ransac_normals_;
+}
+
 
 void PreprocessModel::clearBuffer() { meshing_points_->clear(); }
 
@@ -213,8 +237,82 @@ void PreprocessModel::printOutliers() {
 
 void PreprocessModel::clearRansacShapes() {
   points_shape_.clear();
+  points_shape_.clear();
   shape_id_.clear();
 }
 
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept
+
+/*
+Using Polygonal_surface_reconstruction
+TODO: Too long processing - Gruobi solver?
+//#define CGAL_USE_GLPK
+#define CGAL_USE_SCIP
+//#include <CGAL/GLPK_mixed_integer_program_traits.h>
+//typedef CGAL::GLPK_mixed_integer_program_traits<double> MIP_Solver;
+
+#include <CGAL/SCIP_mixed_integer_program_traits.h>
+typedef CGAL::SCIP_mixed_integer_program_traits<double> MIP_Solver;
+
+typedef Kernel::Point_3 Point2;
+typedef Kernel::Vector_3  Vector2;
+// Point with normal, and plane index
+typedef boost::tuple<Point2, Vector2, int>  PNI2;
+typedef std::vector<PNI2>  Point_vector2;
+typedef CGAL::Nth_of_tuple_property_map<0, PNI2> Point_map2;
+typedef CGAL::Nth_of_tuple_property_map<1, PNI2> Normal_map2;
+typedef CGAL::Nth_of_tuple_property_map<2, PNI2> Plane_index_map2;
+typedef CGAL::Shape_detection::Efficient_RANSAC_traits<Kernel, Point_vector2, Point_map2, Normal_map2> Traits2;
+typedef CGAL::Shape_detection::Efficient_RANSAC<Traits2> Efficient_ransac2;
+typedef CGAL::Shape_detection::Plane<Traits2>  Plane2;
+typedef CGAL::Shape_detection::Point_to_shape_index_map<Traits2> Point_to_shape_index_map2;
+typedef CGAL::Polygonal_surface_reconstruction<Kernel> Polygonal_surface_reconstruction2;
+typedef CGAL::Surface_mesh<Point2> Surface_mesh2;
+  std::vector<boost::tuple<Kernel::Point_3, Kernel::Vector_3, int>>  points_sur;
+  for (int i = 0; i < outliers.size(); i++){
+    boost::tuple<Kernel::Point_3, Kernel::Vector_3, int> tmp(outliers[i].first, outliers[i].second, 0);
+    points_sur.push_back(tmp);
+  }
+
+  Efficient_ransac2 ransac;
+  ransac.set_input(points_sur);
+  ransac.add_shape_factory<Plane2>();
+
+  Efficient_ransac2::Parameters parameters;
+  parameters.probability = 0.005;
+  parameters.min_points = 250;
+  parameters.epsilon = 0.03;
+  parameters.cluster_epsilon = 0.5;
+  parameters.normal_threshold = 0.9;
+
+  ransac.detect(parameters);
+
+  ROS_INFO("Detected Shapes: %d\n",
+           ransac.shapes().end() - ransac.shapes().begin());
+  ROS_INFO("Unassigned Points: %d\n", ransac.number_of_unassigned_points());
+
+  Efficient_ransac2::Plane_range planes_sur = ransac.planes();
+  std::size_t num_planes = planes_sur.size();
+
+  Point_to_shape_index_map2 shape_index_map(points_sur, planes_sur);
+
+  for (std::size_t i = 0; i < points_sur.size(); ++i) {
+    int plane_index = get(shape_index_map, i);
+    points_sur[i].get<2>() = plane_index;
+  }
+
+  Polygonal_surface_reconstruction2 algo(
+          points_sur,
+          Point_map2(),
+          Normal_map2(),
+          Plane_index_map2()
+  );
+
+  Surface_mesh2 model;
+  algo.reconstruct<MIP_Solver>(model);
+  std::string output_file = "/home/philipp/Schreibtisch/Meshes/mesh_" +
+                       std::to_string(num_planes) + ".off";
+  std::ofstream output_stream(output_file.c_str());
+  CGAL::write_off(output_stream, model);
+*/

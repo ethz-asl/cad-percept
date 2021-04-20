@@ -5,6 +5,16 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/surface/gp3.h>
+#include <pcl/io/ply_io.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/surface/mls.h>
+#include <pcl/surface/poisson.h>
+
 namespace cad_percept {
 namespace cpt_reconstruction {
 class MeshGeneration {
@@ -12,9 +22,14 @@ class MeshGeneration {
   MeshGeneration(ros::NodeHandle nodeHandle_);
 
  private:
+  void purgeBuffer();
   void messageCallback(const ::cpt_reconstruction::shape& msg);
   ros::NodeHandle nodeHandle_;
   ros::Subscriber subscriber_;
+  int counter_;
+  std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_;
+  std::vector<Eigen::Vector3d> ransac_normals_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

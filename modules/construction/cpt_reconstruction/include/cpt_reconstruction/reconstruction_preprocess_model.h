@@ -20,6 +20,11 @@
 #include <CGAL/property_map.h>
 #include <CGAL/tags.h>
 
+#include <CGAL/IO/Writer_OFF.h>
+#include <CGAL/Surface_mesh.h>
+#include <CGAL/Polygonal_surface_reconstruction.h>
+//#include <CGAL/GLPK_mixed_integer_program_traits.h>
+
 // Type declarations.
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef Kernel::FT FT;
@@ -28,15 +33,15 @@ typedef std::vector<Point_with_normal> Pwn_vector;
 typedef CGAL::First_of_pair_property_map<Point_with_normal> Point_map;
 typedef CGAL::Second_of_pair_property_map<Point_with_normal> Normal_map;
 typedef CGAL::Shape_detection::Efficient_RANSAC_traits<Kernel, Pwn_vector,
-                                                       Point_map, Normal_map>
-    Traits;
+                                                       Point_map, Normal_map> Traits;
 typedef CGAL::Shape_detection::Efficient_RANSAC<Traits> Efficient_ransac;
 typedef CGAL::Shape_detection::Cone<Traits> Cone;
 typedef CGAL::Shape_detection::Cylinder<Traits> Cylinder;
 typedef CGAL::Shape_detection::Plane<Traits> Plane;
 typedef CGAL::Shape_detection::Sphere<Traits> Sphere;
 typedef CGAL::Shape_detection::Torus<Traits> Torus;
-typedef CGAL::Parallel_tag Concurrency_tag;
+//typedef CGAL::Parallel_tag Concurrency_tag;
+
 
 namespace cad_percept {
 namespace cpt_reconstruction {
@@ -54,6 +59,8 @@ class PreprocessModel {
   void applyFilter();
 
   std::vector<Eigen::MatrixXd>* getPointShapes();
+  std::vector<Eigen::MatrixXd>* getNormalShapes();
+  std::vector<Eigen::Vector3d>* getRansacNormals();
   std::vector<int>* getShapeIDs();
 
   int getOutlierCount();
@@ -74,6 +81,8 @@ class PreprocessModel {
   std::vector<float> nn_dists_{1};
   std::vector<int> idx_outliers_;
   std::vector<Eigen::MatrixXd> points_shape_;
+  std::vector<Eigen::MatrixXd> normals_shape_;
+  std::vector<Eigen::Vector3d> ransac_normals_;
   std::vector<int> shape_id_;
   std::vector<Eigen::Vector4d> param_plane_;
   std::vector<Eigen::Vector4d> param_cyl_;
