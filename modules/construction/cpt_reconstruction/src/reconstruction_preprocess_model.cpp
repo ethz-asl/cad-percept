@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 #include <tuple>
+#include <cmath>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/IO/write_xyz_points.h>
@@ -16,6 +17,13 @@
 #include <CGAL/property_map.h>
 #include <CGAL/tags.h>
 
+
+#include <pcl/ModelCoefficients.h>
+
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/voxel_grid.h>
@@ -23,7 +31,6 @@
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/octree/octree_pointcloud_voxelcentroid.h>
-#include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/kdtree/impl/kdtree_flann.hpp>
 
@@ -77,7 +84,7 @@ void PreprocessModel::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 
 void PreprocessModel::efficientRANSAC() {
   pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-  this->addNormals(meshing_points_, normals, 10);
+  this->addNormals(meshing_points_, normals, 15);
 
   std::vector<Point_with_normal> outliers(meshing_points_->size());
   for (unsigned i = 0; i < meshing_points_->size(); i++) {
@@ -102,11 +109,11 @@ void PreprocessModel::efficientRANSAC() {
   //ransac.add_shape_factory<Cylinder>();
 
   Efficient_ransac::Parameters parameters;
-  parameters.probability = 0.01;
+  parameters.probability = 0.001;
   parameters.min_points = 200;
-  parameters.epsilon = 0.025;
+  parameters.epsilon = 0.03;
   parameters.cluster_epsilon = 0.1;//0.5
-  parameters.normal_threshold = 0.9;
+  parameters.normal_threshold = 0.95;
 
   ransac.detect(parameters);
 
@@ -133,8 +140,8 @@ void PreprocessModel::efficientRANSAC() {
                                   plane_3.d());
       param_plane_.push_back(coeff_plane);
 
-      Kernel::Direction_3 ransac_normal_temp = plane_3.orthogonal_direction();
-      Eigen::Vector3d ransac_normal(ransac_normal_temp.dx(), ransac_normal_temp.dy(), ransac_normal_temp.dz());
+      Kernel::Vector_3 ransac_normal_temp = (*plane).	plane_normal();
+      Eigen::Vector3d ransac_normal(ransac_normal_temp.x(), ransac_normal_temp.y(), ransac_normal_temp.z());
       ransac_normal = ransac_normal.normalized();
       ransac_normals_.push_back(ransac_normal);
 
@@ -150,7 +157,7 @@ void PreprocessModel::efficientRANSAC() {
         normals.block<3, 1>(0, i) = Eigen::Vector3d(n.x(), n.y(), n.z());
       }
       points_shape_.push_back(points);
-      normals_shape_.push_back(points);
+      normals_shape_.push_back(normals);
       shape_id_.push_back(0);
 
     }/* else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
@@ -179,6 +186,63 @@ void PreprocessModel::efficientRANSAC() {
   extract.setIndices(detected_points);
   extract.setNegative(true);
   extract.filter(*meshing_points_);
+}
+
+// Source: https://github.com/apalomer/plane_fitter/blob/master/src/check_planarity.cpp
+// and https://pointclouds.org/documentation/tutorials/cylinder_segmentation.html
+void PreprocessModel::SACSegmentation() {
+
+  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+  pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
+  pcl::ExtractIndices<pcl::PointXYZ> extract;
+  seg.setOptimizeCoefficients (true);
+  seg.setModelType (pcl::SACMODEL_PLANE);
+  seg.setMethodType (pcl::SAC_RANSAC);
+  seg.setDistanceThreshold(0.03);
+  seg.setMaxIterations(1000);
+
+  int i = 0, nr_points = (int)meshing_points_->points.size();
+  while (meshing_points_->points.size() > 0.3 * nr_points) {
+    pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+    this->addNormals(meshing_points_, cloud_normals, 100);
+    seg.setInputNormals(cloud_normals);
+    seg.setInputCloud(meshing_points_);
+    seg.segment(*inliers, *coefficients);
+
+    int nr_inliers = inliers->indices.size();
+    Eigen::MatrixXd points(3, nr_inliers);
+    Eigen::MatrixXd normals(3, nr_inliers);
+    double error_sum = 0;
+    for (unsigned i = 0; i < nr_inliers; i++) {
+      pcl::PointXYZ p = meshing_points_->points[inliers->indices[i]];
+      pcl::Normal n = cloud_normals->points[inliers->indices[i]];
+      points.block<3, 1>(0, i) = Eigen::Vector3d(p.x, p.y, p.z);
+      normals.block<3, 1>(0, i) = Eigen::Vector3d(n.normal[0], n.normal[1], n.normal[2]);
+
+      double f1 = fabs(coefficients->values[0]*p.x + coefficients->values[1]*p.y + coefficients->values[2] * p.z + coefficients->values[3]);
+      double f2 = sqrt(pow(coefficients->values[0],2)+pow(coefficients->values[1],2)+pow(coefficients->values[2],2));
+      error_sum += f1/f2;
+    }
+    double mean_error = error_sum / nr_inliers;
+
+    ROS_INFO("Mean error: %f\n", mean_error);
+    if (mean_error < 0.03){
+      points_shape_.push_back(points);
+      normals_shape_.push_back(normals);
+      shape_id_.push_back(0);
+
+      Eigen::Vector3d plane_normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
+      plane_normal = plane_normal.normalized();
+      ransac_normals_.push_back(plane_normal);
+    }
+
+    extract.setInputCloud(meshing_points_);
+    extract.setIndices(inliers);
+    extract.setNegative(true);
+    pcl::PointCloud<pcl::PointXYZ> cloudF;
+    extract.filter(*meshing_points_);
+  }
 }
 
 void PreprocessModel::applyFilter() {
@@ -237,7 +301,8 @@ void PreprocessModel::printOutliers() {
 
 void PreprocessModel::clearRansacShapes() {
   points_shape_.clear();
-  points_shape_.clear();
+  normals_shape_.clear();
+  ransac_normals_.clear();
   shape_id_.clear();
 }
 

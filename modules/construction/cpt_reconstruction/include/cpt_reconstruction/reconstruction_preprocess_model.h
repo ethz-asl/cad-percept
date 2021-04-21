@@ -56,6 +56,7 @@ class PreprocessModel {
   void addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                   pcl::PointCloud<pcl::Normal>::Ptr normals, int k);
   void efficientRANSAC();
+  void SACSegmentation();
   void applyFilter();
 
   std::vector<Eigen::MatrixXd>* getPointShapes();
@@ -79,7 +80,7 @@ class PreprocessModel {
   pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree_;
   std::vector<int> nn_indices_{1};
   std::vector<float> nn_dists_{1};
-  std::vector<int> idx_outliers_;
+  std::vector<int> idx_outliers_; //TODO REMOVE
   std::vector<Eigen::MatrixXd> points_shape_;
   std::vector<Eigen::MatrixXd> normals_shape_;
   std::vector<Eigen::Vector3d> ransac_normals_;
