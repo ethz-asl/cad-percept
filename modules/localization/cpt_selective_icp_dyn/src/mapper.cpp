@@ -182,7 +182,7 @@ void Mapper::gotOdom(const nav_msgs::Odometry &odom_msg_in){
       transform.setOrigin( tf::Vector3(-position.y, position.x, position.z));
       transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w));
       tf_broadcaster_.sendTransform(tf::StampedTransform(transform, odom_msg_in.header.stamp, parameters_.camera_odom_frame, parameters_.camera_pose_frame));
-      ROS_INFO("Broadcasted and published Odom->Pose Transform"); 
+      ROS_DEBUG("Broadcasted and published Odom->Pose Transform"); 
   }
   // broadcast identity map to odom to tf (only if EKF and activated)
   if (parameters_.ekf_enable && parameters_.map_odom_pub){
@@ -190,7 +190,7 @@ void Mapper::gotOdom(const nav_msgs::Odometry &odom_msg_in){
       test_transform.setOrigin(tf::Vector3(0,0,0));
       test_transform.setRotation(tf::Quaternion(0,0,0,1));
       tf_broadcaster_.sendTransform(tf::StampedTransform(test_transform, odom_msg_in.header.stamp, parameters_.tf_map_frame, parameters_.camera_odom_frame));
-      ROS_INFO("Broadcasted and published identity Map->Odom Transform");
+      ROS_DEBUG("Broadcasted and published identity Map->Odom Transform");
   }
 
 }
