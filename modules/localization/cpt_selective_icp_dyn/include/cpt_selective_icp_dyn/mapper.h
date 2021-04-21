@@ -34,6 +34,7 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 namespace cad_percept {
 namespace selective_icp_dyn {
@@ -87,6 +88,8 @@ class Mapper {
   DP mapPointCloud;
   bool mapping_trigger;
   bool update_icp_ref_trigger;
+  int current_scan_number;
+  int current_realsense_number;
 
   DP ref_dp;
   DP selective_ref_dp;
@@ -111,6 +114,10 @@ class Mapper {
   ros::Publisher point_pub_;
   ros::Publisher map_pub_;
   ros::Publisher distance_pc_pub_;
+  // new
+  ros::Publisher realsense_odom_pub_;
+  // new
+  ros::Publisher icp_corrected_odom_pub_;
 
   // Services
   ros::ServiceServer load_published_map_srv_;

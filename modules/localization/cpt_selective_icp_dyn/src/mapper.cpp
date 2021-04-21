@@ -16,13 +16,10 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       cad_trigger(false),
       selective_icp_trigger(false),
       ref_mesh_ready(false),
-      projection_count(0) {
+      projection_count(0), 
+      current_scan_number(0),
+      current_realsense_number(0) {
   
-  //Initially, odom position needs to be rotated to map by 90 degrees
-  T_odom_to_map_(0,0) = 0;
-  T_odom_to_map_(1,1) = 0;
-  T_odom_to_map_(0,1) = -1;
-  T_odom_to_map_(1,0) = 1;
 
   cloud_sub_ =
       nh_.subscribe(parameters_.scan_topic, parameters_.input_queue_size, &Mapper::gotCloud, this);
@@ -50,7 +47,8 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   point_pub_ = nh_.advertise<geometry_msgs::PointStamped>("point_pub_", 2, true);
   map_pub_ = nh_.advertise<PointCloud>("map", 1, true);
   distance_pc_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZI>>("distance_pc", 2, true);
-
+  realsense_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("realsense_odom", 50, true);
+  icp_corrected_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("icp_corrected_odom", 50, true);
   // TODO (Hermann) What is this???
   std::cout << "Wait for start-up" << std::endl;
   sleep(5);  // wait to set up stuff
@@ -66,6 +64,7 @@ bool Mapper::loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Re
   return true;
 }
 
+// Callback for initializing mesh
 void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   if (cad_trigger) {
     std::cout << "Processing CAD mesh" << std::endl;
@@ -128,45 +127,107 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   }
 }
 
-// Callback function for broadcasting the odometry message from Realsense to tf
+// Callback function for correcting, publishing and broadcasting the odometry message from Realsense
 void Mapper::gotOdom(const nav_msgs::Odometry &odom_msg_in){
+
+  // Suppress warning by publishing in one third of initial frequency (which was about 200hz)!
+  if (current_realsense_number % 3 > 0){
+      current_realsense_number++;
+      return;
+  }
+
+  current_realsense_number = 1; 
   std::string child_frame_id = odom_msg_in.child_frame_id;
   std::string parent_frame_id = odom_msg_in.header.frame_id;
+  
 
-  tf::Transform transform;
   geometry_msgs::Pose pose = odom_msg_in.pose.pose;
   geometry_msgs::Point position = pose.position;
   geometry_msgs::Quaternion orientation = pose.orientation;
+  geometry_msgs::Twist twist = odom_msg_in.twist.twist;
 
-  transform.setOrigin( tf::Vector3(position.x, position.y, position.z));
-  transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w));
+    
+  nav_msgs::Odometry odom_msg_out = odom_msg_in;
 
-  tf_broadcaster_.sendTransform(tf::StampedTransform(transform, ros::Time::now(), parameters_.camera_odom_frame, parameters_.camera_pose_frame));
+  // Rotate translation by 90 degrees yaw, orientation is not used anyway except for yaw, which is still correct
+  odom_msg_out.pose.pose.position.x = -position.y;
+  odom_msg_out.pose.pose.position.y = position.x;
+  odom_msg_out.pose.pose.position.z = position.z;
+  odom_msg_out.twist.twist.linear.x = -twist.linear.y;
+  odom_msg_out.twist.twist.linear.y = twist.linear.x;
+  odom_msg_out.twist.twist.linear.z = twist.linear.z;
 
-  ROS_INFO("Broadcasted Odom Transform");
+  // Set covariances from parameters
+  odom_msg_out.pose.covariance[0+0*6] = parameters_.realsense_cov;
+	odom_msg_out.pose.covariance[1+1*6] = parameters_.realsense_cov;
+	odom_msg_out.pose.covariance[2+2*6] = parameters_.realsense_cov;
+	odom_msg_out.pose.covariance[3+3*6] = parameters_.realsense_cov;
+	odom_msg_out.pose.covariance[4+4*6] = parameters_.realsense_cov;
+	odom_msg_out.pose.covariance[5+5*6] = parameters_.realsense_cov;
+  odom_msg_out.twist.covariance[0+0*6] = parameters_.realsense_cov;
+	odom_msg_out.twist.covariance[1+1*6] = parameters_.realsense_cov;
+	odom_msg_out.twist.covariance[2+2*6] = parameters_.realsense_cov;
+	odom_msg_out.twist.covariance[3+3*6] = parameters_.realsense_cov;
+	odom_msg_out.twist.covariance[4+4*6] = parameters_.realsense_cov;
+	odom_msg_out.twist.covariance[5+5*6] = parameters_.realsense_cov;
+  
+  // publish corrected realsense odom to topic (realsense_odom) for EKF
+  if (realsense_odom_pub_.getNumSubscribers()) {
+    realsense_odom_pub_.publish(odom_msg_out);
+  }
+
+  // broadcast odom to pose to tf (non-EKF or if activated)
+  if (!parameters_.ekf_enable || parameters_.odom_pose_pub){
+      tf::Transform transform;
+      transform.setOrigin( tf::Vector3(-position.y, position.x, position.z));
+      transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w));
+      tf_broadcaster_.sendTransform(tf::StampedTransform(transform, odom_msg_in.header.stamp, parameters_.camera_odom_frame, parameters_.camera_pose_frame));
+      ROS_INFO("Broadcasted and published Odom->Pose Transform"); 
+  }
+  // broadcast identity map to odom to tf (only if EKF and activated)
+  if (parameters_.ekf_enable && parameters_.map_odom_pub){
+      tf::Transform test_transform;
+      test_transform.setOrigin(tf::Vector3(0,0,0));
+      test_transform.setRotation(tf::Quaternion(0,0,0,1));
+      tf_broadcaster_.sendTransform(tf::StampedTransform(test_transform, odom_msg_in.header.stamp, parameters_.tf_map_frame, parameters_.camera_odom_frame));
+      ROS_INFO("Broadcasted and published identity Map->Odom Transform");
+  }
 
 }
 
-
-// TODO (Hermann) Rename to 'gotScan'?
+// Main entry point, callback function is called whenever a new scan arrives
 void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
   /**
    * Wait until tf_listener gets results
    */
-  if (odom_received_ < 3) { 
+  if (odom_received_ < 4) {
+    // Initial transformations: publish transformation between odom and map initially for complete
+    // TF tree
+    auto tf_odom_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+        PM::TransformationParameters::Identity(4, 4), parameters_.camera_odom_frame,
+        parameters_.tf_map_frame, ros::Time::now());
+    tf_broadcaster_.sendTransform(tf_odom_to_map);
+    auto tf_odom_to_pose = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
+        PM::TransformationParameters::Identity(4, 4), parameters_.camera_odom_frame,
+        parameters_.camera_pose_frame, ros::Time::now());
+    tf_broadcaster_.sendTransform(tf_odom_to_pose);
+    ROS_INFO_STREAM("Initial Odom to map and odom to pose published" << odom_received_);
+
+
+    // Checking whether TF tree is fully set up
     try {
       tf::StampedTransform transform;
-      tf_listener_.lookupTransform(parameters_.camera_odom_frame, parameters_.lidar_frame, 
+      tf_listener_.lookupTransform(parameters_.tf_map_frame, parameters_.lidar_frame,
                                    cloud_msg_in.header.stamp, transform);
       odom_received_++;
+      ROS_WARN_STREAM("Transformations work.");
     } catch (tf::TransformException ex) {
-      ROS_WARN_STREAM("Transformations still initializing (dyn).");
-      // publish for state estimator
-      pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
-          T_scanner_to_odom_.inverse(), parameters_.lidar_frame, parameters_.camera_odom_frame, 
-          cloud_msg_in.header.stamp));
+      ROS_WARN_STREAM("Transformations still initializing.");
       odom_received_++;
     }
+ /**
+   * Main part
+   */    
   } else {
     const ros::Time stamp = cloud_msg_in.header.stamp;
     uint32_t seq = cloud_msg_in.header.seq;
@@ -179,25 +240,39 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
       // Publish identity matrix as long as no map to avoid drift from IMU during alignment.
       // Publish odometry.
-      if (odom_pub_.getNumSubscribers()) {
-        odom_pub_.publish(PointMatcher_ros::eigenMatrixToOdomMsg<float>(
-            T_scanner_to_map_, parameters_.tf_map_frame, stamp));
-      }
-      // Publish pose. Same as odometry, but different msg type.
-      auto tf_scanner_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
-          T_scanner_to_map_, parameters_.lidar_frame, parameters_.tf_map_frame, stamp);
-      if (parameters_.standalone_icp) {
-        tf_broadcaster_.sendTransform(tf_scanner_to_map);
-      }
-      if (pose_pub_.getNumSubscribers()) {
-        pose_pub_.publish(tf_scanner_to_map);
-      }
+      // Not sure if this is a good idea with EKF
+      // if (odom_pub_.getNumSubscribers()) {
+      //   nav_msgs::Odometry odom_msg = PointMatcher_ros::eigenMatrixToOdomMsg<float>(
+      //       T_scanner_to_map_, parameters_.tf_map_frame, stamp);
+      //   odom_msg.child_frame_id = parameters_.lidar_frame;
+      //   odom_msg.pose.covariance[0+0*6] = 0;
+		  //   odom_msg.pose.covariance[1+1*6] = 0;
+		  //   odom_msg.pose.covariance[2+2*6] = 0;
+		  //   odom_msg.pose.covariance[3+3*6] = 0;
+		  //   odom_msg.pose.covariance[4+4*6] = 0;
+		  //   odom_msg.pose.covariance[5+5*6] = 0;
+      //   odom_pub_.publish(odom_msg);
+      // }
+      
+      // // Publish pose. Same as odometry, but different msg type.
+      // if (pose_pub_.getNumSubscribers()) {
+      //   pose_pub_.publish(tf_scanner_to_map);
+      // }
       return;  // cancel if icp_ was not initialized yet
     }
+
+    // For real-time capability: skip Lidar scans!
+    if (current_scan_number % parameters_.skip_scans > 0){
+      ROS_INFO_STREAM("Skipped this ICP " << current_scan_number++);
+      return;
+    }
+    current_scan_number = 1; 
 
     DP cloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(cloud_msg_in));
 
     PointMatcherSupport::timer t;
+
+    // Processing cloud
     processCloud(&cloud, cloud_msg_in.header.stamp);
 
     // Cloud specific ICP preparation:
@@ -213,16 +288,40 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     }
 
     /**
-     * Get transform between Odom and Lidar frame (estimate from Realsense)
+     * Get transform between Odom and Lidar frame (estimate from Realsense or EKF)
      */
-    // set standalone_icp to false for Realsense to work!
-    if (!parameters_.standalone_icp) {
+    try {
+      T_scanner_to_odom_ = PointMatcher_ros::eigenMatrixToDim<float>(
+          PointMatcher_ros::transformListenerToEigenMatrix<float>(
+              tf_listener_,
+              parameters_.camera_odom_frame,  // to
+              parameters_.lidar_frame,        // from
+              stamp),
+          dimp1);
+    } catch (tf::ExtrapolationException e) {
+      ROS_ERROR_STREAM("Extrapolation Exception. stamp = " << stamp << " now = " << ros::Time::now()
+                                                           << " delta = "
+                                                           << ros::Time::now() - stamp << std::endl
+                                                           << e.what());
+      return;
+    } catch (...) {
+      // Everything else.
+      ROS_ERROR_STREAM("Unexpected exception... ignoring scan.");
+      return;
+    }
+
+    ROS_DEBUG_STREAM("[ICP] T_scanner_to_odom (" << parameters_.lidar_frame << " to "
+                                                << parameters_.camera_odom_frame << "):\n"
+                                                << T_scanner_to_odom_); 
+    
+    // in case of EKF, get EKF measurement of odom to map, otherwise use the one from last iteration
+    if (parameters_.ekf_enable) {
       try {
-        T_scanner_to_odom_ = PointMatcher_ros::eigenMatrixToDim<float>( 
+        T_odom_to_map_ = PointMatcher_ros::eigenMatrixToDim<float>(
             PointMatcher_ros::transformListenerToEigenMatrix<float>(
                 tf_listener_,
-                parameters_.camera_odom_frame,  // to 
-                parameters_.lidar_frame,   // from
+                parameters_.tf_map_frame,       // to
+                parameters_.camera_odom_frame,  // from
                 stamp),
             dimp1);
       } catch (tf::ExtrapolationException e) {
@@ -237,12 +336,9 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         return;
       }
     }
-    ROS_DEBUG_STREAM("[ICP] T_odom_to_map (" << parameters_.lidar_frame << " to "
-                                                << parameters_.camera_odom_frame << "):\n"
-                                                << T_scanner_to_odom_); 
 
-    // correctParameters: force orthogonality of rotation matrix
-    // Get new estimate for transform between scanner and map from Realsense odometry and previous error between odometry and map
+    // CorrectParameters: force orthogonality of rotation matrix
+    // Get Scanner to Map transform
     T_scanner_to_map_ = transformation_->correctParameters(T_odom_to_map_ * T_scanner_to_odom_); 
 
     // Check dimension
@@ -257,71 +353,100 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
     PM::TransformationParameters T_updated_scanner_to_map =
         T_scanner_to_map_;  // not sure if copy is necessary 
-    ROS_INFO("gotCloud start ICP");
-    /**
-     * Full ICP Primer
-     */
-    if (parameters_.full_icp_primer_trigger == true) {
-      if (!fullICP(cloud, &T_updated_scanner_to_map)) {
-        return;  // if not successfull cancel the process
-      }
-    }
 
+  
     /**
-     * Selective ICP
+     * Full ICP 
      */
-    if (selective_icp_trigger == true) {
-      if (!selectiveICP(cloud, &T_updated_scanner_to_map, stamp)) {
-        if (parameters_.full_icp_primer_trigger == false) {  // if not executed before, do now
-          if (!fullICP(cloud, &T_updated_scanner_to_map)) {  // if no result cancel
-            return;  // if not successfull cancel the process
-          }
-        }
-      }
-    }
-
-    if (parameters_.full_icp_primer_trigger == false && selective_icp_trigger == false) {
-      std::cerr << "Both ICP methods turned off. Executing full ICP temporary to avoid drift."
-                << std::endl;
-      if (!fullICP(cloud, &T_updated_scanner_to_map)) {
-        return;  // if not successfull cancel the process
-      }
+    if (!fullICP(cloud, &T_updated_scanner_to_map)) {
+      return;  // if not successfull cancel the process
     }
 
     // Compute updated error between odom and map based on ICP pose
     T_odom_to_map_ = T_updated_scanner_to_map * T_scanner_to_odom_.inverse(); 
+
     /**
      * Publish
      */
-    // Publish odometry.
+    // Publish odometry (from map frame to rslidar frame) (to icp_odom).
     if (odom_pub_.getNumSubscribers()) {
-      odom_pub_.publish(PointMatcher_ros::eigenMatrixToOdomMsg<float>(
-          T_updated_scanner_to_map, parameters_.tf_map_frame, stamp));
+      nav_msgs::Odometry odom_msg = PointMatcher_ros::eigenMatrixToOdomMsg<float>(
+            T_updated_scanner_to_map, parameters_.tf_map_frame, stamp);
+        odom_msg.child_frame_id = parameters_.lidar_frame;
+        odom_msg.pose.covariance[0+0*6] = parameters_.icp_cov_lin;
+		    odom_msg.pose.covariance[1+1*6] = parameters_.icp_cov_lin;
+		    odom_msg.pose.covariance[2+2*6] = parameters_.icp_cov_lin;
+		    odom_msg.pose.covariance[3+3*6] = parameters_.icp_cov_rot;
+		    odom_msg.pose.covariance[4+4*6] = parameters_.icp_cov_rot;
+		    odom_msg.pose.covariance[5+5*6] = parameters_.icp_cov_rot;
+        odom_pub_.publish(odom_msg);
     }
-    // Publish pose and updated error between odom and map
+
+    // Publish corrected odometry for EKF (from map frame to camera_pose_frame) (corrected_icp_odom)
+    if (parameters_.ekf_enable){
+      try {
+        // get transform between pose and scanner
+        PM::TransformationParameters T_pose_to_scanner_ = PointMatcher_ros::eigenMatrixToDim<float>( 
+            PointMatcher_ros::transformListenerToEigenMatrix<float>(
+                tf_listener_,
+                parameters_.lidar_frame,  // to 
+                parameters_.camera_pose_frame,   // from
+                stamp),
+            dimp1);
+        // compute transform between map and pose
+        PM::TransformationParameters T_pose_to_map_ = T_updated_scanner_to_map * T_pose_to_scanner_; 
+        // publish
+        if (icp_corrected_odom_pub_.getNumSubscribers()) {
+          nav_msgs::Odometry odom_msg = PointMatcher_ros::eigenMatrixToOdomMsg<float>(
+              T_pose_to_map_, parameters_.tf_map_frame, stamp);
+          odom_msg.child_frame_id = parameters_.camera_pose_frame;
+          odom_msg.pose.covariance[0+0*6] = parameters_.icp_cov_lin;
+          odom_msg.pose.covariance[1+1*6] = parameters_.icp_cov_lin;
+          odom_msg.pose.covariance[2+2*6] = parameters_.icp_cov_lin;
+          odom_msg.pose.covariance[3+3*6] = parameters_.icp_cov_rot;
+          odom_msg.pose.covariance[4+4*6] = parameters_.icp_cov_rot;
+          odom_msg.pose.covariance[5+5*6] = parameters_.icp_cov_rot;
+          icp_corrected_odom_pub_.publish(odom_msg);
+        }     
+      } catch (tf::ExtrapolationException e) {
+        ROS_ERROR_STREAM("Extrapolation Exception. stamp = "
+                         << stamp << " now = " << ros::Time::now()
+                         << " delta = " << ros::Time::now() - stamp << std::endl
+                         << e.what());
+        return;
+      } catch (...) {
+        // Everything else.
+        ROS_ERROR_STREAM("Unexpected exception... ignoring scan.");
+        return;
+      }
+    }
+
+    // Broadcasting updated error between odom and map
     auto tf_odom_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
         T_odom_to_map_, parameters_.camera_odom_frame, parameters_.tf_map_frame, stamp); 
-    if (!parameters_.standalone_icp) { //set standalone_icp to false for Realsense to work
+    // If EKF is enabled, broadcasting is done by EKF or not used
+    if (!parameters_.ekf_enable) { 
       tf_broadcaster_.sendTransform(tf_odom_to_map);
       ROS_INFO_STREAM("Odom to map published");
     }
+
+    // Publish pose
     auto tf_scanner_to_map = PointMatcher_ros::eigenMatrixToTransformStamped<float>(
-        T_updated_scanner_to_map, parameters_.lidar_frame, parameters_.tf_map_frame, stamp); 
+        T_scanner_to_map_, parameters_.lidar_frame, parameters_.tf_map_frame, stamp); 
     if (pose_pub_.getNumSubscribers()) {
       pose_pub_.publish(tf_scanner_to_map);
     }
 
-    // Publish pose in mesh
+    // Publish pose in mesh (used for error computation!)
+    // IMPORTANT: Changed logging to non-updated value (previous iteration) to see EKF result and not the jumping one!
     if (mesh_pose_pub_.getNumSubscribers()) {
       mesh_pose_pub_.publish(PointMatcher_ros::eigenMatrixToTransformStamped<float>(
-          T_map_to_meshorigin_ * T_updated_scanner_to_map, parameters_.lidar_frame, mesh_frame_id_,
+          T_map_to_meshorigin_ * T_scanner_to_map_, parameters_.lidar_frame, mesh_frame_id_,
           stamp));
     }
 
-    T_scanner_to_map_ = T_updated_scanner_to_map;
     // Publish the corrected scan point cloud
     DP pc = transformation_->compute(cloud, T_updated_scanner_to_map);
-
     if (scan_pub_.getNumSubscribers()) {
       ROS_DEBUG_STREAM("Corrected scan publishing " << pc.getNbPoints() << " points");
       scan_pub_.publish(

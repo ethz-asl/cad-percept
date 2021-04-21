@@ -23,7 +23,14 @@ MapperParameters::MapperParameters()
       standalone_icp(getParam<bool>("standaloneICP", false)),
       path(getParam<std::string>("path", "fail")),
       output(getParam<bool>("output", false)),
-      publish_distance(getParam<bool>("publishDistance", false)) {}
+      publish_distance(getParam<bool>("publishDistance", false)), 
+      skip_scans(getParam<int>("skipScans", 1)),
+      icp_cov_lin(getParam<double>("icpCovLin", 0.1)),
+      icp_cov_rot(getParam<double>("icpCovRot", 0.1)),
+      realsense_cov(getParam<double>("realsenseCov", 0.1)),
+      odom_pose_pub(getParam<bool>("odomPosePub", true)),
+      map_odom_pub(getParam<bool>("mapOdomPub", true)),
+      ekf_enable(getParam<bool>("ekfEnable", false)) {}
 MapperParameters::~MapperParameters() {}
 
 }  // namespace selective_icp_dyn
