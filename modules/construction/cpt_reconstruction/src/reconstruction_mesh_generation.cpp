@@ -1,15 +1,15 @@
 #include <cpt_reconstruction/reconstruction_mesh_generation.h>
 
-#include <algorithm>
-
 #include <geometry_msgs/Vector3.h>
+#include <algorithm>
+#include <fstream>
+#include <vector>
+
 #include "cpt_reconstruction/shape.h"
 #include "std_msgs/String.h"
 
-#include <pcl/PCLPointCloud2.h>
 #include <pcl/PCLHeader.h>
 #include <pcl/PCLPointCloud2.h>
-#include <pcl/Vertices.h>
 #include <pcl/PolygonMesh.h>
 #include <pcl/Vertices.h>
 #include <pcl/features/moment_of_inertia_estimation.h>
@@ -20,6 +20,7 @@
 #include <pcl/io/ply_io.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/keypoints/harris_3d.h>
 #include <pcl/point_types.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
@@ -39,8 +40,8 @@
 #include <CGAL/IO/read_xyz_points.h>
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/poisson_surface_reconstruction.h>
-#include <fstream>
-#include <vector>
+
+#include <Eigen/Dense>
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef std::pair<Kernel::Point_3, Kernel::Vector_3> Point_with_normal;
@@ -55,9 +56,11 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle)
   ros::spin();
 }
 
-void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all){
-  //pcl::PolygonMesh::concatenate(mesh_all, mesh); ???
-  //Source: https://github.com/PointCloudLibrary/pcl/blob/master/common/include/pcl/PolygonMesh.h
+void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh,
+                                   pcl::PolygonMesh &mesh_all) {
+  // pcl::PolygonMesh::concatenate(mesh_all, mesh); ???
+  // Source:
+  // https://github.com/PointCloudLibrary/pcl/blob/master/common/include/pcl/PolygonMesh.h
   mesh_all.header.stamp = std::max(mesh_all.header.stamp, mesh.header.stamp);
 
   const auto point_offset = mesh_all.cloud.width * mesh_all.cloud.height;
@@ -66,26 +69,130 @@ void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMes
   pcl::concatenatePointCloud(mesh_all.cloud, mesh.cloud, new_cloud);
   mesh_all.cloud = new_cloud;
 
-  std::transform(mesh.polygons.begin (),
-                 mesh.polygons.end (),
-                 std::back_inserter (mesh_all.polygons),
-                 [point_offset](auto polygon)
-                 {
-                     std::transform(polygon.vertices.begin (),
-                                    polygon.vertices.end (),
-                                    polygon.vertices.begin (),
-                                    [point_offset](auto& point_idx)
-                                    {
-                                        return point_idx + point_offset;
-                                    });
-                     return polygon;
-                 });
+  std::transform(
+      mesh.polygons.begin(), mesh.polygons.end(),
+      std::back_inserter(mesh_all.polygons), [point_offset](auto polygon) {
+        std::transform(polygon.vertices.begin(), polygon.vertices.end(),
+                       polygon.vertices.begin(),
+                       [point_offset](auto &point_idx) {
+                         return point_idx + point_offset;
+                       });
+        return polygon;
+      });
+}
+
+void MeshGeneration::fit3DBox(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                              pcl::PolygonMesh &mesh) {
+  // Compute LS plane
+  /*
+  int num_points = cloud->size();
+  Eigen::MatrixXd A(num_points, 4);
+  Eigen::VectorXd B(num_points);
+  for (int i = 0; i < num_points; i++){
+    pcl::PointXYZ p = (*cloud)[i];
+    A.block<1, 4>(i, 0) = Eigen::Vector4d(p.x, p.y, p.z, 1.0);
+    B(i) = 0;
+  }
+
+  Eigen::Vector4d plane_coeff = A.bdcSvd(Eigen::ComputeThinU |
+  Eigen::ComputeThinV).solve(B); Eigen::Vector3d normal(plane_coeff(0),
+  plane_coeff(1), plane_coeff(2)); normal.normalize();
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_projected (new
+  pcl::PointCloud<pcl::PointXYZ>); for (int i = 0; i < num_points; i++){
+    pcl::PointXYZ p_pcl = (*cloud)[i];
+    Eigen::Vector3d p(p_pcl.x, p_pcl.y, p_pcl.z);
+    Eigen::Vector3d p_proj = p - (p.dot(normal) + plane_coeff(3)) * normal;
+    pcl::PointXYZ p_pcl_proj(p_proj.x(), p_proj.y(), p_proj.z());
+    cloud_projected->push_back(p_pcl_proj);
+  }
+  cloud = cloud_projected;
+   */
+
+  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
+      new pcl::search::KdTree<pcl::PointXYZ>);
+  searchTree->setInputCloud(cloud);
+
+  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
+  normalEstimator.setInputCloud(cloud);
+  normalEstimator.setSearchMethod(searchTree);
+  normalEstimator.setKSearch(10);
+  normalEstimator.compute(*normals);
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr corners(
+      new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::Normal> harris;
+  harris.setInputCloud(cloud);
+  harris.setNonMaxSupression(false);
+  harris.setRadius(0.2f);
+  harris.setThreshold(0.1f);
+  harris.setNormals(normals);
+  harris.compute(*corners);
+  // Project Points to plane
+
+  // Get linear boundary
+
+  // Extrude element
+
+  // Compute corner_points
+
+  // Compute Convex? or Concave Hull
+  pcl::ConvexHull<pcl::PointXYZI> chull;
+  chull.setInputCloud(corners);
+  // chull.setAlpha (0.1);
+  chull.reconstruct(mesh);
+
+  // Source:
+  // https://stackoverflow.com/questions/49688940/point-cloud-library-rotation-of-axis-alligned-bounding-box
+  // and https://pcl.readthedocs.io/en/latest/moment_of_inertia.html
+  // Bounding box
+  //
+  /*
+  pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
+  feature_extractor.setInputCloud(clouds_[i]);
+  feature_extractor.compute();
+  pcl::PointXYZ min_point_OBB;
+  pcl::PointXYZ max_point_OBB;
+  pcl::PointXYZ position_OBB;
+  Eigen::Matrix3f rotational_matrix_OBB;
+  feature_extractor.getOBB(min_point_OBB, max_point_OBB, position_OBB,
+                           rotational_matrix_OBB);
+  Eigen::Vector3f p1(min_point_OBB.x, min_point_OBB.y, min_point_OBB.z);
+  Eigen::Vector3f p2(min_point_OBB.x, min_point_OBB.y, max_point_OBB.z);
+  Eigen::Vector3f p3(max_point_OBB.x, min_point_OBB.y, max_point_OBB.z);
+  Eigen::Vector3f p4(max_point_OBB.x, min_point_OBB.y, min_point_OBB.z);
+  Eigen::Vector3f p5(min_point_OBB.x, max_point_OBB.y, min_point_OBB.z);
+  Eigen::Vector3f p6(min_point_OBB.x, max_point_OBB.y, max_point_OBB.z);
+  Eigen::Vector3f p7(max_point_OBB.x, max_point_OBB.y, max_point_OBB.z);
+  Eigen::Vector3f p8(max_point_OBB.x, max_point_OBB.y, min_point_OBB.z);
+  Eigen::Vector3f position(position_OBB.x, position_OBB.y,
+                           position_OBB.z);
+  p1 = rotational_matrix_OBB * p1 + position;
+  p2 = rotational_matrix_OBB * p2 + position;
+  p3 = rotational_matrix_OBB * p3 + position;
+  p4 = rotational_matrix_OBB * p4 + position;
+  p5 = rotational_matrix_OBB * p5 + position;
+  p6 = rotational_matrix_OBB * p6 + position;
+  p7 = rotational_matrix_OBB * p7 + position;
+  p8 = rotational_matrix_OBB * p8 + position;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr box_cloud(
+          new pcl::PointCloud<pcl::PointXYZ>);
+  box_cloud->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
+  box_cloud->push_back(pcl::PointXYZ(p2.x(), p2.y(), p2.z()));
+  box_cloud->push_back(pcl::PointXYZ(p3.x(), p3.y(), p3.z()));
+  box_cloud->push_back(pcl::PointXYZ(p4.x(), p4.y(), p4.z()));
+  box_cloud->push_back(pcl::PointXYZ(p5.x(), p5.y(), p5.z()));
+  box_cloud->push_back(pcl::PointXYZ(p6.x(), p6.y(), p6.z()));
+  box_cloud->push_back(pcl::PointXYZ(p7.x(), p7.y(), p7.z()));
+  box_cloud->push_back(pcl::PointXYZ(p8.x(), p8.y(), p8.z()));
+  */
 }
 
 // Source:
 // https://pointclouds.org/documentation/tutorials/greedy_projection.html
 // https://pointclouds.org/documentation/tutorials/resampling.html
-void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape& msg) {
+void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
   ROS_INFO("[Mesh Generation] Id: %d with size: %d", msg.id,
            msg.points_msg.size());
 
@@ -131,69 +238,19 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape& msg) {
   }
 
   ROS_INFO("[Mesh Generation] Counter: %d \n", counter_);
-  if (counter_ >= 400 && (counter_ % 400 == 0)) {
+  if (counter_ >= 200 && (counter_ % 200 == 0)) {
     // TODO: Check if concave hull volume changed
 
     pcl::PolygonMesh mesh_all;
     for (unsigned i = 0; i < clouds_.size(); i++) {
       if (clouds_[i]->size() > 500) {
+        pcl::PolygonMesh mesh;
+        this->fit3DBox(clouds_[i], mesh);
+        this->combineMeshes(mesh, mesh_all);
+
         std::string result = "/home/philipp/Schreibtisch/Meshes/points_" +
                              std::to_string(i) + ".ply";
         pcl::io::savePLYFile(result, *clouds_[i]);
-
-        // Source:
-        // https://stackoverflow.com/questions/49688940/point-cloud-library-rotation-of-axis-alligned-bounding-box
-        // and https://pcl.readthedocs.io/en/latest/moment_of_inertia.html
-        // Bounding box
-        //
-        pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
-        feature_extractor.setInputCloud(clouds_[i]);
-        feature_extractor.compute();
-        pcl::PointXYZ min_point_OBB;
-        pcl::PointXYZ max_point_OBB;
-        pcl::PointXYZ position_OBB;
-        Eigen::Matrix3f rotational_matrix_OBB;
-        feature_extractor.getOBB(min_point_OBB, max_point_OBB, position_OBB,
-                                 rotational_matrix_OBB);
-        Eigen::Vector3f p1(min_point_OBB.x, min_point_OBB.y, min_point_OBB.z);
-        Eigen::Vector3f p2(min_point_OBB.x, min_point_OBB.y, max_point_OBB.z);
-        Eigen::Vector3f p3(max_point_OBB.x, min_point_OBB.y, max_point_OBB.z);
-        Eigen::Vector3f p4(max_point_OBB.x, min_point_OBB.y, min_point_OBB.z);
-        Eigen::Vector3f p5(min_point_OBB.x, max_point_OBB.y, min_point_OBB.z);
-        Eigen::Vector3f p6(min_point_OBB.x, max_point_OBB.y, max_point_OBB.z);
-        Eigen::Vector3f p7(max_point_OBB.x, max_point_OBB.y, max_point_OBB.z);
-        Eigen::Vector3f p8(max_point_OBB.x, max_point_OBB.y, min_point_OBB.z);
-        Eigen::Vector3f position(position_OBB.x, position_OBB.y,
-                                 position_OBB.z);
-        p1 = rotational_matrix_OBB * p1 + position;
-        p2 = rotational_matrix_OBB * p2 + position;
-        p3 = rotational_matrix_OBB * p3 + position;
-        p4 = rotational_matrix_OBB * p4 + position;
-        p5 = rotational_matrix_OBB * p5 + position;
-        p6 = rotational_matrix_OBB * p6 + position;
-        p7 = rotational_matrix_OBB * p7 + position;
-        p8 = rotational_matrix_OBB * p8 + position;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr box_cloud(
-                new pcl::PointCloud<pcl::PointXYZ>);
-        box_cloud->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
-        box_cloud->push_back(pcl::PointXYZ(p2.x(), p2.y(), p2.z()));
-        box_cloud->push_back(pcl::PointXYZ(p3.x(), p3.y(), p3.z()));
-        box_cloud->push_back(pcl::PointXYZ(p4.x(), p4.y(), p4.z()));
-        box_cloud->push_back(pcl::PointXYZ(p5.x(), p5.y(), p5.z()));
-        box_cloud->push_back(pcl::PointXYZ(p6.x(), p6.y(), p6.z()));
-        box_cloud->push_back(pcl::PointXYZ(p7.x(), p7.y(), p7.z()));
-        box_cloud->push_back(pcl::PointXYZ(p8.x(), p8.y(), p8.z()));
-        //
-
-        pcl::PolygonMesh mesh;
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull(
-            new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::ConvexHull<pcl::PointXYZ> chull;
-        chull.setInputCloud(box_cloud);
-        // chull.setAlpha (0.1);
-        chull.reconstruct(mesh);
-
-        this->combineMeshes(mesh, mesh_all);
 
         std::string result2 = "/home/philipp/Schreibtisch/Meshes/mesh_" +
                               std::to_string(i) + ".ply";
@@ -211,7 +268,8 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape& msg) {
       mls.process (*mls_points);
       */
     }
-    pcl::io::savePLYFile("/home/philipp/Schreibtisch/Meshes/mesh_all.ply", mesh_all);
+    pcl::io::savePLYFile("/home/philipp/Schreibtisch/Meshes/mesh_all.ply",
+                         mesh_all);
   }
   /*
   if (msg.id == 0){

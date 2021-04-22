@@ -109,7 +109,7 @@ void PreprocessModel::efficientRANSAC() {
 
   Efficient_ransac::Parameters parameters;
   parameters.probability = 0.001;
-  parameters.min_points = 200;
+  parameters.min_points = 150;
   parameters.epsilon = 0.03;
   parameters.cluster_epsilon = 0.1;  // 0.5
   parameters.normal_threshold = 0.95;
@@ -150,6 +150,7 @@ void PreprocessModel::efficientRANSAC() {
       Eigen::MatrixXd normals(3, idx_assigned_points.size());
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
+        // TODO remove points which are more than 2mm off from the plane
         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
         Kernel::Point_3 p = point_with_normal.first;
         Kernel::Vector_3 n = point_with_normal.second;

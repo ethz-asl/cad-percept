@@ -104,7 +104,7 @@ void ReconstructionPointsSubscriber::messageCallback(
   file2.close();
 
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
-  if (model_->getOutlierCount() > 30000) {
+  if (model_->getOutlierCount() > 50000) {
     model_->clearRansacShapes();
     // model_->applyFilter();
     model_->efficientRANSAC();

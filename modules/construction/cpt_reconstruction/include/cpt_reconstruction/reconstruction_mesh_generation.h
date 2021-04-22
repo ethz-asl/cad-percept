@@ -24,7 +24,9 @@ class MeshGeneration {
  private:
   void purgeBuffer();
   void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
-  void messageCallback(const ::cpt_reconstruction::shape& msg);
+  void fit3DBox(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                pcl::PolygonMesh &mesh);
+  void messageCallback(const ::cpt_reconstruction::shape &msg);
   ros::NodeHandle nodeHandle_;
   ros::Subscriber subscriber_;
   int counter_;
