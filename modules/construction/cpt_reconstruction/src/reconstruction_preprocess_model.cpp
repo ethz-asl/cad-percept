@@ -2,13 +2,13 @@
 
 #include "ros/ros.h"
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <cmath>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/IO/write_xyz_points.h>
@@ -17,13 +17,8 @@
 #include <CGAL/property_map.h>
 #include <CGAL/tags.h>
 
-
 #include <pcl/ModelCoefficients.h>
 
-#include <pcl/point_types.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
-#include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/voxel_grid.h>
@@ -31,7 +26,11 @@
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/octree/octree_pointcloud_voxelcentroid.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
 #include <pcl/search/kdtree.h>
+#include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/kdtree/impl/kdtree_flann.hpp>
 
 namespace cad_percept {
@@ -106,13 +105,13 @@ void PreprocessModel::efficientRANSAC() {
   Efficient_ransac ransac;
   ransac.set_input(outliers);
   ransac.add_shape_factory<Plane>();
-  //ransac.add_shape_factory<Cylinder>();
+  // ransac.add_shape_factory<Cylinder>();
 
   Efficient_ransac::Parameters parameters;
   parameters.probability = 0.001;
   parameters.min_points = 200;
   parameters.epsilon = 0.03;
-  parameters.cluster_epsilon = 0.1;//0.5
+  parameters.cluster_epsilon = 0.1;  // 0.5
   parameters.normal_threshold = 0.95;
 
   ransac.detect(parameters);
@@ -140,8 +139,10 @@ void PreprocessModel::efficientRANSAC() {
                                   plane_3.d());
       param_plane_.push_back(coeff_plane);
 
-      Kernel::Vector_3 ransac_normal_temp = (*plane).	plane_normal();
-      Eigen::Vector3d ransac_normal(ransac_normal_temp.x(), ransac_normal_temp.y(), ransac_normal_temp.z());
+      Kernel::Vector_3 ransac_normal_temp = (*plane).plane_normal();
+      Eigen::Vector3d ransac_normal(ransac_normal_temp.x(),
+                                    ransac_normal_temp.y(),
+                                    ransac_normal_temp.z());
       ransac_normal = ransac_normal.normalized();
       ransac_normals_.push_back(ransac_normal);
 
@@ -160,24 +161,24 @@ void PreprocessModel::efficientRANSAC() {
       normals_shape_.push_back(normals);
       shape_id_.push_back(0);
 
-    }/* else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
-      const std::vector<std::size_t> idx_assigned_points =
-          cyl->indices_of_assigned_points();
-      Eigen::MatrixXd points(3, idx_assigned_points.size());
-      Eigen::MatrixXd normals(3, idx_assigned_points.size());
-      for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
-        detected_points->indices.push_back(idx_assigned_points.at(i));
-        Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
-        Kernel::Point_3 p = point_with_normal.first;
-        Kernel::Vector_3 n = point_with_normal.second;
-        file << p.x() << " " << p.y() << " " << p.z() << "\n";
-        points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
-        normals.block<3, 1>(0, i) = Eigen::Vector3d(n.x(), n.y(), n.z());
-      }
-      points_shape_.push_back(points);
-      normals_shape_.push_back(points);
-      shape_id_.push_back(1);
-    }*/
+    } /* else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
+       const std::vector<std::size_t> idx_assigned_points =
+           cyl->indices_of_assigned_points();
+       Eigen::MatrixXd points(3, idx_assigned_points.size());
+       Eigen::MatrixXd normals(3, idx_assigned_points.size());
+       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
+         detected_points->indices.push_back(idx_assigned_points.at(i));
+         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
+         Kernel::Point_3 p = point_with_normal.first;
+         Kernel::Vector_3 n = point_with_normal.second;
+         file << p.x() << " " << p.y() << " " << p.z() << "\n";
+         points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
+         normals.block<3, 1>(0, i) = Eigen::Vector3d(n.x(), n.y(), n.z());
+       }
+       points_shape_.push_back(points);
+       normals_shape_.push_back(points);
+       shape_id_.push_back(1);
+     }*/
     it++;
   }
   file.close();
@@ -188,23 +189,25 @@ void PreprocessModel::efficientRANSAC() {
   extract.filter(*meshing_points_);
 }
 
-// Source: https://github.com/apalomer/plane_fitter/blob/master/src/check_planarity.cpp
-// and https://pointclouds.org/documentation/tutorials/cylinder_segmentation.html
+// Source:
+// https://github.com/apalomer/plane_fitter/blob/master/src/check_planarity.cpp
+// and
+// https://pointclouds.org/documentation/tutorials/cylinder_segmentation.html
 void PreprocessModel::SACSegmentation() {
-
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
   pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
   pcl::ExtractIndices<pcl::PointXYZ> extract;
-  seg.setOptimizeCoefficients (true);
-  seg.setModelType (pcl::SACMODEL_PLANE);
-  seg.setMethodType (pcl::SAC_RANSAC);
+  seg.setOptimizeCoefficients(true);
+  seg.setModelType(pcl::SACMODEL_PLANE);
+  seg.setMethodType(pcl::SAC_RANSAC);
   seg.setDistanceThreshold(0.03);
   seg.setMaxIterations(1000);
 
   int i = 0, nr_points = (int)meshing_points_->points.size();
   while (meshing_points_->points.size() > 0.3 * nr_points) {
-    pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+    pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(
+        new pcl::PointCloud<pcl::Normal>);
     this->addNormals(meshing_points_, cloud_normals, 100);
     seg.setInputNormals(cloud_normals);
     seg.setInputCloud(meshing_points_);
@@ -218,21 +221,28 @@ void PreprocessModel::SACSegmentation() {
       pcl::PointXYZ p = meshing_points_->points[inliers->indices[i]];
       pcl::Normal n = cloud_normals->points[inliers->indices[i]];
       points.block<3, 1>(0, i) = Eigen::Vector3d(p.x, p.y, p.z);
-      normals.block<3, 1>(0, i) = Eigen::Vector3d(n.normal[0], n.normal[1], n.normal[2]);
+      normals.block<3, 1>(0, i) =
+          Eigen::Vector3d(n.normal[0], n.normal[1], n.normal[2]);
 
-      double f1 = fabs(coefficients->values[0]*p.x + coefficients->values[1]*p.y + coefficients->values[2] * p.z + coefficients->values[3]);
-      double f2 = sqrt(pow(coefficients->values[0],2)+pow(coefficients->values[1],2)+pow(coefficients->values[2],2));
-      error_sum += f1/f2;
+      double f1 =
+          fabs(coefficients->values[0] * p.x + coefficients->values[1] * p.y +
+               coefficients->values[2] * p.z + coefficients->values[3]);
+      double f2 = sqrt(pow(coefficients->values[0], 2) +
+                       pow(coefficients->values[1], 2) +
+                       pow(coefficients->values[2], 2));
+      error_sum += f1 / f2;
     }
     double mean_error = error_sum / nr_inliers;
 
     ROS_INFO("Mean error: %f\n", mean_error);
-    if (mean_error < 0.03){
+    if (mean_error < 0.03) {
       points_shape_.push_back(points);
       normals_shape_.push_back(normals);
       shape_id_.push_back(0);
 
-      Eigen::Vector3d plane_normal(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
+      Eigen::Vector3d plane_normal(coefficients->values[0],
+                                   coefficients->values[1],
+                                   coefficients->values[2]);
       plane_normal = plane_normal.normalized();
       ransac_normals_.push_back(plane_normal);
     }
@@ -261,8 +271,8 @@ void PreprocessModel::applyFilter() {
 
   /*
   Error for too big point clouds
-  [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset. Integer indices would overflow.[
-  pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
+  [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset.
+  Integer indices would overflow.[ pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
   voxel_grid.setInputCloud(meshing_points_);
   voxel_grid.setLeafSize(0.01f, 0.01f, 0.01f);
   voxel_grid.filter(*meshing_points_);
@@ -281,7 +291,6 @@ std::vector<Eigen::MatrixXd>* PreprocessModel::getNormalShapes() {
 std::vector<Eigen::Vector3d>* PreprocessModel::getRansacNormals() {
   return &ransac_normals_;
 }
-
 
 void PreprocessModel::clearBuffer() { meshing_points_->clear(); }
 
@@ -328,16 +337,18 @@ typedef std::vector<PNI2>  Point_vector2;
 typedef CGAL::Nth_of_tuple_property_map<0, PNI2> Point_map2;
 typedef CGAL::Nth_of_tuple_property_map<1, PNI2> Normal_map2;
 typedef CGAL::Nth_of_tuple_property_map<2, PNI2> Plane_index_map2;
-typedef CGAL::Shape_detection::Efficient_RANSAC_traits<Kernel, Point_vector2, Point_map2, Normal_map2> Traits2;
-typedef CGAL::Shape_detection::Efficient_RANSAC<Traits2> Efficient_ransac2;
-typedef CGAL::Shape_detection::Plane<Traits2>  Plane2;
-typedef CGAL::Shape_detection::Point_to_shape_index_map<Traits2> Point_to_shape_index_map2;
-typedef CGAL::Polygonal_surface_reconstruction<Kernel> Polygonal_surface_reconstruction2;
-typedef CGAL::Surface_mesh<Point2> Surface_mesh2;
-  std::vector<boost::tuple<Kernel::Point_3, Kernel::Vector_3, int>>  points_sur;
-  for (int i = 0; i < outliers.size(); i++){
-    boost::tuple<Kernel::Point_3, Kernel::Vector_3, int> tmp(outliers[i].first, outliers[i].second, 0);
-    points_sur.push_back(tmp);
+typedef CGAL::Shape_detection::Efficient_RANSAC_traits<Kernel, Point_vector2,
+Point_map2, Normal_map2> Traits2; typedef
+CGAL::Shape_detection::Efficient_RANSAC<Traits2> Efficient_ransac2; typedef
+CGAL::Shape_detection::Plane<Traits2>  Plane2; typedef
+CGAL::Shape_detection::Point_to_shape_index_map<Traits2>
+Point_to_shape_index_map2; typedef
+CGAL::Polygonal_surface_reconstruction<Kernel>
+Polygonal_surface_reconstruction2; typedef CGAL::Surface_mesh<Point2>
+Surface_mesh2; std::vector<boost::tuple<Kernel::Point_3, Kernel::Vector_3, int>>
+points_sur; for (int i = 0; i < outliers.size(); i++){
+    boost::tuple<Kernel::Point_3, Kernel::Vector_3, int> tmp(outliers[i].first,
+outliers[i].second, 0); points_sur.push_back(tmp);
   }
 
   Efficient_ransac2 ransac;

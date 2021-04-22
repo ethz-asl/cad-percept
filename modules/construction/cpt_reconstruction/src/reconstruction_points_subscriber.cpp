@@ -46,14 +46,14 @@ ReconstructionPointsSubscriber::ReconstructionPointsSubscriber(
   subscriber1_ = nodeHandle1_.subscribe(
       "corrected_scan", 1000, &ReconstructionPointsSubscriber::messageCallback,
       this);
-  publisher_ = nodeHandle2_.advertise<::cpt_reconstruction::shape>("ransac_shape", 1000);
+  publisher_ =
+      nodeHandle2_.advertise<::cpt_reconstruction::shape>("ransac_shape", 1000);
   ros::spin();
 }
 
 void ReconstructionPointsSubscriber::messageCallback(
     const sensor_msgs::PointCloud2ConstPtr& cloud_msg) {
-
-  if (update_transformation_){
+  if (update_transformation_) {
     tf::StampedTransform transform;
     tf_listener_.lookupTransform("/map", "/marker", ros::Time(0), transform);
     Eigen::Matrix3d rotation;
@@ -103,13 +103,12 @@ void ReconstructionPointsSubscriber::messageCallback(
   file1.close();
   file2.close();
 
-
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
   if (model_->getOutlierCount() > 30000) {
     model_->clearRansacShapes();
-    //model_->applyFilter();
+    // model_->applyFilter();
     model_->efficientRANSAC();
-    //model_->SACSegmentation();
+    // model_->SACSegmentation();
 
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
     std::vector<Eigen::MatrixXd>* normals_shape = model_->getNormalShapes();
@@ -163,7 +162,10 @@ void ReconstructionPointsSubscriber::messageCallback(
       }
       for (int j = 0; j < points_shape->at(i).cols(); j++) {
         Eigen::Vector3d vec = (*points_shape)[i].col(j);
-        file_shape << vec.x() << " " << vec.y() << " " << vec.z() << " " << (*ransac_normal).at(i).x() << " " << (*ransac_normal).at(i).y() << " " << (*ransac_normal).at(i).z() << "\n";
+        file_shape << vec.x() << " " << vec.y() << " " << vec.z() << " "
+                   << (*ransac_normal).at(i).x() << " "
+                   << (*ransac_normal).at(i).y() << " "
+                   << (*ransac_normal).at(i).z() << "\n";
       }
     }
 
