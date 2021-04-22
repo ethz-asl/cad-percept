@@ -23,6 +23,7 @@ class MeshGeneration {
 
  private:
   void purgeBuffer();
+  void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
   void messageCallback(const ::cpt_reconstruction::shape& msg);
   ros::NodeHandle nodeHandle_;
   ros::Subscriber subscriber_;

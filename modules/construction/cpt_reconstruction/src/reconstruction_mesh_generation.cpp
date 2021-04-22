@@ -6,6 +6,11 @@
 #include "cpt_reconstruction/shape.h"
 #include "std_msgs/String.h"
 
+#include <pcl/PCLPointCloud2.h>
+#include <pcl/PCLHeader.h>
+#include <pcl/PCLPointCloud2.h>
+#include <pcl/Vertices.h>
+#include <pcl/PolygonMesh.h>
 #include <pcl/Vertices.h>
 #include <pcl/features/moment_of_inertia_estimation.h>
 #include <pcl/features/normal_3d.h>
@@ -48,6 +53,33 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle)
   subscriber_ = nodeHandle_.subscribe("ransac_shape", 1000,
                                       &MeshGeneration::messageCallback, this);
   ros::spin();
+}
+
+void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all){
+  //pcl::PolygonMesh::concatenate(mesh_all, mesh); ???
+  //Source: https://github.com/PointCloudLibrary/pcl/blob/master/common/include/pcl/PolygonMesh.h
+  mesh_all.header.stamp = std::max(mesh_all.header.stamp, mesh.header.stamp);
+
+  const auto point_offset = mesh_all.cloud.width * mesh_all.cloud.height;
+
+  pcl::PCLPointCloud2 new_cloud;
+  pcl::concatenatePointCloud(mesh_all.cloud, mesh.cloud, new_cloud);
+  mesh_all.cloud = new_cloud;
+
+  std::transform(mesh.polygons.begin (),
+                 mesh.polygons.end (),
+                 std::back_inserter (mesh_all.polygons),
+                 [point_offset](auto polygon)
+                 {
+                     std::transform(polygon.vertices.begin (),
+                                    polygon.vertices.end (),
+                                    polygon.vertices.begin (),
+                                    [point_offset](auto& point_idx)
+                                    {
+                                        return point_idx + point_offset;
+                                    });
+                     return polygon;
+                 });
 }
 
 // Source:
@@ -101,6 +133,8 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape& msg) {
   ROS_INFO("[Mesh Generation] Counter: %d \n", counter_);
   if (counter_ >= 400 && (counter_ % 400 == 0)) {
     // TODO: Check if concave hull volume changed
+
+    pcl::PolygonMesh mesh_all;
     for (unsigned i = 0; i < clouds_.size(); i++) {
       if (clouds_[i]->size() > 500) {
         std::string result = "/home/philipp/Schreibtisch/Meshes/points_" +
@@ -140,7 +174,7 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape& msg) {
         p7 = rotational_matrix_OBB * p7 + position;
         p8 = rotational_matrix_OBB * p8 + position;
         pcl::PointCloud<pcl::PointXYZ>::Ptr box_cloud(
-            new pcl::PointCloud<pcl::PointXYZ>);
+                new pcl::PointCloud<pcl::PointXYZ>);
         box_cloud->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
         box_cloud->push_back(pcl::PointXYZ(p2.x(), p2.y(), p2.z()));
         box_cloud->push_back(pcl::PointXYZ(p3.x(), p3.y(), p3.z()));
@@ -159,6 +193,8 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape& msg) {
         // chull.setAlpha (0.1);
         chull.reconstruct(mesh);
 
+        this->combineMeshes(mesh, mesh_all);
+
         std::string result2 = "/home/philipp/Schreibtisch/Meshes/mesh_" +
                               std::to_string(i) + ".ply";
         pcl::io::savePLYFile(result2, mesh);
@@ -175,6 +211,7 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape& msg) {
       mls.process (*mls_points);
       */
     }
+    pcl::io::savePLYFile("/home/philipp/Schreibtisch/Meshes/mesh_all.ply", mesh_all);
   }
   /*
   if (msg.id == 0){
