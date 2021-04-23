@@ -112,7 +112,7 @@ void PreprocessModel::efficientRANSAC() {
   parameters.min_points = 150;
   parameters.epsilon = 0.03;
   parameters.cluster_epsilon = 0.1;  // 0.5
-  parameters.normal_threshold = 0.95;
+  parameters.normal_threshold = 0.90;
 
   ransac.detect(parameters);
 
@@ -146,18 +146,35 @@ void PreprocessModel::efficientRANSAC() {
       ransac_normal = ransac_normal.normalized();
       ransac_normals_.push_back(ransac_normal);
 
+      int count_inliers = 0;
       Eigen::MatrixXd points(3, idx_assigned_points.size());
       Eigen::MatrixXd normals(3, idx_assigned_points.size());
+      double normalizer =
+          std::sqrt(std::pow(plane_3.a(), 2) + std::pow(plane_3.b(), 2) +
+                    std::pow(plane_3.c(), 2));
+
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
-        // TODO remove points which are more than 2mm off from the plane
+
         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
         Kernel::Point_3 p = point_with_normal.first;
         Kernel::Vector_3 n = point_with_normal.second;
-        file << p.x() << " " << p.y() << " " << p.z() << "\n";
-        points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
-        normals.block<3, 1>(0, i) = Eigen::Vector3d(n.x(), n.y(), n.z());
+
+        double error = std::fabs(plane_3.a() * p.x() + plane_3.b() * p.y() +
+                                 plane_3.c() * p.z() + plane_3.d()) /
+                       normalizer;
+        if (error < 0.02) {
+          file << p.x() << " " << p.y() << " " << p.z() << "\n";
+          points.block<3, 1>(0, count_inliers) =
+              Eigen::Vector3d(p.x(), p.y(), p.z());
+          normals.block<3, 1>(0, count_inliers) =
+              Eigen::Vector3d(n.x(), n.y(), n.z());
+          count_inliers++;
+        }
       }
+      points.conservativeResize(3, count_inliers);
+      normals.conservativeResize(3, count_inliers);
+
       points_shape_.push_back(points);
       normals_shape_.push_back(normals);
       shape_id_.push_back(0);

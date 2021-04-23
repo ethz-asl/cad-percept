@@ -22,7 +22,8 @@ class MeshGeneration {
   MeshGeneration(ros::NodeHandle nodeHandle_);
 
  private:
-  void purgeBuffer();
+  void fusePlanes();
+  void removeSingleDetections();
   void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
   void fit3DBox(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                 pcl::PolygonMesh &mesh);
@@ -33,6 +34,7 @@ class MeshGeneration {
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_;
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_;
   std::vector<Eigen::Vector3d> ransac_normals_;
+  std::vector<int> fusing_count_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept
