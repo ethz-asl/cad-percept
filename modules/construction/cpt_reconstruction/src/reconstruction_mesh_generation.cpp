@@ -12,6 +12,8 @@
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/PolygonMesh.h>
 #include <pcl/Vertices.h>
+#include <pcl/common/io.h>
+#include <pcl/common/pca.h>
 #include <pcl/features/moment_of_inertia_estimation.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/project_inliers.h>
@@ -49,7 +51,7 @@ typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 namespace cad_percept {
 namespace cpt_reconstruction {
 MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle)
-    : nodeHandle_(nodeHandle), counter_(0) {
+    : nodeHandle_(nodeHandle), counter_(0), received_shapes_(0) {
   subscriber_ = nodeHandle_.subscribe("ransac_shape", 1000,
                                       &MeshGeneration::messageCallback, this);
   ros::spin();
@@ -80,8 +82,8 @@ void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh,
       });
 }
 
-void MeshGeneration::fit3DBox(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                              pcl::PolygonMesh &mesh) {
+void MeshGeneration::fit3DPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                                pcl::PolygonMesh &mesh) {
   // Compute LS plane
   /*
   int num_points = cloud->size();
@@ -110,7 +112,7 @@ void MeshGeneration::fit3DBox(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_copy(
       new pcl::PointCloud<pcl::PointXYZ>);
-  *cloud_copy += *cloud;
+  pcl::copyPointCloud(*cloud, *cloud_copy);
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_new(
       new pcl::PointCloud<pcl::PointXYZ>);
@@ -126,7 +128,7 @@ void MeshGeneration::fit3DBox(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
   seg.setMaxIterations(1000);
 
   int i = 0, nr_points = (int)cloud_copy->points.size();
-  while (cloud_copy->points.size() > 0.3 * nr_points) {
+  while (cloud_copy->points.size() > 0.2 * nr_points) {
     seg.setInputCloud(cloud_copy);
     seg.segment(*inliers, *coefficients);
 
@@ -243,7 +245,7 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
     geometry_msgs::Vector3 p = points.at(i);
     // geometry_msgs::Vector3 n = normals.at(i);
 
-    Kernel::Point_3 p_temp(p.x, p.y, p.z);
+    //Kernel::Point_3 p_temp(p.x, p.y, p.z);
     // Kernel::Vector_3 n_temp(n.x, n.y, n.z);
     // std::pair<Kernel::Point_3, Kernel::Vector_3> res(p_temp, n_temp);
     // points_with_normals[i] = res;
@@ -252,7 +254,9 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
     // normals_cloud->push_back(pcl::Normal(n.x, n.y, n.z));
   }
 
-  if (points_cloud->size() > 100) {
+  bool valid_plane = checkValidPlane(points_cloud, 1000, 50);
+
+  if (valid_plane) {
     pcl::VoxelGrid<pcl::PointXYZ> sor;
     sor.setInputCloud(points_cloud);
     sor.setLeafSize(0.01f, 0.01f, 0.01f);
@@ -270,22 +274,27 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
       ROS_INFO("Size before fuseing: %d \n", clouds_.size());
       this->fusePlanes();
       ROS_INFO("Size after fuseing: %d \n", clouds_.size());
-      // this->fusePlanes();
-      // ROS_INFO("Size after fuseing: %d \n", clouds_.size());
-    }
-    if (counter_ >= 200 && (counter_ % 200 == 0)) {
-      ROS_INFO("Size before removing single detections: %d \n", clouds_.size());
-      this->removeSingleDetections();
-      ROS_INFO("Size after removing single detections: %d \n", clouds_.size());
+
+      // ROS_INFO("Size before removing single detections: %d \n",
+      // clouds_.size()); this->removeSingleDetections(); ROS_INFO("Size after
+      // removing single detections: %d \n", clouds_.size());
+      ROS_INFO("Size before fuseing: %d \n", clouds_.size());
+      this->fusePlanes();
+      ROS_INFO(
+          "Size after fuseing and before removing conflicting clusters:: %d \n",
+          clouds_.size());
+      this->removeConflictingClusters();
+      ROS_INFO("Size after removing conflicting clusters: %d \n",
+               clouds_.size());
     }
 
     ROS_INFO("[Mesh Generation] Counter: %d \n", counter_);
-    if (counter_ >= 400 && (counter_ % 400 == 0)) {
+    if (counter_ >= 200 && (counter_ % 200 == 0)) {
       pcl::PolygonMesh mesh_all;
       for (unsigned i = 0; i < clouds_.size(); i++) {
-        if (fusing_count_.at(i) > 3) {
+        if (fusing_count_.at(i) > 0) {
           pcl::PolygonMesh mesh;
-          this->fit3DBox(clouds_[i], mesh);
+          this->fit3DPlane(clouds_[i], mesh);
           this->combineMeshes(mesh, mesh_all);
 
           std::string result = "/home/philipp/Schreibtisch/Meshes/points_" +
@@ -319,15 +328,52 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
       ROS_INFO("Unknown shape\n");
     }
     */
-
     counter_++;
   }
+}
+
+bool MeshGeneration::checkValidPlane(
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int valid_size,
+    int min_size) {
+  bool is_valid = false;
+
+  if (cloud->size() >= valid_size) {
+    is_valid = true;
+    std::string result = "/home/philipp/Schreibtisch/Shapes/valid_shape_" +
+                         std::to_string(counter_) + "_plane.ply";
+    pcl::io::savePLYFile(result, *cloud);
+    ROS_INFO("Valid plane %d\n", received_shapes_);
+  } else if (cloud->size() >= min_size) {
+    pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
+    feature_extractor.setInputCloud(cloud);
+    feature_extractor.compute();
+    float major_value, middle_value, minor_value;
+    feature_extractor.getEigenValues(major_value, middle_value, minor_value);
+
+    // assumption: w x .10 plane as minimum size
+    if (middle_value > 0.00015) {
+      is_valid = true;
+      ROS_INFO("Valid plane %d with l2 = %f \n", received_shapes_,
+               middle_value);
+      std::string result = "/home/philipp/Schreibtisch/Shapes/valid_shape_" +
+                           std::to_string(received_shapes_) + "_plane.ply";
+      pcl::io::savePLYFile(result, *cloud);
+    } else {
+      ROS_INFO("Invalid plane %d with l2 = %f \n", received_shapes_,
+               middle_value);
+      std::string result = "/home/philipp/Schreibtisch/Shapes/invalid_shape_" +
+                           std::to_string(received_shapes_) + "_plane.ply";
+      pcl::io::savePLYFile(result, *cloud);
+    }
+  }
+  received_shapes_++;
+  return is_valid;
 }
 
 void MeshGeneration::removeSingleDetections() {
   std::vector<int> remove_idx;
   for (int i = 0; i < fusing_count_.size(); i++) {
-    if (fusing_count_.at(i) <= 1 || clouds_.at(i)->size() < 500) {
+    if (fusing_count_.at(i) <= 1) {
       remove_idx.push_back(i);
     }
   }
@@ -339,6 +385,48 @@ void MeshGeneration::removeSingleDetections() {
     ransac_normals_.erase(ransac_normals_.begin() + idx - idx_corr);
     fusing_count_.erase(fusing_count_.begin() + idx - idx_corr);
     idx_corr++;
+  }
+}
+
+void MeshGeneration::removeConflictingClusters() {
+  std::vector<int> remove_idx;
+  std::vector<int> nn_indices{1};
+  std::vector<float> nn_dists{1};
+  std::vector<int> blocked_idx;
+  for (int i = clouds_.size() - 1; i >= 0; i--) {
+    if (fusing_count_.at(i) > 10) {
+      continue;
+    }
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_i = clouds_[i];
+    int matches = 0;
+    for (int j = 0; j < clouds_.size(); j++) {
+      if ((i == j) || (std::find(blocked_idx.begin(), blocked_idx.end(), j) !=
+                       blocked_idx.end())) {
+        continue;
+      }
+      pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_j = kd_trees_[j];
+      for (int k = 0; k < cloud_i->size(); k++) {
+        pcl::PointXYZ p = (*cloud_i)[k];
+        tree_j->nearestKSearch(p, 1, nn_indices, nn_dists);
+        if (nn_dists[0] < 0.01) {
+          matches++;
+        }
+      }
+    }
+    double coverage = ((double)matches) / ((double)cloud_i->size());
+    if (coverage >= 0.9) {
+      remove_idx.push_back(i);
+      blocked_idx.push_back(i);
+    }
+  }
+  // Descending order!!
+  // no idx_corr needed!
+  for (unsigned r = 0; r < remove_idx.size(); r++) {
+    int idx = remove_idx.at(r);
+    clouds_.erase(clouds_.begin() + idx);
+    kd_trees_.erase(kd_trees_.begin() + idx);
+    ransac_normals_.erase(ransac_normals_.begin());
+    fusing_count_.erase(fusing_count_.begin() + idx);
   }
 }
 
@@ -363,18 +451,18 @@ void MeshGeneration::fusePlanes() {
           (ransac_normals_[i] - ransac_normals_[j]).lpNorm<Eigen::Infinity>();
       double diff2 =
           (ransac_normals_[i] + ransac_normals_[j]).lpNorm<Eigen::Infinity>();
-      if (diff1 < 0.05 || diff2 < 0.05) {
+      if (diff1 < 0.1 || diff2 < 0.1) {
         pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_i = kd_trees_[i];
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_j = clouds_[j];
         int matches = 0;
-        for (int k = 0; k < cloud_j->size(); k += 2) {
+        for (int k = 0; k < cloud_j->size(); k++) {
           pcl::PointXYZ p = (*cloud_j)[k];
           tree_i->nearestKSearch(p, 1, nn_indices, nn_dists);
-          if (nn_dists[0] < 0.01) {
+          if (nn_dists[0] < 0.03) {
             matches++;
           }
         }
-        double coverage = 2.0 * ((double)matches) / ((double)cloud_j->size());
+        double coverage = ((double)matches) / ((double)cloud_j->size());
         if (coverage >= 0.3) {
           blocked_idx.push_back(j);
           fusing_temp.push_back(j);
@@ -397,7 +485,7 @@ void MeshGeneration::fusePlanes() {
       (*fused_point_cloud) += (*(clouds_[fusing_vec.at(j)]));
       count_fused_shapes += fusing_count_.at(fusing_vec.at(j));
     }
-    if (fused_point_cloud->size() > 100) {
+    if (fused_point_cloud->size() > 10) {
       pcl::VoxelGrid<pcl::PointXYZ> sor;
       sor.setInputCloud(fused_point_cloud);
       sor.setLeafSize(0.01f, 0.01f, 0.01f);
@@ -414,7 +502,7 @@ void MeshGeneration::fusePlanes() {
       seg.setOptimizeCoefficients(true);
       seg.setModelType(pcl::SACMODEL_PLANE);
       seg.setMethodType(pcl::SAC_RANSAC);
-      seg.setDistanceThreshold(0.02);
+      seg.setDistanceThreshold(0.03);
       seg.setMaxIterations(1000);
       seg.setInputCloud(fused_point_cloud);
       seg.segment(*inliers, *coefficients);
@@ -438,8 +526,9 @@ void MeshGeneration::fusePlanes() {
       fused_kd_tree->setInputCloud(fused_point_cloud);
       fused_clouds.push_back(fused_point_cloud);
       fused_kd_trees.push_back(fused_kd_tree);
-      // fused_ransac_normals.push_back(ransac_normals_[fusing_vec.at(0)]);
-      fused_ransac_normals.push_back(plane_normal);
+      fused_ransac_normals.push_back(ransac_normals_[fusing_vec.at(0)]);
+      //TODO ???? BUG?
+      //fused_ransac_normals.push_back(plane_normal);
       fusing_count.push_back(count_fused_shapes);
     }
   }

@@ -24,13 +24,17 @@ class MeshGeneration {
  private:
   void fusePlanes();
   void removeSingleDetections();
+  void removeConflictingClusters();
+  bool checkValidPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                       int valid_size, int min_size);
   void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
-  void fit3DBox(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                pcl::PolygonMesh &mesh);
+  void fit3DPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                  pcl::PolygonMesh &mesh);
   void messageCallback(const ::cpt_reconstruction::shape &msg);
   ros::NodeHandle nodeHandle_;
   ros::Subscriber subscriber_;
   int counter_;
+  int received_shapes_;
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_;
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_;
   std::vector<Eigen::Vector3d> ransac_normals_;

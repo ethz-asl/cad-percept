@@ -108,8 +108,8 @@ void PreprocessModel::efficientRANSAC() {
   // ransac.add_shape_factory<Cylinder>();
 
   Efficient_ransac::Parameters parameters;
-  parameters.probability = 0.001;
-  parameters.min_points = 150;
+  parameters.probability = 0.0005;
+  parameters.min_points = 500;
   parameters.epsilon = 0.03;
   parameters.cluster_epsilon = 0.1;  // 0.5
   parameters.normal_threshold = 0.90;
@@ -156,14 +156,14 @@ void PreprocessModel::efficientRANSAC() {
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
 
-        Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
+        Point_with_normal point_with_normal = outliers[idx_assigned_points.at(i)];
         Kernel::Point_3 p = point_with_normal.first;
         Kernel::Vector_3 n = point_with_normal.second;
 
         double error = std::fabs(plane_3.a() * p.x() + plane_3.b() * p.y() +
                                  plane_3.c() * p.z() + plane_3.d()) /
                        normalizer;
-        if (error < 0.02) {
+        if (error < 0.01) {
           file << p.x() << " " << p.y() << " " << p.z() << "\n";
           points.block<3, 1>(0, count_inliers) =
               Eigen::Vector3d(p.x(), p.y(), p.z());

@@ -147,6 +147,7 @@ void ReconstructionPointsSubscriber::messageCallback(
 
     // Save points to file
     // TODO: Remove
+    /*
     for (int i = 0; i < shapes_ids->size(); i++) {
       std::ofstream file_shape;
       if (shapes_ids->at(i) == 0) {
@@ -168,8 +169,9 @@ void ReconstructionPointsSubscriber::messageCallback(
                    << (*ransac_normal).at(i).z() << "\n";
       }
     }
+     */
 
-    if ((iteration_counter_ >= 5) && (iteration_counter_ % 5 == 0)) {
+    if ((iteration_counter_ >= 10) && (iteration_counter_ % 10 == 0)) {
       model_->clearBuffer();
     }
 
