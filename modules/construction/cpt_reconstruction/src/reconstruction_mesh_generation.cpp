@@ -128,7 +128,7 @@ void MeshGeneration::fit3DPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
   seg.setMaxIterations(1000);
 
   int i = 0, nr_points = (int)cloud_copy->points.size();
-  while (cloud_copy->points.size() > 0.2 * nr_points) {
+  while (cloud_copy->points.size() > 0.05 * nr_points) {
     seg.setInputCloud(cloud_copy);
     seg.segment(*inliers, *coefficients);
 
@@ -245,7 +245,7 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
     geometry_msgs::Vector3 p = points.at(i);
     // geometry_msgs::Vector3 n = normals.at(i);
 
-    //Kernel::Point_3 p_temp(p.x, p.y, p.z);
+    // Kernel::Point_3 p_temp(p.x, p.y, p.z);
     // Kernel::Vector_3 n_temp(n.x, n.y, n.z);
     // std::pair<Kernel::Point_3, Kernel::Vector_3> res(p_temp, n_temp);
     // points_with_normals[i] = res;
@@ -263,12 +263,12 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
     sor.filter(*points_cloud);
 
     clouds_.push_back(points_cloud);
-    ransac_normals_.push_back(ransac_normal);
     pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
         new pcl::search::KdTree<pcl::PointXYZ>());
     kd_tree->setInputCloud(points_cloud);
     kd_trees_.push_back(kd_tree);
     fusing_count_.push_back(1);
+    ransac_normals_.push_back(ransac_normal);
 
     if (counter_ >= 50 && (counter_ % 50 == 0)) {
       ROS_INFO("Size before fuseing: %d \n", clouds_.size());
@@ -283,6 +283,7 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
       ROS_INFO(
           "Size after fuseing and before removing conflicting clusters:: %d \n",
           clouds_.size());
+      // this->removeSingleDetections();
       this->removeConflictingClusters();
       ROS_INFO("Size after removing conflicting clusters: %d \n",
                clouds_.size());
@@ -408,13 +409,13 @@ void MeshGeneration::removeConflictingClusters() {
       for (int k = 0; k < cloud_i->size(); k++) {
         pcl::PointXYZ p = (*cloud_i)[k];
         tree_j->nearestKSearch(p, 1, nn_indices, nn_dists);
-        if (nn_dists[0] < 0.01) {
+        if (nn_dists[0] < 0.03) {
           matches++;
         }
       }
     }
     double coverage = ((double)matches) / ((double)cloud_i->size());
-    if (coverage >= 0.9) {
+    if (coverage >= 0.8) {
       remove_idx.push_back(i);
       blocked_idx.push_back(i);
     }
@@ -425,7 +426,7 @@ void MeshGeneration::removeConflictingClusters() {
     int idx = remove_idx.at(r);
     clouds_.erase(clouds_.begin() + idx);
     kd_trees_.erase(kd_trees_.begin() + idx);
-    ransac_normals_.erase(ransac_normals_.begin());
+    ransac_normals_.erase(ransac_normals_.begin() + idx);
     fusing_count_.erase(fusing_count_.begin() + idx);
   }
 }
@@ -451,14 +452,14 @@ void MeshGeneration::fusePlanes() {
           (ransac_normals_[i] - ransac_normals_[j]).lpNorm<Eigen::Infinity>();
       double diff2 =
           (ransac_normals_[i] + ransac_normals_[j]).lpNorm<Eigen::Infinity>();
-      if (diff1 < 0.1 || diff2 < 0.1) {
+      if (diff1 < 0.03 || diff2 < 0.03) {
         pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_i = kd_trees_[i];
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_j = clouds_[j];
         int matches = 0;
         for (int k = 0; k < cloud_j->size(); k++) {
           pcl::PointXYZ p = (*cloud_j)[k];
           tree_i->nearestKSearch(p, 1, nn_indices, nn_dists);
-          if (nn_dists[0] < 0.03) {
+          if (nn_dists[0] < 0.01) {
             matches++;
           }
         }
@@ -507,16 +508,41 @@ void MeshGeneration::fusePlanes() {
       seg.setInputCloud(fused_point_cloud);
       seg.segment(*inliers, *coefficients);
 
-      // extract.setInputCloud(fused_point_cloud);
-      // extract.setIndices(inliers);
-      // extract.setNegative(false);
-      // extract.filter(*fused_point_cloud);
+      extract.setInputCloud(fused_point_cloud);
+      extract.setIndices(inliers);
+      extract.setNegative(false);
+      extract.filter(*fused_point_cloud);
 
       Eigen::Vector3d plane_normal(coefficients->values[0],
                                    coefficients->values[1],
                                    coefficients->values[2]);
       plane_normal.normalize();
+
+      pcl::ProjectInliers<pcl::PointXYZ> proj;
+      proj.setModelType(pcl::SACMODEL_PLANE);
+      proj.setInputCloud(fused_point_cloud);
+      proj.setModelCoefficients(coefficients);
+      proj.filter(*fused_point_cloud);
+
       //
+
+      /*
+      int num_points = fused_point_cloud->size();
+      Eigen::MatrixXd A(num_points, 4);
+      Eigen::VectorXd B(num_points);
+      for (int i = 0; i < num_points; i++){
+        pcl::PointXYZ p = (*fused_point_cloud)[i];
+        A.block<1, 4>(i, 0) = Eigen::Vector4d(p.x, p.y, p.z, 1.0);
+        B(i) = 0;
+      }
+
+      Eigen::Vector4d plane_coeff = A.bdcSvd(Eigen::ComputeThinU |
+                                             Eigen::ComputeThinV).solve(B);
+
+      Eigen::Vector3d plane_normal(plane_coeff(0),plane_coeff(1),
+      plane_coeff(2)); plane_normal.normalize();
+      */
+
       // int size_a_SAC = fused_point_cloud->size();
       // ROS_INFO("Size after SAC: %f \n", ((double)size_a_SAC) /
       // ((double)size_b_SAC));
@@ -526,9 +552,8 @@ void MeshGeneration::fusePlanes() {
       fused_kd_tree->setInputCloud(fused_point_cloud);
       fused_clouds.push_back(fused_point_cloud);
       fused_kd_trees.push_back(fused_kd_tree);
-      fused_ransac_normals.push_back(ransac_normals_[fusing_vec.at(0)]);
-      //TODO ???? BUG?
-      //fused_ransac_normals.push_back(plane_normal);
+      // fused_ransac_normals.push_back(ransac_normals_[fusing_vec.at(0)]);
+      fused_ransac_normals.push_back(plane_normal);
       fusing_count.push_back(count_fused_shapes);
     }
   }

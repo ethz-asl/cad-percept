@@ -18,7 +18,6 @@
 #include <CGAL/tags.h>
 
 #include <pcl/ModelCoefficients.h>
-
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/voxel_grid.h>
@@ -30,6 +29,7 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/search/kdtree.h>
+#include <pcl/segmentation/extract_clusters.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/kdtree/impl/kdtree_flann.hpp>
 
@@ -105,11 +105,11 @@ void PreprocessModel::efficientRANSAC() {
   Efficient_ransac ransac;
   ransac.set_input(outliers);
   ransac.add_shape_factory<Plane>();
-  // ransac.add_shape_factory<Cylinder>();
+  ransac.add_shape_factory<Cylinder>();
 
   Efficient_ransac::Parameters parameters;
-  parameters.probability = 0.0005;
-  parameters.min_points = 500;
+  parameters.probability = 0.0001;
+  parameters.min_points = 150;
   parameters.epsilon = 0.03;
   parameters.cluster_epsilon = 0.1;  // 0.5
   parameters.normal_threshold = 0.90;
@@ -143,7 +143,7 @@ void PreprocessModel::efficientRANSAC() {
       Eigen::Vector3d ransac_normal(ransac_normal_temp.x(),
                                     ransac_normal_temp.y(),
                                     ransac_normal_temp.z());
-      ransac_normal = ransac_normal.normalized();
+      ransac_normal.normalize();
       ransac_normals_.push_back(ransac_normal);
 
       int count_inliers = 0;
@@ -156,13 +156,27 @@ void PreprocessModel::efficientRANSAC() {
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
 
-        Point_with_normal point_with_normal = outliers[idx_assigned_points.at(i)];
+        Point_with_normal point_with_normal =
+            outliers[idx_assigned_points.at(i)];
         Kernel::Point_3 p = point_with_normal.first;
         Kernel::Vector_3 n = point_with_normal.second;
 
         double error = std::fabs(plane_3.a() * p.x() + plane_3.b() * p.y() +
                                  plane_3.c() * p.z() + plane_3.d()) /
                        normalizer;
+
+        // Project points to plane
+        Eigen::Vector3d p_orig(p.x(), p.y(), p.z());
+        Eigen::Vector3d p_proj =
+            p_orig - (p_orig.dot(ransac_normal) + plane_3.d()) * ransac_normal;
+        file << p_proj.x() << " " << p_proj.y() << " " << p_proj.z() << "\n";
+        points.block<3, 1>(0, count_inliers) =
+            Eigen::Vector3d(p_proj.x(), p_proj.y(), p_proj.z());
+        normals.block<3, 1>(0, count_inliers) =
+            Eigen::Vector3d(n.x(), n.y(), n.z());
+        count_inliers++;
+
+        /*
         if (error < 0.01) {
           file << p.x() << " " << p.y() << " " << p.z() << "\n";
           points.block<3, 1>(0, count_inliers) =
@@ -170,7 +184,7 @@ void PreprocessModel::efficientRANSAC() {
           normals.block<3, 1>(0, count_inliers) =
               Eigen::Vector3d(n.x(), n.y(), n.z());
           count_inliers++;
-        }
+        }*/
       }
       points.conservativeResize(3, count_inliers);
       normals.conservativeResize(3, count_inliers);
@@ -214,62 +228,117 @@ void PreprocessModel::efficientRANSAC() {
 void PreprocessModel::SACSegmentation() {
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-  pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
+  pcl::SACSegmentation<pcl::PointXYZ> seg;
   pcl::ExtractIndices<pcl::PointXYZ> extract;
   seg.setOptimizeCoefficients(true);
   seg.setModelType(pcl::SACMODEL_PLANE);
   seg.setMethodType(pcl::SAC_RANSAC);
   seg.setDistanceThreshold(0.03);
   seg.setMaxIterations(1000);
+  seg.setRadiusLimits(0.05, 1.0);
 
-  int i = 0, nr_points = (int)meshing_points_->points.size();
-  while (meshing_points_->points.size() > 0.3 * nr_points) {
-    pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(
-        new pcl::PointCloud<pcl::Normal>);
-    this->addNormals(meshing_points_, cloud_normals, 100);
-    seg.setInputNormals(cloud_normals);
-    seg.setInputCloud(meshing_points_);
-    seg.segment(*inliers, *coefficients);
+  // Source: https://pcl.readthedocs.io/en/latest/cluster_extraction.html
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
+      new pcl::search::KdTree<pcl::PointXYZ>);
+  tree->setInputCloud(meshing_points_);
+  pcl::EuclideanClusterExtraction<pcl::PointXYZ> full_clustering;
 
-    int nr_inliers = inliers->indices.size();
-    Eigen::MatrixXd points(3, nr_inliers);
-    Eigen::MatrixXd normals(3, nr_inliers);
-    double error_sum = 0;
-    for (unsigned i = 0; i < nr_inliers; i++) {
-      pcl::PointXYZ p = meshing_points_->points[inliers->indices[i]];
-      pcl::Normal n = cloud_normals->points[inliers->indices[i]];
-      points.block<3, 1>(0, i) = Eigen::Vector3d(p.x, p.y, p.z);
-      normals.block<3, 1>(0, i) =
-          Eigen::Vector3d(n.normal[0], n.normal[1], n.normal[2]);
+  full_clustering.setClusterTolerance(1.00);
+  full_clustering.setMinClusterSize(50);
+  full_clustering.setMaxClusterSize(500000);
+  full_clustering.setSearchMethod(tree);
+  full_clustering.setInputCloud(meshing_points_);
+  std::vector<pcl::PointIndices> full_clusters;
+  full_clustering.extract(full_clusters);
 
-      double f1 =
-          fabs(coefficients->values[0] * p.x + coefficients->values[1] * p.y +
-               coefficients->values[2] * p.z + coefficients->values[3]);
-      double f2 = sqrt(pow(coefficients->values[0], 2) +
-                       pow(coefficients->values[1], 2) +
-                       pow(coefficients->values[2], 2));
-      error_sum += f1 / f2;
+  for (int c = 0; c < full_clusters.size(); c++) {
+    std::vector<int> indices = full_clusters.at(c).indices;
+    int indices_size = indices.size();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cluster_cloud(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    for (int d = 0; d < indices_size; d++) {
+      cluster_cloud->push_back((*meshing_points_)[indices.at(d)]);
     }
-    double mean_error = error_sum / nr_inliers;
 
-    ROS_INFO("Mean error: %f\n", mean_error);
-    if (mean_error < 0.03) {
-      points_shape_.push_back(points);
-      normals_shape_.push_back(normals);
-      shape_id_.push_back(0);
+    int nr_points = (int)cluster_cloud->points.size();
+    while (cluster_cloud->points.size() > 0.1 * nr_points) {
+      // pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(
+      //    new pcl::PointCloud<pcl::Normal>);
+      // this->addNormals(meshing_points_, cloud_normals, 10);
+      // seg.setInputNormals(cloud_normals);
+      seg.setInputCloud(cluster_cloud);
+      seg.segment(*inliers, *coefficients);
 
       Eigen::Vector3d plane_normal(coefficients->values[0],
                                    coefficients->values[1],
                                    coefficients->values[2]);
       plane_normal = plane_normal.normalized();
-      ransac_normals_.push_back(plane_normal);
-    }
 
-    extract.setInputCloud(meshing_points_);
-    extract.setIndices(inliers);
-    extract.setNegative(true);
-    pcl::PointCloud<pcl::PointXYZ> cloudF;
-    extract.filter(*meshing_points_);
+      // Project points to plane
+      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_projected(
+          new pcl::PointCloud<pcl::PointXYZ>);
+      int nr_inliers = inliers->indices.size();
+      for (unsigned i = 0; i < nr_inliers; i++) {
+        pcl::PointXYZ p = cluster_cloud->points[inliers->indices[i]];
+        Eigen::Vector3d p_orig(p.x, p.y, p.z);
+        Eigen::Vector3d p_proj =
+            p_orig -
+            (p_orig.dot(plane_normal) + coefficients->values[3]) * plane_normal;
+        cloud_projected->push_back(
+            pcl::PointXYZ(p_orig.x(), p_orig.y(), p_orig.z()));
+      }
+
+      /*
+      Eigen::MatrixXd points(3, cloud_projected->size());
+      Eigen::MatrixXd normals(3, cloud_projected->size());
+      for (int i = 0; i < cloud_projected->size(); i++) {
+        pcl::PointXYZ p_c = (*cloud_projected)[i];
+        points.block<3, 1>(0, i) = Eigen::Vector3d(p_c.x, p_c.y, p_c.z);
+        //TODO: Remove all normals
+        normals.block<3, 1>(0, i) = Eigen::Vector3d(0, 0, 0);
+      }
+      points_shape_.push_back(points);
+      normals_shape_.push_back(normals);
+      shape_id_.push_back(0);
+      ransac_normals_.push_back(plane_normal);
+      */
+      // Source: https://pcl.readthedocs.io/en/latest/cluster_extraction.html
+      pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
+          new pcl::search::KdTree<pcl::PointXYZ>);
+      tree->setInputCloud(cloud_projected);
+      pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec_clustering;
+      ec_clustering.setClusterTolerance(0.25);
+      ec_clustering.setMinClusterSize(50);
+      ec_clustering.setMaxClusterSize(500000);
+      ec_clustering.setSearchMethod(tree);
+      ec_clustering.setInputCloud(cloud_projected);
+
+      std::vector<pcl::PointIndices> clusters;
+      ec_clustering.extract(clusters);
+
+      for (int i = 0; i < clusters.size(); i++) {
+        std::vector<int> indices = clusters.at(i).indices;
+        int indices_size = indices.size();
+        if (indices_size > 50) {
+          Eigen::MatrixXd points(3, indices_size);
+          Eigen::MatrixXd normals(3, indices_size);
+          for (int j = 0; j < indices_size; j++) {
+            pcl::PointXYZ p_c = (*cloud_projected)[indices.at(j)];
+            points.block<3, 1>(0, j) = Eigen::Vector3d(p_c.x, p_c.y, p_c.z);
+            // TODO: Remove all normals
+            normals.block<3, 1>(0, j) = Eigen::Vector3d(0, 0, 0);
+          }
+          points_shape_.push_back(points);
+          normals_shape_.push_back(normals);
+          shape_id_.push_back(0);
+          ransac_normals_.push_back(plane_normal);
+        }
+      }
+      extract.setInputCloud(cluster_cloud);
+      extract.setIndices(inliers);
+      extract.setNegative(true);
+      extract.filter(*cluster_cloud);
+    }
   }
 }
 
