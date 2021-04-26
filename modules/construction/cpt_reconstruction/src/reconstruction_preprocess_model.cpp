@@ -228,45 +228,35 @@ void PreprocessModel::efficientRANSAC() {
 void PreprocessModel::SACSegmentation() {
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-  pcl::SACSegmentation<pcl::PointXYZ> seg;
+  pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
   pcl::ExtractIndices<pcl::PointXYZ> extract;
   seg.setOptimizeCoefficients(true);
-  seg.setModelType(pcl::SACMODEL_PLANE);
+  seg.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
   seg.setMethodType(pcl::SAC_RANSAC);
   seg.setDistanceThreshold(0.03);
-  seg.setMaxIterations(1000);
-  seg.setRadiusLimits(0.05, 1.0);
+  seg.setMaxIterations(100);
+  seg.setRadiusLimits(0.05, 0.5);
 
-  // Source: https://pcl.readthedocs.io/en/latest/cluster_extraction.html
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
-      new pcl::search::KdTree<pcl::PointXYZ>);
-  tree->setInputCloud(meshing_points_);
-  pcl::EuclideanClusterExtraction<pcl::PointXYZ> full_clustering;
+  std::vector<Eigen::Vector3f> axis_vec;
+  for (int i = 0; i < 180; i += 10) {
+    float rad = (float)i * (M_PI / 180.0);
+    Eigen::Vector3f ax(cos(rad), sin(rad), 0.0f);
+    axis_vec.push_back(ax);
+  }
+  axis_vec.push_back(Eigen::Vector3f(0, 0, 1));
 
-  full_clustering.setClusterTolerance(1.00);
-  full_clustering.setMinClusterSize(50);
-  full_clustering.setMaxClusterSize(500000);
-  full_clustering.setSearchMethod(tree);
-  full_clustering.setInputCloud(meshing_points_);
-  std::vector<pcl::PointIndices> full_clusters;
-  full_clustering.extract(full_clusters);
-
-  for (int c = 0; c < full_clusters.size(); c++) {
-    std::vector<int> indices = full_clusters.at(c).indices;
-    int indices_size = indices.size();
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cluster_cloud(
-        new pcl::PointCloud<pcl::PointXYZ>);
-    for (int d = 0; d < indices_size; d++) {
-      cluster_cloud->push_back((*meshing_points_)[indices.at(d)]);
-    }
-
-    int nr_points = (int)cluster_cloud->points.size();
-    while (cluster_cloud->points.size() > 0.1 * nr_points) {
-      // pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(
-      //    new pcl::PointCloud<pcl::Normal>);
-      // this->addNormals(meshing_points_, cloud_normals, 10);
-      // seg.setInputNormals(cloud_normals);
-      seg.setInputCloud(cluster_cloud);
+  for (int c = 0; c < axis_vec.size(); c++) {
+    for (int it = 0; it < 2; it++) {
+      if (meshing_points_->size() < 2000) {
+        break;
+      }
+      pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(
+          new pcl::PointCloud<pcl::Normal>);
+      this->addNormals(meshing_points_, cloud_normals, 10);
+      seg.setInputNormals(cloud_normals);
+      seg.setInputCloud(meshing_points_);
+      seg.setAxis(axis_vec.at(c));
+      seg.setEpsAngle(0.087266);
       seg.segment(*inliers, *coefficients);
 
       Eigen::Vector3d plane_normal(coefficients->values[0],
@@ -278,8 +268,11 @@ void PreprocessModel::SACSegmentation() {
       pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_projected(
           new pcl::PointCloud<pcl::PointXYZ>);
       int nr_inliers = inliers->indices.size();
+      if (nr_inliers <= 50) {
+        break;
+      }
       for (unsigned i = 0; i < nr_inliers; i++) {
-        pcl::PointXYZ p = cluster_cloud->points[inliers->indices[i]];
+        pcl::PointXYZ p = meshing_points_->points[inliers->indices[i]];
         Eigen::Vector3d p_orig(p.x, p.y, p.z);
         Eigen::Vector3d p_proj =
             p_orig -
@@ -287,7 +280,6 @@ void PreprocessModel::SACSegmentation() {
         cloud_projected->push_back(
             pcl::PointXYZ(p_orig.x(), p_orig.y(), p_orig.z()));
       }
-
       /*
       Eigen::MatrixXd points(3, cloud_projected->size());
       Eigen::MatrixXd normals(3, cloud_projected->size());
@@ -334,10 +326,10 @@ void PreprocessModel::SACSegmentation() {
           ransac_normals_.push_back(plane_normal);
         }
       }
-      extract.setInputCloud(cluster_cloud);
+      extract.setInputCloud(meshing_points_);
       extract.setIndices(inliers);
       extract.setNegative(true);
-      extract.filter(*cluster_cloud);
+      extract.filter(*meshing_points_);
     }
   }
 }

@@ -42,7 +42,12 @@ ReconstructionPointsSubscriber::ReconstructionPointsSubscriber(
       update_transformation_(true),
       counter_planes_(0),
       counter_cyl_(0),
-      iteration_counter_(0) {
+      iteration_counter_(0),
+      octree_(0.03),
+      cloud_density_(new pcl::PointCloud<pcl::PointXYZ>) {
+  octree_.setInputCloud(cloud_density_);
+  octree_.addPointsFromInputCloud();
+
   subscriber1_ = nodeHandle1_.subscribe(
       "corrected_scan", 1000, &ReconstructionPointsSubscriber::messageCallback,
       this);
@@ -95,8 +100,12 @@ void ReconstructionPointsSubscriber::messageCallback(
     pcl::PointXYZ pcl_p(x, y, z);
     model_->queryTree(pcl_p);
     if (model_->getMinDistance() >= 0.04) {
+      // int density_at_p = octree_.getVoxelDensityAtPoint(pcl_p);
+      // if (density_at_p <= 3){
       model_->addOutlier(pcl_p);
+      // octree_.addPointToCloud(pcl_p, cloud_density_);
       file1 << x << " " << y << " " << z << "\n";
+      //}
     }
     file2 << x << " " << y << " " << z << "\n";
   }
@@ -107,8 +116,8 @@ void ReconstructionPointsSubscriber::messageCallback(
   if (model_->getOutlierCount() > 20000) {
     model_->clearRansacShapes();
     model_->applyFilter();
-    model_->efficientRANSAC();
-    // model_->SACSegmentation();
+    // model_->efficientRANSAC();
+    model_->SACSegmentation();
 
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
     std::vector<Eigen::MatrixXd>* normals_shape = model_->getNormalShapes();
@@ -171,7 +180,7 @@ void ReconstructionPointsSubscriber::messageCallback(
     }
      */
 
-    if ((iteration_counter_ >= 2) && (iteration_counter_ % 2 == 0)) {
+    if ((iteration_counter_ >= 5) && (iteration_counter_ % 5 == 0)) {
       model_->clearBuffer();
     }
 

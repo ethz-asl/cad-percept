@@ -289,6 +289,18 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
                clouds_.size());
     }
 
+    if (counter_ >= 200 && (counter_ % 200 == 0)) {
+      ROS_INFO("Size before fuseing: %d \n", clouds_.size());
+      this->fusePlanes();
+      ROS_INFO(
+          "Size after fuseing and before removing conflicting clusters:: %d \n",
+          clouds_.size());
+      // this->removeSingleDetections();
+      this->removeConflictingClusters();
+      ROS_INFO("Size after removing conflicting clusters: %d \n",
+               clouds_.size());
+    }
+
     ROS_INFO("[Mesh Generation] Counter: %d \n", counter_);
     if (counter_ >= 200 && (counter_ % 200 == 0)) {
       pcl::PolygonMesh mesh_all;
@@ -415,7 +427,7 @@ void MeshGeneration::removeConflictingClusters() {
       }
     }
     double coverage = ((double)matches) / ((double)cloud_i->size());
-    if (coverage >= 0.8) {
+    if (coverage >= 0.85) {
       remove_idx.push_back(i);
       blocked_idx.push_back(i);
     }

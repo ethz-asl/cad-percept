@@ -12,6 +12,10 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 
+#include <pcl/octree/octree.h>
+#include <pcl/octree/octree_impl.h>
+#include <pcl/point_cloud.h>
+
 namespace cad_percept {
 namespace cpt_reconstruction {
 class ReconstructionPointsSubscriber {
@@ -36,6 +40,8 @@ class ReconstructionPointsSubscriber {
   int counter_planes_;
   int counter_cyl_;
   int iteration_counter_;
+  pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> octree_;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_density_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept
