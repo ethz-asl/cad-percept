@@ -1,22 +1,5 @@
 #include <cpt_reconstruction/reconstruction_points_publisher.h>
 
-// ROS
-#include "cpt_reconstruction/coordinates.h"
-#include "ros/ros.h"
-#include "std_msgs/String.h"
-
-// STD
-#include <fstream>
-#include <iostream>
-#include <string>
-
-// PCL
-#include <pcl/features/normal_3d.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/io/ply_io.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-
 namespace cad_percept {
 namespace cpt_reconstruction {
 

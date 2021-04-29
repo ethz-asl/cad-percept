@@ -1,19 +1,54 @@
 #ifndef CPT_RECONSTRUCTION_MESHGENERATION_H
 #define CPT_RECONSTRUCTION_MESHGENERATION_H
 
+#include <geometry_msgs/Vector3.h>
 #include "cpt_reconstruction/shape.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 
+#include <algorithm>
+#include <fstream>
+#include <vector>
+
+#include <Eigen/Dense>
+
+#include <pcl/PCLHeader.h>
+#include <pcl/PCLPointCloud2.h>
+#include <pcl/PolygonMesh.h>
+#include <pcl/Vertices.h>
+#include <pcl/common/io.h>
+#include <pcl/common/pca.h>
+#include <pcl/features/moment_of_inertia_estimation.h>
 #include <pcl/features/normal_3d.h>
+#include <pcl/filters/project_inliers.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
+#include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/keypoints/harris_3d.h>
 #include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
 #include <pcl/search/kdtree.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/surface/concave_hull.h>
+#include <pcl/surface/convex_hull.h>
 #include <pcl/surface/gp3.h>
 #include <pcl/surface/mls.h>
 #include <pcl/surface/poisson.h>
+#include <pcl/surface/simplification_remove_unused_vertices.h>
+#include <pcl/kdtree/impl/kdtree_flann.hpp>
+
+#include <CGAL/Delaunay_triangulation_3.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/IO/read_xyz_points.h>
+#include <CGAL/Polyhedron_3.h>
+#include <CGAL/poisson_surface_reconstruction.h>
+
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+typedef std::pair<Kernel::Point_3, Kernel::Vector_3> Point_with_normal;
+typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 
 namespace cad_percept {
 namespace cpt_reconstruction {

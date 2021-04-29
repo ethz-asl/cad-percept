@@ -1,38 +1,5 @@
 #include <cpt_reconstruction/reconstruction_model.h>
 
-#include "ros/ros.h"
-
-#include <cmath>
-#include <fstream>
-#include <iostream>
-#include <list>
-#include <tuple>
-#include <utility>
-#include <vector>
-
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/IO/write_xyz_points.h>
-#include <CGAL/Shape_detection/Efficient_RANSAC.h>
-#include <CGAL/mst_orient_normals.h>
-#include <CGAL/property_map.h>
-#include <CGAL/tags.h>
-
-#include <pcl/ModelCoefficients.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/io/ply_io.h>
-#include <pcl/kdtree/kdtree.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/octree/octree_pointcloud_voxelcentroid.h>
-#include <pcl/point_types.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
-#include <pcl/search/kdtree.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/kdtree/impl/kdtree_flann.hpp>
-
 namespace cad_percept {
 namespace cpt_reconstruction {
 

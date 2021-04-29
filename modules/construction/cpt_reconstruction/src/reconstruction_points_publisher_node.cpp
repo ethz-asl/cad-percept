@@ -1,10 +1,5 @@
 #include <cpt_reconstruction/reconstruction_points_publisher.h>
 
-#include <sstream>
-#include <string>
-#include "ros/ros.h"
-#include "std_msgs/String.h"
-
 int main(int argc, char** argv) {
   ros::init(argc, argv, "reconstruction_publisher_node");
   ros::NodeHandle nodeHandle;

@@ -1,9 +1,9 @@
 #include <cpt_reconstruction/reconstruction_mesh_generation.h>
 
-#include <sstream>
-#include <string>
-#include "ros/ros.h"
-#include "std_msgs/String.h"
+//#include <sstream>
+//#include <string>
+//#include "ros/ros.h"
+//#include "std_msgs/String.h"
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "reconstruction_mesh_generation_node");

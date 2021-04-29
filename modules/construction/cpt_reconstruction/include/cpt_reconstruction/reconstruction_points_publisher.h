@@ -1,8 +1,20 @@
 #ifndef CPT_RECONSTRUCTION_RECONSTRUCTION_POINTS_PUBLISHER_H
 #define CPT_RECONSTRUCTION_RECONSTRUCTION_POINTS_PUBLISHER_H
 
-#include <ros/ros.h>
+#include "cpt_reconstruction/coordinates.h"
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include <string>
+
+#include <pcl/features/normal_3d.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 namespace cad_percept {
 namespace cpt_reconstruction {

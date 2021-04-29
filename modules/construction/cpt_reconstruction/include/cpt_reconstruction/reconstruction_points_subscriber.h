@@ -3,18 +3,40 @@
 
 #include <cpt_reconstruction/reconstruction_model.h>
 
+#include <geometry_msgs/Vector3.h>
 #include <sensor_msgs/PointCloud2.h>
-#include "cpt_reconstruction/coordinates.h"
-#include "ros/ros.h"
-#include "std_msgs/String.h"
-
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include "cpt_reconstruction/coordinates.h"
+#include "cpt_reconstruction/shape.h"
+#include "ros/ros.h"
+#include "std_msgs/String.h"
 
+#include <cmath>
+#include <fstream>
+#include <sstream>
+#include <string>
+
+#include <pcl/ModelCoefficients.h>
+#include <pcl/common/transforms.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/filters/conditional_removal.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl/octree/octree.h>
 #include <pcl/octree/octree_impl.h>
+#include <pcl/octree/octree_pointcloud_voxelcentroid.h>
 #include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/search/organized.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 namespace cad_percept {
 namespace cpt_reconstruction {
