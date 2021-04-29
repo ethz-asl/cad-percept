@@ -1,5 +1,5 @@
-#ifndef CPT_RECONSTRUCTION_PREPROCESSMODEL_H
-#define CPT_RECONSTRUCTION_PREPROCESSMODEL_H
+#ifndef CPT_RECONSTRUCTION_MODEL_H
+#define CPT_RECONSTRUCTION_MODEL_H
 
 #include "ros/ros.h"
 
@@ -45,10 +45,10 @@ typedef CGAL::Shape_detection::Torus<Traits> Torus;
 
 namespace cad_percept {
 namespace cpt_reconstruction {
-class PreprocessModel {
+class Model {
  public:
-  PreprocessModel() = delete;
-  PreprocessModel(std::string filename, Eigen::Matrix4d transformation);
+  Model() = delete;
+  Model(std::string filename, Eigen::Matrix4d transformation);
 
   void preprocess();
   void queryTree(pcl::PointXYZ p);
@@ -90,4 +90,4 @@ class PreprocessModel {
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept
-#endif  // CPT_RECONSTRUCTION_PREPROCESSMODEL_H
+#endif  // CPT_RECONSTRUCTION_MODEL_H

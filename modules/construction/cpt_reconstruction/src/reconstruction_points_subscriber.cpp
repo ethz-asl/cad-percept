@@ -1,5 +1,5 @@
 #include <cpt_reconstruction/reconstruction_points_subscriber.h>
-#include <cpt_reconstruction/reconstruction_preprocess_model.h>
+#include <cpt_reconstruction/reconstruction_model.h>
 
 #include <geometry_msgs/Vector3.h>
 #include <pcl/ModelCoefficients.h>
@@ -35,7 +35,7 @@ namespace cad_percept {
 namespace cpt_reconstruction {
 ReconstructionPointsSubscriber::ReconstructionPointsSubscriber(
     ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2,
-    PreprocessModel* model)
+    Model* model)
     : nodeHandle1_(nodeHandle1),
       nodeHandle2_(nodeHandle2),
       model_(model),
@@ -113,10 +113,10 @@ void ReconstructionPointsSubscriber::messageCallback(
   file2.close();
 
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
-  if (model_->getOutlierCount() > 20000) {
+  if (model_->getOutlierCount() > 30000) {
     model_->clearRansacShapes();
-    model_->applyFilter();
-    // model_->efficientRANSAC();
+    //model_->applyFilter();
+    //model_->efficientRANSAC();
     model_->SACSegmentation();
 
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
@@ -154,33 +154,7 @@ void ReconstructionPointsSubscriber::messageCallback(
       publisher_.publish(shape_msg);
     }
 
-    // Save points to file
-    // TODO: Remove
-    /*
-    for (int i = 0; i < shapes_ids->size(); i++) {
-      std::ofstream file_shape;
-      if (shapes_ids->at(i) == 0) {
-        std::string result = "/home/philipp/Schreibtisch/Shapes/shape_" +
-                             std::to_string(counter_planes_) + "_plane.xyz";
-        counter_planes_++;
-        file_shape.open(result);
-      } else {
-        std::string result = "/home/philipp/Schreibtisch/Shapes/shape_" +
-                             std::to_string(counter_cyl_) + "_cyl.xyz";
-        counter_cyl_++;
-        file_shape.open(result);
-      }
-      for (int j = 0; j < points_shape->at(i).cols(); j++) {
-        Eigen::Vector3d vec = (*points_shape)[i].col(j);
-        file_shape << vec.x() << " " << vec.y() << " " << vec.z() << " "
-                   << (*ransac_normal).at(i).x() << " "
-                   << (*ransac_normal).at(i).y() << " "
-                   << (*ransac_normal).at(i).z() << "\n";
-      }
-    }
-     */
-
-    if ((iteration_counter_ >= 5) && (iteration_counter_ % 5 == 0)) {
+    if ((iteration_counter_ >= 2) && (iteration_counter_ % 2 == 0)) {
       model_->clearBuffer();
     }
 

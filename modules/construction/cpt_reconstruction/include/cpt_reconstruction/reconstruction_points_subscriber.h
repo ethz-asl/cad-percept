@@ -1,7 +1,7 @@
 #ifndef CPT_RECONSTRUCTION_RECONSTRUCTION_POINTS_SUBSCRIBER_H
 #define CPT_RECONSTRUCTION_RECONSTRUCTION_POINTS_SUBSCRIBER_H
 
-#include <cpt_reconstruction/reconstruction_preprocess_model.h>
+#include <cpt_reconstruction/reconstruction_model.h>
 
 #include <sensor_msgs/PointCloud2.h>
 #include "cpt_reconstruction/coordinates.h"
@@ -23,7 +23,7 @@ class ReconstructionPointsSubscriber {
   ReconstructionPointsSubscriber() = delete;
   ReconstructionPointsSubscriber(ros::NodeHandle nodeHandle1,
                                  ros::NodeHandle nodeHandle2,
-                                 PreprocessModel* model);
+                                 Model* model);
   void startReceiving();
 
  private:
@@ -33,7 +33,7 @@ class ReconstructionPointsSubscriber {
   ros::Subscriber subscriber1_;
   ros::Publisher publisher_;
   tf::TransformListener tf_listener_;
-  PreprocessModel* model_;
+  Model* model_;
   Eigen::Matrix4d transformation_;
   bool update_transformation_;
   Eigen::Matrix4d transformation_inv_;

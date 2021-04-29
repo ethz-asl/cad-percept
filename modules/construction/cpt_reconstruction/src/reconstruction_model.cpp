@@ -1,4 +1,4 @@
-#include <cpt_reconstruction/reconstruction_preprocess_model.h>
+#include <cpt_reconstruction/reconstruction_model.h>
 
 #include "ros/ros.h"
 
@@ -36,13 +36,13 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 
-PreprocessModel::PreprocessModel(std::string filename,
+    Model::Model(std::string filename,
                                  Eigen::Matrix4d transformation)
     : meshing_points_(new pcl::PointCloud<pcl::PointXYZ>),
       filename_(filename),
       transformation_(transformation) {}
 
-void PreprocessModel::preprocess() {
+void Model::preprocess() {
   pcl::PointCloud<pcl::PointXYZ>::Ptr model_points(
       new pcl::PointCloud<pcl::PointXYZ>);
   pcl::PLYReader reader;
@@ -57,17 +57,17 @@ void PreprocessModel::preprocess() {
   ROS_INFO("[Done] Build up search tree\n");
 }
 
-void PreprocessModel::queryTree(pcl::PointXYZ p) {
+void Model::queryTree(pcl::PointXYZ p) {
   searchTree_->nearestKSearch(p, 1, nn_indices_, nn_dists_);
 }
 
-void PreprocessModel::addOutlier(pcl::PointXYZ p) {
+void Model::addOutlier(pcl::PointXYZ p) {
   // idx_outliers_.push_back(i);
   meshing_points_->push_back(p);
 }
 
 // Source:https://github.com/tttamaki/ICP-test/blob/master/src/icp3_with_normal_iterative_view.cpp
-void PreprocessModel::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+void Model::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                                  pcl::PointCloud<pcl::Normal>::Ptr normals,
                                  int k) {
   pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
@@ -81,7 +81,7 @@ void PreprocessModel::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
   normalEstimator.compute(*normals);
 }
 
-void PreprocessModel::efficientRANSAC() {
+void Model::efficientRANSAC() {
   pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
   this->addNormals(meshing_points_, normals, 15);
 
@@ -175,16 +175,6 @@ void PreprocessModel::efficientRANSAC() {
         normals.block<3, 1>(0, count_inliers) =
             Eigen::Vector3d(n.x(), n.y(), n.z());
         count_inliers++;
-
-        /*
-        if (error < 0.01) {
-          file << p.x() << " " << p.y() << " " << p.z() << "\n";
-          points.block<3, 1>(0, count_inliers) =
-              Eigen::Vector3d(p.x(), p.y(), p.z());
-          normals.block<3, 1>(0, count_inliers) =
-              Eigen::Vector3d(n.x(), n.y(), n.z());
-          count_inliers++;
-        }*/
       }
       points.conservativeResize(3, count_inliers);
       normals.conservativeResize(3, count_inliers);
@@ -225,7 +215,7 @@ void PreprocessModel::efficientRANSAC() {
 // https://github.com/apalomer/plane_fitter/blob/master/src/check_planarity.cpp
 // and
 // https://pointclouds.org/documentation/tutorials/cylinder_segmentation.html
-void PreprocessModel::SACSegmentation() {
+void Model::SACSegmentation() {
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
   pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
   pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
@@ -234,16 +224,16 @@ void PreprocessModel::SACSegmentation() {
   seg.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
   seg.setMethodType(pcl::SAC_RANSAC);
   seg.setDistanceThreshold(0.03);
-  seg.setMaxIterations(100);
-  seg.setRadiusLimits(0.05, 0.5);
+  seg.setMaxIterations(800);
+  //seg.setRadiusLimits(0.05, 0.5);
 
   std::vector<Eigen::Vector3f> axis_vec;
-  for (int i = 0; i < 180; i += 10) {
+  for (int i = 0; i < 180; i += 20) {
     float rad = (float)i * (M_PI / 180.0);
     Eigen::Vector3f ax(cos(rad), sin(rad), 0.0f);
     axis_vec.push_back(ax);
   }
-  axis_vec.push_back(Eigen::Vector3f(0, 0, 1));
+  //axis_vec.push_back(Eigen::Vector3f(0, 0, 1));
 
   for (int c = 0; c < axis_vec.size(); c++) {
     for (int it = 0; it < 2; it++) {
@@ -256,7 +246,7 @@ void PreprocessModel::SACSegmentation() {
       seg.setInputNormals(cloud_normals);
       seg.setInputCloud(meshing_points_);
       seg.setAxis(axis_vec.at(c));
-      seg.setEpsAngle(0.087266);
+      seg.setEpsAngle(0.175);
       seg.segment(*inliers, *coefficients);
 
       Eigen::Vector3d plane_normal(coefficients->values[0],
@@ -280,20 +270,7 @@ void PreprocessModel::SACSegmentation() {
         cloud_projected->push_back(
             pcl::PointXYZ(p_orig.x(), p_orig.y(), p_orig.z()));
       }
-      /*
-      Eigen::MatrixXd points(3, cloud_projected->size());
-      Eigen::MatrixXd normals(3, cloud_projected->size());
-      for (int i = 0; i < cloud_projected->size(); i++) {
-        pcl::PointXYZ p_c = (*cloud_projected)[i];
-        points.block<3, 1>(0, i) = Eigen::Vector3d(p_c.x, p_c.y, p_c.z);
-        //TODO: Remove all normals
-        normals.block<3, 1>(0, i) = Eigen::Vector3d(0, 0, 0);
-      }
-      points_shape_.push_back(points);
-      normals_shape_.push_back(normals);
-      shape_id_.push_back(0);
-      ransac_normals_.push_back(plane_normal);
-      */
+
       // Source: https://pcl.readthedocs.io/en/latest/cluster_extraction.html
       pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
           new pcl::search::KdTree<pcl::PointXYZ>);
@@ -334,7 +311,7 @@ void PreprocessModel::SACSegmentation() {
   }
 }
 
-void PreprocessModel::applyFilter() {
+void Model::applyFilter() {
   ROS_INFO("Size before filtering: %d\n", meshing_points_->size());
 
   pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(
@@ -359,35 +336,35 @@ void PreprocessModel::applyFilter() {
   ROS_INFO("Size after filtering: %d\n", meshing_points_->size());
 };
 
-std::vector<Eigen::MatrixXd>* PreprocessModel::getPointShapes() {
+std::vector<Eigen::MatrixXd>* Model::getPointShapes() {
   return &points_shape_;
 }
 
-std::vector<Eigen::MatrixXd>* PreprocessModel::getNormalShapes() {
+std::vector<Eigen::MatrixXd>* Model::getNormalShapes() {
   return &normals_shape_;
 }
 
-std::vector<Eigen::Vector3d>* PreprocessModel::getRansacNormals() {
+std::vector<Eigen::Vector3d>* Model::getRansacNormals() {
   return &ransac_normals_;
 }
 
-void PreprocessModel::clearBuffer() { meshing_points_->clear(); }
+void Model::clearBuffer() { meshing_points_->clear(); }
 
-std::vector<int>* PreprocessModel::getShapeIDs() { return &shape_id_; }
+std::vector<int>* Model::getShapeIDs() { return &shape_id_; }
 
-int PreprocessModel::getOutlierCount() { return meshing_points_->size(); }
+int Model::getOutlierCount() { return meshing_points_->size(); }
 
-float PreprocessModel::getMinDistance() { return nn_dists_[0]; }
+float Model::getMinDistance() { return nn_dists_[0]; }
 
-int PreprocessModel::getIndex() { return nn_indices_[0]; }
+int Model::getIndex() { return nn_indices_[0]; }
 
-void PreprocessModel::printOutliers() {
+void Model::printOutliers() {
   for (unsigned i = 0; i < idx_outliers_.size(); i++) {
     ROS_INFO("Outlier idx: %d\n", idx_outliers_.at(i));
   }
 }
 
-void PreprocessModel::clearRansacShapes() {
+void Model::clearRansacShapes() {
   points_shape_.clear();
   normals_shape_.clear();
   ransac_normals_.clear();
@@ -396,78 +373,3 @@ void PreprocessModel::clearRansacShapes() {
 
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept
-
-/*
-Using Polygonal_surface_reconstruction
-TODO: Too long processing - Gruobi solver?
-//#define CGAL_USE_GLPK
-#define CGAL_USE_SCIP
-//#include <CGAL/GLPK_mixed_integer_program_traits.h>
-//typedef CGAL::GLPK_mixed_integer_program_traits<double> MIP_Solver;
-
-#include <CGAL/SCIP_mixed_integer_program_traits.h>
-typedef CGAL::SCIP_mixed_integer_program_traits<double> MIP_Solver;
-
-typedef Kernel::Point_3 Point2;
-typedef Kernel::Vector_3  Vector2;
-// Point with normal, and plane index
-typedef boost::tuple<Point2, Vector2, int>  PNI2;
-typedef std::vector<PNI2>  Point_vector2;
-typedef CGAL::Nth_of_tuple_property_map<0, PNI2> Point_map2;
-typedef CGAL::Nth_of_tuple_property_map<1, PNI2> Normal_map2;
-typedef CGAL::Nth_of_tuple_property_map<2, PNI2> Plane_index_map2;
-typedef CGAL::Shape_detection::Efficient_RANSAC_traits<Kernel, Point_vector2,
-Point_map2, Normal_map2> Traits2; typedef
-CGAL::Shape_detection::Efficient_RANSAC<Traits2> Efficient_ransac2; typedef
-CGAL::Shape_detection::Plane<Traits2>  Plane2; typedef
-CGAL::Shape_detection::Point_to_shape_index_map<Traits2>
-Point_to_shape_index_map2; typedef
-CGAL::Polygonal_surface_reconstruction<Kernel>
-Polygonal_surface_reconstruction2; typedef CGAL::Surface_mesh<Point2>
-Surface_mesh2; std::vector<boost::tuple<Kernel::Point_3, Kernel::Vector_3, int>>
-points_sur; for (int i = 0; i < outliers.size(); i++){
-    boost::tuple<Kernel::Point_3, Kernel::Vector_3, int> tmp(outliers[i].first,
-outliers[i].second, 0); points_sur.push_back(tmp);
-  }
-
-  Efficient_ransac2 ransac;
-  ransac.set_input(points_sur);
-  ransac.add_shape_factory<Plane2>();
-
-  Efficient_ransac2::Parameters parameters;
-  parameters.probability = 0.005;
-  parameters.min_points = 250;
-  parameters.epsilon = 0.03;
-  parameters.cluster_epsilon = 0.5;
-  parameters.normal_threshold = 0.9;
-
-  ransac.detect(parameters);
-
-  ROS_INFO("Detected Shapes: %d\n",
-           ransac.shapes().end() - ransac.shapes().begin());
-  ROS_INFO("Unassigned Points: %d\n", ransac.number_of_unassigned_points());
-
-  Efficient_ransac2::Plane_range planes_sur = ransac.planes();
-  std::size_t num_planes = planes_sur.size();
-
-  Point_to_shape_index_map2 shape_index_map(points_sur, planes_sur);
-
-  for (std::size_t i = 0; i < points_sur.size(); ++i) {
-    int plane_index = get(shape_index_map, i);
-    points_sur[i].get<2>() = plane_index;
-  }
-
-  Polygonal_surface_reconstruction2 algo(
-          points_sur,
-          Point_map2(),
-          Normal_map2(),
-          Plane_index_map2()
-  );
-
-  Surface_mesh2 model;
-  algo.reconstruct<MIP_Solver>(model);
-  std::string output_file = "/home/philipp/Schreibtisch/Meshes/mesh_" +
-                       std::to_string(num_planes) + ".off";
-  std::ofstream output_stream(output_file.c_str());
-  CGAL::write_off(output_stream, model);
-*/

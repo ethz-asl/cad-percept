@@ -1,5 +1,5 @@
 #include <cpt_reconstruction/reconstruction_points_subscriber.h>
-#include <cpt_reconstruction/reconstruction_preprocess_model.h>
+#include <cpt_reconstruction/reconstruction_model.h>
 
 #include <sstream>
 #include <string>
@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
       "CLA_MissingParts_1_8m.ply";
   Eigen::Matrix4d transformation;
   transformation.setIdentity();
-  cad_percept::cpt_reconstruction::PreprocessModel model(model_path,
+  cad_percept::cpt_reconstruction::Model model(model_path,
                                                          transformation);
   model.preprocess();
 
