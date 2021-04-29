@@ -18,23 +18,13 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr points_cloud(
       new pcl::PointCloud<pcl::PointXYZ>);
-  // std::vector<Point_with_normal> points_with_normals(msg.points_msg.size());
   std::vector<geometry_msgs::Vector3> points = msg.points_msg;
-  // std::vector<geometry_msgs::Vector3> normals = msg.normals_msg;
   geometry_msgs::Vector3 ransac_normal_temp = msg.ransac_normal;
   Eigen::Vector3d ransac_normal(ransac_normal_temp.x, ransac_normal_temp.y,
                                 ransac_normal_temp.z);
   for (unsigned i = 0; i < points.size(); i++) {
     geometry_msgs::Vector3 p = points.at(i);
-    // geometry_msgs::Vector3 n = normals.at(i);
-
-    // Kernel::Point_3 p_temp(p.x, p.y, p.z);
-    // Kernel::Vector_3 n_temp(n.x, n.y, n.z);
-    // std::pair<Kernel::Point_3, Kernel::Vector_3> res(p_temp, n_temp);
-    // points_with_normals[i] = res;
-
     points_cloud->push_back(pcl::PointXYZ(p.x, p.y, p.z));
-    // normals_cloud->push_back(pcl::Normal(n.x, n.y, n.z));
   }
 
   bool valid_plane = checkValidPlane(points_cloud, 1000, 50);
@@ -63,13 +53,15 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
       ROS_INFO("Size before fuseing: %d \n", clouds_.size());
       this->fusePlanes();
       ROS_INFO(
-          "Size after fuseing and before removing conflicting clusters:: %d \n",
-          clouds_.size());
+              "Size after fuseing and before removing conflicting clusters:: %d \n",
+              clouds_.size());
       // this->removeSingleDetections();
       this->removeConflictingClusters();
       ROS_INFO("Size after removing conflicting clusters: %d \n",
                clouds_.size());
+    }
 
+    if (counter_ >= 200 && (counter_ % 200 == 0)) {
       pcl::PolygonMesh mesh_all;
       for (unsigned i = 0; i < clouds_.size(); i++) {
         if (fusing_count_.at(i) > 0) {
@@ -96,6 +88,7 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
       ROS_INFO("Unknown shape\n");
     }
     */
+    ROS_INFO("[Mesh Generation] Counter: %d", counter_);
     counter_++;
   }
 }
@@ -159,19 +152,19 @@ void MeshGeneration::fusePlanes() {
           (ransac_normals_[i] - ransac_normals_[j]).lpNorm<Eigen::Infinity>();
       double diff2 =
           (ransac_normals_[i] + ransac_normals_[j]).lpNorm<Eigen::Infinity>();
-      if (diff1 < 0.03 || diff2 < 0.03) {
+      if (diff1 < 0.05 || diff2 < 0.05) {
         pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_i = kd_trees_[i];
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_j = clouds_[j];
         int matches = 0;
         for (int k = 0; k < cloud_j->size(); k++) {
           pcl::PointXYZ p = (*cloud_j)[k];
           tree_i->nearestKSearch(p, 1, nn_indices, nn_dists);
-          if (nn_dists[0] < 0.02) {
+          if (nn_dists[0] < 0.01) {
             matches++;
           }
         }
         double coverage = ((double)matches) / ((double)cloud_j->size());
-        if (coverage >= 0.25) {
+        if (coverage >= 0.01) {
           blocked_idx.push_back(j);
           fusing_temp.push_back(j);
         }
@@ -287,7 +280,7 @@ void MeshGeneration::removeConflictingClusters() {
       for (int k = 0; k < cloud_i->size(); k++) {
         pcl::PointXYZ p = (*cloud_i)[k];
         tree_j->nearestKSearch(p, 1, nn_indices, nn_dists);
-        if (nn_dists[0] < 0.01) {
+        if (nn_dists[0] < 0.005) {
           matches++;
         }
       }
@@ -325,7 +318,7 @@ void MeshGeneration::fit3DPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
   seg.setOptimizeCoefficients(true);
   seg.setModelType(pcl::SACMODEL_PLANE);
   seg.setMethodType(pcl::SAC_RANSAC);
-  seg.setDistanceThreshold(0.01);
+  seg.setDistanceThreshold(0.03);
   seg.setMaxIterations(1000);
 
   int i = 0, nr_points = (int)cloud_copy->points.size();
@@ -364,7 +357,7 @@ void MeshGeneration::fit3DPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
   harris.setInputCloud(cloud_new);
   harris.setNonMaxSupression(false);
   harris.setRadius(0.2f);
-  harris.setThreshold(0.1f);
+  harris.setThreshold(0.05f);
   harris.setNormals(normals);
   harris.compute(*corners);
   // Project Points to plane
@@ -406,6 +399,164 @@ void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh,
         return polygon;
       });
 }
+
+bool MeshGeneration::integrateInBuildingModel{
+  pcl::PolygonMesh mesh;
+  pcl::io::loadPolygonFilePLY("/home/philipp/Schreibtisch/data/CLA_MissingParts_1.ply", mesh);
+
+  std::vector<::pcl::Vertices> faces = mesh.polygons;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::fromPCLPointCloud2(mesh.cloud, *points);
+
+  //std::cout << "Number faces: " << faces.size() << std::endl;
+
+  std::vector<int> blocking_idx;
+  std::vector<std::pair<int, int>> quads;
+
+  //Group elements sharing the a half edge and have the same surface normal
+  for (int i = 0; i < faces.size(); i++){
+    if (std::find(blocking_idx.begin(), blocking_idx.end(), i) !=
+        blocking_idx.end()) {
+      continue;
+    }
+    std::vector<uint32_t> vertices_1 = faces[i].vertices;
+
+    pcl::PointXYZ p1_1 = (*points)[vertices_1.at(0)];
+    pcl::PointXYZ p1_2 = (*points)[vertices_1.at(1)];
+    pcl::PointXYZ p1_3 = (*points)[vertices_1.at(2)];
+    Eigen::Vector3d v1_1(p1_1.x, p1_1.y, p1_1.z);
+    Eigen::Vector3d v1_2(p1_2.x, p1_2.y, p1_2.z);
+    Eigen::Vector3d v1_3(p1_3.x, p1_3.y, p1_3.z);
+    double l1_1 = (v1_1 - v1_2).norm();
+    double l1_2 = (v1_2 - v1_3).norm();
+    double l1_3 = (v1_3 - v1_1).norm();
+    double l1_max = (l1_1 > l1_2) ? l1_1 : l1_2;
+    l1_max = (l1_3 > l1_max) ? l1_3 : l1_max;
+
+    for (int j = i + 1; j < faces.size(); j++){
+      if (std::find(blocking_idx.begin(), blocking_idx.end(), j) !=
+          blocking_idx.end()) {
+        continue;
+      }
+      std::vector<uint32_t> vertices_2 = faces[j].vertices;
+      int v_matches = 0;
+
+      // Check if two points matches exactly
+      //TODO: Assumption that vertices do not exist twice!
+      for (int n = 0; n < 3; n++){
+        for (int m = 0; m < 3; m++){
+          if (vertices_1.at(n) == vertices_2.at(m)){
+            v_matches++;
+            break;
+          }
+        }
+      }
+
+      if(v_matches == 2){
+        pcl::PointXYZ p2_1 = (*points)[vertices_2.at(0)];
+        pcl::PointXYZ p2_2 = (*points)[vertices_2.at(1)];
+        pcl::PointXYZ p2_3 = (*points)[vertices_2.at(2)];
+        Eigen::Vector3d v2_1(p2_1.x, p2_1.y, p2_1.z);
+        Eigen::Vector3d v2_2(p2_2.x, p2_2.y, p2_2.z);
+        Eigen::Vector3d v2_3(p2_3.x, p2_3.y, p2_3.z);
+        double l2_1 = (v2_1 - v2_2).norm();
+        double l2_2 = (v2_2 - v2_3).norm();
+        double l2_3 = (v2_3 - v2_1).norm();
+        double l2_max = (l2_1 > l2_2) ? l2_1 : l2_2;
+        l2_max = (l2_3 > l2_max) ? l2_3 : l2_max;
+
+        //Matching half edge
+        if(std::abs(l1_max - l2_max) < 10e-15){
+          // Check if normal is the same
+          Eigen::Vector3d n1 = (v1_1- v1_2).cross(v1_3 - v1_2);
+          Eigen::Vector3d n2 = (v2_1- v2_2).cross(v2_3 - v2_2);
+          n1.normalize();
+          n2.normalize();
+
+          //Check for same normal
+          if ( (n1 - n2).lpNorm<Eigen::Infinity>() < 10e-15 || (n1 + n2).lpNorm<Eigen::Infinity>() < 10e-15){
+            //Match found
+            blocking_idx.push_back(i);
+            blocking_idx.push_back(j);
+            quads.push_back(std::make_pair(i, j));
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  //std::cout << "Size of pairs: " << quads.size() << std::endl;
+  pcl::PolygonMesh mesh_all;
+  for (int i = 0; i < quads.size(); i++){
+    std::pair<int,int> p = quads.at(i);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr plane(new pcl::PointCloud<pcl::PointXYZ>);
+    std::vector<uint32_t> vertices_1 = faces[p.first].vertices;
+    std::vector<uint32_t> vertices_2 = faces[p.second].vertices;
+
+    //Start at a correct edge!!
+    pcl::PointXYZ p1 = (*points)[vertices_1.at(0)];
+    pcl::PointXYZ p2 = (*points)[vertices_1.at(1)];
+    pcl::PointXYZ p3 = (*points)[vertices_1.at(2)];
+    Eigen::Vector3d v1(p1.x, p1.y, p1.z);
+    Eigen::Vector3d v2(p2.x, p2.y, p2.z);
+    Eigen::Vector3d v3(p3.x, p3.y, p3.z);
+    double l1 = (v1 - v2).norm();
+    double l2 = (v2 - v3).norm();
+    double l3 = (v3 - v1).norm();
+
+    int start_point;
+    if (l1 > l2 && l1 > l3){
+      start_point = 1;
+    } else if (l2 > l1 && l2 > l3){
+      start_point = 2;
+    } else if (l3 > l1 && l3 > l1){
+      start_point = 3;
+    } else{
+      return false;
+    }
+
+    for (int j = 0; j < 3; j++){
+      int idx = vertices_1.at(j);
+      plane->push_back((*points)[idx]);
+    }
+
+    for (int j = 0; j < 3; j++){
+      int idx = vertices_2.at(j);
+      if (std::find(vertices_1.begin(), vertices_1.end(), idx) == vertices_1.end()) {
+        plane->push_back((*points)[idx]);
+      }
+    }
+
+    pcl::PolygonMesh mesh;
+    pcl::PCLPointCloud2 temp_cloud;
+    pcl::toPCLPointCloud2(*plane, temp_cloud);
+    std::vector<pcl::Vertices> polygons_new;
+    pcl::Vertices vertices_new;
+
+    if (start_point == 1){
+      vertices_new.vertices.push_back(0);
+      vertices_new.vertices.push_back(3);
+      vertices_new.vertices.push_back(1);
+      vertices_new.vertices.push_back(2);
+    } else if (start_point == 2){
+      vertices_new.vertices.push_back(0);
+      vertices_new.vertices.push_back(1);
+      vertices_new.vertices.push_back(3);
+      vertices_new.vertices.push_back(2);
+    } else if (start_point == 3){
+      vertices_new.vertices.push_back(0);
+      vertices_new.vertices.push_back(1);
+      vertices_new.vertices.push_back(2);
+      vertices_new.vertices.push_back(3);
+    }
+    combineMeshes(mesh, mesh_all);
+
+  }
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/mesh_all.ply",mesh_all);
+  return true;
+};
 
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

@@ -75,9 +75,9 @@ void ReconstructionPointsSubscriber::messageCallback(
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
   if (model_->getOutlierCount() > 30000) {
     model_->clearRansacShapes();
-    // model_->applyFilter();
-    // model_->efficientRANSAC();
-    model_->SACSegmentation();
+    model_->applyFilter();
+    model_->efficientRANSAC();
+    // model_->SACSegmentation();
 
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
     std::vector<Eigen::Vector3d>* ransac_normal = model_->getRansacNormals();
