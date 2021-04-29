@@ -22,15 +22,16 @@ class MeshGeneration {
   MeshGeneration(ros::NodeHandle nodeHandle_);
 
  private:
+  void messageCallback(const ::cpt_reconstruction::shape &msg);
+  bool checkValidPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                       int valid_size, int min_size);
   void fusePlanes();
   void removeSingleDetections();
   void removeConflictingClusters();
-  bool checkValidPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                       int valid_size, int min_size);
-  void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
   void fit3DPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                   pcl::PolygonMesh &mesh);
-  void messageCallback(const ::cpt_reconstruction::shape &msg);
+  void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
+
   ros::NodeHandle nodeHandle_;
   ros::Subscriber subscriber_;
   int counter_;

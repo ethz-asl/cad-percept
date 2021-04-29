@@ -57,104 +57,6 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle)
   ros::spin();
 }
 
-void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh,
-                                   pcl::PolygonMesh &mesh_all) {
-  // pcl::PolygonMesh::concatenate(mesh_all, mesh); ???
-  // Source:
-  // https://github.com/PointCloudLibrary/pcl/blob/master/common/include/pcl/PolygonMesh.h
-  mesh_all.header.stamp = std::max(mesh_all.header.stamp, mesh.header.stamp);
-
-  const auto point_offset = mesh_all.cloud.width * mesh_all.cloud.height;
-
-  pcl::PCLPointCloud2 new_cloud;
-  pcl::concatenatePointCloud(mesh_all.cloud, mesh.cloud, new_cloud);
-  mesh_all.cloud = new_cloud;
-
-  std::transform(
-      mesh.polygons.begin(), mesh.polygons.end(),
-      std::back_inserter(mesh_all.polygons), [point_offset](auto polygon) {
-        std::transform(polygon.vertices.begin(), polygon.vertices.end(),
-                       polygon.vertices.begin(),
-                       [point_offset](auto &point_idx) {
-                         return point_idx + point_offset;
-                       });
-        return polygon;
-      });
-}
-
-void MeshGeneration::fit3DPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                                pcl::PolygonMesh &mesh) {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_copy(
-      new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::copyPointCloud(*cloud, *cloud_copy);
-
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_new(
-      new pcl::PointCloud<pcl::PointXYZ>);
-
-  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-  pcl::SACSegmentation<pcl::PointXYZ> seg;
-  pcl::ExtractIndices<pcl::PointXYZ> extract;
-  seg.setOptimizeCoefficients(true);
-  seg.setModelType(pcl::SACMODEL_PLANE);
-  seg.setMethodType(pcl::SAC_RANSAC);
-  seg.setDistanceThreshold(0.01);
-  seg.setMaxIterations(1000);
-
-  int i = 0, nr_points = (int)cloud_copy->points.size();
-  while (cloud_copy->points.size() > 0.05 * nr_points) {
-    seg.setInputCloud(cloud_copy);
-    seg.segment(*inliers, *coefficients);
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp(
-        new pcl::PointCloud<pcl::PointXYZ>);
-    extract.setInputCloud(cloud_copy);
-    extract.setIndices(inliers);
-    extract.setNegative(false);
-    extract.filter(*cloud_temp);
-    *cloud_new += *cloud_temp;
-
-    extract.setInputCloud(cloud_copy);
-    extract.setIndices(inliers);
-    extract.setNegative(true);
-    extract.filter(*cloud_copy);
-  }
-
-  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
-      new pcl::search::KdTree<pcl::PointXYZ>);
-  searchTree->setInputCloud(cloud_new);
-
-  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
-  normalEstimator.setInputCloud(cloud_new);
-  normalEstimator.setSearchMethod(searchTree);
-  normalEstimator.setKSearch(10);
-  normalEstimator.compute(*normals);
-
-  pcl::PointCloud<pcl::PointXYZI>::Ptr corners(
-      new pcl::PointCloud<pcl::PointXYZI>);
-  pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::Normal> harris;
-  harris.setInputCloud(cloud_new);
-  harris.setNonMaxSupression(false);
-  harris.setRadius(0.2f);
-  harris.setThreshold(0.1f);
-  harris.setNormals(normals);
-  harris.compute(*corners);
-  // Project Points to plane
-
-  // Get linear boundary
-
-  // Extrude element
-
-  // Compute corner_points
-
-  // Compute Convex? or Concave Hull
-  pcl::ConvexHull<pcl::PointXYZI> chull;
-  chull.setInputCloud(corners);
-  // chull.setAlpha (0.1);
-  chull.reconstruct(mesh);
-}
-
 // Source:
 // https://pointclouds.org/documentation/tutorials/greedy_projection.html
 // https://pointclouds.org/documentation/tutorials/resampling.html
@@ -284,66 +186,6 @@ bool MeshGeneration::checkValidPlane(
   return is_valid;
 }
 
-void MeshGeneration::removeSingleDetections() {
-  std::vector<int> remove_idx;
-  for (int i = 0; i < fusing_count_.size(); i++) {
-    if (fusing_count_.at(i) <= 1) {
-      remove_idx.push_back(i);
-    }
-  }
-  int idx_corr = 0;
-  for (unsigned r = 0; r < remove_idx.size(); r++) {
-    int idx = remove_idx.at(r);
-    clouds_.erase(clouds_.begin() + idx - idx_corr);
-    kd_trees_.erase(kd_trees_.begin() + idx - idx_corr);
-    ransac_normals_.erase(ransac_normals_.begin() + idx - idx_corr);
-    fusing_count_.erase(fusing_count_.begin() + idx - idx_corr);
-    idx_corr++;
-  }
-}
-
-void MeshGeneration::removeConflictingClusters() {
-  std::vector<int> remove_idx;
-  std::vector<int> nn_indices{1};
-  std::vector<float> nn_dists{1};
-  std::vector<int> blocked_idx;
-  for (int i = clouds_.size() - 1; i >= 0; i--) {
-    if (fusing_count_.at(i) > 10) {
-      continue;
-    }
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_i = clouds_[i];
-    int matches = 0;
-    for (int j = 0; j < clouds_.size(); j++) {
-      if ((i == j) || (std::find(blocked_idx.begin(), blocked_idx.end(), j) !=
-                       blocked_idx.end())) {
-        continue;
-      }
-      pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_j = kd_trees_[j];
-      for (int k = 0; k < cloud_i->size(); k++) {
-        pcl::PointXYZ p = (*cloud_i)[k];
-        tree_j->nearestKSearch(p, 1, nn_indices, nn_dists);
-        if (nn_dists[0] < 0.01) {
-          matches++;
-        }
-      }
-    }
-    double coverage = ((double)matches) / ((double)cloud_i->size());
-    if (coverage >= 0.85) {
-      remove_idx.push_back(i);
-      blocked_idx.push_back(i);
-    }
-  }
-  // Descending order!!
-  // no idx_corr needed!
-  for (unsigned r = 0; r < remove_idx.size(); r++) {
-    int idx = remove_idx.at(r);
-    clouds_.erase(clouds_.begin() + idx);
-    kd_trees_.erase(kd_trees_.begin() + idx);
-    ransac_normals_.erase(ransac_normals_.begin() + idx);
-    fusing_count_.erase(fusing_count_.begin() + idx);
-  }
-}
-
 void MeshGeneration::fusePlanes() {
   std::vector<int> blocked_idx;
   std::vector<int> nn_indices{1};
@@ -453,6 +295,164 @@ void MeshGeneration::fusePlanes() {
   ransac_normals_ = fused_ransac_normals;
   kd_trees_ = fused_kd_trees;
   fusing_count_ = fusing_count;
+}
+
+void MeshGeneration::removeSingleDetections() {
+  std::vector<int> remove_idx;
+  for (int i = 0; i < fusing_count_.size(); i++) {
+    if (fusing_count_.at(i) <= 1) {
+      remove_idx.push_back(i);
+    }
+  }
+  int idx_corr = 0;
+  for (unsigned r = 0; r < remove_idx.size(); r++) {
+    int idx = remove_idx.at(r);
+    clouds_.erase(clouds_.begin() + idx - idx_corr);
+    kd_trees_.erase(kd_trees_.begin() + idx - idx_corr);
+    ransac_normals_.erase(ransac_normals_.begin() + idx - idx_corr);
+    fusing_count_.erase(fusing_count_.begin() + idx - idx_corr);
+    idx_corr++;
+  }
+}
+
+void MeshGeneration::removeConflictingClusters() {
+  std::vector<int> remove_idx;
+  std::vector<int> nn_indices{1};
+  std::vector<float> nn_dists{1};
+  std::vector<int> blocked_idx;
+  for (int i = clouds_.size() - 1; i >= 0; i--) {
+    if (fusing_count_.at(i) > 10) {
+      continue;
+    }
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_i = clouds_[i];
+    int matches = 0;
+    for (int j = 0; j < clouds_.size(); j++) {
+      if ((i == j) || (std::find(blocked_idx.begin(), blocked_idx.end(), j) !=
+                       blocked_idx.end())) {
+        continue;
+      }
+      pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_j = kd_trees_[j];
+      for (int k = 0; k < cloud_i->size(); k++) {
+        pcl::PointXYZ p = (*cloud_i)[k];
+        tree_j->nearestKSearch(p, 1, nn_indices, nn_dists);
+        if (nn_dists[0] < 0.01) {
+          matches++;
+        }
+      }
+    }
+    double coverage = ((double)matches) / ((double)cloud_i->size());
+    if (coverage >= 0.85) {
+      remove_idx.push_back(i);
+      blocked_idx.push_back(i);
+    }
+  }
+  // Descending order!!
+  // no idx_corr needed!
+  for (unsigned r = 0; r < remove_idx.size(); r++) {
+    int idx = remove_idx.at(r);
+    clouds_.erase(clouds_.begin() + idx);
+    kd_trees_.erase(kd_trees_.begin() + idx);
+    ransac_normals_.erase(ransac_normals_.begin() + idx);
+    fusing_count_.erase(fusing_count_.begin() + idx);
+  }
+}
+
+void MeshGeneration::fit3DPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                                pcl::PolygonMesh &mesh) {
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_copy(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::copyPointCloud(*cloud, *cloud_copy);
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_new(
+      new pcl::PointCloud<pcl::PointXYZ>);
+
+  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+  pcl::SACSegmentation<pcl::PointXYZ> seg;
+  pcl::ExtractIndices<pcl::PointXYZ> extract;
+  seg.setOptimizeCoefficients(true);
+  seg.setModelType(pcl::SACMODEL_PLANE);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setDistanceThreshold(0.01);
+  seg.setMaxIterations(1000);
+
+  int i = 0, nr_points = (int)cloud_copy->points.size();
+  while (cloud_copy->points.size() > 0.05 * nr_points) {
+    seg.setInputCloud(cloud_copy);
+    seg.segment(*inliers, *coefficients);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    extract.setInputCloud(cloud_copy);
+    extract.setIndices(inliers);
+    extract.setNegative(false);
+    extract.filter(*cloud_temp);
+    *cloud_new += *cloud_temp;
+
+    extract.setInputCloud(cloud_copy);
+    extract.setIndices(inliers);
+    extract.setNegative(true);
+    extract.filter(*cloud_copy);
+  }
+
+  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
+      new pcl::search::KdTree<pcl::PointXYZ>);
+  searchTree->setInputCloud(cloud_new);
+
+  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
+  normalEstimator.setInputCloud(cloud_new);
+  normalEstimator.setSearchMethod(searchTree);
+  normalEstimator.setKSearch(10);
+  normalEstimator.compute(*normals);
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr corners(
+      new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::Normal> harris;
+  harris.setInputCloud(cloud_new);
+  harris.setNonMaxSupression(false);
+  harris.setRadius(0.2f);
+  harris.setThreshold(0.1f);
+  harris.setNormals(normals);
+  harris.compute(*corners);
+  // Project Points to plane
+
+  // Get linear boundary
+
+  // Extrude element
+
+  // Compute corner_points
+
+  // Compute Convex? or Concave Hull
+  pcl::ConvexHull<pcl::PointXYZI> chull;
+  chull.setInputCloud(corners);
+  // chull.setAlpha (0.1);
+  chull.reconstruct(mesh);
+}
+
+void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh,
+                                   pcl::PolygonMesh &mesh_all) {
+  // pcl::PolygonMesh::concatenate(mesh_all, mesh); ???
+  // Source:
+  // https://github.com/PointCloudLibrary/pcl/blob/master/common/include/pcl/PolygonMesh.h
+  mesh_all.header.stamp = std::max(mesh_all.header.stamp, mesh.header.stamp);
+
+  const auto point_offset = mesh_all.cloud.width * mesh_all.cloud.height;
+
+  pcl::PCLPointCloud2 new_cloud;
+  pcl::concatenatePointCloud(mesh_all.cloud, mesh.cloud, new_cloud);
+  mesh_all.cloud = new_cloud;
+
+  std::transform(
+      mesh.polygons.begin(), mesh.polygons.end(),
+      std::back_inserter(mesh_all.polygons), [point_offset](auto polygon) {
+        std::transform(polygon.vertices.begin(), polygon.vertices.end(),
+                       polygon.vertices.begin(),
+                       [point_offset](auto &point_idx) {
+                         return point_idx + point_offset;
+                       });
+        return polygon;
+      });
 }
 
 }  // namespace cpt_reconstruction

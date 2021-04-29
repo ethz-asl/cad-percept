@@ -22,8 +22,7 @@ class ReconstructionPointsSubscriber {
  public:
   ReconstructionPointsSubscriber() = delete;
   ReconstructionPointsSubscriber(ros::NodeHandle nodeHandle1,
-                                 ros::NodeHandle nodeHandle2,
-                                 Model* model);
+                                 ros::NodeHandle nodeHandle2, Model* model);
   void startReceiving();
 
  private:
@@ -40,8 +39,6 @@ class ReconstructionPointsSubscriber {
   int counter_planes_;
   int counter_cyl_;
   int iteration_counter_;
-  pcl::octree::OctreePointCloudDensity<pcl::PointXYZ> octree_;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_density_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

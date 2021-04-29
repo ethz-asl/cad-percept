@@ -55,22 +55,18 @@ class Model {
   void addOutlier(pcl::PointXYZ p);
   void addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                   pcl::PointCloud<pcl::Normal>::Ptr normals, int k);
+
+  void applyFilter();
   void efficientRANSAC();
   void SACSegmentation();
-  void applyFilter();
 
   std::vector<Eigen::MatrixXd>* getPointShapes();
-  std::vector<Eigen::MatrixXd>* getNormalShapes();
   std::vector<Eigen::Vector3d>* getRansacNormals();
   std::vector<int>* getShapeIDs();
-
   int getOutlierCount();
   float getMinDistance();
-  int getIndex();
   void clearRansacShapes();
   void clearBuffer();
-
-  void printOutliers();
 
  private:
   Eigen::Matrix4d transformation_;
@@ -80,13 +76,9 @@ class Model {
   pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree_;
   std::vector<int> nn_indices_{1};
   std::vector<float> nn_dists_{1};
-  std::vector<int> idx_outliers_;  // TODO REMOVE
   std::vector<Eigen::MatrixXd> points_shape_;
-  std::vector<Eigen::MatrixXd> normals_shape_;
   std::vector<Eigen::Vector3d> ransac_normals_;
   std::vector<int> shape_id_;
-  std::vector<Eigen::Vector4d> param_plane_;
-  std::vector<Eigen::Vector4d> param_cyl_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

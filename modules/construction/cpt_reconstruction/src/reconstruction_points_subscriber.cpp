@@ -1,5 +1,5 @@
-#include <cpt_reconstruction/reconstruction_points_subscriber.h>
 #include <cpt_reconstruction/reconstruction_model.h>
+#include <cpt_reconstruction/reconstruction_points_subscriber.h>
 
 #include <geometry_msgs/Vector3.h>
 #include <pcl/ModelCoefficients.h>
@@ -34,20 +34,14 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 ReconstructionPointsSubscriber::ReconstructionPointsSubscriber(
-    ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2,
-    Model* model)
+    ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2, Model* model)
     : nodeHandle1_(nodeHandle1),
       nodeHandle2_(nodeHandle2),
       model_(model),
       update_transformation_(true),
       counter_planes_(0),
       counter_cyl_(0),
-      iteration_counter_(0),
-      octree_(0.03),
-      cloud_density_(new pcl::PointCloud<pcl::PointXYZ>) {
-  octree_.setInputCloud(cloud_density_);
-  octree_.addPointsFromInputCloud();
-
+      iteration_counter_(0) {
   subscriber1_ = nodeHandle1_.subscribe(
       "corrected_scan", 1000, &ReconstructionPointsSubscriber::messageCallback,
       this);
@@ -100,12 +94,8 @@ void ReconstructionPointsSubscriber::messageCallback(
     pcl::PointXYZ pcl_p(x, y, z);
     model_->queryTree(pcl_p);
     if (model_->getMinDistance() >= 0.04) {
-      // int density_at_p = octree_.getVoxelDensityAtPoint(pcl_p);
-      // if (density_at_p <= 3){
       model_->addOutlier(pcl_p);
-      // octree_.addPointToCloud(pcl_p, cloud_density_);
       file1 << x << " " << y << " " << z << "\n";
-      //}
     }
     file2 << x << " " << y << " " << z << "\n";
   }
@@ -115,30 +105,23 @@ void ReconstructionPointsSubscriber::messageCallback(
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
   if (model_->getOutlierCount() > 30000) {
     model_->clearRansacShapes();
-    //model_->applyFilter();
-    //model_->efficientRANSAC();
+    // model_->applyFilter();
+    // model_->efficientRANSAC();
     model_->SACSegmentation();
 
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
-    std::vector<Eigen::MatrixXd>* normals_shape = model_->getNormalShapes();
     std::vector<Eigen::Vector3d>* ransac_normal = model_->getRansacNormals();
     std::vector<int>* shapes_ids = model_->getShapeIDs();
 
     // Publish mesh to mesh_gereration
     for (int i = 0; i < shapes_ids->size(); i++) {
       std::vector<geometry_msgs::Vector3> pub_points;
-      std::vector<geometry_msgs::Vector3> pub_normals;
       for (int j = 0; j < points_shape->at(i).cols(); j++) {
         geometry_msgs::Vector3 p;
-        geometry_msgs::Vector3 n;
         p.x = (*points_shape)[i](0, j);
         p.y = (*points_shape)[i](1, j);
         p.z = (*points_shape)[i](2, j);
-        n.x = (*normals_shape)[i](0, j);
-        n.y = (*normals_shape)[i](1, j);
-        n.z = (*normals_shape)[i](2, j);
         pub_points.push_back(p);
-        pub_normals.push_back(n);
       }
       Eigen::Vector3d ransac_n_temp = (*ransac_normal).at(i);
       geometry_msgs::Vector3 ransac_n;
@@ -148,7 +131,6 @@ void ReconstructionPointsSubscriber::messageCallback(
 
       ::cpt_reconstruction::shape shape_msg;
       shape_msg.points_msg = pub_points;
-      shape_msg.normals_msg = pub_normals;
       shape_msg.ransac_normal = ransac_n;
       shape_msg.id = shapes_ids->at(i);
       publisher_.publish(shape_msg);

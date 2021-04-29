@@ -36,8 +36,7 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 
-    Model::Model(std::string filename,
-                                 Eigen::Matrix4d transformation)
+Model::Model(std::string filename, Eigen::Matrix4d transformation)
     : meshing_points_(new pcl::PointCloud<pcl::PointXYZ>),
       filename_(filename),
       transformation_(transformation) {}
@@ -61,15 +60,11 @@ void Model::queryTree(pcl::PointXYZ p) {
   searchTree_->nearestKSearch(p, 1, nn_indices_, nn_dists_);
 }
 
-void Model::addOutlier(pcl::PointXYZ p) {
-  // idx_outliers_.push_back(i);
-  meshing_points_->push_back(p);
-}
+void Model::addOutlier(pcl::PointXYZ p) { meshing_points_->push_back(p); }
 
 // Source:https://github.com/tttamaki/ICP-test/blob/master/src/icp3_with_normal_iterative_view.cpp
 void Model::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                                 pcl::PointCloud<pcl::Normal>::Ptr normals,
-                                 int k) {
+                       pcl::PointCloud<pcl::Normal>::Ptr normals, int k) {
   pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
       new pcl::search::KdTree<pcl::PointXYZ>);
   searchTree->setInputCloud(cloud);
@@ -80,6 +75,30 @@ void Model::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
   normalEstimator.setKSearch(k);
   normalEstimator.compute(*normals);
 }
+
+void Model::applyFilter() {
+  ROS_INFO("Size before VoxelGridFiltering: %d\n", meshing_points_->size());
+  pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(
+      0.01f);
+  octree_filter.setInputCloud(meshing_points_);
+  octree_filter.addPointsFromInputCloud();
+  pcl::PointCloud<pcl::PointXYZ>::VectorType voxelCentroids;
+  octree_filter.getVoxelCentroids(voxelCentroids);
+  meshing_points_->clear();
+  for (int i = 0; i < voxelCentroids.size(); i++) {
+    meshing_points_->push_back(voxelCentroids[i]);
+  }
+
+  /*
+  Error for too big point clouds
+  [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset.
+  Integer indices would overflow.[ pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
+  voxel_grid.setInputCloud(meshing_points_);
+  voxel_grid.setLeafSize(0.01f, 0.01f, 0.01f);
+  voxel_grid.filter(*meshing_points_);
+  */
+  ROS_INFO("Size after VoxelGridFiltering: %d\n", meshing_points_->size());
+};
 
 void Model::efficientRANSAC() {
   pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
@@ -133,54 +152,32 @@ void Model::efficientRANSAC() {
       const std::vector<std::size_t> idx_assigned_points =
           plane->indices_of_assigned_points();
 
-      // TODO: Remove
       Kernel::Plane_3 plane_3 = static_cast<Kernel::Plane_3>(*plane);
-      Eigen::Vector4d coeff_plane(plane_3.a(), plane_3.b(), plane_3.c(),
-                                  plane_3.d());
-      param_plane_.push_back(coeff_plane);
 
       Kernel::Vector_3 ransac_normal_temp = (*plane).plane_normal();
       Eigen::Vector3d ransac_normal(ransac_normal_temp.x(),
                                     ransac_normal_temp.y(),
                                     ransac_normal_temp.z());
       ransac_normal.normalize();
-      ransac_normals_.push_back(ransac_normal);
 
-      int count_inliers = 0;
       Eigen::MatrixXd points(3, idx_assigned_points.size());
-      Eigen::MatrixXd normals(3, idx_assigned_points.size());
-      double normalizer =
-          std::sqrt(std::pow(plane_3.a(), 2) + std::pow(plane_3.b(), 2) +
-                    std::pow(plane_3.c(), 2));
-
       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
         detected_points->indices.push_back(idx_assigned_points.at(i));
 
         Point_with_normal point_with_normal =
             outliers[idx_assigned_points.at(i)];
         Kernel::Point_3 p = point_with_normal.first;
-        Kernel::Vector_3 n = point_with_normal.second;
-
-        double error = std::fabs(plane_3.a() * p.x() + plane_3.b() * p.y() +
-                                 plane_3.c() * p.z() + plane_3.d()) /
-                       normalizer;
 
         // Project points to plane
         Eigen::Vector3d p_orig(p.x(), p.y(), p.z());
         Eigen::Vector3d p_proj =
             p_orig - (p_orig.dot(ransac_normal) + plane_3.d()) * ransac_normal;
         file << p_proj.x() << " " << p_proj.y() << " " << p_proj.z() << "\n";
-        points.block<3, 1>(0, count_inliers) =
+        points.block<3, 1>(0, i) =
             Eigen::Vector3d(p_proj.x(), p_proj.y(), p_proj.z());
-        normals.block<3, 1>(0, count_inliers) =
-            Eigen::Vector3d(n.x(), n.y(), n.z());
-        count_inliers++;
       }
-      points.conservativeResize(3, count_inliers);
-      normals.conservativeResize(3, count_inliers);
-
       points_shape_.push_back(points);
-      normals_shape_.push_back(normals);
+      ransac_normals_.push_back(ransac_normal);
       shape_id_.push_back(0);
 
     } /* else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
@@ -225,7 +222,7 @@ void Model::SACSegmentation() {
   seg.setMethodType(pcl::SAC_RANSAC);
   seg.setDistanceThreshold(0.03);
   seg.setMaxIterations(800);
-  //seg.setRadiusLimits(0.05, 0.5);
+  // seg.setRadiusLimits(0.05, 0.5);
 
   std::vector<Eigen::Vector3f> axis_vec;
   for (int i = 0; i < 180; i += 20) {
@@ -233,7 +230,7 @@ void Model::SACSegmentation() {
     Eigen::Vector3f ax(cos(rad), sin(rad), 0.0f);
     axis_vec.push_back(ax);
   }
-  //axis_vec.push_back(Eigen::Vector3f(0, 0, 1));
+  // axis_vec.push_back(Eigen::Vector3f(0, 0, 1));
 
   for (int c = 0; c < axis_vec.size(); c++) {
     for (int it = 0; it < 2; it++) {
@@ -242,7 +239,7 @@ void Model::SACSegmentation() {
       }
       pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(
           new pcl::PointCloud<pcl::Normal>);
-      this->addNormals(meshing_points_, cloud_normals, 10);
+      this->addNormals(meshing_points_, cloud_normals, 100);
       seg.setInputNormals(cloud_normals);
       seg.setInputCloud(meshing_points_);
       seg.setAxis(axis_vec.at(c));
@@ -290,17 +287,13 @@ void Model::SACSegmentation() {
         int indices_size = indices.size();
         if (indices_size > 50) {
           Eigen::MatrixXd points(3, indices_size);
-          Eigen::MatrixXd normals(3, indices_size);
           for (int j = 0; j < indices_size; j++) {
             pcl::PointXYZ p_c = (*cloud_projected)[indices.at(j)];
             points.block<3, 1>(0, j) = Eigen::Vector3d(p_c.x, p_c.y, p_c.z);
-            // TODO: Remove all normals
-            normals.block<3, 1>(0, j) = Eigen::Vector3d(0, 0, 0);
           }
           points_shape_.push_back(points);
-          normals_shape_.push_back(normals);
-          shape_id_.push_back(0);
           ransac_normals_.push_back(plane_normal);
+          shape_id_.push_back(0);
         }
       }
       extract.setInputCloud(meshing_points_);
@@ -311,44 +304,11 @@ void Model::SACSegmentation() {
   }
 }
 
-void Model::applyFilter() {
-  ROS_INFO("Size before filtering: %d\n", meshing_points_->size());
-
-  pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(
-      0.01f);
-  octree_filter.setInputCloud(meshing_points_);
-  octree_filter.addPointsFromInputCloud();
-  pcl::PointCloud<pcl::PointXYZ>::VectorType voxelCentroids;
-  octree_filter.getVoxelCentroids(voxelCentroids);
-  meshing_points_->clear();
-  for (int i = 0; i < voxelCentroids.size(); i++) {
-    meshing_points_->push_back(voxelCentroids[i]);
-  }
-
-  /*
-  Error for too big point clouds
-  [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset.
-  Integer indices would overflow.[ pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
-  voxel_grid.setInputCloud(meshing_points_);
-  voxel_grid.setLeafSize(0.01f, 0.01f, 0.01f);
-  voxel_grid.filter(*meshing_points_);
-  */
-  ROS_INFO("Size after filtering: %d\n", meshing_points_->size());
-};
-
-std::vector<Eigen::MatrixXd>* Model::getPointShapes() {
-  return &points_shape_;
-}
-
-std::vector<Eigen::MatrixXd>* Model::getNormalShapes() {
-  return &normals_shape_;
-}
+std::vector<Eigen::MatrixXd>* Model::getPointShapes() { return &points_shape_; }
 
 std::vector<Eigen::Vector3d>* Model::getRansacNormals() {
   return &ransac_normals_;
 }
-
-void Model::clearBuffer() { meshing_points_->clear(); }
 
 std::vector<int>* Model::getShapeIDs() { return &shape_id_; }
 
@@ -356,20 +316,13 @@ int Model::getOutlierCount() { return meshing_points_->size(); }
 
 float Model::getMinDistance() { return nn_dists_[0]; }
 
-int Model::getIndex() { return nn_indices_[0]; }
-
-void Model::printOutliers() {
-  for (unsigned i = 0; i < idx_outliers_.size(); i++) {
-    ROS_INFO("Outlier idx: %d\n", idx_outliers_.at(i));
-  }
-}
-
 void Model::clearRansacShapes() {
   points_shape_.clear();
-  normals_shape_.clear();
   ransac_normals_.clear();
   shape_id_.clear();
 }
+
+void Model::clearBuffer() { meshing_points_->clear(); }
 
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept
