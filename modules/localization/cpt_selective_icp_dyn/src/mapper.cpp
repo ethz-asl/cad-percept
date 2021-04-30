@@ -17,17 +17,13 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
       selective_icp_trigger(false),
       ref_mesh_ready(false),
       projection_count(0), 
-      current_scan_number(0),
-      current_realsense_number(0) {
+      current_scan_number(0) {
   
 
   cloud_sub_ =
       nh_.subscribe(parameters_.scan_topic, parameters_.input_queue_size, &Mapper::gotCloud, this);
   cad_sub_ =
       nh_.subscribe(parameters_.cad_topic, parameters_.input_queue_size, &Mapper::gotCAD, this);
-  //subscibe to odom_topic from RealSense
-  odom_sub_ = 
-      nh_.subscribe(parameters_.odom_topic, parameters_.input_queue_size, &Mapper::gotOdom, this);
 
   load_published_map_srv_ =
       nh_private_.advertiseService("load_published_map", &Mapper::loadPublishedMap, this);
@@ -47,7 +43,6 @@ Mapper::Mapper(ros::NodeHandle &nh, ros::NodeHandle &nh_private)
   point_pub_ = nh_.advertise<geometry_msgs::PointStamped>("point_pub_", 2, true);
   map_pub_ = nh_.advertise<PointCloud>("map", 1, true);
   distance_pc_pub_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZI>>("distance_pc", 2, true);
-  realsense_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("realsense_odom", 50, true);
   icp_corrected_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("icp_corrected_odom", 50, true);
   // TODO (Hermann) What is this???
   std::cout << "Wait for start-up" << std::endl;
@@ -127,73 +122,6 @@ void Mapper::gotCAD(const cgal_msgs::TriangleMeshStamped &cad_mesh_in) {
   }
 }
 
-// Callback function for correcting, publishing and broadcasting the odometry message from Realsense
-void Mapper::gotOdom(const nav_msgs::Odometry &odom_msg_in){
-
-  // Suppress warning by publishing in one third of initial frequency (which was about 200hz)!
-  if (current_realsense_number % 3 > 0){
-      current_realsense_number++;
-      return;
-  }
-
-  current_realsense_number = 1; 
-  std::string child_frame_id = odom_msg_in.child_frame_id;
-  std::string parent_frame_id = odom_msg_in.header.frame_id;
-  
-
-  geometry_msgs::Pose pose = odom_msg_in.pose.pose;
-  geometry_msgs::Point position = pose.position;
-  geometry_msgs::Quaternion orientation = pose.orientation;
-  geometry_msgs::Twist twist = odom_msg_in.twist.twist;
-
-    
-  nav_msgs::Odometry odom_msg_out = odom_msg_in;
-
-  // Rotate translation by 90 degrees yaw, orientation is not used anyway except for yaw, which is still correct
-  odom_msg_out.pose.pose.position.x = -position.y;
-  odom_msg_out.pose.pose.position.y = position.x;
-  odom_msg_out.pose.pose.position.z = position.z;
-  odom_msg_out.twist.twist.linear.x = -twist.linear.y;
-  odom_msg_out.twist.twist.linear.y = twist.linear.x;
-  odom_msg_out.twist.twist.linear.z = twist.linear.z;
-
-  // Set covariances from parameters
-  odom_msg_out.pose.covariance[0+0*6] = parameters_.realsense_cov;
-	odom_msg_out.pose.covariance[1+1*6] = parameters_.realsense_cov;
-	odom_msg_out.pose.covariance[2+2*6] = parameters_.realsense_cov;
-	odom_msg_out.pose.covariance[3+3*6] = parameters_.realsense_cov;
-	odom_msg_out.pose.covariance[4+4*6] = parameters_.realsense_cov;
-	odom_msg_out.pose.covariance[5+5*6] = parameters_.realsense_cov;
-  odom_msg_out.twist.covariance[0+0*6] = parameters_.realsense_cov;
-	odom_msg_out.twist.covariance[1+1*6] = parameters_.realsense_cov;
-	odom_msg_out.twist.covariance[2+2*6] = parameters_.realsense_cov;
-	odom_msg_out.twist.covariance[3+3*6] = parameters_.realsense_cov;
-	odom_msg_out.twist.covariance[4+4*6] = parameters_.realsense_cov;
-	odom_msg_out.twist.covariance[5+5*6] = parameters_.realsense_cov;
-  
-  // publish corrected realsense odom to topic (realsense_odom) for EKF
-  if (realsense_odom_pub_.getNumSubscribers()) {
-    realsense_odom_pub_.publish(odom_msg_out);
-  }
-
-  // broadcast odom to pose to tf (non-EKF or if activated)
-  if (!parameters_.ekf_enable || parameters_.odom_pose_pub){
-      tf::Transform transform;
-      transform.setOrigin( tf::Vector3(-position.y, position.x, position.z));
-      transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w));
-      tf_broadcaster_.sendTransform(tf::StampedTransform(transform, odom_msg_in.header.stamp, parameters_.camera_odom_frame, parameters_.camera_pose_frame));
-      ROS_DEBUG("Broadcasted and published Odom->Pose Transform"); 
-  }
-  // broadcast identity map to odom to tf (only if EKF and activated)
-  if (parameters_.ekf_enable && parameters_.map_odom_pub){
-      tf::Transform test_transform;
-      test_transform.setOrigin(tf::Vector3(0,0,0));
-      test_transform.setRotation(tf::Quaternion(0,0,0,1));
-      tf_broadcaster_.sendTransform(tf::StampedTransform(test_transform, odom_msg_in.header.stamp, parameters_.tf_map_frame, parameters_.camera_odom_frame));
-      ROS_DEBUG("Broadcasted and published identity Map->Odom Transform");
-  }
-
-}
 
 // Main entry point, callback function is called whenever a new scan arrives
 void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
@@ -230,6 +158,7 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
    */    
   } else {
     const ros::Time stamp = cloud_msg_in.header.stamp;
+    ROS_INFO_STREAM("Cloud delay = " << ros::Time::now() - stamp << std::endl);
     uint32_t seq = cloud_msg_in.header.seq;
 
     /**
@@ -299,11 +228,11 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
               stamp),
           dimp1);
     } catch (tf::ExtrapolationException e) {
-      ROS_ERROR_STREAM("Extrapolation Exception. stamp = " << stamp << " now = " << ros::Time::now()
+          ROS_ERROR_STREAM("Extrapolation Exception. stamp = " << stamp << " now = " << ros::Time::now()
                                                            << " delta = "
                                                            << ros::Time::now() - stamp << std::endl
                                                            << e.what());
-      return;
+          return;  
     } catch (...) {
       // Everything else.
       ROS_ERROR_STREAM("Unexpected exception... ignoring scan.");

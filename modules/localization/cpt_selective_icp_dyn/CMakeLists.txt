@@ -16,6 +16,8 @@ cs_add_library(${PROJECT_NAME}
         src/mapper.cpp
         src/utils.cpp
         src/mapper_parameters.cpp
+        # src/realsenseodom_parameters.cpp
+        # src/realsenseodom.cpp
         )
 
 ############
@@ -24,8 +26,12 @@ cs_add_library(${PROJECT_NAME}
 cs_add_executable(${PROJECT_NAME}_node
         src/mapper_node.cpp
         )
+cs_add_executable(realsense_broadcast_node
+        src/realsense_broadcast_node.cpp
+        )
 
 target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
+# target_link_libraries(${PROJECT_NAME}_node2 ${PROJECT_NAME})
 
 ############
 #  TESTS   #

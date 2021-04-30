@@ -32,9 +32,6 @@ struct MapperParameters {
   bool ekf_enable;
   double icp_cov_lin;
   double icp_cov_rot;
-  double realsense_cov;
-  bool odom_pose_pub;
-  bool map_odom_pub;
 };
 
 }  // namespace selective_icp

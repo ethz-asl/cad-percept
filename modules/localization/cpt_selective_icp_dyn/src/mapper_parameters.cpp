@@ -27,9 +27,6 @@ MapperParameters::MapperParameters()
       skip_scans(getParam<int>("skipScans", 1)),
       icp_cov_lin(getParam<double>("icpCovLin", 0.1)),
       icp_cov_rot(getParam<double>("icpCovRot", 0.1)),
-      realsense_cov(getParam<double>("realsenseCov", 0.1)),
-      odom_pose_pub(getParam<bool>("odomPosePub", true)),
-      map_odom_pub(getParam<bool>("mapOdomPub", true)),
       ekf_enable(getParam<bool>("ekfEnable", false)) {}
 MapperParameters::~MapperParameters() {}
 

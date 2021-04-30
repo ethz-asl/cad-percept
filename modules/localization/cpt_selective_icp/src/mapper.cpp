@@ -165,7 +165,11 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
     DP cloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(cloud_msg_in));
 
     PointMatcherSupport::timer t;
+    float before_processCloud = t.elapsed();
     processCloud(&cloud, cloud_msg_in.header.stamp);
+    float after_processCloud = t.elapsed();
+    ROS_INFO_STREAM("[TIME] Before took: " << before_processCloud << " [s]"); 
+    ROS_INFO_STREAM("[TIME] ProcessCloud took: " << after_processCloud - before_processCloud << " [s]"); 
 
     // Cloud specific ICP preparation:
 
@@ -222,7 +226,9 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
     PM::TransformationParameters T_updated_scanner_to_map =
         T_scanner_to_map_;  // not sure if copy is necessary
-
+    
+    float before_ICP = t.elapsed();
+    ROS_INFO_STREAM("[TIME] In between took: " << before_ICP - after_processCloud << " [s]"); 
     /**
      * Full ICP Primer
      */
@@ -231,7 +237,6 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         return;  // if not successfull cancel the process
       }
     }
-
     /**
      * Selective ICP
      */
@@ -252,7 +257,8 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
         return;  // if not successfull cancel the process
       }
     }
-
+    float after_ICP = t.elapsed();
+    ROS_INFO_STREAM("[TIME] ICP took: " << after_ICP - before_ICP << " [s]");  
     /**
      * Publish
      */
@@ -317,7 +323,12 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
 
     /**
      * Statistics about time and real-time capability.
+     * Stamp is time stamp of cloud_in_msg
+     * Last_point_cloud_time_ is stamp from previous iteration 
+     * t.elapsed() is time for executing function
      */
+    ROS_INFO_STREAM("[TIME] After took: " << t.elapsed() - after_ICP << " [s]");  
+
     int real_time_ratio = 100 * t.elapsed() / (stamp.toSec() - last_point_cloud_time_.toSec());
     real_time_ratio *= seq - last_point_cloud_seq_;
 
