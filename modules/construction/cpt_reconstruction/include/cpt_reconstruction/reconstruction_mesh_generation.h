@@ -24,6 +24,7 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
+#include <pcl/io/vtk_lib_io.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/keypoints/harris_3d.h>
@@ -66,6 +67,7 @@ class MeshGeneration {
   void fit3DPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                   pcl::PolygonMesh &mesh);
   void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
+  bool integrateInBuildingModel();
 
   ros::NodeHandle nodeHandle_;
   ros::Subscriber subscriber_;
@@ -75,6 +77,10 @@ class MeshGeneration {
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_;
   std::vector<Eigen::Vector3d> ransac_normals_;
   std::vector<int> fusing_count_;
+
+  // Fit plane
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> detected_shapes_points_;
+  std::vector<Eigen::Vector4d> detected_shapes_params_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept
