@@ -55,7 +55,7 @@ void MeshGeneration::messageCallback(const ::cpt_reconstruction::shape &msg) {
       ROS_INFO(
           "Size after fuseing and before removing conflicting clusters:: %d \n",
           clouds_.size());
-      // this->removeSingleDetections();
+      this->removeSingleDetections();
       this->removeConflictingClusters();
       ROS_INFO("Size after removing conflicting clusters: %d \n",
                clouds_.size());
@@ -114,8 +114,7 @@ bool MeshGeneration::checkValidPlane(
     // assumption: w x .10 plane as minimum size
     if (middle_value > 0.00015) {
       is_valid = true;
-      ROS_INFO("Valid plane %d with l2 = %f \n", received_shapes_,
-               middle_value);
+      ROS_INFO("Valid plane %d with l2 = %f\n", received_shapes_, middle_value);
       std::string result = "/home/philipp/Schreibtisch/Shapes/valid_shape_" +
                            std::to_string(received_shapes_) + "_plane.ply";
       pcl::io::savePLYFile(result, *cloud);
@@ -148,18 +147,16 @@ void MeshGeneration::fusePlanes() {
           blocked_idx.end()) {
         continue;
       }
-      double diff1 =
-          (ransac_normals_[i] - ransac_normals_[j]).lpNorm<Eigen::Infinity>();
-      double diff2 =
-          (ransac_normals_[i] + ransac_normals_[j]).lpNorm<Eigen::Infinity>();
-      if (diff1 < 0.05 || diff2 < 0.05) {
+
+      double dot_prod = ransac_normals_[i].dot(ransac_normals_[j]);
+      if (std::abs(dot_prod) > 0.99) {
         pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_i = kd_trees_[i];
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_j = clouds_[j];
         int matches = 0;
         for (int k = 0; k < cloud_j->size(); k++) {
           pcl::PointXYZ p = (*cloud_j)[k];
           tree_i->nearestKSearch(p, 1, nn_indices, nn_dists);
-          if (nn_dists[0] < 0.01) {
+          if (nn_dists[0] < 0.03) {
             matches++;
           }
         }
@@ -286,7 +283,7 @@ void MeshGeneration::removeConflictingClusters() {
       }
     }
     double coverage = ((double)matches) / ((double)cloud_i->size());
-    if (coverage >= 0.85) {
+    if (coverage >= 0.5) {
       remove_idx.push_back(i);
       blocked_idx.push_back(i);
     }

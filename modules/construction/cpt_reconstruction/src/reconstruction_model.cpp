@@ -46,7 +46,7 @@ void Model::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 void Model::applyFilter() {
   ROS_INFO("Size before VoxelGridFiltering: %d\n", meshing_points_->size());
   pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(
-      0.01f);
+      0.03f);
   octree_filter.setInputCloud(meshing_points_);
   octree_filter.addPointsFromInputCloud();
   pcl::PointCloud<pcl::PointXYZ>::VectorType voxelCentroids;
@@ -69,7 +69,7 @@ void Model::applyFilter() {
 
 void Model::efficientRANSAC() {
   pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-  this->addNormals(meshing_points_, normals, 15);
+  this->addNormals(meshing_points_, normals, 20);
 
   std::vector<Point_with_normal> outliers(meshing_points_->size());
   for (unsigned i = 0; i < meshing_points_->size(); i++) {
