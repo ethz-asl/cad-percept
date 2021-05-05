@@ -46,7 +46,7 @@ void Model::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 void Model::applyFilter() {
   ROS_INFO("Size before VoxelGridFiltering: %d\n", meshing_points_->size());
   pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(
-      0.03f);
+      0.02f);
   octree_filter.setInputCloud(meshing_points_);
   octree_filter.addPointsFromInputCloud();
   pcl::PointCloud<pcl::PointXYZ>::VectorType voxelCentroids;
@@ -94,11 +94,11 @@ void Model::efficientRANSAC() {
   ransac.add_shape_factory<Cylinder>();
 
   Efficient_ransac::Parameters parameters;
-  parameters.probability = 0.0001;
-  parameters.min_points = 150;
+  parameters.probability = 0.00001;
+  parameters.min_points = 200;
   parameters.epsilon = 0.03;
   parameters.cluster_epsilon = 0.1;  // 0.5
-  parameters.normal_threshold = 0.90;
+  parameters.normal_threshold = 0.80;
 
   ransac.detect(parameters);
 
@@ -188,29 +188,29 @@ void Model::SACSegmentation() {
   seg.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
   seg.setMethodType(pcl::SAC_RANSAC);
   seg.setDistanceThreshold(0.03);
-  seg.setMaxIterations(800);
-  // seg.setRadiusLimits(0.05, 0.5);
+  seg.setMaxIterations(1000);
+  seg.setRadiusLimits(0.05, 0.5);
 
   std::vector<Eigen::Vector3f> axis_vec;
-  for (int i = 0; i < 180; i += 20) {
+  for (int i = 0; i < 180; i += 10) {
     float rad = (float)i * (M_PI / 180.0);
     Eigen::Vector3f ax(cos(rad), sin(rad), 0.0f);
     axis_vec.push_back(ax);
   }
-  // axis_vec.push_back(Eigen::Vector3f(0, 0, 1));
+  //axis_vec.push_back(Eigen::Vector3f(0, 0, 1));
 
   for (int c = 0; c < axis_vec.size(); c++) {
-    for (int it = 0; it < 2; it++) {
+    for (int it = 0; it < 5; it++) {
       if (meshing_points_->size() < 2000) {
         break;
       }
       pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(
           new pcl::PointCloud<pcl::Normal>);
-      this->addNormals(meshing_points_, cloud_normals, 100);
+      this->addNormals(meshing_points_, cloud_normals, 20);
       seg.setInputNormals(cloud_normals);
       seg.setInputCloud(meshing_points_);
       seg.setAxis(axis_vec.at(c));
-      seg.setEpsAngle(0.175);
+      seg.setEpsAngle(0.09);
       seg.segment(*inliers, *coefficients);
 
       Eigen::Vector3d plane_normal(coefficients->values[0],

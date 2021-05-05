@@ -63,7 +63,7 @@ void ReconstructionPointsSubscriber::messageCallback(
     double z = (*pcl_cloud_transformed)[i].z;
     pcl::PointXYZ pcl_p(x, y, z);
     model_->queryTree(pcl_p);
-    if (model_->getMinDistance() >= 0.04) {
+    if (model_->getMinDistance() >= 0.025) {
       model_->addOutlier(pcl_p);
       file1 << x << " " << y << " " << z << "\n";
     }
@@ -77,7 +77,7 @@ void ReconstructionPointsSubscriber::messageCallback(
     model_->clearRansacShapes();
     model_->applyFilter();
     model_->efficientRANSAC();
-    // model_->SACSegmentation();
+    //model_->SACSegmentation();
 
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
     std::vector<Eigen::Vector3d>* ransac_normal = model_->getRansacNormals();
@@ -106,7 +106,7 @@ void ReconstructionPointsSubscriber::messageCallback(
       publisher_.publish(shape_msg);
     }
 
-    if (true || (iteration_counter_ >= 2) && (iteration_counter_ % 2 == 0)) {
+    if (true || ((iteration_counter_ >= 2) && (iteration_counter_ % 2 == 0))) {
       model_->clearBuffer();
     }
 

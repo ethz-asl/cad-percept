@@ -47,6 +47,14 @@
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/poisson_surface_reconstruction.h>
 
+// Source: https://doc.cgal.org/5.0.4/Solver_interface/index.html
+#define CGAL_USE_SCIP
+#include <CGAL/SCIP_mixed_integer_program_traits.h>
+typedef CGAL::SCIP_mixed_integer_program_traits<double> MIP_Solver;
+typedef typename MIP_Solver::Variable                        Variable;
+typedef typename MIP_Solver::Linear_objective        Linear_objective;
+typedef typename MIP_Solver::Linear_constraint        Linear_constraint;
+
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef std::pair<Kernel::Point_3, Kernel::Vector_3> Point_with_normal;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
@@ -67,7 +75,8 @@ class MeshGeneration {
   void fit3DPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                   pcl::PolygonMesh &mesh);
   void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
-  bool integrateInBuildingModel();
+  bool preprocessBuildingModel();
+  void reconstructElements(pcl::PointCloud<pcl::PointXYZ>::Ptr points_element);
 
   ros::NodeHandle nodeHandle_;
   ros::Subscriber subscriber_;
@@ -81,6 +90,10 @@ class MeshGeneration {
   // Fit plane
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> detected_shapes_points_;
   std::vector<Eigen::Vector4d> detected_shapes_params_;
+
+  // Simplified Model Mesh
+  pcl::PolygonMesh mesh_model_;
+
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

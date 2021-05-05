@@ -4,6 +4,7 @@ namespace cad_percept {
 namespace cpt_reconstruction {
 MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle)
     : nodeHandle_(nodeHandle), counter_(0), received_shapes_(0) {
+  preprocessBuildingModel();
   subscriber_ = nodeHandle_.subscribe("ransac_shape", 1000,
                                       &MeshGeneration::messageCallback, this);
   ros::spin();
@@ -389,7 +390,7 @@ void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh,
       });
 }
 
-bool MeshGeneration::integrateInBuildingModel() {
+bool MeshGeneration::preprocessBuildingModel() {
   pcl::PolygonMesh mesh;
   pcl::io::loadPolygonFilePLY(
       "/home/philipp/Schreibtisch/data/CLA_MissingParts_1.ply", mesh);
@@ -560,8 +561,10 @@ bool MeshGeneration::integrateInBuildingModel() {
   }
   pcl::io::savePLYFile("/home/philipp/Schreibtisch/mesh_all.ply", mesh_all);
 
+  mesh_model_ = mesh_all;
   // Compute Intersections with plane orthogonal to detected shape and vertices
   // close by First vertical planes only
+  /*
   int number_detected_shapes = detected_shapes_points_.size();
   for (int i = 0; i < number_detected_shapes; i++) {
     Eigen::Vector4d shape_params = detected_shapes_params_.at(i);
@@ -598,12 +601,14 @@ bool MeshGeneration::integrateInBuildingModel() {
         }
       }
     }
-
-    // Evaluate Canidates
   }
-
+  */
   return true;
 };
+
+void MeshGeneration::reconstructElements(pcl::PointCloud<pcl::PointXYZ>::Ptr points_element){
+  MIP_Solver solver;
+}
 
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept
