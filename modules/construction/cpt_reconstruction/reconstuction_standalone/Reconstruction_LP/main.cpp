@@ -57,8 +57,18 @@ void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all) {
 
   const auto point_offset = mesh_all.cloud.width * mesh_all.cloud.height;
 
+  pcl::PointCloud<pcl::PointXYZ> mesh_all_cloud;
+  pcl::PointCloud<pcl::PointXYZ> mesh_cloud;
+  pcl::fromPCLPointCloud2(mesh_all.cloud, mesh_all_cloud);
+  pcl::fromPCLPointCloud2(mesh.cloud, mesh_cloud);
+
+  pcl::PCLPointCloud2 mesh_all_cloud2;
+  pcl::PCLPointCloud2 mesh_cloud2;
+  pcl::toPCLPointCloud2(mesh_cloud, mesh_cloud2);
+  pcl::toPCLPointCloud2(mesh_all_cloud, mesh_all_cloud2);
+
   pcl::PCLPointCloud2 new_cloud;
-  pcl::concatenatePointCloud(mesh_all.cloud, mesh.cloud, new_cloud);
+  pcl::concatenatePointCloud(mesh_all_cloud2, mesh_cloud2, new_cloud);
   mesh_all.cloud = new_cloud;
 
   std::transform(
@@ -87,15 +97,23 @@ void planeFromIdx(Eigen::Vector4f &result, int idx,
 int main() {
   // TODO: include all detected planes for candidate generation!
 
+  double min_area = 0.0;
+
   pcl::PolygonMesh mesh;
   pcl::io::loadPolygonFilePLY(
       "/home/philipp/Schreibtisch/data/CLA_MissingParts_1.ply", mesh);
+
+  pcl::PolygonMesh mesh_detected;
+  pcl::io::loadPolygonFilePLY(
+      "/home/philipp/Schreibtisch/Result_CGAL/mesh_all_10.ply", mesh_detected);
+
+  combineMeshes(mesh_detected, mesh);
 
   // Load element point cloud
   pcl::PointCloud<pcl::PointXYZ>::Ptr element_points(
       new pcl::PointCloud<pcl::PointXYZ>);
   pcl::io::loadPLYFile<pcl::PointXYZ>(
-      "/home/philipp/Schreibtisch/Result_CGAL/Meshes/points_2.ply",
+      "/home/philipp/Schreibtisch/Result_CGAL/Meshes/points_28.ply",
       *element_points);
 
   std::vector<::pcl::Vertices> faces_model = mesh.polygons;
@@ -107,15 +125,19 @@ int main() {
   std::vector<double> plane_d;
   std::vector<double> area;
   std::vector<Eigen::Vector3d> plane_normals;
+
   for (int i = 0; i < faces_model.size(); i++) {
     std::vector<uint32_t> vertices = faces_model.at(i).vertices;
+    if (vertices.size() != 3) {
+      std::cout << "Warning: Non tria element" << std::endl;
+    }
     pcl::PointXYZ p1 = (*vertices_model)[vertices.at(0)];
     pcl::PointXYZ p2 = (*vertices_model)[vertices.at(1)];
     pcl::PointXYZ p3 = (*vertices_model)[vertices.at(2)];
     Eigen::Vector3d v1(p1.x, p1.y, p1.z);
     Eigen::Vector3d v2(p2.x, p2.y, p2.z);
     Eigen::Vector3d v3(p3.x, p3.y, p3.z);
-    Eigen::Vector3d n = (v1 - v2).cross(v3 - v2);
+    Eigen::Vector3d n = (v2 - v1).cross(v3 - v1);
     area.push_back(n.norm());
     n.normalize();
 
@@ -128,7 +150,8 @@ int main() {
   std::vector<int> duplicated_faces;
   for (int i = 0; i < faces_model.size(); i++) {
     if (std::find(duplicated_faces.begin(), duplicated_faces.end(), i) !=
-        duplicated_faces.end()) {
+            duplicated_faces.end() ||
+        area.at(i) < min_area) {
       continue;
     }
     Eigen::Vector3d plane_normal_1 = plane_normals.at(i);
@@ -141,8 +164,8 @@ int main() {
       Eigen::Vector3d plane_normal_2 = plane_normals.at(j);
       double d_2 = plane_d.at(j);
 
-      if (std::abs(plane_normal_1.dot(plane_normal_2)) > 0.999 &&
-          std::abs(d_1 - d_2) < 0.0001) {
+      if (std::fabs(plane_normal_1.dot(plane_normal_2)) > 0.9999 &&
+          std::fabs(d_1 - d_2) < 0.003) {
         duplicated_faces.push_back(j);
       }
     }
@@ -166,10 +189,81 @@ int main() {
                                  coefficients->values[1],
                                  coefficients->values[2]);
   element_normal.normalize();
-  pcl::PointXYZ test_point = (*element_points)[0];
-  double element_d =
-      -(element_normal.x() * test_point.x + element_normal.y() * test_point.y +
-        element_normal.z() * test_point.z);
+
+  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
+      new pcl::search::KdTree<pcl::PointXYZ>);
+  searchTree->setInputCloud(element_points);
+
+  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
+  normalEstimator.setInputCloud(element_points);
+  normalEstimator.setSearchMethod(searchTree);
+  normalEstimator.setKSearch(10);
+  normalEstimator.compute(*normals);
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr corners_intensity(
+      new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::Normal> harris;
+  harris.setInputCloud(element_points);
+  harris.setNonMaxSupression(false);
+  harris.setRadius(0.2f);
+  harris.setThreshold(0.2f);
+  harris.setNormals(normals);
+  harris.compute(*corners_intensity);
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr corners(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::copyPointCloud(*corners_intensity, *corners);
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr corners_top_bottom(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr corners_side(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  double max_z = -10000;
+  double min_z = 10000;
+  double max_xy = -10000;
+  double min_xy = 10000;
+  for (int i = 0; i < corners->size(); i++) {
+    pcl::PointXYZ p = (*corners)[i];
+    if (p.z > max_z) {
+      max_z = p.z;
+    }
+    if (p.z < min_z) {
+      min_z = p.z;
+    }
+    double dist = std::fabs(p.x) + std::fabs(p.y);
+    if (dist > max_xy) {
+      max_xy = dist;
+    }
+    if (dist < min_xy) {
+      min_xy = dist;
+    }
+  }
+  double hight = max_z - min_z;
+  double width = max_xy - min_xy;
+  double threshold_top = max_z - 0.15 * hight;
+  double threshold_bottom = min_z + 0.15 * hight;
+  double threshold_right = max_xy - 0.15 * width;
+  double threshold_left = min_xy + 0.15 * width;
+
+  for (int i = 0; i < corners->size(); i++) {
+    pcl::PointXYZ p = (*corners)[i];
+    if (p.z > threshold_top || p.z < threshold_bottom) {
+      corners_top_bottom->push_back(p);
+    }
+    double dist = std::fabs(p.x) + std::fabs(p.y);
+    if (dist > threshold_right || dist < threshold_left) {
+      corners_side->push_back(p);
+    }
+  }
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/corners.ply", *corners);
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/corners_top_bottom.ply",
+                       *corners_top_bottom);
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/corners_side.ply",
+                       *corners_side);
+  std::cout << "Size corners: " << corners->size() << std::endl;
+  std::cout << "Size corners side: " << corners_top_bottom->size() << std::endl;
+  std::cout << "Size corners top: " << corners_side->size() << std::endl;
 
   // Candidates: local scope
   std::vector<int> candidate_faces_main;
@@ -179,24 +273,27 @@ int main() {
     // Ignore duplicated planes or very small areas
     if (std::find(duplicated_faces.begin(), duplicated_faces.end(), i) !=
             duplicated_faces.end() ||
-        area.at(i) < 0.01) {
+        area.at(i) < min_area) {
       continue;
     }
 
     Eigen::Vector3d candidate_normal = plane_normals.at(i);
-
-    if (std::abs(element_normal.dot(candidate_normal)) > 0.9) {
+    double candidate_d = plane_d.at(i);
+    if (std::fabs(element_normal.dot(candidate_normal)) > 0.99) {
       std::vector<uint32_t> vertices = faces_model.at(i).vertices;
-      double sum_distance = 0;
-      for (int v_idx = 0; v_idx < 3; v_idx++) {
-        pcl::PointXYZ p = (*vertices_model)[vertices.at(v_idx)];
+
+      double min_distance = 1000;
+      for (int p_idx = 0; p_idx < corners->size(); p_idx++) {
+        pcl::PointXYZ p = (*corners)[p_idx];
         double error =
-            std::abs(element_normal.x() * p.x + element_normal.y() * p.y +
-                     element_normal.z() * p.z + element_d);
-        sum_distance += error;
+            std::fabs(candidate_normal.x() * p.x + candidate_normal.y() * p.y +
+                      candidate_normal.z() * p.z + candidate_d);
+        if (error < min_distance) {
+          min_distance = error;
+        }
       }
-      double mean_distance = sum_distance / 3.0;
-      if (mean_distance <= 0.5) {
+
+      if (min_distance <= 0.5) {
         candidate_faces_main.push_back(i);
 
         // Do plane flipping
@@ -213,7 +310,7 @@ int main() {
         double length =
             std::sqrt(v1_v2.x() * v1_v2.x() + v1_v2.y() * v1_v2.y());
 
-        if (std::abs(n.z()) < 0.1 && length >= 0.1 && length <= 0.5) {
+        if (false && std::fabs(n.z()) < 0.1 && length >= 0.1 && length <= 0.5) {
           std::cout << "Do plane flipping" << std::endl;
           Eigen::Vector3d p1_pos(v1 + n * length);
           Eigen::Vector3d p2_pos(v2 + n * length);
@@ -275,29 +372,40 @@ int main() {
     // Ignore duplicated planes or very small areas
     if (std::find(duplicated_faces.begin(), duplicated_faces.end(), i) !=
             duplicated_faces.end() ||
-        area.at(i) < 0.01) {
+        area.at(i) < min_area) {
       continue;
     }
 
     Eigen::Vector3d candidate_normal = plane_normals.at(i);
     double candidate_d = plane_d.at(i);
 
-    if (std::abs(element_normal.dot(candidate_normal)) < 0.2) {
+    if (std::fabs(element_normal.dot(candidate_normal)) < 0.1) {
       std::vector<uint32_t> vertices = faces_model[i].vertices;
       double min_distance = 1000;
-      for (int p_idx = 0; p_idx < element_points->size(); p_idx++) {
-        pcl::PointXYZ p = (*element_points)[p_idx];
-        double error =
-            std::abs(candidate_normal.x() * p.x + candidate_normal.y() * p.y +
-                     candidate_normal.z() * p.z + candidate_d);
-        if (error < min_distance) {
-          min_distance = error;
+      if (std::fabs(candidate_normal.z()) < 0.5) {
+        for (int p_idx = 0; p_idx < corners_side->size(); p_idx++) {
+          pcl::PointXYZ p = (*corners_side)[p_idx];
+          double error = std::fabs(candidate_normal.x() * p.x +
+                                   candidate_normal.y() * p.y +
+                                   candidate_normal.z() * p.z + candidate_d);
+          if (error < min_distance) {
+            min_distance = error;
+          }
         }
-      }
-      if (min_distance < 1.0) {
-        if (std::abs(candidate_normal.z()) > 0.5) {
+        if (min_distance <= 0.2) {
           candidate_faces_ortho_vertical.push_back(i);
-        } else {
+        }
+      } else {
+        for (int p_idx = 0; p_idx < corners_top_bottom->size(); p_idx++) {
+          pcl::PointXYZ p = (*corners_top_bottom)[p_idx];
+          double error = std::fabs(candidate_normal.x() * p.x +
+                                   candidate_normal.y() * p.y +
+                                   candidate_normal.z() * p.z + candidate_d);
+          if (error < min_distance) {
+            min_distance = error;
+          }
+        }
+        if (min_distance <= 1.5) {
           candidate_faces_ortho_horizontal.push_back(i);
         }
       }
@@ -312,6 +420,34 @@ int main() {
   std::cout << "Number of ortho_horizontal: " << nr_ortho_horizontal
             << std::endl;
 
+  // Compute all intersections directly
+  pcl::PointCloud<pcl::PointXYZ>::Ptr reconstructed_element(
+      new pcl::PointCloud<pcl::PointXYZ>);
+
+  Eigen::Vector3f p1;
+  Eigen::Vector4f plane_m1, plane_h1, plane_v1;
+  for (int i = 0; i < candidate_faces_main.size(); i++) {
+    planeFromIdx(plane_m1, candidate_faces_main.at(i), plane_normals, plane_d);
+
+    for (int j = 0; j < candidate_faces_ortho_vertical.size(); j++) {
+      planeFromIdx(plane_v1, candidate_faces_ortho_vertical.at(j),
+                   plane_normals, plane_d);
+
+      for (int k = 0; k < candidate_faces_ortho_horizontal.size(); k++) {
+        planeFromIdx(plane_h1, candidate_faces_ortho_horizontal.at(k),
+                     plane_normals, plane_d);
+
+        pcl::threePlanesIntersection(plane_m1, plane_v1, plane_h1, p1);
+        reconstructed_element->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
+      }
+    }
+  }
+
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/reconstructed.ply",
+                       *reconstructed_element);
+
+  // To expensive!
+  /*
   // Compute combinations
   std::vector<std::vector<int>> candidates_main;
   std::vector<std::vector<int>> candidates_ortho_vertical;
@@ -403,8 +539,10 @@ int main() {
     reconstructed_element->push_back(pcl::PointXYZ(p7.x(), p7.y(), p7.z()));
     reconstructed_element->push_back(pcl::PointXYZ(p8.x(), p8.y(), p8.z()));
   }
+
   pcl::io::savePLYFile("/home/philipp/Schreibtisch/reconstructed.ply",
                        *reconstructed_element);
+  */
   /*
   MIP_Solver solver;
   std::vector<Variable*> variables = solver.create_variables(nr_candidates);
@@ -547,7 +685,7 @@ double l2_max = (l2_1 > l2_2) ? l2_1 : l2_2;
 l2_max = (l2_3 > l2_max) ? l2_3 : l2_max;
 
 //Matching half edge
-if(std::abs(l1_max - l2_max) < 10e-15){
+if(std::fabs(l1_max - l2_max) < 10e-15){
 // Check if normal is the same
 Eigen::Vector3d n1 = (v1_1- v1_2).cross(v1_3 - v1_2);
 Eigen::Vector3d n2 = (v2_1- v2_2).cross(v2_3 - v2_2);
