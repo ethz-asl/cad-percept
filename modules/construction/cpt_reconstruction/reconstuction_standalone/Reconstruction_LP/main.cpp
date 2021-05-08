@@ -1,6 +1,7 @@
 #include <cmath>
 #include <iostream>
 #include <utility>
+#include <string>
 
 #include <Eigen/Core>
 
@@ -87,10 +88,10 @@ void planeFromIdx(Eigen::Vector4f &result, int idx,
                   std::vector<double> &plane_d) {
   Eigen::Vector3d normals = plane_normals.at(idx);
   double d = plane_d.at(idx);
-  result(0) = (float)normals.x();
-  result(1) = (float)normals.y();
-  result(2) = (float)normals.z();
-  result(3) = (float)d;
+  result(0) = (float) normals.x();
+  result(1) = (float) normals.y();
+  result(2) = (float) normals.z();
+  result(3) = (float) d;
 }
 
 void computeAllPlanes(std::vector<::pcl::Vertices> &faces_model,
@@ -126,7 +127,7 @@ void flagDuplicatedPlanes(std::vector<::pcl::Vertices> &faces_model,
                           double min_area = 0.0) {
   for (int i = 0; i < faces_model.size(); i++) {
     if (std::find(duplicated_faces.begin(), duplicated_faces.end(), i) !=
-            duplicated_faces.end() ||
+        duplicated_faces.end() ||
         area.at(i) < min_area) {
       continue;
     }
@@ -168,7 +169,7 @@ void processElementCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr element_points,
 
   element_normal(0) = coefficients->values[0];
   element_normal(1) = coefficients->values[1],
-  element_normal(2) = coefficients->values[2];
+      element_normal(2) = coefficients->values[2];
   element_normal.normalize();
 
   pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
@@ -252,7 +253,7 @@ void selectMainCandidateFaces(
   for (int i = 0; i < nr_faces; i++) {
     // Ignore duplicated planes or very small areas
     if (std::find(duplicated_faces.begin(), duplicated_faces.end(), i) !=
-            duplicated_faces.end() ||
+        duplicated_faces.end() ||
         area.at(i) < min_area) {
       continue;
     }
@@ -267,7 +268,7 @@ void selectMainCandidateFaces(
         pcl::PointXYZ p = (*corners)[p_idx];
         double error =
             std::fabs(candidate_normal.x() * p.x + candidate_normal.y() * p.y +
-                      candidate_normal.z() * p.z + candidate_d);
+                candidate_normal.z() * p.z + candidate_d);
         if (error < min_distance) {
           min_distance = error;
         }
@@ -360,7 +361,7 @@ void selectOrthoCandidateFaces(
   for (int i = 0; i < faces_model.size(); i++) {
     // Ignore duplicated planes or very small areas
     if (std::find(duplicated_faces.begin(), duplicated_faces.end(), i) !=
-            duplicated_faces.end() ||
+        duplicated_faces.end() ||
         area.at(i) < min_area) {
       continue;
     }
@@ -368,28 +369,28 @@ void selectOrthoCandidateFaces(
     Eigen::Vector3d candidate_normal = plane_normals.at(i);
     double candidate_d = plane_d.at(i);
 
-    if (std::fabs(element_normal.dot(candidate_normal)) < 0.1) {
+    if (std::fabs(element_normal.dot(candidate_normal)) < 0.06) {
       std::vector<uint32_t> vertices = faces_model[i].vertices;
       double min_distance = 1000;
       if (std::fabs(candidate_normal.z()) < 0.5) {
         for (int p_idx = 0; p_idx < corners_side->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_side)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
-                                   candidate_normal.y() * p.y +
-                                   candidate_normal.z() * p.z + candidate_d);
+              candidate_normal.y() * p.y +
+              candidate_normal.z() * p.z + candidate_d);
           if (error < min_distance) {
             min_distance = error;
           }
         }
-        if (min_distance <= 0.2) {
+        if (min_distance <= 0.5) {
           candidate_faces_ortho_vertical.push_back(i);
         }
       } else {
         for (int p_idx = 0; p_idx < corners_top_bottom->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_top_bottom)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
-                                   candidate_normal.y() * p.y +
-                                   candidate_normal.z() * p.z + candidate_d);
+              candidate_normal.y() * p.y +
+              candidate_normal.z() * p.z + candidate_d);
           if (error < min_distance) {
             min_distance = error;
           }
@@ -428,25 +429,256 @@ void computeArtificialVertices(
   }
 }
 
+void removeDuplicatedPoints(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double eps = 10e-6) {
+  // Source: https://stackoverflow.com/questions/34481190/removing-duplicates-of-3d-points-in-a-vector-in-c/34481426
+  std::sort(cloud->begin(), cloud->end(), [eps](pcl::PointXYZ p1, pcl::PointXYZ p2) -> bool {
+    if (std::fabs(p1.x - p2.x) > eps)
+      return p1.x > p2.x;
+    else if (std::fabs(p1.y - p2.y) > eps)
+      return p1.y > p2.y;
+    else
+      return p1.z > p2.z;
+  });
+  auto unique_end = std::unique(cloud->begin(), cloud->end(), [eps](pcl::PointXYZ p1, pcl::PointXYZ p2) -> bool {
+    if (pcl::euclideanDistance(p1, p2) < eps) {
+      return true;
+    }
+    return false;
+  });
+  cloud->erase(unique_end, cloud->end());
+}
+
+void removeDuplicatedValues(std::vector<double> &vector, double eps = 10e-6) {
+  // Source: https://stackoverflow.com/questions/34481190/removing-duplicates-of-3d-points-in-a-vector-in-c/34481426
+  std::sort(vector.begin(), vector.end(), [eps](double p1, double p2) -> bool {
+    return p1 > p2;
+  });
+  auto unique_end = std::unique(vector.begin(), vector.end(), [eps](double p1, double p2) -> bool {
+    if (std::fabs(p1 - p2) < eps) {
+      return true;
+    }
+    return false;
+  });
+  vector.erase(unique_end, vector.end());
+}
+
+bool reconstructSingleElementFromStrongPoints(int idx,
+                                              pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points_reconstruction,
+                                              std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> artificial_kdtrees_vector,
+                                              std::vector<Eigen::Vector3d> normal_detected_shapes_vector,
+                                              std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> element_points_vector,
+                                              std::vector<Eigen::Vector3d> &plane_normals,
+                                              std::vector<double> &area,
+                                              std::vector<::pcl::Vertices> faces_model_only,
+                                              pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model_only) {
+
+  //TODO: Check for other connected elements
+
+  //Get data
+  pcl::PointCloud<pcl::PointXYZ>::Ptr element_points = element_points_vector.at(idx);
+  Eigen::Vector3d element_normal = normal_detected_shapes_vector.at(idx);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree = artificial_kdtrees_vector.at(idx);
+
+  //Normal correction
+  if (std::fabs(element_normal.z()) < 0.1) {
+    element_normal.z() = 0;
+    element_normal.normalize();
+  }
+
+  //TODO: ROS, get robot postion
+  pcl::PointXYZ robot_position(10.43749, 1.7694572, 1.0);
+  pcl::PointXYZ mean_point(0, 0, 0);
+  for (int i = 0; i < element_points->size(); i++) {
+    mean_point.x += (*element_points)[i].x;
+    mean_point.y += (*element_points)[i].y;
+    mean_point.z += (*element_points)[i].z;
+  }
+  mean_point.x /= element_points->size();
+  mean_point.y /= element_points->size();
+  mean_point.z /= element_points->size();
+  Eigen::Vector3d shape_robot_vec
+      (mean_point.x - robot_position.x, mean_point.y - robot_position.y, mean_point.z - robot_position.z);
+  shape_robot_vec.normalize();
+  //Normal direction of shape is pointing into free direction
+  if (shape_robot_vec.dot(element_normal) < 0.0) {
+    element_normal *= -1.;
+  }
+
+  double shape_d = -(mean_point.x * element_normal.x() +
+      mean_point.y * element_normal.y() +
+      mean_point.z * element_normal.z());
+
+  //Filter points (remaining vertices -> vertices on axis and free side)
+  pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  for (int i = 0; i < strong_points_reconstruction->size(); i++) {
+    pcl::PointXYZ p = (*strong_points_reconstruction)[i];
+    if (p.x * element_normal.x() + p.y * element_normal.y() + p.z * element_normal.z() + shape_d >= -0.05) {
+      filtered_cloud->push_back(p);
+    }
+  }
+
+  if (filtered_cloud->size() < 4) {
+    std::cout << "Filtered point cloud < 4" << std::endl;
+    return false;
+  }
+
+  //Check dimension of filtered point cloud
+  double d_min = 1000;
+  double d_max = -1000;
+  for (int i = 0; i < filtered_cloud->size(); i++) {
+    pcl::PointXYZ p = (*filtered_cloud)[i];
+    double d = p.x * element_normal.x() + p.y * element_normal.y() + p.z * element_normal.z();
+    if (d > d_max) {
+      d_max = d;
+    }
+    if (d < d_min) {
+      d_min = d;
+    }
+  }
+
+  double diff_d = d_max - d_min;
+
+  if (diff_d > 0.1) {
+    //TODO
+    std::cout << "diff_d > 0.1" << std::endl;
+    return false;
+  } else {
+    //Assuming no duplicated vertices
+    std::vector<std::vector<Eigen::Vector3d>> vertex_matrices;
+    std::vector<int> vertices_idx;
+
+    for (int i = 0; i < filtered_cloud->size(); i++) {
+      int vertex_idx;
+      pcl::PointXYZ cur_point = (*filtered_cloud)[i];
+      for (int j = 0; j < vertices_model_only->size(); j++) {
+        pcl::PointXYZ cur_vertex = (*vertices_model_only)[j];
+        double dist = pcl::euclideanDistance(cur_point, cur_vertex);
+        if (dist < 10e-5) {
+          vertex_idx = j;
+          break;
+        }
+      }
+
+      std::vector<Eigen::Vector3d> edges;
+      for (int j = 0; j < faces_model_only.size(); j++) {
+        std::vector<uint32_t> polygon = faces_model_only.at(j).vertices;
+        pcl::PointXYZ p1 = (*vertices_model_only)[polygon.at(0)];
+        pcl::PointXYZ p2 = (*vertices_model_only)[polygon.at(1)];
+        pcl::PointXYZ p3 = (*vertices_model_only)[polygon.at(2)];
+        Eigen::Vector3d e1(p1.x, p1.y, p1.z);
+        Eigen::Vector3d e2(p2.x, p2.y, p2.z);
+        Eigen::Vector3d e3(p3.x, p3.y, p3.z);
+        if (polygon.at(0) == vertex_idx) {
+          Eigen::Vector3d n1 = (e2 - e1);
+          Eigen::Vector3d n2 = (e3 - e1);
+          edges.push_back(-n1 / n1.norm());
+          edges.push_back(-n2 / n2.norm());
+        } else if (polygon.at(1) == vertex_idx) {
+          Eigen::Vector3d n1 = (e1 - e2);
+          Eigen::Vector3d n2 = (e3 - e2);
+          edges.push_back(-n1 / n1.norm());
+          edges.push_back(-n2 / n2.norm());
+        } else if (polygon.at(2) == vertex_idx) {
+          Eigen::Vector3d n1 = (e1 - e3);
+          Eigen::Vector3d n2 = (e2 - e3);
+          edges.push_back(-n1 / n1.norm());
+          edges.push_back(-n2 / n2.norm());
+        }
+      }
+      vertex_matrices.push_back(edges);
+      vertices_idx.push_back(vertex_idx);
+    }
+
+    //Identify shifting candidates
+    std::vector<int> shifting_candidates;
+    Eigen::Vector3d shifting_direction;
+    for (int i = 0; i < vertex_matrices.size(); i++) {
+      std::vector<Eigen::Vector3d> normals_from_vertex = vertex_matrices.at(i);
+      for (int j = 0; j < normals_from_vertex.size(); j++) {
+        if ((element_normal - normals_from_vertex.at(j)).norm() < 0.01) {
+          shifting_candidates.push_back(vertices_idx.at(i));
+          shifting_direction = normals_from_vertex.at(j);
+        }
+      }
+    }
+
+    //Find structure in shifting candidates
+    std::vector<double> distances;
+    for (int i = 0; i < shifting_candidates.size(); i++) {
+      pcl::PointXYZ p1 = (*vertices_model_only)[shifting_candidates.at(i)];
+      for (int j = i + 1; j < shifting_candidates.size(); j++) {
+        pcl::PointXYZ p2 = (*vertices_model_only)[shifting_candidates.at(j)];
+        double dist = pcl::euclideanDistance(p1, p2);
+        if (dist >= 0.1 && dist <= 0.5) {
+          distances.push_back(dist);
+        }
+      }
+    }
+
+    std::cout << shifting_candidates.size() << std::endl;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr meshing_points(new pcl::PointCloud<pcl::PointXYZ>);
+    removeDuplicatedValues(distances);
+    if (false && distances.size() == 0) {
+      std::cout << "distances.size() == 0" << std::endl;
+      return false;
+    } else if (true || distances.size() == 1) {
+      for (int i = 0; i < shifting_candidates.size(); i++) {
+        pcl::PointXYZ candidate = (*vertices_model_only)[shifting_candidates.at(i)];
+        Eigen::Vector3d old_point(candidate.x, candidate.y, candidate.z);
+        Eigen::Vector3d new_point = old_point + distances.at(0) * shifting_direction;
+        meshing_points->push_back(pcl::PointXYZ(old_point.x(), old_point.y(), old_point.z()));
+        meshing_points->push_back(pcl::PointXYZ(new_point.x(), new_point.y(), new_point.z()));
+      }
+
+      pcl::io::savePLYFile("/home/philipp/Schreibtisch/shifted_points.ply", *meshing_points);
+
+      //Computing line plane interections ...
+
+
+      /*
+      pcl::PointCloud<pcl::PointXYZ>::Ptr intersected_points(new pcl::PointCloud<pcl::PointXYZ>);
+      for (int i = 0; i < shifted_points->size(); i++){
+        pcl::PointXYZ p1 = (*shifted_points)[i];
+        Eigen::Vector3d e1(p1.x, p1.y, p1.z);
+        for (int j = i + 1; j < shifted_points->size(); j++){
+          pcl::PointXYZ p2 = (*shifted_points)[j];
+          Eigen::Vector3d e2(p2.x, p2.y, p2.z);
+          Eigen::Vector3d dir = (e1 - e2).normalized();
+          if ( std::fabs(dir.dot(element_normal)) < 0.1 ){
+
+
+
+          }
+          */
+
+    } else {
+      std::cout << "Multiple shifts not implemented yet" << std::endl;
+      return false;
+    }
+
+  }
+
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/filtered_cloud.ply", *filtered_cloud);
+  return false;
+}
+
 int main() {
   double min_area = 0.0;
 
   pcl::PolygonMesh mesh;
   pcl::io::loadPolygonFilePLY(
-      "/home/philipp/Schreibtisch/data/CLA_MissingParts_1.ply", mesh);
+      "/home/philipp/Schreibtisch/data/CLA_MissingParts_2.ply", mesh);
 
   pcl::PolygonMesh mesh_detected;
   pcl::io::loadPolygonFilePLY(
       "/home/philipp/Schreibtisch/Result_CGAL/mesh_all_10.ply", mesh_detected);
 
-  combineMeshes(mesh_detected, mesh);
-
-  // Load element point cloud
-  pcl::PointCloud<pcl::PointXYZ>::Ptr element_points(
+  pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model_only(
       new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::io::loadPLYFile<pcl::PointXYZ>(
-      "/home/philipp/Schreibtisch/Result_CGAL/Meshes/points_28.ply",
-      *element_points);
+  pcl::fromPCLPointCloud2(mesh.cloud, *vertices_model_only);
+  std::vector<::pcl::Vertices> faces_model_only = mesh.polygons;
+
+  combineMeshes(mesh_detected, mesh);
 
   std::vector<::pcl::Vertices> faces_model = mesh.polygons;
   pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model(
@@ -464,56 +696,173 @@ int main() {
   flagDuplicatedPlanes(faces_model, plane_normals, plane_d, area,
                        duplicated_faces, min_area);
 
-  // Normal of detection
-  pcl::PointCloud<pcl::PointXYZ>::Ptr corners(
-      new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PointCloud<pcl::PointXYZ>::Ptr corners_top_bottom(
-      new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PointCloud<pcl::PointXYZ>::Ptr corners_side(
-      new pcl::PointCloud<pcl::PointXYZ>);
-  Eigen::Vector3d element_normal;
-  processElementCloud(element_points, corners, corners_top_bottom, corners_side,
-                      element_normal);
+  // Compute artificial Vertices for all shapes
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> artificial_vertices_vector;
+  std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> artificial_kdtrees_vector;
+  std::vector<Eigen::Vector3d> normal_detected_shapes_vector;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> element_points_vector;
+  std::vector<int> shapes;
+  shapes.push_back(0);
+  shapes.push_back(1);
+  shapes.push_back(2);
+  shapes.push_back(3);
+  shapes.push_back(4);
+  shapes.push_back(28);
+  shapes.push_back(30);
+  shapes.push_back(49);
+  shapes.push_back(56);
 
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/corners.ply", *corners);
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/corners_top_bottom.ply",
-                       *corners_top_bottom);
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/corners_side.ply",
-                       *corners_side);
+  std::string path = "/home/philipp/Schreibtisch/Result_CGAL/Meshes/";
+  for (int i = 0; i < shapes.size(); i++) {
 
-  // Candidates: local scope
-  std::vector<int> candidate_faces_main;
-  selectMainCandidateFaces(faces_model, vertices_model, corners, element_normal,
-                           duplicated_faces, candidate_faces_main,
-                           plane_normals, area, plane_d, min_area, false);
+    std::string filename = "points_" + std::to_string(shapes.at(i)) + ".ply";
+    std::string path_filename = path + filename;
 
-  // Add planes with orthogonal normal and in local scope
-  std::vector<int> candidate_faces_ortho_horizontal;
-  std::vector<int> candidate_faces_ortho_vertical;
-  selectOrthoCandidateFaces(faces_model, duplicated_faces, vertices_model,
-                            corners_side, corners_top_bottom, element_normal,
-                            plane_normals, area, plane_d,
-                            candidate_faces_ortho_horizontal,
-                            candidate_faces_ortho_vertical, min_area);
+    // Load element point cloud
+    pcl::PointCloud<pcl::PointXYZ>::Ptr element_points(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::io::loadPLYFile<pcl::PointXYZ>(
+        path_filename,
+        *element_points);
 
-  int nr_main = candidate_faces_main.size();
-  int nr_ortho_vertical = candidate_faces_ortho_vertical.size();
-  int nr_ortho_horizontal = candidate_faces_ortho_horizontal.size();
-  std::cout << "Number of main: " << nr_main << std::endl;
-  std::cout << "Number of ortho_vertical: " << nr_ortho_vertical << std::endl;
-  std::cout << "Number of ortho_horizontal: " << nr_ortho_horizontal
-            << std::endl;
+    // Normal of detection
+    pcl::PointCloud<pcl::PointXYZ>::Ptr corners(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr corners_top_bottom(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr corners_side(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    Eigen::Vector3d element_normal;
+    processElementCloud(element_points, corners, corners_top_bottom, corners_side,
+                        element_normal);
+    normal_detected_shapes_vector.push_back(element_normal);
+    element_points_vector.push_back(corners);
 
-  // Compute all intersections directly
-  pcl::PointCloud<pcl::PointXYZ>::Ptr artificial_vertices(
-      new pcl::PointCloud<pcl::PointXYZ>);
-  computeArtificialVertices(candidate_faces_main,
-                            candidate_faces_ortho_horizontal,
-                            candidate_faces_ortho_vertical, plane_normals,
-                            plane_d, artificial_vertices);
+    // Candidates: local scope
+    std::vector<int> candidate_faces_main;
+    selectMainCandidateFaces(faces_model, vertices_model, corners, element_normal,
+                             duplicated_faces, candidate_faces_main,
+                             plane_normals, area, plane_d, min_area, false);
 
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/reconstructed.ply",
-                       *artificial_vertices);
+    // Add planes with orthogonal normal and in local scope
+    std::vector<int> candidate_faces_ortho_horizontal;
+    std::vector<int> candidate_faces_ortho_vertical;
+    selectOrthoCandidateFaces(faces_model, duplicated_faces, vertices_model,
+                              corners_side, corners_top_bottom, element_normal,
+                              plane_normals, area, plane_d,
+                              candidate_faces_ortho_horizontal,
+                              candidate_faces_ortho_vertical, min_area);
+
+    int nr_main = candidate_faces_main.size();
+    int nr_ortho_vertical = candidate_faces_ortho_vertical.size();
+    int nr_ortho_horizontal = candidate_faces_ortho_horizontal.size();
+    std::cout << "Number of main: " << nr_main << std::endl;
+    std::cout << "Number of ortho_vertical: " << nr_ortho_vertical << std::endl;
+    std::cout << "Number of ortho_horizontal: " << nr_ortho_horizontal
+              << std::endl;
+
+    // Compute all intersections directly
+    pcl::PointCloud<pcl::PointXYZ>::Ptr artificial_vertices(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    computeArtificialVertices(candidate_faces_main,
+                              candidate_faces_ortho_horizontal,
+                              candidate_faces_ortho_vertical, plane_normals,
+                              plane_d, artificial_vertices);
+
+    artificial_vertices_vector.push_back(artificial_vertices);
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
+        new pcl::search::KdTree<pcl::PointXYZ>());
+    kd_tree->setInputCloud(artificial_vertices);
+    artificial_kdtrees_vector.push_back(kd_tree);
+  }
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr all_verticies(new pcl::PointCloud<pcl::PointXYZ>);
+  for (int i = 0; i < artificial_vertices_vector.size(); i++) {
+    (*all_verticies) += *(artificial_vertices_vector.at(i));
+  }
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/all_artificial_vertices.ply", *all_verticies);
+
+  //Split point cloud in three parts:
+  // 1. Points which are matching the vertices in the building model (strong points)
+  // 2. Points computed multiple times (weak points)
+  // 3. Remaining points (backup)
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr backup_points(new pcl::PointCloud<pcl::PointXYZ>);
+
+  std::vector<int> nn_indices{1};
+  std::vector<float> nn_dists{1};
+
+  for (int i = 0; i < vertices_model_only->size(); i++) {
+    pcl::PointXYZ p_model = (*vertices_model_only)[i];
+    for (int j = 0; j < artificial_kdtrees_vector.size(); j++) {
+      artificial_kdtrees_vector.at(j)->nearestKSearch(p_model, 1, nn_indices, nn_dists);
+      if (nn_dists[0] < 10e-4) {
+        strong_points->push_back(p_model);
+        break;
+      }
+    }
+  }
+
+  std::vector<int> duplicated_vertices;
+  for (int i = 0; i < all_verticies->size(); i++) {
+    pcl::PointXYZ p_1 = (*all_verticies)[i];
+    for (int j = i + 1; j < all_verticies->size(); j++) {
+      pcl::PointXYZ p_2 = (*all_verticies)[j];
+      double dist = std::sqrt((p_1.x - p_2.x) * (p_1.x - p_2.x) +
+          (p_1.y - p_2.y) * (p_1.y - p_2.y) +
+          (p_1.z - p_2.z) * (p_1.z - p_2.z));
+      if (dist < 10e-3) {
+        weak_points->push_back(p_1);
+        break;
+      }
+    }
+  }
+  //Remove duplicates
+  removeDuplicatedPoints(strong_points);
+  removeDuplicatedPoints(weak_points);
+
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/strong_points.ply", *strong_points);
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/weak_points.ply", *weak_points);
+
+  //reconstruction
+  //Starting with elements element with the highest support of existing vertices
+  int max_idx = 0;
+  int max_value = 0;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points_reconstruction;
+  do {
+    for (int i = 0; i < artificial_kdtrees_vector.size(); i++) {
+      int counter_model_vertices = 0;
+      pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points_reconstruction_temp(new pcl::PointCloud<pcl::PointXYZ>);
+      for (int j = 0; j < strong_points->size(); j++) {
+        pcl::PointXYZ p = (*strong_points)[j];
+        artificial_kdtrees_vector.at(i)->nearestKSearch(p, 1, nn_indices, nn_dists);
+        if (nn_dists[0] < 10e-3) {
+          counter_model_vertices++;
+          strong_points_reconstruction_temp->push_back(p);
+        }
+      }
+      if (max_value < counter_model_vertices) {
+        max_value = counter_model_vertices;
+        max_idx = i;
+        strong_points_reconstruction = strong_points_reconstruction_temp;
+      }
+    }
+
+    //Reconstruct i and remove it
+    std::cout << "Element to reconstruct: " << max_idx << " number of strong points: " << max_value << std::endl;
+    reconstructSingleElementFromStrongPoints(max_idx,
+                                             strong_points_reconstruction,
+                                             artificial_kdtrees_vector,
+                                             normal_detected_shapes_vector,
+                                             element_points_vector,
+                                             plane_normals,
+                                             area,
+                                             faces_model_only,
+                                             vertices_model_only);
+    break; //TODO
+  } while (max_idx != 0);
 
   return 0;
 }
