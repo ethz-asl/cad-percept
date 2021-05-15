@@ -13,9 +13,11 @@
 #include <Eigen/Core>
 #include <cmath>
 #include <iostream>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
+
 //#include <pcl/common/impl/intersections.hpp>
 #include <pcl/PCLHeader.h>
 #include <pcl/PCLPointCloud2.h>
@@ -122,7 +124,8 @@ void planeFromIdx(Eigen::Vector4f &result, int idx,
 void computeAllPlanes(std::vector<::pcl::Vertices> &faces_model,
                       pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model,
                       std::vector<Eigen::Vector3d> &plane_normals,
-                      std::vector<double> &plane_d, std::vector<double> &area) {
+                      std::vector<double> &plane_d, std::vector<double> &area,
+                      bool do_normal_correction = true, double eps = 0.1) {
   for (int i = 0; i < faces_model.size(); i++) {
     std::vector<uint32_t> vertices = faces_model.at(i).vertices;
     if (vertices.size() != 3) {
@@ -139,16 +142,20 @@ void computeAllPlanes(std::vector<::pcl::Vertices> &faces_model,
 
     // Normal correction up to 5 degree
     n.normalize();
+    if (do_normal_correction) {
+    }
+    std::cout << "Normal before correction: \n" << n << std::endl;
     for (int i = 0; i < 3; i++) {
-      if (n(i) < -0.95) {
+      if (n(i) < -(1. - eps)) {
         n(i) = -1.;
-      } else if (n(i) > -0.05 && n(i) < 0.05) {
+      } else if (n(i) > -eps && n(i) < eps) {
         n(i) = 0.;
-      } else if (n(i) > 0.95) {
+      } else if (n(i) > (1. - eps)) {
         n(i) = 1.;
       }
       n.normalize();
     }
+    std::cout << "Normal after correction: \n" << n << std::endl;
 
     plane_normals.push_back(n);
     double d = -(n.x() * p1.x + n.y() * p1.y + n.z() * p1.z);
@@ -463,7 +470,7 @@ void selectOrthoCandidateFaces(
     if (std::fabs(element_normal.dot(candidate_normal)) < 0.06) {
       std::vector<uint32_t> vertices = faces_model[i].vertices;
       double min_distance = 1000;
-      if (std::fabs(candidate_normal.z()) < 0.5) {
+      if (std::fabs(candidate_normal.z()) < 0.15) {
         for (int p_idx = 0; p_idx < corners_side->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_side)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -476,7 +483,7 @@ void selectOrthoCandidateFaces(
         if (min_distance <= 0.4) {
           candidate_faces_ortho_vertical.push_back(i);
         }
-      } else {
+      } else if (std::fabs(candidate_normal.z()) > 0.85) {
         for (int p_idx = 0; p_idx < corners_top_bottom->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_top_bottom)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -515,12 +522,7 @@ void computeArtificialVertices(
                      plane_normals, plane_d);
 
         pcl::threePlanesIntersection(plane_m1, plane_v1, plane_h1, p1);
-
-        if (true || element_normal.x() * p1.x() + element_normal.y() * p1.y() +
-                            element_normal.z() * p1.z() + element_d >=
-                        -0.03) {
-          artificial_vertices->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
-        }
+        artificial_vertices->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
       }
     }
   }
@@ -565,7 +567,7 @@ void removeDuplicatedValues(std::vector<double> &vector, double eps = 10e-6) {
   vector.erase(unique_end, vector.end());
 }
 
-bool reconstructSingleElement(
+bool reconstructSingleElement2(
     int idx, pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points_reconstruction,
     pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
     std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr>
@@ -746,7 +748,7 @@ bool reconstructSingleElement(
   for (int i = 0; i < strong_distances.size(); i++) {
     double cur_distance = strong_distances.at(i);
     for (int j = 0; j < filtered_points_distances.size(); j++) {
-      if (std::fabs(cur_distance - filtered_points_distances.at(j)) < 10e-3) {
+      if (std::fabs(cur_distance - filtered_points_distances.at(j)) < 10e-4) {
         std::pair<int, int> p = filtered_points_pairs.at(j);
         proposal_all->push_back((*filtered_cloud)[p.first]);
         proposal_all->push_back((*filtered_cloud)[p.second]);
@@ -754,6 +756,8 @@ bool reconstructSingleElement(
     }
   }
 
+  removeDuplicatedPoints(proposal_all, 0.003);
+  removeDuplicatedPoints(filtered_cloud, 0.003);
   pcl::PointCloud<pcl::PointXYZ>::Ptr resulting_points(
       new pcl::PointCloud<pcl::PointXYZ>());
   if (proposal_all->size() > 7) {
@@ -761,11 +765,14 @@ bool reconstructSingleElement(
   } else {
     pcl::copyPointCloud(*filtered_cloud, *resulting_points);
   }
-
+  std::string save2 = "/home/philipp/Schreibtisch/resulting_points" +
+                      std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save2, *resulting_points);
   // Ensure valid structure
   pcl::PolygonMesh reconstructed_mesh;
   pcl::ConvexHull<pcl::PointXYZ> chull;
   chull.setInputCloud(resulting_points);
+  chull.setDimension(3);
   chull.reconstruct(reconstructed_mesh);
 
   /*
@@ -1234,6 +1241,525 @@ bool reconstructSingleElement(
   return false;
 }
 
+bool reconstructSingleElement(
+    int idx, pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points_reconstruction,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
+    std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr>
+        artificial_kdtrees_vector,
+    std::vector<Eigen::Vector3d> normal_detected_shapes_vector,
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> element_points_vector,
+    std::vector<Eigen::Vector3d> &plane_normals, std::vector<double> &area,
+    std::vector<::pcl::Vertices> faces_model_only,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model_only,
+    pcl::PolygonMesh &mesh_all) {
+  // TODO: Check for other connected elements
+
+  std::string save0 = "/home/philipp/Schreibtisch/arificial_points_" +
+                      std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save0, *weak_points);
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_model(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PLYReader reader;
+  reader.read("/home/philipp/Schreibtisch/data/CLA_MissingParts_3_5m.ply",
+              *upsampled_model);
+
+  pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree(0.05f);
+  octree.setInputCloud(upsampled_model);
+  octree.addPointsFromInputCloud();
+
+  // Get data
+  pcl::PointCloud<pcl::PointXYZ>::Ptr element_points =
+      element_points_vector.at(idx);
+  Eigen::Vector3d element_normal = normal_detected_shapes_vector.at(idx);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree =
+      artificial_kdtrees_vector.at(idx);
+
+  // TODO: ROS, get robot postion
+  pcl::PointXYZ robot_position(10.43749, 1.7694572, 1.0);
+  pcl::PointXYZ mean_point(0, 0, 0);
+  for (int i = 0; i < element_points->size(); i++) {
+    mean_point.x += (*element_points)[i].x;
+    mean_point.y += (*element_points)[i].y;
+    mean_point.z += (*element_points)[i].z;
+  }
+  mean_point.x /= element_points->size();
+  mean_point.y /= element_points->size();
+  mean_point.z /= element_points->size();
+  Eigen::Vector3d shape_robot_vec(mean_point.x - robot_position.x,
+                                  mean_point.y - robot_position.y,
+                                  mean_point.z - robot_position.z);
+  shape_robot_vec.normalize();
+  // Normal direction of shape is pointing into free direction
+  if (shape_robot_vec.dot(element_normal) < 0.0) {
+    // element_normal *= -1.;
+    std::cout << "element_normal pointing in wrong direction!" << std::endl;
+    // assert(false);
+  }
+
+  double shape_d =
+      -(mean_point.x * element_normal.x() + mean_point.y * element_normal.y() +
+        mean_point.z * element_normal.z());
+
+  // Filter points (remaining vertices -> vertices on axis and free side)
+  // TODO: Maybe recompute plane from vertices to reduce the tolerance?
+  pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  for (int i = 0; i < weak_points->size(); i++) {
+    pcl::PointXYZ p = (*weak_points)[i];
+    if (p.x * element_normal.x() + p.y * element_normal.y() +
+            p.z * element_normal.z() + shape_d >=
+        -0.05) {
+      filtered_cloud->push_back(p);
+    }
+  }
+  // pcl::io::savePLYFile("/home/philipp/Schreibtisch/filtered_cloud1.ply",
+  //                     *filtered_cloud);
+
+  // Corp off confliction points
+  // Source: https://pcl.readthedocs.io/en/latest/moment_of_inertia.html
+  pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
+  feature_extractor.setInputCloud(filtered_cloud);
+  feature_extractor.compute();
+  Eigen::Vector3f major_vector, middle_vector, minor_vector;
+  Eigen::Vector3f mass_center;
+  feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
+  feature_extractor.getMassCenter(mass_center);
+
+  major_vector.normalized();
+  middle_vector.normalized();
+  minor_vector.normalized();
+
+  Eigen::Matrix<float, 3, 6> shooting_dir;
+  shooting_dir.col(0) = major_vector;
+  shooting_dir.col(1) = -major_vector;
+  shooting_dir.col(2) = middle_vector;
+  shooting_dir.col(3) = -middle_vector;
+  shooting_dir.col(4) = minor_vector;
+  shooting_dir.col(5) = -minor_vector;
+
+  std::cout << shooting_dir << std::endl;
+  for (int i = 0; i < 6; i++) {
+    pcl::PointCloud<pcl::PointXYZ>::VectorType voxel_centers;
+    Eigen::Vector3f direction = shooting_dir.col(i);
+    octree.getIntersectedVoxelCenters(mass_center, direction, voxel_centers);
+
+    // std::cout << "voxel_centers.size: " << voxel_centers.size() << std::endl;
+    if (voxel_centers.size() > 0) {
+      pcl::PointXYZ voxel_center = voxel_centers.at(0);
+      double d_voxel_center =
+          -(direction.x() * voxel_center.x + direction.y() * voxel_center.y +
+            direction.z() * voxel_center.z);
+
+      pcl::PointIndices::Ptr indices_to_remove(new pcl::PointIndices());
+      for (int j = 0; j < filtered_cloud->size(); j++) {
+        pcl::PointXYZ p = (*filtered_cloud)[j];
+        double error = p.x * direction.x() + p.y * direction.y() +
+                       p.z * direction.z() + d_voxel_center;
+        if (error > 0.03) {
+          indices_to_remove->indices.push_back(j);
+        }
+      }
+      pcl::ExtractIndices<pcl::PointXYZ> extract;
+      extract.setInputCloud(filtered_cloud);
+      extract.setIndices(indices_to_remove);
+      extract.setNegative(true);
+      extract.filter(*filtered_cloud);
+    }
+  }
+
+  removeDuplicatedPoints(filtered_cloud);
+  std::string save1 = "/home/philipp/Schreibtisch/filtered_cloud_" +
+                      std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save1, *filtered_cloud);
+
+  std::vector<pcl::PolygonMesh> mesh_proposals;
+
+  // Structure of strong points
+  pcl::PointCloud<pcl::PointXYZ>::Ptr alive_strong_points_cloud(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  for (int i = 0; i < strong_points_reconstruction->size(); i++) {
+    pcl::PointXYZ p_f = (*strong_points_reconstruction)[i];
+    for (int j = 0; j < filtered_cloud->size(); j++) {
+      pcl::PointXYZ p_s = (*filtered_cloud)[j];
+      double error = pcl::euclideanDistance(p_f, p_s);
+      if (error < 10e-3) {
+        alive_strong_points_cloud->push_back(p_s);
+        break;
+      }
+    }
+  }
+
+  std::vector<double> strong_distances;
+  for (int i = 0; i < alive_strong_points_cloud->size(); i++) {
+    for (int j = 0; j < alive_strong_points_cloud->size(); j++) {
+      double dist = pcl::euclideanDistance((*alive_strong_points_cloud)[i],
+                                           (*alive_strong_points_cloud)[j]);
+      strong_distances.push_back(dist);
+    }
+  }
+  removeDuplicatedValues(strong_distances, 0.05);
+
+  std::vector<double> filtered_points_distances;
+  std::vector<Eigen::Vector3d> filtered_points_direction;
+  std::vector<std::pair<int, int>> filtered_points_pairs;
+  for (int i = 0; i < filtered_cloud->size(); i++) {
+    pcl::PointXYZ p1 = (*filtered_cloud)[i];
+    for (int j = i + 1; j < filtered_cloud->size(); j++) {
+      pcl::PointXYZ p2 = (*filtered_cloud)[j];
+      double dist = pcl::euclideanDistance(p1, p2);
+      if (dist > 0.1) {
+        filtered_points_distances.push_back(dist);
+        filtered_points_pairs.push_back(std::make_pair(i, j));
+        Eigen::Vector3d vec(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
+        filtered_points_direction.push_back(vec);
+      }
+    }
+  }
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr proposal_all(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  for (int i = 0; i < strong_distances.size(); i++) {
+    double cur_distance = strong_distances.at(i);
+    for (int j = 0; j < filtered_points_distances.size(); j++) {
+      if (std::fabs(cur_distance - filtered_points_distances.at(j)) < 10e-4) {
+        std::pair<int, int> p = filtered_points_pairs.at(j);
+        proposal_all->push_back((*filtered_cloud)[p.first]);
+        proposal_all->push_back((*filtered_cloud)[p.second]);
+      }
+    }
+  }
+
+  removeDuplicatedPoints(proposal_all, 0.003);
+  removeDuplicatedPoints(filtered_cloud, 0.003);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr resulting_points(
+      new pcl::PointCloud<pcl::PointXYZ>());
+  if (proposal_all->size() > 7) {
+    pcl::copyPointCloud(*proposal_all, *resulting_points);
+  } else {
+    pcl::copyPointCloud(*filtered_cloud, *resulting_points);
+  }
+  std::string save2 = "/home/philipp/Schreibtisch/resulting_points" +
+                      std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save2, *resulting_points);
+  // Ensure valid structure
+  pcl::PolygonMesh reconstructed_mesh;
+  pcl::ConvexHull<pcl::PointXYZ> chull;
+  chull.setInputCloud(resulting_points);
+  chull.setDimension(3);
+  chull.reconstruct(reconstructed_mesh);
+
+  combineMeshes(reconstructed_mesh, mesh_all);
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/reconstructed_mesh_all.ply",
+                       mesh_all);
+  return true;
+}
+
+bool getReconstructionParameters(
+    int idx, pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points_reconstruction,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr all_strong_points,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
+    std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr>
+        artificial_kdtrees_vector,
+    std::vector<Eigen::Vector3d> normal_detected_shapes_vector,
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> element_points_vector,
+    std::vector<Eigen::Vector3d> &plane_normals, std::vector<double> &area,
+    std::vector<::pcl::Vertices> faces_model_only,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model_only,
+    pcl::PolygonMesh &mesh_all, std::vector<Eigen::Vector3d> &center_estimates,
+    std::vector<Eigen::Matrix3d> &direction_estimates,
+    std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates) {
+  // TODO: Check for other connected elements
+
+  std::string save0 = "/home/philipp/Schreibtisch/arificial_points_" +
+                      std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save0, *weak_points);
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_model(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PLYReader reader;
+  reader.read("/home/philipp/Schreibtisch/data/CLA_MissingParts_3_5m.ply",
+              *upsampled_model);
+
+  pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree(0.05f);
+  octree.setInputCloud(upsampled_model);
+  octree.addPointsFromInputCloud();
+
+  // Get data
+  pcl::PointCloud<pcl::PointXYZ>::Ptr element_points =
+      element_points_vector.at(idx);
+  Eigen::Vector3d element_normal = normal_detected_shapes_vector.at(idx);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree =
+      artificial_kdtrees_vector.at(idx);
+
+  // TODO: ROS, get robot postion
+  pcl::PointXYZ robot_position(10.43749, 1.7694572, 1.0);
+  pcl::PointXYZ mean_point(0, 0, 0);
+  for (int i = 0; i < element_points->size(); i++) {
+    mean_point.x += (*element_points)[i].x;
+    mean_point.y += (*element_points)[i].y;
+    mean_point.z += (*element_points)[i].z;
+  }
+  mean_point.x /= element_points->size();
+  mean_point.y /= element_points->size();
+  mean_point.z /= element_points->size();
+  Eigen::Vector3d shape_robot_vec(mean_point.x - robot_position.x,
+                                  mean_point.y - robot_position.y,
+                                  mean_point.z - robot_position.z);
+  shape_robot_vec.normalize();
+  // Normal direction of shape is pointing into free direction
+  if (shape_robot_vec.dot(element_normal) < 0.0) {
+    // element_normal *= -1.;
+    std::cout << "element_normal pointing in wrong direction!" << std::endl;
+    // assert(false);
+  }
+
+  double shape_d =
+      -(mean_point.x * element_normal.x() + mean_point.y * element_normal.y() +
+        mean_point.z * element_normal.z());
+
+  // Filter points (remaining vertices -> vertices on axis and free side)
+  // TODO: Maybe recompute plane from vertices to reduce the tolerance?
+  pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  for (int i = 0; i < weak_points->size(); i++) {
+    pcl::PointXYZ p = (*weak_points)[i];
+    if (p.x * element_normal.x() + p.y * element_normal.y() +
+            p.z * element_normal.z() + shape_d >=
+        -0.05) {
+      filtered_cloud->push_back(p);
+    }
+  }
+
+  // Corp off confliction points
+  // Source: https://pcl.readthedocs.io/en/latest/moment_of_inertia.html
+  pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
+  feature_extractor.setInputCloud(filtered_cloud);
+  feature_extractor.compute();
+  Eigen::Vector3f major_vector, middle_vector, minor_vector;
+  Eigen::Vector3f mass_center;
+  feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
+  feature_extractor.getMassCenter(mass_center);
+
+  major_vector.normalized();
+  middle_vector.normalized();
+  minor_vector.normalized();
+
+  Eigen::Matrix<float, 3, 6> shooting_dir;
+  shooting_dir.col(0) = major_vector;
+  shooting_dir.col(1) = -major_vector;
+  shooting_dir.col(2) = middle_vector;
+  shooting_dir.col(3) = -middle_vector;
+  shooting_dir.col(4) = minor_vector;
+  shooting_dir.col(5) = -minor_vector;
+
+  std::cout << shooting_dir << std::endl;
+  for (int i = 0; i < 6; i++) {
+    pcl::PointCloud<pcl::PointXYZ>::VectorType voxel_centers;
+    Eigen::Vector3f direction = shooting_dir.col(i);
+    octree.getIntersectedVoxelCenters(mass_center, direction, voxel_centers);
+
+    if (voxel_centers.size() > 0) {
+      pcl::PointXYZ voxel_center = voxel_centers.at(0);
+      double d_voxel_center =
+          -(direction.x() * voxel_center.x + direction.y() * voxel_center.y +
+            direction.z() * voxel_center.z);
+
+      pcl::PointIndices::Ptr indices_to_remove(new pcl::PointIndices());
+      for (int j = 0; j < filtered_cloud->size(); j++) {
+        pcl::PointXYZ p = (*filtered_cloud)[j];
+        double error = p.x * direction.x() + p.y * direction.y() +
+                       p.z * direction.z() + d_voxel_center;
+        if (error > 0.03) {
+          indices_to_remove->indices.push_back(j);
+        }
+      }
+      pcl::ExtractIndices<pcl::PointXYZ> extract;
+      extract.setInputCloud(filtered_cloud);
+      extract.setIndices(indices_to_remove);
+      extract.setNegative(true);
+      extract.filter(*filtered_cloud);
+    }
+  }
+
+  removeDuplicatedPoints(filtered_cloud, 0.003);
+
+  std::string save2 = "/home/philipp/Schreibtisch/resulting_points" +
+                      std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save2, *filtered_cloud);
+
+  // Structure of strong points
+  pcl::PointCloud<pcl::PointXYZ>::Ptr alive_strong_points_cloud(
+      new pcl::PointCloud<pcl::PointXYZ>);
+  for (int i = 0; i < strong_points_reconstruction->size(); i++) {
+    pcl::PointXYZ p_f = (*strong_points_reconstruction)[i];
+    for (int j = 0; j < filtered_cloud->size(); j++) {
+      pcl::PointXYZ p_s = (*filtered_cloud)[j];
+      double error = pcl::euclideanDistance(p_f, p_s);
+      if (error < 5 * 10e-3) {
+        alive_strong_points_cloud->push_back(p_s);
+        break;
+      }
+    }
+  }
+
+  // Reuse feature_extractor
+  feature_extractor.setInputCloud(filtered_cloud);
+  feature_extractor.compute();
+  feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
+  feature_extractor.getMassCenter(mass_center);
+
+  center_estimates.push_back(mass_center.cast<double>());
+
+  Eigen::Matrix3d directions;
+  directions.col(0) = major_vector.cast<double>();
+  directions.col(1) = middle_vector.cast<double>();
+  directions.col(2) = minor_vector.cast<double>();
+
+  // Correcton of direction estimates using strong points
+  std::vector<bool> dir_flag{false, false, false};
+  std::vector<Eigen::Vector3d> corrected_dirs;
+  corrected_dirs.push_back(Eigen::Vector3d::Zero());
+  corrected_dirs.push_back(Eigen::Vector3d::Zero());
+  corrected_dirs.push_back(Eigen::Vector3d::Zero());
+  std::vector<double> scores{0.0, 0.0, 0.0};
+  if (all_strong_points->size() > 2) {
+    for (int i = 0; i < all_strong_points->size(); i++) {
+      pcl::PointXYZ p_i = (*all_strong_points)[i];
+      Eigen::Vector3d e_i(p_i.x, p_i.y, p_i.z);
+      for (int j = 0; j < all_strong_points->size(); j++) {
+        if (i == j) {
+          continue;
+        }
+        pcl::PointXYZ p_j = (*all_strong_points)[j];
+        Eigen::Vector3d e_j(p_j.x, p_j.y, p_j.z);
+        Eigen::Vector3d diff = (e_i - e_j).normalized();
+        for (int k = 0; k < 3; k++) {
+          double score = std::fabs(directions.col(k).dot(diff));
+          if (score > scores.at(k)) {
+            scores.at(k) = score;
+            double keep_dir = directions.col(k).dot(diff) > 0 ? 1.0 : -1.0;
+            corrected_dirs.at(k) = diff * keep_dir;
+          }
+        }
+      }
+    }
+
+    for (int i = 0; i < 3; i++) {
+      if (scores.at(i) > 0.98) {
+        directions.col(i) = corrected_dirs.at(i);
+        dir_flag.at(i) = true;
+      }
+    }
+
+    if (!dir_flag.at(0) && dir_flag.at(1) && dir_flag.at(2)) {
+      directions.col(0) =
+          (directions.col(1).cross(directions.col(2))).normalized();
+    } else if (dir_flag.at(0) && !dir_flag.at(1) && dir_flag.at(2)) {
+      directions.col(1) =
+          (directions.col(0).cross(directions.col(2))).normalized();
+    } else if (dir_flag.at(0) && dir_flag.at(1) && !dir_flag.at(2)) {
+      directions.col(2) =
+          (directions.col(0).cross(directions.col(1))).normalized();
+    } else {
+      std::cout << "Full direction correction failed" << std::endl;
+    }
+
+  } else {
+    std::cout << "Not enough strong points for direction correction"
+              << std::endl;
+  }
+  direction_estimates.push_back(directions);
+
+  std::cout << "Corrected dirs " << std::endl;
+  for (int i = 0; i < 3; i++) {
+    std::cout << directions.col(i) << std::endl;
+  }
+
+  // a1, a2, b1, b2, c1, c2
+  // a -> direction of major_vector
+  // b -> direction of middle_vector
+  // c -> direction of minor_vector
+  std::vector<double> a1, a2, b1, b2, c1, c2;
+  a1.push_back(0);
+  a2.push_back(0);
+  b1.push_back(0);
+  b2.push_back(0);
+  c1.push_back(0);
+  c2.push_back(0);
+  for (int i = 0; i < filtered_cloud->size(); i++) {
+    pcl::PointXYZ cur_point = (*filtered_cloud)[i];
+    Eigen::Vector3f e_p(cur_point.x, cur_point.y, cur_point.z);
+    Eigen::Vector3f center_point = e_p - mass_center;
+    double a = center_point.dot(directions.col(0).cast<float>());
+    double b = center_point.dot(directions.col(1).cast<float>());
+    double c = center_point.dot(directions.col(2).cast<float>());
+    if (a > 0) {
+      a1.push_back(a);
+    } else {
+      a2.push_back(a);
+    }
+    if (b > 0) {
+      b1.push_back(b);
+    } else {
+      b2.push_back(b);
+    }
+    if (c > 0) {
+      c1.push_back(c);
+    } else {
+      c2.push_back(c);
+    }
+  }
+
+  removeDuplicatedValues(a1, 0.05);
+  removeDuplicatedValues(a2, 0.05);
+  removeDuplicatedValues(b1, 0.05);
+  removeDuplicatedValues(b2, 0.05);
+  removeDuplicatedValues(c1, 0.05);
+  removeDuplicatedValues(c2, 0.05);
+
+  Eigen::VectorXd a1_vec =
+      Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(a1.data(), a1.size());
+  Eigen::VectorXd a2_vec =
+      Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(a2.data(), a2.size());
+  Eigen::VectorXd b1_vec =
+      Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(b1.data(), b1.size());
+  Eigen::VectorXd b2_vec =
+      Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(b2.data(), b2.size());
+  Eigen::VectorXd c1_vec =
+      Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(c1.data(), c1.size());
+  Eigen::VectorXd c2_vec =
+      Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(c2.data(), c2.size());
+
+  std::vector<Eigen::VectorXd> parameters;
+  parameters.push_back(a1_vec);
+  parameters.push_back(a2_vec);
+  parameters.push_back(b1_vec);
+  parameters.push_back(b2_vec);
+  parameters.push_back(c1_vec);
+  parameters.push_back(c2_vec);
+  parameter_estimates.push_back(parameters);
+
+  std::cout << "a1_vec: " << a1_vec.size() << std::endl;
+  std::cout << a1_vec << std::endl;
+
+  std::cout << "a2_vec: " << a2_vec.size() << std::endl;
+  std::cout << a2_vec << std::endl;
+
+  std::cout << "b1_vec: " << b1_vec.size() << std::endl;
+  std::cout << b1_vec << std::endl;
+
+  std::cout << "b2_vec: " << b2_vec.size() << std::endl;
+  std::cout << b2_vec << std::endl;
+
+  std::cout << "c1_vec: " << c1_vec.size() << std::endl;
+  std::cout << c1_vec << std::endl;
+
+  std::cout << "c2_vec: " << c2_vec.size() << std::endl;
+  std::cout << c2_vec << std::endl;
+  return true;
+}
+
 int main() {
   double min_area = 0.0;
 
@@ -1261,7 +1787,8 @@ int main() {
   std::vector<double> plane_d;
   std::vector<double> area;
   std::vector<Eigen::Vector3d> plane_normals;
-  computeAllPlanes(faces_model, vertices_model, plane_normals, plane_d, area);
+  computeAllPlanes(faces_model, vertices_model, plane_normals, plane_d, area,
+                   true, 0.1);
 
   // Flag duplicated planes
   std::vector<int> duplicated_faces;
@@ -1385,20 +1912,26 @@ int main() {
     }
   }
 
-  std::vector<int> duplicated_vertices;
-  for (int i = 0; i < all_verticies->size(); i++) {
-    pcl::PointXYZ p_1 = (*all_verticies)[i];
-    for (int j = i + 1; j < all_verticies->size(); j++) {
-      pcl::PointXYZ p_2 = (*all_verticies)[j];
-      double dist = std::sqrt((p_1.x - p_2.x) * (p_1.x - p_2.x) +
-                              (p_1.y - p_2.y) * (p_1.y - p_2.y) +
-                              (p_1.z - p_2.z) * (p_1.z - p_2.z));
-      if (dist < 10e-3) {
-        weak_points->push_back(p_1);
-        break;
+  for (int i1 = 0; i1 < artificial_vertices_vector.size(); i1++) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud =
+        artificial_vertices_vector.at(i1);
+    for (int i2 = 0; i2 < cur_cloud->size(); i2++) {
+      pcl::PointXYZ cur_point = (*cur_cloud)[i2];
+      for (int j = 0; j < artificial_kdtrees_vector.size(); j++) {
+        if (i1 == j) {
+          continue;
+        }
+        pcl::search::KdTree<pcl::PointXYZ>::Ptr cur_kd_tree =
+            artificial_kdtrees_vector.at(j);
+        cur_kd_tree->nearestKSearch(cur_point, 1, nn_indices, nn_dists);
+        if (nn_dists[0] < 10e-10) {
+          weak_points->push_back(cur_point);
+          break;
+        }
       }
     }
   }
+
   // Remove duplicates
   removeDuplicatedPoints(strong_points);
   removeDuplicatedPoints(weak_points);
@@ -1416,6 +1949,10 @@ int main() {
   pcl::PolygonMesh mesh_all;
   std::vector<int> done_shapes;
   pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points_reconstruction;
+  std::vector<Eigen::Vector3d> center_estimates;
+  std::vector<Eigen::Matrix3d> direction_estimates;
+  std::vector<std::vector<Eigen::VectorXd>> parameter_estimates;
+
   do {
     for (int i = 0; i < artificial_kdtrees_vector.size(); i++) {
       if (std::find(done_shapes.begin(), done_shapes.end(), i) !=
@@ -1445,11 +1982,20 @@ int main() {
     // Reconstruct i and remove it
     std::cout << "Element to reconstruct: " << max_idx
               << " number of strong points: " << max_value << std::endl;
+    /*
     reconstructSingleElement(
         max_idx, strong_points_reconstruction,
         artificial_vertices_vector.at(max_idx), artificial_kdtrees_vector,
         normal_detected_shapes_vector, element_points_vector, plane_normals,
         area, faces_model_only, vertices_model_only, mesh_all);
+    */
+
+    getReconstructionParameters(
+        max_idx, strong_points_reconstruction, strong_points,
+        artificial_vertices_vector.at(max_idx), artificial_kdtrees_vector,
+        normal_detected_shapes_vector, element_points_vector, plane_normals,
+        area, faces_model_only, vertices_model_only, mesh_all, center_estimates,
+        direction_estimates, parameter_estimates);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr new_strong_points(
         new pcl::PointCloud<pcl::PointXYZ>());
@@ -1458,8 +2004,109 @@ int main() {
     done_shapes.push_back(max_idx);
     max_idx = 0;
     max_value = 0;
-
   } while (done_shapes.size() < artificial_vertices_vector.size());
+
+  for (int i = 0; i < center_estimates.size(); i++) {
+    Eigen::Vector3d center_estimates_0 = center_estimates.at(i);
+    Eigen::Matrix3d direction_estimates_0 = direction_estimates.at(i);
+    std::vector<Eigen::VectorXd> parameter_estimates_0 =
+        parameter_estimates.at(i);
+
+    Eigen::VectorXd a1 = parameter_estimates_0.at(0);
+    Eigen::VectorXd a2 = parameter_estimates_0.at(1);
+    Eigen::VectorXd b1 = parameter_estimates_0.at(2);
+    Eigen::VectorXd b2 = parameter_estimates_0.at(3);
+    Eigen::VectorXd c1 = parameter_estimates_0.at(4);
+    Eigen::VectorXd c2 = parameter_estimates_0.at(5);
+
+    std::cout << a1.size() << std::endl;
+    std::cout << a2.size() << std::endl;
+    std::cout << b1.size() << std::endl;
+    std::cout << b2.size() << std::endl;
+    std::cout << c1.size() << std::endl;
+    std::cout << c2.size() << std::endl;
+
+    double a1_max = a1.maxCoeff() > std::fabs(a1.minCoeff()) ? a1.maxCoeff()
+                                                             : a1.minCoeff();
+    double a2_max = a2.maxCoeff() > std::fabs(a2.minCoeff()) ? a2.maxCoeff()
+                                                             : a2.minCoeff();
+    double b1_max = b1.maxCoeff() > std::fabs(b1.minCoeff()) ? b1.maxCoeff()
+                                                             : b1.minCoeff();
+    double b2_max = b2.maxCoeff() > std::fabs(b2.minCoeff()) ? b2.maxCoeff()
+                                                             : b2.minCoeff();
+    double c1_max = c1.maxCoeff() > std::fabs(c1.minCoeff()) ? c1.maxCoeff()
+                                                             : c1.minCoeff();
+    double c2_max = c2.maxCoeff() > std::fabs(c2.minCoeff()) ? c2.maxCoeff()
+                                                             : c2.minCoeff();
+
+    std::cout << a1_max << std::endl;
+    std::cout << a2_max << std::endl;
+    std::cout << b1_max << std::endl;
+    std::cout << b2_max << std::endl;
+    std::cout << c1_max << std::endl;
+    std::cout << c2_max << std::endl;
+
+    Eigen::Vector3d p1 = center_estimates_0 +
+                         direction_estimates_0.col(0) * a1_max +
+                         direction_estimates_0.col(1) * b1_max +
+                         direction_estimates_0.col(2) * c1_max;
+
+    Eigen::Vector3d p2 = center_estimates_0 +
+                         direction_estimates_0.col(0) * a1_max +
+                         direction_estimates_0.col(1) * b1_max +
+                         direction_estimates_0.col(2) * c2_max;
+
+    Eigen::Vector3d p3 = center_estimates_0 +
+                         direction_estimates_0.col(0) * a1_max +
+                         direction_estimates_0.col(1) * b2_max +
+                         direction_estimates_0.col(2) * c1_max;
+
+    Eigen::Vector3d p4 = center_estimates_0 +
+                         direction_estimates_0.col(0) * a1_max +
+                         direction_estimates_0.col(1) * b2_max +
+                         direction_estimates_0.col(2) * c2_max;
+
+    Eigen::Vector3d p5 = center_estimates_0 +
+                         direction_estimates_0.col(0) * a2_max +
+                         direction_estimates_0.col(1) * b1_max +
+                         direction_estimates_0.col(2) * c1_max;
+
+    Eigen::Vector3d p6 = center_estimates_0 +
+                         direction_estimates_0.col(0) * a2_max +
+                         direction_estimates_0.col(1) * b1_max +
+                         direction_estimates_0.col(2) * c2_max;
+
+    Eigen::Vector3d p7 = center_estimates_0 +
+                         direction_estimates_0.col(0) * a2_max +
+                         direction_estimates_0.col(1) * b2_max +
+                         direction_estimates_0.col(2) * c1_max;
+
+    Eigen::Vector3d p8 = center_estimates_0 +
+                         direction_estimates_0.col(0) * a2_max +
+                         direction_estimates_0.col(1) * b2_max +
+                         direction_estimates_0.col(2) * c2_max;
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr element(
+        new pcl::PointCloud<pcl::PointXYZ>());
+    element->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
+    element->push_back(pcl::PointXYZ(p2.x(), p2.y(), p2.z()));
+    element->push_back(pcl::PointXYZ(p3.x(), p3.y(), p3.z()));
+    element->push_back(pcl::PointXYZ(p4.x(), p4.y(), p4.z()));
+    element->push_back(pcl::PointXYZ(p5.x(), p5.y(), p5.z()));
+    element->push_back(pcl::PointXYZ(p6.x(), p6.y(), p6.z()));
+    element->push_back(pcl::PointXYZ(p7.x(), p7.y(), p7.z()));
+    element->push_back(pcl::PointXYZ(p8.x(), p8.y(), p8.z()));
+
+    pcl::PolygonMesh reconstructed_mesh;
+    pcl::ConvexHull<pcl::PointXYZ> chull;
+    chull.setInputCloud(element);
+    chull.setDimension(3);
+    chull.reconstruct(reconstructed_mesh);
+
+    combineMeshes(reconstructed_mesh, mesh_all);
+  }
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/reconstructed_mesh_el_0.ply",
+                       mesh_all);
 
   return 0;
 }
