@@ -143,19 +143,17 @@ void computeAllPlanes(std::vector<::pcl::Vertices> &faces_model,
     // Normal correction up to 5 degree
     n.normalize();
     if (do_normal_correction) {
-    }
-    std::cout << "Normal before correction: \n" << n << std::endl;
-    for (int i = 0; i < 3; i++) {
-      if (n(i) < -(1. - eps)) {
-        n(i) = -1.;
-      } else if (n(i) > -eps && n(i) < eps) {
-        n(i) = 0.;
-      } else if (n(i) > (1. - eps)) {
-        n(i) = 1.;
+      for (int i = 0; i < 3; i++) {
+        if (n(i) < -(1. - eps)) {
+          n(i) = -1.;
+        } else if (n(i) > -eps && n(i) < eps) {
+          n(i) = 0.;
+        } else if (n(i) > (1. - eps)) {
+          n(i) = 1.;
+        }
+        n.normalize();
       }
-      n.normalize();
     }
-    std::cout << "Normal after correction: \n" << n << std::endl;
 
     plane_normals.push_back(n);
     double d = -(n.x() * p1.x + n.y() * p1.y + n.z() * p1.z);
@@ -188,6 +186,66 @@ void flagDuplicatedPlanes(std::vector<::pcl::Vertices> &faces_model,
       if (std::fabs(plane_normal_1.dot(plane_normal_2)) > 0.9999 &&
           std::fabs(d_1 - d_2) < 0.003) {
         duplicated_faces.push_back(j);
+      }
+    }
+  }
+}
+
+void computeModelCoordinateSpaces(
+    std::vector<::pcl::Vertices> &faces_model,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model,
+    std::vector<Eigen::Matrix3d> &spaces) {
+  std::vector<Eigen::Vector3d> model_normals;
+  for (int i = 0; i < faces_model.size(); i++) {
+    std::vector<uint32_t> vertices = faces_model.at(i).vertices;
+    pcl::PointXYZ p1 = (*vertices_model)[vertices.at(0)];
+    pcl::PointXYZ p2 = (*vertices_model)[vertices.at(1)];
+    pcl::PointXYZ p3 = (*vertices_model)[vertices.at(2)];
+    Eigen::Vector3d v1(p1.x, p1.y, p1.z);
+    Eigen::Vector3d v2(p2.x, p2.y, p2.z);
+    Eigen::Vector3d v3(p3.x, p3.y, p3.z);
+    Eigen::Vector3d n = (v2 - v1).cross(v3 - v1);
+
+    /*
+    if (n.norm() < 0.01){
+      continue;
+    }
+    */
+
+    n.normalize();
+    bool duplicate = false;
+    for (int j = 0; j < model_normals.size(); j++) {
+      if (std::fabs((model_normals.at(j)).dot(n)) > 0.9999) {
+        duplicate = true;
+        break;
+      }
+    }
+    if (duplicate == false) {
+      model_normals.push_back(n);
+    }
+  }
+
+  model_normals.push_back(Eigen::Vector3d::UnitX());
+  model_normals.push_back(Eigen::Vector3d::UnitY());
+  model_normals.push_back(Eigen::Vector3d::UnitZ());
+  for (int i1 = 0; i1 < model_normals.size(); i1++) {
+    for (int i2 = 0; i2 < model_normals.size(); i2++) {
+      for (int i3 = 0; i3 < model_normals.size(); i3++) {
+        Eigen::Vector3d n1 = model_normals.at(i1);
+        Eigen::Vector3d n2 = model_normals.at(i2);
+        Eigen::Vector3d n3 = model_normals.at(i3);
+
+        double e_12 = std::fabs(n1.dot(n2));
+        double e_13 = std::fabs(n1.dot(n3));
+        double e_23 = std::fabs(n2.dot(n3));
+
+        if (e_12 < 10e-3 && e_13 < 10e-3 && e_23 < 10e-3) {
+          Eigen::Matrix3d cur_space;
+          cur_space.col(0) = n1;
+          cur_space.col(1) = n2;
+          cur_space.col(2) = n3;
+          spaces.push_back(cur_space);
+        }
       }
     }
   }
@@ -463,7 +521,6 @@ void selectOrthoCandidateFaces(
         area.at(i) < min_area) {
       continue;
     }
-
     Eigen::Vector3d candidate_normal = plane_normals.at(i);
     double candidate_d = plane_d.at(i);
 
@@ -507,9 +564,11 @@ void computeArtificialVertices(
     std::vector<int> &candidate_faces_ortho_vertical,
     std::vector<Eigen::Vector3d> &plane_normals, std::vector<double> &plane_d,
     Eigen::Vector3d &element_normal, double &element_d,
-    pcl::PointCloud<pcl::PointXYZ>::Ptr artificial_vertices) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr artificial_vertices,
+    std::vector<Eigen::Matrix3d> &shape_directions) {
   Eigen::Vector3f p1;
   Eigen::Vector4f plane_m1, plane_h1, plane_v1;
+
   for (int i = 0; i < candidate_faces_main.size(); i++) {
     planeFromIdx(plane_m1, candidate_faces_main.at(i), plane_normals, plane_d);
 
@@ -526,6 +585,45 @@ void computeArtificialVertices(
       }
     }
   }
+
+  Eigen::Matrix3d shape_direction;
+  shape_direction.setZero();
+  Eigen::Vector3d n1_zero = plane_normals.at(candidate_faces_main.at(0));
+  Eigen::Vector3d n2_zero =
+      plane_normals.at(candidate_faces_ortho_vertical.at(0));
+  Eigen::Vector3d n3_zero =
+      plane_normals.at(candidate_faces_ortho_horizontal.at(0));
+  for (int i = 0; i < candidate_faces_main.size(); i++) {
+    Eigen::Vector3d n = plane_normals.at(candidate_faces_main.at(i));
+    if (n.dot(n1_zero) > 0) {
+      shape_direction.col(0) += n;
+    } else {
+      shape_direction.col(0) -= n;
+    }
+  }
+  shape_direction.col(0).normalize();
+
+  for (int i = 0; i < candidate_faces_ortho_vertical.size(); i++) {
+    Eigen::Vector3d n = plane_normals.at(candidate_faces_ortho_vertical.at(i));
+    if (n.dot(n2_zero) > 0) {
+      shape_direction.col(1) += n;
+    } else {
+      shape_direction.col(1) -= n;
+    }
+  }
+  shape_direction.col(1).normalize();
+
+  for (int i = 0; i < candidate_faces_ortho_horizontal.size(); i++) {
+    Eigen::Vector3d n =
+        plane_normals.at(candidate_faces_ortho_horizontal.at(i));
+    if (n.dot(n3_zero) > 0) {
+      shape_direction.col(2) += n;
+    } else {
+      shape_direction.col(2) -= n;
+    }
+  }
+  shape_direction.col(2).normalize();
+  shape_directions.push_back(shape_direction);
 }
 
 void removeDuplicatedPoints(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
@@ -1468,7 +1566,9 @@ bool getReconstructionParameters(
     pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model_only,
     pcl::PolygonMesh &mesh_all, std::vector<Eigen::Vector3d> &center_estimates,
     std::vector<Eigen::Matrix3d> &direction_estimates,
-    std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates) {
+    std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
+    std::vector<Eigen::Matrix3d> &model_spaces,
+    Eigen::Matrix3d &averaged_normals) {
   // TODO: Check for other connected elements
 
   std::string save0 = "/home/philipp/Schreibtisch/arificial_points_" +
@@ -1541,17 +1641,67 @@ bool getReconstructionParameters(
   feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
   feature_extractor.getMassCenter(mass_center);
 
-  major_vector.normalized();
-  middle_vector.normalized();
-  minor_vector.normalized();
+  center_estimates.push_back(mass_center.cast<double>());
+
+  /*
+  Eigen::Matrix3d directions;
+  directions.col(0) = major_vector.cast<double>();
+  directions.col(1) = middle_vector.cast<double>();
+  directions.col(2) = minor_vector.cast<double>();
+  std::vector<Eigen::Matrix3d> proposed_spaces;
+  proposed_spaces.push_back(directions);
+  // Correcton of direction estimates using strong points
+  for(int i = 0; i < model_spaces.size(); i++){
+    Eigen::Matrix3d cur_space = model_spaces.at(i);
+    double score = fabs(cur_space.col(0).dot(directions.col(0))) *
+        fabs(cur_space.col(1).dot(directions.col(1))) *
+        fabs(cur_space.col(2).dot(directions.col(2)));
+
+    if (score > 0.5) {
+      proposed_spaces.push_back(cur_space);
+    }
+  }
+
+  std::vector<double> a_vec, b_vec, c_vec;
+  double min_score = 10e10;
+  Eigen::Matrix3d corrected_dir;
+  for(int i = 0; i < proposed_spaces.size(); i++){
+    Eigen::Matrix3d cur_space = proposed_spaces.at(i);
+    Eigen::Vector3d cur_major = cur_space.col(0);
+    Eigen::Vector3d cur_middle = cur_space.col(1);
+    Eigen::Vector3d cur_minor = cur_space.col(2);
+    for (int j = 0; j < filtered_cloud->size(); j++){
+      pcl::PointXYZ cur_point = (*filtered_cloud)[j];
+      Eigen::Vector3d e_p(cur_point.x, cur_point.y, cur_point.z);
+      Eigen::Vector3d center_point = e_p - mass_center.cast<double>();
+      double a = center_point.dot(cur_major);
+      double b = center_point.dot(cur_middle);
+      double c = center_point.dot(cur_minor);
+      a_vec.push_back(a);
+      b_vec.push_back(b);
+      c_vec.push_back(c);
+    }
+    removeDuplicatedValues(a_vec, 0.0005);
+    removeDuplicatedValues(b_vec, 0.0005);
+    removeDuplicatedValues(c_vec, 0.0005);
+
+    double score = a_vec.size() * b_vec.size() * c_vec.size();
+    if (score < min_score){
+      min_score = score;
+      corrected_dir = cur_space;
+    }
+  }
+  */
+  Eigen::Matrix3d corrected_dir = averaged_normals;
+  direction_estimates.push_back(corrected_dir);
 
   Eigen::Matrix<float, 3, 6> shooting_dir;
-  shooting_dir.col(0) = major_vector;
-  shooting_dir.col(1) = -major_vector;
-  shooting_dir.col(2) = middle_vector;
-  shooting_dir.col(3) = -middle_vector;
-  shooting_dir.col(4) = minor_vector;
-  shooting_dir.col(5) = -minor_vector;
+  shooting_dir.col(0) = corrected_dir.col(0).cast<float>();
+  shooting_dir.col(1) = -corrected_dir.col(0).cast<float>();
+  shooting_dir.col(2) = corrected_dir.col(1).cast<float>();
+  shooting_dir.col(3) = -corrected_dir.col(1).cast<float>();
+  shooting_dir.col(4) = corrected_dir.col(2).cast<float>();
+  shooting_dir.col(5) = -corrected_dir.col(2).cast<float>();
 
   std::cout << shooting_dir << std::endl;
   for (int i = 0; i < 6; i++) {
@@ -1603,97 +1753,18 @@ bool getReconstructionParameters(
     }
   }
 
-  // Reuse feature_extractor
-  feature_extractor.setInputCloud(filtered_cloud);
-  feature_extractor.compute();
-  feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
-  feature_extractor.getMassCenter(mass_center);
-
-  center_estimates.push_back(mass_center.cast<double>());
-
-  Eigen::Matrix3d directions;
-  directions.col(0) = major_vector.cast<double>();
-  directions.col(1) = middle_vector.cast<double>();
-  directions.col(2) = minor_vector.cast<double>();
-
-  // Correcton of direction estimates using strong points
-  std::vector<bool> dir_flag{false, false, false};
-  std::vector<Eigen::Vector3d> corrected_dirs;
-  corrected_dirs.push_back(Eigen::Vector3d::Zero());
-  corrected_dirs.push_back(Eigen::Vector3d::Zero());
-  corrected_dirs.push_back(Eigen::Vector3d::Zero());
-  std::vector<double> scores{0.0, 0.0, 0.0};
-  if (all_strong_points->size() > 2) {
-    for (int i = 0; i < all_strong_points->size(); i++) {
-      pcl::PointXYZ p_i = (*all_strong_points)[i];
-      Eigen::Vector3d e_i(p_i.x, p_i.y, p_i.z);
-      for (int j = 0; j < all_strong_points->size(); j++) {
-        if (i == j) {
-          continue;
-        }
-        pcl::PointXYZ p_j = (*all_strong_points)[j];
-        Eigen::Vector3d e_j(p_j.x, p_j.y, p_j.z);
-        Eigen::Vector3d diff = (e_i - e_j).normalized();
-        for (int k = 0; k < 3; k++) {
-          double score = std::fabs(directions.col(k).dot(diff));
-          if (score > scores.at(k)) {
-            scores.at(k) = score;
-            double keep_dir = directions.col(k).dot(diff) > 0 ? 1.0 : -1.0;
-            corrected_dirs.at(k) = diff * keep_dir;
-          }
-        }
-      }
-    }
-
-    for (int i = 0; i < 3; i++) {
-      if (scores.at(i) > 0.98) {
-        directions.col(i) = corrected_dirs.at(i);
-        dir_flag.at(i) = true;
-      }
-    }
-
-    if (!dir_flag.at(0) && dir_flag.at(1) && dir_flag.at(2)) {
-      directions.col(0) =
-          (directions.col(1).cross(directions.col(2))).normalized();
-    } else if (dir_flag.at(0) && !dir_flag.at(1) && dir_flag.at(2)) {
-      directions.col(1) =
-          (directions.col(0).cross(directions.col(2))).normalized();
-    } else if (dir_flag.at(0) && dir_flag.at(1) && !dir_flag.at(2)) {
-      directions.col(2) =
-          (directions.col(0).cross(directions.col(1))).normalized();
-    } else {
-      std::cout << "Full direction correction failed" << std::endl;
-    }
-
-  } else {
-    std::cout << "Not enough strong points for direction correction"
-              << std::endl;
-  }
-  direction_estimates.push_back(directions);
-
-  std::cout << "Corrected dirs " << std::endl;
-  for (int i = 0; i < 3; i++) {
-    std::cout << directions.col(i) << std::endl;
-  }
-
   // a1, a2, b1, b2, c1, c2
   // a -> direction of major_vector
   // b -> direction of middle_vector
   // c -> direction of minor_vector
   std::vector<double> a1, a2, b1, b2, c1, c2;
-  a1.push_back(0);
-  a2.push_back(0);
-  b1.push_back(0);
-  b2.push_back(0);
-  c1.push_back(0);
-  c2.push_back(0);
   for (int i = 0; i < filtered_cloud->size(); i++) {
     pcl::PointXYZ cur_point = (*filtered_cloud)[i];
     Eigen::Vector3f e_p(cur_point.x, cur_point.y, cur_point.z);
     Eigen::Vector3f center_point = e_p - mass_center;
-    double a = center_point.dot(directions.col(0).cast<float>());
-    double b = center_point.dot(directions.col(1).cast<float>());
-    double c = center_point.dot(directions.col(2).cast<float>());
+    double a = center_point.dot(corrected_dir.col(0).cast<float>());
+    double b = center_point.dot(corrected_dir.col(1).cast<float>());
+    double c = center_point.dot(corrected_dir.col(2).cast<float>());
     if (a > 0) {
       a1.push_back(a);
     } else {
@@ -1741,22 +1812,11 @@ bool getReconstructionParameters(
   parameter_estimates.push_back(parameters);
 
   std::cout << "a1_vec: " << a1_vec.size() << std::endl;
-  std::cout << a1_vec << std::endl;
-
   std::cout << "a2_vec: " << a2_vec.size() << std::endl;
-  std::cout << a2_vec << std::endl;
-
   std::cout << "b1_vec: " << b1_vec.size() << std::endl;
-  std::cout << b1_vec << std::endl;
-
   std::cout << "b2_vec: " << b2_vec.size() << std::endl;
-  std::cout << b2_vec << std::endl;
-
   std::cout << "c1_vec: " << c1_vec.size() << std::endl;
-  std::cout << c1_vec << std::endl;
-
   std::cout << "c2_vec: " << c2_vec.size() << std::endl;
-  std::cout << c2_vec << std::endl;
   return true;
 }
 
@@ -1782,6 +1842,10 @@ int main() {
   pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model(
       new pcl::PointCloud<pcl::PointXYZ>);
   pcl::fromPCLPointCloud2(mesh.cloud, *vertices_model);
+
+  std::vector<Eigen::Matrix3d> model_spaces;
+  computeModelCoordinateSpaces(faces_model, vertices_model, model_spaces);
+  std::cout << "Size model spaces: " << model_spaces.size() << std::endl;
 
   // Get all plane parameters from model
   std::vector<double> plane_d;
@@ -1813,6 +1877,7 @@ int main() {
   shapes.push_back(49);
   shapes.push_back(56);
 
+  std::vector<Eigen::Matrix3d> shape_directions;
   std::string path = "/home/philipp/Schreibtisch/Result_CGAL/Meshes/";
   for (int i = 0; i < shapes.size(); i++) {
     std::string filename = "points_" + std::to_string(shapes.at(i)) + ".ply";
@@ -1868,13 +1933,18 @@ int main() {
     computeArtificialVertices(
         candidate_faces_main, candidate_faces_ortho_horizontal,
         candidate_faces_ortho_vertical, plane_normals, plane_d, element_normal,
-        element_d, artificial_vertices);
+        element_d, artificial_vertices, shape_directions);
 
     artificial_vertices_vector.push_back(artificial_vertices);
     pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
         new pcl::search::KdTree<pcl::PointXYZ>());
     kd_tree->setInputCloud(artificial_vertices);
     artificial_kdtrees_vector.push_back(kd_tree);
+  }
+
+  std::cout << "element params:" << std::endl;
+  for (int i = 0; i < shape_directions.size(); i++) {
+    std::cout << shape_directions.at(i) << std::endl;
   }
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr all_verticies(
@@ -1995,7 +2065,8 @@ int main() {
         artificial_vertices_vector.at(max_idx), artificial_kdtrees_vector,
         normal_detected_shapes_vector, element_points_vector, plane_normals,
         area, faces_model_only, vertices_model_only, mesh_all, center_estimates,
-        direction_estimates, parameter_estimates);
+        direction_estimates, parameter_estimates, model_spaces,
+        shape_directions.at(max_idx));
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr new_strong_points(
         new pcl::PointCloud<pcl::PointXYZ>());
@@ -2025,6 +2096,12 @@ int main() {
     std::cout << b2.size() << std::endl;
     std::cout << c1.size() << std::endl;
     std::cout << c2.size() << std::endl;
+
+    if (a1.size() == 0 || a2.size() == 0 || b1.size() == 0 || b2.size() == 0 ||
+        c1.size() == 0 || c2.size() == 0) {
+      std::cout << "Skipped element " << i << std::endl;
+      continue;
+    }
 
     double a1_max = a1.maxCoeff() > std::fabs(a1.minCoeff()) ? a1.maxCoeff()
                                                              : a1.minCoeff();
@@ -2096,6 +2173,10 @@ int main() {
     element->push_back(pcl::PointXYZ(p6.x(), p6.y(), p6.z()));
     element->push_back(pcl::PointXYZ(p7.x(), p7.y(), p7.z()));
     element->push_back(pcl::PointXYZ(p8.x(), p8.y(), p8.z()));
+
+    std::string save = "/home/philipp/Schreibtisch/final_meshing_points" +
+                       std::to_string(i) + ".ply";
+    pcl::io::savePLYFile(save, *element);
 
     pcl::PolygonMesh reconstructed_mesh;
     pcl::ConvexHull<pcl::PointXYZ> chull;
