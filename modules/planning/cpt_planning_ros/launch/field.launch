@@ -1,0 +1,28 @@
+<launch>
+
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster"
+          args="2.163 -0.049 -0.138 0.011 0.011 -0.049 0.999 world mesh"/>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="mesh2d_broadcaster"
+          args="-4 -2 0 0 0 0 1 world mesh2d"/>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="broadcaster_body_to_monstar" args="0.0700 -0.0145 -0.1067 0.709898 0.059208 0.698331 -0.069806 xoliro pico_flexx_optical_frame" />
+
+
+    <node name="voliro_planner_node" pkg="cpt_planning_ros" type="csv_field_node"
+          output="screen">
+        <param name="zero_angle" value="0.8"/>
+        <param name="zero_x" value="0.0"/>
+        <param name="zero_y" value="0.0"/>
+        <param name="zero_z" value="1.75"/>
+        <remap from="odometry" to="/xoliro/vrpn_client/estimated_odometry"/>
+        <remap from="cmd_trajectory" to="/xoliro/command/trajectory"/>
+        <param name="off_path"
+               value="/home/mpantic/ws/rmp/src/manifold_simulations/models/vicon_wall/vicon_wall.off"/>
+
+    </node>
+
+
+
+</launch>

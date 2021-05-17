@@ -134,24 +134,35 @@ rmp_data = all_data[all_data["planner"] == "RMP8"]
 
 
 dist_scatter_rc = copy.deepcopy(default_rc)
-dist_scatter_rc['figure.figsize'] = (4, 1.0)
+dist_scatter_rc['figure.figsize'] = [4, 1]
 # dist_scatter_rc['figure.constrained_layout.h_pad'] = 0.05
 # dist_scatter_rc['figure.constrained_layout.w_pad'] = 0.2
+
 sns.set(rc=dist_scatter_rc)
 sns.set_palette("tab10")
+
+fig, ax = plt.subplots()
+fig.set_size_inches(4, 1)
+
 bplot = sns.scatterplot(y='dist_surf', x='length',
                         hue='scenario',
                         marker='.',
                         alpha=0.8,
                         data=rmp_data,
-                        linewidth=0.0)
+                        linewidth=0.0, ax = ax)
 
 bplot.set(yscale="log", xscale="log")
-
-bplot.set(xlabel='Path length [m]', ylabel='Avg. Dist to Surface [m]')
+bplot.set(xlim=(0.95,1000))
+bplot.set(ylim=(10**(-5.5),10**(-0.9)))
+bplot.set(yticks=[1e-5, 1e-4, 1e-3, 1e-2, 1e-1])
+bplot.set(xlabel='Path length [m]', ylabel='Deviation [m]')
+ax.tick_params(pad=-3)
+#ax.yaxis.set_label_coords(-0.10, 0.2)
 bplot.legend().remove()
+sns.despine()
+fig.savefig('dist_scatter.pdf', dpi=300)
 
-bplot.get_figure().savefig('dist_scatter.pdf', dpi=300)
+
 
 # plt.clf()
 
