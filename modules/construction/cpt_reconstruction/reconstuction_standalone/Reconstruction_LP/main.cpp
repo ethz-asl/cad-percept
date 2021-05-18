@@ -650,6 +650,7 @@ bool getReconstructionParameters(
   mean_point.x /= element_points->size();
   mean_point.y /= element_points->size();
   mean_point.z /= element_points->size();
+  Eigen::Vector3d mean_e(mean_point.x, mean_point.y, mean_point.z);
   Eigen::Vector3d shape_robot_vec(mean_point.x - robot_position.x,
                                   mean_point.y - robot_position.y,
                                   mean_point.z - robot_position.z);
@@ -687,11 +688,9 @@ bool getReconstructionParameters(
   Eigen::Vector3f mass_center;
   feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
   // feature_extractor.getMassCenter(mass_center);
-  Eigen::Vector3f mean_e(mean_point.x, mean_point.y, mean_point.z);
-  mass_center = mean_e + 0.1 * element_normal.cast<float>();
+  mass_center = mean_e.cast<float>() + 0.1 * element_normal.cast<float>();
 
   Eigen::Matrix3d corrected_dir = averaged_normals;
-
   direction_estimates.push_back(corrected_dir);
 
   Eigen::Matrix<float, 3, 6> shooting_dir;
@@ -736,10 +735,28 @@ bool getReconstructionParameters(
     }
   }
 
-  // feature_extractor.setInputCloud(filtered_cloud);
-  // feature_extractor.compute();
-  // feature_extractor.getMassCenter(mass_center);
-  center_estimates.push_back(mass_center.cast<double>());
+  feature_extractor.setInputCloud(filtered_cloud);
+  //feature_extractor.compute();
+  //feature_extractor.getMassCenter(mass_center);
+  //center_estimates.push_back(mass_center.cast<double>());
+  double max_n = -1000;
+  double min_n = 1000;
+  for (int i = 0; i < filtered_cloud->size(); i++){
+    pcl::PointXYZ cur_p = (*filtered_cloud)[i];
+    Eigen::Vector3d cur_e (cur_p.x, cur_p.y, cur_p.z);
+    double cur_n = element_normal.dot((cur_e - mean_e));
+    if (cur_n > max_n){
+      max_n = cur_n;
+    }
+    if (cur_n < min_n){
+      min_n = cur_n;
+    }
+  }
+  double middle_n = (max_n + min_n) / 2.0;
+  Eigen::Vector3d new_center = mean_e + middle_n * element_normal;
+  center_estimates.push_back(new_center);
+  mass_center = new_center.cast<float>();
+
 
   removeDuplicatedPoints(filtered_cloud, 0.003);
 
