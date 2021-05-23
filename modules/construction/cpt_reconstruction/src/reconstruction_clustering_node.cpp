@@ -6,7 +6,7 @@
 //#include "std_msgs/String.h"
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "reconstruction_mesh_generation_node");
+  ros::init(argc, argv, "reconstruction_clustering_node");
   ros::NodeHandle nodeHandle1;
   ros::NodeHandle nodeHandle2;
   cad_percept::cpt_reconstruction::Clustering clustering(nodeHandle1,

@@ -5,6 +5,7 @@
 
 #include <geometry_msgs/Vector3.h>
 #include <sensor_msgs/PointCloud2.h>
+#include "cpt_reconstruction/classified_shapes.h"
 #include "cpt_reconstruction/clusters.h"
 #include "cpt_reconstruction/shape.h"
 #include "std_msgs/String.h"
@@ -99,9 +100,10 @@ class Classification {
 
  private:
   void messageCallback(const ::cpt_reconstruction::clusters &msg);
-  void computeReconstructedSurfaceMesh(std::vector<PointVectorPair_R> &points,
-                                       Mesh_M &mesh);
-  void classifyMesh(Mesh_M &mesh);
+  void computeReconstructedSurfaceMesh(
+      std::vector<PointVectorPair_R> &points, Mesh_M &mesh,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr mesh_points);
+  void classifyMesh(Mesh_M &mesh, std::vector<int> &label_indices);
 
   ros::NodeHandle nodeHandle1_;
   ros::NodeHandle nodeHandle2_;

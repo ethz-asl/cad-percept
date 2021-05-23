@@ -74,7 +74,7 @@ void ShapeDetection::messageCallback(
     double z = (*pcl_cloud_transformed)[i].z;
     pcl::PointXYZ pcl_p(x, y, z);
     model_->queryTree(pcl_p);
-    if (model_->getMinDistance() >= 0.025) {
+    if (model_->getMinDistance() >= 0.15) {
       model_->addOutlier(pcl_p);
       file1 << x << " " << y << " " << z << "\n";
     }

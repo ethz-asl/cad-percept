@@ -5,6 +5,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <sstream>

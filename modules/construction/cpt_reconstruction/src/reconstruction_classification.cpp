@@ -8,7 +8,7 @@ Classification::Classification(ros::NodeHandle nodeHandle1,
   subscriber_ = nodeHandle1_.subscribe("clusters", 1000,
                                        &Classification::messageCallback, this);
 
-  publisher_ = nodeHandle2_.advertise<::cpt_reconstruction::clusters>(
+  publisher_ = nodeHandle2_.advertise<::cpt_reconstruction::classified_shapes>(
       "classified_shapes", 1000);
   ros::spin();
 }
@@ -41,13 +41,49 @@ void Classification::messageCallback(
   }
 
   Mesh_M mesh;
-  computeReconstructedSurfaceMesh(points, mesh);
-  classifyMesh(mesh);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr face_centers(
+      new pcl::PointCloud<pcl::PointXYZ>());
+  computeReconstructedSurfaceMesh(points, mesh, face_centers);
+
+  std::vector<int> label_indices(mesh.number_of_faces(), -1);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr centers_kd_tree(
+      new pcl::search::KdTree<pcl::PointXYZ>());
+  centers_kd_tree->setInputCloud(face_centers);
+
+  classifyMesh(mesh, label_indices);
+
+  std::vector<int> nn_indices{1};
+  std::vector<float> nn_dists{1};
+  std::vector<int> final_votes;
+  for (int i = 0; i < clouds.size(); i++) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud = clouds.at(i);
+    std::vector<double> class_vote(6, 0);
+
+    for (int j = 0; j < cur_cloud->size(); j++) {
+      pcl::PointXYZ p = (*cur_cloud)[j];
+      centers_kd_tree->nearestKSearch(p, 1, nn_indices, nn_dists);
+      int lable = label_indices[nn_indices[0]];
+      class_vote.at(lable) += 1;
+    }
+    int best_vote = std::max_element(class_vote.begin(), class_vote.end()) -
+                    class_vote.begin();
+    final_votes.push_back(best_vote);
+  }
+  ::cpt_reconstruction::classified_shapes class_msg;
+  class_msg.robot_positions = msg.robot_positions;
+  class_msg.clouds = msg.clouds;
+  class_msg.classes = final_votes;
+  class_msg.ransac_normal = msg.ransac_normal;
+  class_msg.radius = msg.radius;
+  class_msg.axis = msg.axis;
+  class_msg.id = msg.id;
+  publisher_.publish(class_msg);
 }
 
 // Source: https://doc.cgal.org/latest/Manual/tuto_reconstruction.html
 void Classification::computeReconstructedSurfaceMesh(
-    std::vector<PointVectorPair_R> &points, Mesh_M &mesh) {
+    std::vector<PointVectorPair_R> &points, Mesh_M &mesh,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr face_centers) {
   const int nb_neighbors = 18;
   double spacing = CGAL::compute_average_spacing<CGAL::Sequential_tag>(
       points, nb_neighbors,
@@ -88,10 +124,12 @@ void Classification::computeReconstructedSurfaceMesh(
   reconstruct.increase_scale(
       4, CGAL::Scale_space_reconstruction_3::Jet_smoother<Kernel_R>());
 
-  // TODO - CHECK: Mesher Error undefinierter Verweis auf »mpfr_get_emin«
+  // TODO - CHECK: Mesher Error undefined reference to mpfr_get_emin
   reconstruct.reconstruct_surface(
       CGAL::Scale_space_reconstruction_3::Advancing_front_mesher<Kernel_R>(
           0.5));
+
+  assert(reconstruct.number_of_points() == points_only.size());
 
   for (int i = 0; i < points_only.size(); i++) {
     Point_R p_r = points_only.at(i);
@@ -103,6 +141,16 @@ void Classification::computeReconstructedSurfaceMesh(
     unsigned long i1 = facet.at(0);
     unsigned long i2 = facet.at(1);
     unsigned long i3 = facet.at(2);
+
+    Eigen::Vector3d p1(points_only.at(i1).x(), points_only.at(i1).y(),
+                       points_only.at(i1).z());
+    Eigen::Vector3d p2(points_only.at(i2).x(), points_only.at(i2).y(),
+                       points_only.at(i2).z());
+    Eigen::Vector3d p3(points_only.at(i3).x(), points_only.at(i3).y(),
+                       points_only.at(i3).z());
+    Eigen::Vector3d center = (p1 + p2 + p3) / 3.0;
+    face_centers->push_back(pcl::PointXYZ(center.x(), center.y(), center.z()));
+
     CGAL::SM_Vertex_index v1(i1);
     CGAL::SM_Vertex_index v2(i2);
     CGAL::SM_Vertex_index v3(i3);
@@ -111,7 +159,8 @@ void Classification::computeReconstructedSurfaceMesh(
 }
 
 // Source: https://doc.cgal.org/5.0.4/Classification/index.html
-void Classification::classifyMesh(Mesh_M &mesh) {
+void Classification::classifyMesh(Mesh_M &mesh,
+                                  std::vector<int> &label_indices) {
   std::size_t number_of_scales = 5;
   Face_point_map face_point_map(&mesh);
   Feature_generator generator(mesh, face_point_map, number_of_scales);
@@ -128,7 +177,6 @@ void Classification::classifyMesh(Mesh_M &mesh) {
   Label_handle floor = labels.add("floor");
   Label_handle clutter = labels.add("clutter");
 
-  std::vector<int> label_indices(mesh.number_of_faces(), -1);
   ROS_INFO("Using ETHZ Random Forest Classifier");
 
   CGAL::Classification::ETHZ_random_forest_classifier classifier(labels,

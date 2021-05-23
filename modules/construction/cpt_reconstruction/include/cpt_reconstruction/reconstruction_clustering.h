@@ -10,6 +10,7 @@
 #include "std_msgs/String.h"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <vector>
 
@@ -92,6 +93,7 @@ class Clustering {
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_;
   std::vector<Eigen::Vector3d> ransac_normals_;
   std::vector<int> fusing_count_;
+  std::vector<Eigen::Vector3d> robot_positions_;
 
   // Fit plane
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> detected_shapes_points_;

@@ -79,7 +79,7 @@ class Model {
   std::vector<double>* getRadius();
   std::vector<int>* getShapeIDs();
   int getOutlierCount();
-  float getMinDistance();
+  double getMinDistance();
   void clearRansacShapes();
   void clearBuffer();
 

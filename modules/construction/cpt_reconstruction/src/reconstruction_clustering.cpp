@@ -21,6 +21,7 @@ Clustering::Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
 void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
   ROS_INFO("[Mesh Generation] Id: %d with size: %d", msg.id,
            msg.points_msg.size());
+
   if (msg.id == 0) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr points_cloud(
         new pcl::PointCloud<pcl::PointXYZ>);
@@ -28,6 +29,9 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     geometry_msgs::Vector3 ransac_normal_temp = msg.ransac_normal;
     Eigen::Vector3d ransac_normal(ransac_normal_temp.x, ransac_normal_temp.y,
                                   ransac_normal_temp.z);
+    geometry_msgs::Vector3 rp_temp = msg.robot_position;
+    Eigen::Vector3d robot_position(rp_temp.x, rp_temp.y, rp_temp.z);
+
     for (unsigned i = 0; i < points.size(); i++) {
       geometry_msgs::Vector3 p = points.at(i);
       points_cloud->push_back(pcl::PointXYZ(p.x, p.y, p.z));
@@ -48,6 +52,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
       kd_trees_.push_back(kd_tree);
       fusing_count_.push_back(1);
       ransac_normals_.push_back(ransac_normal);
+      robot_positions_.push_back(robot_position);
 
       if (counter_ >= 50 && (counter_ % 50 == 0)) {
         ROS_INFO("Size before fuseing: %d \n", clouds_.size());
@@ -69,8 +74,14 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
       }
 
       // TODO - Change ~200
-      if (counter_ >= 50 && (counter_ % 50 == 0)) {
+      if (counter_ >= 200 && (counter_ % 200 == 0)) {
         std::vector<sensor_msgs::PointCloud2> clusters_vec;
+        std::vector<geometry_msgs::Vector3> robot_positions_vec;
+        std::vector<geometry_msgs::Vector3> ransac_normal_vec;
+        std::vector<double> radius_vec;
+        std::vector<geometry_msgs::Vector3> axis_vec;
+        std::vector<int> id_vec;
+
         for (unsigned i = 0; i < clouds_.size(); i++) {
           if (fusing_count_.at(i) > 0) {
             pcl::PCLPointCloud2 temp_pcl;
@@ -79,15 +90,41 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
             sensor_msgs::PointCloud2 temp_ros;
             pcl_conversions::moveFromPCL(temp_pcl, temp_ros);
             clusters_vec.push_back(temp_ros);
+
+            geometry_msgs::Vector3 temp_robot_pos;
+            temp_robot_pos.x = robot_positions_.at(i).x();
+            temp_robot_pos.y = robot_positions_.at(i).y();
+            temp_robot_pos.z = robot_positions_.at(i).z();
+            robot_positions_vec.push_back(temp_robot_pos);
+
+            geometry_msgs::Vector3 ransac_normal_temp;
+            ransac_normal_temp.x = ransac_normals_.at(i).x();
+            ransac_normal_temp.y = ransac_normals_.at(i).y();
+            ransac_normal_temp.z = ransac_normals_.at(i).z();
+            ransac_normal_vec.push_back(ransac_normal_temp);
+
+            geometry_msgs::Vector3 axis_temp;
+            axis_temp.x = 0;
+            axis_temp.y = 0;
+            axis_temp.z = 0;
+
+            axis_vec.push_back(axis_temp);
+            radius_vec.push_back(0.0);
+            id_vec.push_back(0);
           }
         }
         ::cpt_reconstruction::clusters cluster_msg;
         cluster_msg.clouds = clusters_vec;
+        cluster_msg.robot_positions = robot_positions_vec;
+        cluster_msg.ransac_normal = ransac_normal_vec;
+        cluster_msg.axis = axis_vec;
+        cluster_msg.radius = radius_vec;
+        cluster_msg.id = id_vec;
+
         ROS_INFO("Published Clusters");
         publisher_.publish(cluster_msg);
       }
 
-      /*
       if (counter_ >= 200 && (counter_ % 200 == 0)) {
         pcl::PolygonMesh mesh_all;
         for (unsigned i = 0; i < clouds_.size(); i++) {
@@ -97,18 +134,18 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
             this->combineMeshes(mesh, mesh_all);
 
             std::string result = "/home/philipp/Schreibtisch/Meshes/points_" +
-                std::to_string(i) + ".ply";
+                                 std::to_string(i) + ".ply";
             pcl::io::savePLYFile(result, *clouds_[i]);
 
             std::string result2 = "/home/philipp/Schreibtisch/Meshes/mesh_" +
-                std::to_string(i) + ".ply";
+                                  std::to_string(i) + ".ply";
             pcl::io::savePLYFile(result2, mesh);
           }
         }
         pcl::io::savePLYFile("/home/philipp/Schreibtisch/Meshes/mesh_all.ply",
                              mesh_all);
       }
-      */
+
       ROS_INFO("[Mesh Generation] Counter: %d", counter_);
       counter_++;
     }
@@ -178,7 +215,7 @@ void Clustering::fusePlanes() {
         for (int k = 0; k < cloud_j->size(); k++) {
           pcl::PointXYZ p = (*cloud_j)[k];
           tree_i->nearestKSearch(p, 1, nn_indices, nn_dists);
-          if (nn_dists[0] < 0.03) {
+          if (std::sqrt(nn_dists[0]) < 0.05) {
             matches++;
           }
         }
@@ -195,16 +232,22 @@ void Clustering::fusePlanes() {
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> fused_clouds;
   std::vector<Eigen::Vector3d> fused_ransac_normals;
   std::vector<int> fusing_count;
+  std::vector<Eigen::Vector3d> robot_positions;
 
   for (int i = 0; i < fusing.size(); i++) {
     std::vector<int> fusing_vec = fusing.at(i);
     pcl::PointCloud<pcl::PointXYZ>::Ptr fused_point_cloud(
         new pcl::PointCloud<pcl::PointXYZ>);
+    Eigen::Vector3d new_robot_position(0.0, 0.0, 0.0);
     int count_fused_shapes = 0;
     for (int j = 0; j < fusing_vec.size(); j++) {
       (*fused_point_cloud) += (*(clouds_[fusing_vec.at(j)]));
       count_fused_shapes += fusing_count_.at(fusing_vec.at(j));
+      // TODO - Maybe compute weighted average?
+      new_robot_position += robot_positions_.at(fusing_vec.at(j));
     }
+    new_robot_position /= fusing_vec.size();
+
     if (fused_point_cloud->size() > 10) {
       pcl::VoxelGrid<pcl::PointXYZ> sor;
       sor.setInputCloud(fused_point_cloud);
@@ -249,16 +292,20 @@ void Clustering::fusePlanes() {
       fused_kd_trees.push_back(fused_kd_tree);
       fused_ransac_normals.push_back(plane_normal);
       fusing_count.push_back(count_fused_shapes);
+      robot_positions.push_back(new_robot_position);
     }
   }
   clouds_.clear();
   ransac_normals_.clear();
   kd_trees_.clear();
   fusing_count_.clear();
+  robot_positions_.clear();
+
   clouds_ = fused_clouds;
   ransac_normals_ = fused_ransac_normals;
   kd_trees_ = fused_kd_trees;
   fusing_count_ = fusing_count;
+  robot_positions_ = robot_positions;
 }
 
 void Clustering::removeSingleDetections() {
@@ -275,6 +322,7 @@ void Clustering::removeSingleDetections() {
     kd_trees_.erase(kd_trees_.begin() + idx - idx_corr);
     ransac_normals_.erase(ransac_normals_.begin() + idx - idx_corr);
     fusing_count_.erase(fusing_count_.begin() + idx - idx_corr);
+    robot_positions_.erase(robot_positions_.begin() + idx - idx_corr);
     idx_corr++;
   }
 }
@@ -299,7 +347,7 @@ void Clustering::removeConflictingClusters() {
       for (int k = 0; k < cloud_i->size(); k++) {
         pcl::PointXYZ p = (*cloud_i)[k];
         tree_j->nearestKSearch(p, 1, nn_indices, nn_dists);
-        if (nn_dists[0] < 0.005) {
+        if (std::sqrt(nn_dists[0]) < 0.03) {
           matches++;
         }
       }
@@ -318,6 +366,7 @@ void Clustering::removeConflictingClusters() {
     kd_trees_.erase(kd_trees_.begin() + idx);
     ransac_normals_.erase(ransac_normals_.begin() + idx);
     fusing_count_.erase(fusing_count_.begin() + idx);
+    robot_positions_.erase(robot_positions_.begin() + idx);
   }
 }
 

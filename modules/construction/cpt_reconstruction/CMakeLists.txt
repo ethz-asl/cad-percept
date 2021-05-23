@@ -24,6 +24,7 @@ cs_add_library(${PROJECT_NAME}
 ############
 # BINARIES #
 ############
+
 cs_add_executable(reconstruction_points_publisher_node
         src/reconstruction_points_publisher_node.cpp
         )

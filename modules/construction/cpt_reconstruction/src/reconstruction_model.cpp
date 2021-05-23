@@ -307,7 +307,7 @@ std::vector<int>* Model::getShapeIDs() { return &shape_id_; }
 
 int Model::getOutlierCount() { return meshing_points_->size(); }
 
-float Model::getMinDistance() { return nn_dists_[0]; }
+double Model::getMinDistance() { return std::sqrt(nn_dists_[0]); }
 
 void Model::clearRansacShapes() {
   points_shape_.clear();
