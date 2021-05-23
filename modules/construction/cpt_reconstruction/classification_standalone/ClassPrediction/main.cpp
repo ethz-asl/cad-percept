@@ -1,3 +1,4 @@
+
 #if defined (_MSC_VER) && !defined (_WIN64)
 #pragma warning(disable:4244) // boost::number_distance::distance()
                               // converts 64 to 32 bits integers
@@ -6,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Classification.h>
 #include <CGAL/Point_set_3.h>
@@ -25,12 +27,20 @@
 #include <CGAL/Polygon_mesh_processing/orient_polygon_soup.h>
 #include <CGAL/Polygon_mesh_processing/polygon_soup_to_polygon_mesh.h>
 #include <CGAL/Polygon_mesh_processing/orientation.h>
+#include <CGAL/edge_aware_upsample_point_set.h>
+#include <CGAL/IO/read_xyz_points.h>
+#include <CGAL/IO/write_xyz_points.h>
+#include <CGAL/pca_estimate_normals.h>
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel          K;
 typedef CGAL::Polyhedron_3<K, CGAL::Polyhedron_items_with_id_3>      Polyhedron;
 
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef Kernel::Point_3 Point;
+typedef Kernel::Vector_3 Vector;
+typedef std::pair<Point, Vector> PointVectorPair;
+typedef CGAL::Sequential_tag Concurrency_tag;
+
 typedef CGAL::Point_set_3<Point> Point_set;
 typedef Kernel::Iso_cuboid_3 Iso_cuboid_3;
 typedef Point_set::Point_map Pmap;
@@ -41,9 +51,23 @@ typedef Classification::Label_handle                                            
 typedef Classification::Feature_handle                                          Feature_handle;
 typedef Classification::Label_set                                               Label_set;
 typedef Classification::Feature_set                                             Feature_set;
-//typedef Classification::Point_set_feature_generator<Kernel, Point_set, Pmap>    Feature_generator;
+typedef Classification::Point_set_feature_generator<Kernel, Point_set, Pmap>    Feature_generator;
 
 
+#include <iostream>
+#include <fstream>
+#include <algorithm>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Advancing_front_surface_reconstruction.h>
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Advancing_front_surface_reconstruction<> Reconstruction;
+typedef Reconstruction::Triangulation_3 Triangulation_3;
+typedef Reconstruction::Triangulation_data_structure_2 TDS_2;
+typedef K::Point_3 Point_3;
+typedef K::Vector_3 Vector_3;
+
+
+/*
 typedef CGAL::Exact_predicates_inexact_constructions_kernel     Kernel2;
 typedef CGAL::Scale_space_surface_reconstruction_3<Kernel2>    Reconstruction;
 typedef Kernel2::Point_3 Point3;
@@ -54,14 +78,54 @@ typedef Classification::Face_descriptor_to_center_of_mass_map<Mesh>             
 typedef Classification::Face_descriptor_to_face_descriptor_with_bbox_map<Mesh>  Face_with_bbox_map;
 typedef Classification::Mesh_feature_generator<Kernel, Mesh, Face_point_map>    Feature_generator;
 typedef Mesh::Property_map<Mesh::Face_index, unsigned char> Mesh_class;
+*/
 
-
-
+/*
 // Mesh based
 //Source: https://doc.cgal.org/5.0.4/Classification/index.html
-int main (int argc, char** argv)
-{
-  /*
+int main (int argc, char** argv){
+  const char* input_filename = (argc>1)?argv[1]:"/home/philipp/Schreibtisch/outliers_ros_full.xyz";
+  const char* output_filename = (argc>2)?argv[2]:"/home/philipp/Schreibtisch/outliers_ros_UPSAMPLED.xyz";
+  // Reads a .xyz point set file in points[], *with normals*.
+  std::vector<PointVectorPair> points_up;
+  std::ifstream stream(input_filename);
+  if (!stream ||
+      !CGAL::read_xyz_points(stream,
+                             std::back_inserter(points_up),
+                             CGAL::parameters::point_map(CGAL::First_of_pair_property_map<PointVectorPair>()).
+                                 normal_map(CGAL::Second_of_pair_property_map<PointVectorPair>())))
+  {
+    std::cerr << "Error: cannot read file " << input_filename << std::endl;
+    return EXIT_FAILURE;
+  }
+  //Algorithm parameters
+  const double sharpness_angle = 40;   // control sharpness of the result.
+  const double edge_sensitivity = 0.2;    // higher values will sample more points near the edges
+  const double neighbor_radius = 0.5;  // initial size of neighborhood.
+  const std::size_t number_of_output_points = points_up.size() * 2;
+  //Run algorithm
+  CGAL::edge_aware_upsample_point_set<Concurrency_tag>(
+      points_up,
+      std::back_inserter(points_up),
+      CGAL::parameters::point_map(CGAL::First_of_pair_property_map<PointVectorPair>()).
+          normal_map(CGAL::Second_of_pair_property_map<PointVectorPair>()).
+          sharpness_angle(sharpness_angle).
+          edge_sensitivity(edge_sensitivity).
+          neighbor_radius(neighbor_radius).
+          number_of_output_points(number_of_output_points));
+  // Saves point set.
+  std::ofstream out2(output_filename);
+  out2.precision(17);
+  if (!out2 ||
+      !CGAL::write_xyz_points(
+          out2, points_up,
+          CGAL::parameters::point_map(CGAL::First_of_pair_property_map<PointVectorPair>()).
+              normal_map(CGAL::Second_of_pair_property_map<PointVectorPair>())))
+  {
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
+
   std::vector<Point3> points;
   std::ifstream in("/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/classification_standalone/Classification/dataPreperation/prediction_data.ply");
   std::cerr << "Reading " << std::flush;
@@ -84,7 +148,7 @@ int main (int argc, char** argv)
   out << reconstruct;
   std::cerr << "Writing result in " << t.time() << " sec." << std::endl;
   std::cerr << "Done." << std::endl;
-  */
+
 
   CGAL::Timer t;
   t.start();
@@ -112,10 +176,6 @@ int main (int argc, char** argv)
   std::ofstream out("tet-oriented1.off");
   out << mesh_temp;
   out.close();
-  CGAL::Polygon_mesh_processing::reverse_face_orientations(mesh_temp);
-  std::ofstream out2("tet-oriented2.off");
-  out2 << mesh_temp;
-  out2.close();
 
   //TODO: Error when reading out.off
   std::string filename2 = "/home/philipp/Schreibtisch/tet-oriented1.off";
@@ -218,12 +278,15 @@ int main (int argc, char** argv)
   std::cerr << "All done" << std::endl;
   return EXIT_SUCCESS;
 }
+*/
 
-/*
+
+
 // Point based
 //Source: https://doc.cgal.org/5.0.4/Classification/index.html
-int main2 (int argc, char** argv)
-{
+// https://doc.cgal.org/latest/Manual/tuto_reconstruction.html
+int main (int argc, char** argv) {
+
   std::string filename = "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/classification_standalone/Classification/dataPreperation/prediction_data.ply";
   std::ifstream in (filename.c_str(), std::ios::binary);
   Point_set pts;
@@ -235,7 +298,7 @@ int main2 (int argc, char** argv)
   CGAL::Real_timer t;
   t.start();
   Feature_generator generator (pts, pts.point_map(),
-                               2);  // using 5 scales
+                               5);  // using 5 scales
 
 #ifdef CGAL_LINKED_WITH_TBB
   features.begin_parallel_additions();
@@ -261,7 +324,7 @@ int main2 (int argc, char** argv)
   Classification::ETHZ::Random_forest_classifier classifier (labels, features);
 
   std::ifstream input;
-  input.open("/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/classification_standalone/Classification/cmake-build-debug/ethz_random_forest.bin", std::ios::in | std::ios::binary);
+  input.open("/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/classification_standalone/Classification/cmake-build-debug/ethz_random_forest_random.bin", std::ios::in | std::ios::binary);
   classifier.load_configuration(input);
 
   t.reset();
@@ -319,10 +382,9 @@ int main2 (int argc, char** argv)
   }
 
   // Write result
-  std::ofstream f ("prediction.ply");
+  std::ofstream f ("cla_clusters_random.ply");
   f.precision(18);
   f << pts;
   std::cerr << "All done" << std::endl;
   return EXIT_SUCCESS;
 }
-*/

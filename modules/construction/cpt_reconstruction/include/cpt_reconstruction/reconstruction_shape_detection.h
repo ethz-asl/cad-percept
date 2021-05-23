@@ -40,11 +40,11 @@
 
 namespace cad_percept {
 namespace cpt_reconstruction {
-class ReconstructionPointsSubscriber {
+class ShapeDetection {
  public:
-  ReconstructionPointsSubscriber() = delete;
-  ReconstructionPointsSubscriber(ros::NodeHandle nodeHandle1,
-                                 ros::NodeHandle nodeHandle2, Model* model);
+  ShapeDetection() = delete;
+  ShapeDetection(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2,
+                 Model* model);
   void startReceiving();
 
  private:

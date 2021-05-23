@@ -75,6 +75,8 @@ class Model {
 
   std::vector<Eigen::MatrixXd>* getPointShapes();
   std::vector<Eigen::Vector3d>* getRansacNormals();
+  std::vector<Eigen::Vector3d>* getAxis();
+  std::vector<double>* getRadius();
   std::vector<int>* getShapeIDs();
   int getOutlierCount();
   float getMinDistance();
@@ -92,6 +94,8 @@ class Model {
   std::vector<Eigen::MatrixXd> points_shape_;
   std::vector<Eigen::Vector3d> ransac_normals_;
   std::vector<int> shape_id_;
+  std::vector<Eigen::Vector3d> axis_;
+  std::vector<double> radius_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

@@ -1,5 +1,23 @@
 #include <cpt_reconstruction/reconstruction_model.h>
 
+// Type declarations.
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+typedef Kernel::FT FT;
+typedef std::pair<Kernel::Point_3, Kernel::Vector_3> Point_with_normal;
+typedef std::vector<Point_with_normal> Pwn_vector;
+typedef CGAL::First_of_pair_property_map<Point_with_normal> Point_map;
+typedef CGAL::Second_of_pair_property_map<Point_with_normal> Normal_map;
+typedef CGAL::Shape_detection::Efficient_RANSAC_traits<Kernel, Pwn_vector,
+                                                       Point_map, Normal_map>
+    Traits;
+typedef CGAL::Shape_detection::Efficient_RANSAC<Traits> Efficient_ransac;
+typedef CGAL::Shape_detection::Cone<Traits> Cone;
+typedef CGAL::Shape_detection::Cylinder<Traits> Cylinder;
+typedef CGAL::Shape_detection::Plane<Traits> Plane;
+typedef CGAL::Shape_detection::Sphere<Traits> Sphere;
+typedef CGAL::Shape_detection::Torus<Traits> Torus;
+// typedef CGAL::Parallel_tag Concurrency_tag;
+
 namespace cad_percept {
 namespace cpt_reconstruction {
 
@@ -55,7 +73,6 @@ void Model::applyFilter() {
   for (int i = 0; i < voxelCentroids.size(); i++) {
     meshing_points_->push_back(voxelCentroids[i]);
   }
-
   /*
   Error for too big point clouds
   [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset.
@@ -146,25 +163,30 @@ void Model::efficientRANSAC() {
       points_shape_.push_back(points);
       ransac_normals_.push_back(ransac_normal);
       shape_id_.push_back(0);
+      axis_.push_back(Eigen::Vector3d::Zero());
+      radius_.push_back(0.0);
 
-    } /* else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
-       const std::vector<std::size_t> idx_assigned_points =
-           cyl->indices_of_assigned_points();
-       Eigen::MatrixXd points(3, idx_assigned_points.size());
-       Eigen::MatrixXd normals(3, idx_assigned_points.size());
-       for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
-         detected_points->indices.push_back(idx_assigned_points.at(i));
-         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
-         Kernel::Point_3 p = point_with_normal.first;
-         Kernel::Vector_3 n = point_with_normal.second;
-         file << p.x() << " " << p.y() << " " << p.z() << "\n";
-         points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
-         normals.block<3, 1>(0, i) = Eigen::Vector3d(n.x(), n.y(), n.z());
-       }
-       points_shape_.push_back(points);
-       normals_shape_.push_back(points);
-       shape_id_.push_back(1);
-     }*/
+    } else if (Cylinder* cyl = dynamic_cast<Cylinder*>(it->get())) {
+      const std::vector<std::size_t> idx_assigned_points =
+          cyl->indices_of_assigned_points();
+      Eigen::MatrixXd points(3, idx_assigned_points.size());
+      for (unsigned i = 0; i < idx_assigned_points.size(); i++) {
+        detected_points->indices.push_back(idx_assigned_points.at(i));
+        Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
+        Kernel::Point_3 p = point_with_normal.first;
+        file << p.x() << " " << p.y() << " " << p.z() << "\n";
+        points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
+      }
+      Kernel::Vector_3 axis_temp = cyl->axis().to_vector();
+      Eigen::Vector3d axis(axis_temp.x(), axis_temp.y(), axis_temp.z());
+      axis.normalized();
+      double radius = cyl->radius();
+      points_shape_.push_back(points);
+      ransac_normals_.push_back(Eigen::Vector3d::Zero());
+      shape_id_.push_back(1);
+      axis_.push_back(axis);
+      radius_.push_back(radius);
+    }
     it++;
   }
   file.close();
@@ -197,7 +219,7 @@ void Model::SACSegmentation() {
     Eigen::Vector3f ax(cos(rad), sin(rad), 0.0f);
     axis_vec.push_back(ax);
   }
-  //axis_vec.push_back(Eigen::Vector3f(0, 0, 1));
+  // axis_vec.push_back(Eigen::Vector3f(0, 0, 1));
 
   for (int c = 0; c < axis_vec.size(); c++) {
     for (int it = 0; it < 5; it++) {
@@ -277,6 +299,10 @@ std::vector<Eigen::Vector3d>* Model::getRansacNormals() {
   return &ransac_normals_;
 }
 
+std::vector<Eigen::Vector3d>* Model::getAxis() { return &axis_; }
+
+std::vector<double>* Model::getRadius() { return &radius_; }
+
 std::vector<int>* Model::getShapeIDs() { return &shape_id_; }
 
 int Model::getOutlierCount() { return meshing_points_->size(); }
@@ -287,6 +313,8 @@ void Model::clearRansacShapes() {
   points_shape_.clear();
   ransac_normals_.clear();
   shape_id_.clear();
+  axis_.clear();
+  radius_.clear();
 }
 
 void Model::clearBuffer() { meshing_points_->clear(); }

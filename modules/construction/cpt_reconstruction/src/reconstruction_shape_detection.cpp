@@ -1,10 +1,10 @@
 #include <cpt_reconstruction/reconstruction_model.h>
-#include <cpt_reconstruction/reconstruction_points_subscriber.h>
+#include <cpt_reconstruction/reconstruction_shape_detection.h>
 
 namespace cad_percept {
 namespace cpt_reconstruction {
-ReconstructionPointsSubscriber::ReconstructionPointsSubscriber(
-    ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2, Model* model)
+ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
+                               ros::NodeHandle nodeHandle2, Model* model)
     : nodeHandle1_(nodeHandle1),
       nodeHandle2_(nodeHandle2),
       model_(model),
@@ -12,15 +12,14 @@ ReconstructionPointsSubscriber::ReconstructionPointsSubscriber(
       counter_planes_(0),
       counter_cyl_(0),
       iteration_counter_(0) {
-  subscriber1_ = nodeHandle1_.subscribe(
-      "corrected_scan", 1000, &ReconstructionPointsSubscriber::messageCallback,
-      this);
+  subscriber1_ = nodeHandle1_.subscribe("corrected_scan", 1000,
+                                        &ShapeDetection::messageCallback, this);
   publisher_ =
       nodeHandle2_.advertise<::cpt_reconstruction::shape>("ransac_shape", 1000);
   ros::spin();
 }
 
-void ReconstructionPointsSubscriber::messageCallback(
+void ShapeDetection::messageCallback(
     const sensor_msgs::PointCloud2ConstPtr& cloud_msg) {
   if (update_transformation_) {
     tf::StampedTransform transform;
@@ -39,6 +38,18 @@ void ReconstructionPointsSubscriber::messageCallback(
       transformation_ = transformation;
     }
   }
+
+  tf::StampedTransform robot_pos_stamp;
+  tf_listener_.lookupTransform("/map", "/lidar", ros::Time(0), robot_pos_stamp);
+  Eigen::Vector3d robot_pos;
+  tf::vectorTFToEigen(robot_pos_stamp.getOrigin(), robot_pos);
+  Eigen::Vector4d translation_h(robot_pos.x(), robot_pos.y(), robot_pos.z(),
+                                1.0);
+  robot_pos = (transformation_inv_ * translation_h).block<3, 1>(0, 0);
+
+  // ROS_INFO("Robot x: %f\n", robot_pos.x());
+  // ROS_INFO("Robot y: %f\n", robot_pos.y());
+  // ROS_INFO("Robot z: %f\n", robot_pos.z());
 
   // TODO: Transform model instead of points
   pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(
@@ -77,10 +88,12 @@ void ReconstructionPointsSubscriber::messageCallback(
     model_->clearRansacShapes();
     model_->applyFilter();
     model_->efficientRANSAC();
-    //model_->SACSegmentation();
+    // model_->SACSegmentation();
 
     std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
     std::vector<Eigen::Vector3d>* ransac_normal = model_->getRansacNormals();
+    std::vector<Eigen::Vector3d>* axis = model_->getAxis();
+    std::vector<double>* radius = model_->getRadius();
     std::vector<int>* shapes_ids = model_->getShapeIDs();
 
     // Publish mesh to mesh_gereration
@@ -99,9 +112,23 @@ void ReconstructionPointsSubscriber::messageCallback(
       ransac_n.y = ransac_n_temp.y();
       ransac_n.z = ransac_n_temp.z();
 
+      geometry_msgs::Vector3 pub_robot_position;
+      pub_robot_position.x = robot_pos.x();
+      pub_robot_position.y = robot_pos.y();
+      pub_robot_position.z = robot_pos.z();
+
+      geometry_msgs::Vector3 pub_axis;
+      Eigen::Vector3d axis_temp = (*axis).at(i);
+      pub_axis.x = axis_temp.x();
+      pub_axis.y = axis_temp.y();
+      pub_axis.z = axis_temp.z();
+
       ::cpt_reconstruction::shape shape_msg;
       shape_msg.points_msg = pub_points;
       shape_msg.ransac_normal = ransac_n;
+      shape_msg.robot_position = pub_robot_position;
+      shape_msg.axis = pub_axis;
+      shape_msg.radius = radius->at(i);
       shape_msg.id = shapes_ids->at(i);
       publisher_.publish(shape_msg);
     }
