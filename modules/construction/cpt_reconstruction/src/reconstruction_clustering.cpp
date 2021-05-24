@@ -74,7 +74,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
       }
 
       // TODO - Change ~200
-      if (counter_ >= 200 && (counter_ % 200 == 0)) {
+      if (counter_ >= 400 && (counter_ % 400 == 0)) {
         std::vector<sensor_msgs::PointCloud2> clusters_vec;
         std::vector<geometry_msgs::Vector3> robot_positions_vec;
         std::vector<geometry_msgs::Vector3> ransac_normal_vec;
