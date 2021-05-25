@@ -207,8 +207,21 @@ void MeshGeneration::getProposalVertices(double min_area) {
 
     if (nr_main == 0 || nr_ortho_vertical == 0 || nr_ortho_horizontal == 0) {
       ROS_INFO("Missing a direction -> skip");
+
+      // Don't mess up index structure!!
+      pcl::PointCloud<pcl::PointXYZ>::Ptr artificial_vertices(
+          new pcl::PointCloud<pcl::PointXYZ>);
+      // TODO - Find better solution for placeholder!
+      artificial_vertices->push_back(pcl::PointXYZ(0, 0, -3));
+      artificial_vertices_vector_.push_back(artificial_vertices);
+      pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
+          new pcl::search::KdTree<pcl::PointXYZ>());
+      kd_tree->setInputCloud(artificial_vertices);
+      artificial_kdtrees_vector_.push_back(kd_tree);
+      shape_directions_.push_back(Eigen::Matrix3d::Identity());
       continue;
     }
+
     // Compute all intersections directly
     pcl::PointCloud<pcl::PointXYZ>::Ptr artificial_vertices(
         new pcl::PointCloud<pcl::PointXYZ>);
@@ -640,7 +653,7 @@ void MeshGeneration::processElementCloud(
   seg.setOptimizeCoefficients(true);
   seg.setModelType(pcl::SACMODEL_PLANE);
   seg.setMethodType(pcl::SAC_RANSAC);
-  seg.setDistanceThreshold(0.03);
+  seg.setDistanceThreshold(0.05);
   seg.setMaxIterations(1000);
   seg.setInputCloud(element_points);
   seg.segment(*inliers, *coefficients);
@@ -705,6 +718,7 @@ void MeshGeneration::processElementCloud(
   harris.compute(*corners_intensity);
 
   // Remove Intensity field
+  // pcl::copyPointCloud(*corners_intensity, *corners);
   pcl::copyPointCloud(*corners_intensity, *corners);
 
   // Corners -> Corners top and bottom, Corners side
@@ -1091,7 +1105,7 @@ bool MeshGeneration::getReconstructionParameters(
   Eigen::Vector3f mass_center;
   feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
   // feature_extractor.getMassCenter(mass_center);
-  mass_center = mean_e.cast<float>() + 0.075 * element_normal.cast<float>();
+  mass_center = mean_e.cast<float>() + 0.05 * element_normal.cast<float>();
 
   Eigen::Matrix3d corrected_dir = shape_directions_.at(idx);
   direction_estimates.push_back(corrected_dir);
@@ -1143,6 +1157,7 @@ bool MeshGeneration::getReconstructionParameters(
   // feature_extractor.compute();
   // feature_extractor.getMassCenter(mass_center);
   // center_estimates.push_back(mass_center.cast<double>());
+  /*
   double max_n = -1000;
   double min_n = 1000;
   for (int i = 0; i < filtered_cloud->size(); i++) {
@@ -1157,9 +1172,10 @@ bool MeshGeneration::getReconstructionParameters(
     }
   }
   double middle_n = (max_n + min_n) / 2.0;
-  // Eigen::Vector3d new_center = mean_e + middle_n * element_normal;
-  // center_estimates.push_back(new_center);
-  // mass_center = new_center.cast<float>();
+  Eigen::Vector3d new_center = mean_e + middle_n * element_normal;
+  center_estimates.push_back(new_center);
+  mass_center = new_center.cast<float>();
+  */
   center_estimates.push_back(mass_center.cast<double>());
 
   removeDuplicatedPoints(filtered_cloud, 0.003);
@@ -1167,6 +1183,14 @@ bool MeshGeneration::getReconstructionParameters(
   std::string save2 = "/home/philipp/Schreibtisch/resulting_points" +
                       std::to_string(idx) + ".ply";
   pcl::io::savePLYFile(save2, *filtered_cloud);
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr center_point(
+      new pcl::PointCloud<pcl::PointXYZ>());
+  center_point->push_back(
+      pcl::PointXYZ(mass_center.x(), mass_center.y(), mass_center.z()));
+  std::string save3 =
+      "/home/philipp/Schreibtisch/center_point" + std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save3, *center_point);
 
   // Structure of strong points
   pcl::PointCloud<pcl::PointXYZ>::Ptr alive_strong_points_cloud(
@@ -1186,9 +1210,9 @@ bool MeshGeneration::getReconstructionParameters(
   }
   removeDuplicatedPoints(alive_strong_points_cloud);
 
-  std::string save3 = "/home/philipp/Schreibtisch/alive_strong_points_cloud" +
+  std::string save4 = "/home/philipp/Schreibtisch/alive_strong_points_cloud" +
                       std::to_string(idx) + ".ply";
-  pcl::io::savePLYFile(save3, *alive_strong_points_cloud);
+  pcl::io::savePLYFile(save4, *alive_strong_points_cloud);
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr alive_element_points(
       new pcl::PointCloud<pcl::PointXYZ>());
