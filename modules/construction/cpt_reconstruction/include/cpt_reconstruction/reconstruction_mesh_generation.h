@@ -160,7 +160,7 @@ class MeshGeneration {
   void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
 
   void computePlanarConvexHull(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                               pcl::PolygonMesh &mesh);
+                               pcl::PolygonMesh &mesh, bool include_offsets);
 
   void computeAllPlanes(bool do_normal_correction = true, double eps = 0.1);
 
