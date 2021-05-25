@@ -34,7 +34,8 @@ std::string cad_topic;
 std::string cloud_in_topic;
 std::string cloud_out_topic;
 std::string tf_map_frame;
-std::string lidar_frame;
+std::string cloud_frame;
+double dist_threshold;
 int input_queue_size;
 bool cad_trigger;
 int map_sampling_density;
@@ -50,6 +51,7 @@ class CloudDistance
     ros::Subscriber cad_sub_;
     ros::Subscriber cloud_in_sub_;
     ros::Publisher cloud_out_pub_;
+    ros::ServiceServer load_published_map_srv_;
     // transformation
     std::shared_ptr<PM::Transformation> transformation_ = PM::get().REG(Transformation).create("RigidTransformation");
     // for reference frame
@@ -125,13 +127,27 @@ class CloudDistance
         DP originalCloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(cloud_msg_in));
         const int dimp1(originalCloud.features.rows());
         // Get transform
-        T_scanner_to_map_ = PointMatcher_ros::eigenMatrixToDim<float>(
-            PointMatcher_ros::transformListenerToEigenMatrix<float>(
-                tf_listener_,
-                tf_map_frame,  // to
-                lidar_frame,        // from
-                stamp),
-            dimp1);
+
+        try {
+          T_scanner_to_map_ = PointMatcher_ros::eigenMatrixToDim<float>(
+              PointMatcher_ros::transformListenerToEigenMatrix<float>(tf_listener_,
+                                                                      tf_map_frame,  // to
+                                                                      cloud_frame,   // from
+                                                                      stamp),
+              dimp1);
+        } catch (tf::ExtrapolationException e) {
+          ROS_ERROR_STREAM("Extrapolation Exception. stamp = "
+                           << stamp << " now = " << ros::Time::now()
+                           << " delta = " << ros::Time::now() - stamp << std::endl
+                           << e.what());
+          return;
+        } catch (...) {
+          // Everything else.
+          ROS_ERROR_STREAM("Unexpected exception... ignoring scan.");
+          return;
+        }
+
+        
         // Transform pointcloud
         DP pc_original = transformation_->compute(originalCloud, T_scanner_to_map_);
         publishDistanceToMeshAsPC(pc_original, cloud_out_pub_, stamp);
@@ -140,6 +156,12 @@ class CloudDistance
       else{
         std::cout << "cad not yet initialized!";
       }
+    }
+
+    bool loadPublishedMap(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res) {
+      // Since CAD is published all the time, we need a trigger when to load it
+      cad_trigger = true;
+      return true;
     }
 
     void publishDistanceToMeshAsPC(const DP &aligned_cloud, const ros::Publisher &pub,
@@ -185,6 +207,8 @@ class CloudDistance
       cad_sub_ = nh_.subscribe(cad_topic, 1, &CloudDistance::gotCAD, this);
       cloud_in_sub_ = nh_.subscribe(cloud_in_topic, 1, &CloudDistance::gotCloud, this);
       cloud_out_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(cloud_out_topic, 50, true);
+      load_published_map_srv_ =
+      nh_.advertiseService("load_published_map", &CloudDistance::loadPublishedMap, this);
     };
 };
 }  // namespace selective_icp_dyn
@@ -201,8 +225,9 @@ int main(int argc, char **argv) {
   ros::NodeHandle("~").getParam("inputQueueSize", input_queue_size);
   ros::NodeHandle("~").getParam("cloudOutTopic", cloud_out_topic);
   ros::NodeHandle("~").getParam("tfMapFrame", tf_map_frame);
-  ros::NodeHandle("~").getParam("lidarFrame", lidar_frame);
+  ros::NodeHandle("~").getParam("cloudFrame", cloud_frame);
   ros::NodeHandle("~").getParam("mapSamplingDensity", map_sampling_density);
+  ros::NodeHandle("~").getParam("distThreshold", dist_threshold);
   cad_trigger = false;
   ref_mesh_ready = false;
 
