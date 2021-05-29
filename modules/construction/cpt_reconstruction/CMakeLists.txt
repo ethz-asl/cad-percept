@@ -54,4 +54,7 @@ target_link_libraries(reconstruction_mesh_generation_node ${PROJECT_NAME})# /usr
 # EXPORT #
 ##########
 cs_install()
+
+cs_install_scripts(src/reconstruction_model_integration_node.py)
+
 cs_export()

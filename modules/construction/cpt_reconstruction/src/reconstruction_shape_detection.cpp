@@ -65,8 +65,8 @@ void ShapeDetection::messageCallback(
 
   std::ofstream file1;
   std::ofstream file2;
-  file1.open("/home/philipp/Schreibtisch/outliers_ros.xyz", std::ofstream::app);
-  file2.open("/home/philipp/Schreibtisch/outliers_ros_full.xyz",
+  file1.open("/home/philipp/Schreibtisch/ros_dir/outliers_ros.xyz", std::ofstream::app);
+  file2.open("/home/philipp/Schreibtisch/ros_dir/outliers_ros_full.xyz",
              std::ofstream::app);
   for (int i = 0; i < pcl_cloud_transformed->size(); i++) {
     double x = (*pcl_cloud_transformed)[i].x;

@@ -3,8 +3,8 @@
 
 namespace cad_percept {
 namespace cpt_reconstruction {
-MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle)
-    : nodeHandle_(nodeHandle),
+MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
+    : nodeHandle1_(nodeHandle1), nodeHandle2_(nodeHandle2),
       vertices_model_only_(new pcl::PointCloud<pcl::PointXYZ>()),
       vertices_model_(new pcl::PointCloud<pcl::PointXYZ>()),
       upsampled_model_(new pcl::PointCloud<pcl::PointXYZ>()),
@@ -24,8 +24,11 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle)
   model_octree_->addPointsFromInputCloud();
   model_upsampled_kdtree_->setInputCloud(upsampled_model_);
 
-  subscriber_ = nodeHandle_.subscribe("classified_shapes", 1000,
+  subscriber_ = nodeHandle1_.subscribe("classified_shapes", 1000,
                                       &MeshGeneration::messageCallback, this);
+
+  publisher_ = nodeHandle2_.advertise<::cpt_reconstruction::element_proposals>(
+      "element_proposals", 1000);
   ros::spin();
 }
 
@@ -52,11 +55,11 @@ void MeshGeneration::messageCallback(
       new pcl::PointCloud<pcl::PointXYZ>);
   getHierarchicalVertices(strong_points, weak_points, backup_points);
 
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/strong_points.ply",
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/ros_dir/strong_points.ply",
                        *strong_points);
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/weak_points.ply",
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/ros_dir/weak_points.ply",
                        *weak_points);
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/backup_points.ply",
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/ros_dir/backup_points.ply",
                        *backup_points);
 
   std::vector<Eigen::Vector3d> center_estimates;
@@ -68,14 +71,14 @@ void MeshGeneration::messageCallback(
   pcl::PolygonMesh resulting_mesh;
   evaluateProposals(resulting_mesh, center_estimates, direction_estimates,
                     parameter_estimates);
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/reconstructed_mesh.ply",
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/ros_dir/reconstructed_mesh.ply",
                        resulting_mesh);
 }
 
 void MeshGeneration::preprocessFusedMesh(pcl::PolygonMesh &mesh_detected,
                                          double min_area) {
   pcl::PolygonMesh mesh_model(mesh_model_);
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/mesh_detected.ply",
+  pcl::io::savePLYFile("/home/philipp/Schreibtisch/ros_dir/mesh_detected.ply",
                        mesh_detected);
   combineMeshes(mesh_detected, mesh_model);
 
@@ -346,7 +349,8 @@ void MeshGeneration::getElementProposals(
                                 center_estimates, direction_estimates,
                                 parameter_estimates);
 
-    /* TODO Remove?
+    // TODO Remove?
+    /*
     pcl::PointCloud<pcl::PointXYZ>::Ptr new_strong_points(
         new pcl::PointCloud<pcl::PointXYZ>());
     pcl::fromPCLPointCloud2(mesh_all.cloud, *new_strong_points);
@@ -363,6 +367,15 @@ void MeshGeneration::evaluateProposals(
     std::vector<Eigen::Vector3d> &center_estimates,
     std::vector<Eigen::Matrix3d> &direction_estimates,
     std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates) {
+
+  int id_counter = 0;
+  std::vector<int> ids;
+  std::vector<geometry_msgs::Vector3> dir_1;
+  std::vector<geometry_msgs::Vector3> dir_2;
+  std::vector<geometry_msgs::Vector3> dir_3;
+  std::vector<geometry_msgs::Vector3> centers;
+  std::vector<::cpt_reconstruction::parameters> magnitudes;
+
   for (int i = 0; i < center_estimates.size(); i++) {
     Eigen::Vector3d center_estimate = center_estimates.at(i);
     Eigen::Matrix3d direction_estimate = direction_estimates.at(i);
@@ -387,6 +400,46 @@ void MeshGeneration::evaluateProposals(
       ROS_INFO("Skipped element %d", i);
       continue;
     }
+
+    //Writing message
+    ::cpt_reconstruction::parameters parameters;
+    std::vector<double> a1_temp_vec(&a1[0], a1.data()+a1.cols()*a1.rows());
+    std::vector<double> a2_temp_vec(&a2[0], a2.data()+a2.cols()*a2.rows());
+    std::vector<double> b1_temp_vec(&b1[0], b1.data()+b1.cols()*b1.rows());
+    std::vector<double> b2_temp_vec(&b2[0], b2.data()+b2.cols()*b2.rows());
+    std::vector<double> c1_temp_vec(&c1[0], c1.data()+c1.cols()*c1.rows());
+    std::vector<double> c2_temp_vec(&c2[0], c2.data()+c2.cols()*c2.rows());
+    parameters.a1 = a1_temp_vec;
+    parameters.a2 = a2_temp_vec;
+    parameters.b1 = b1_temp_vec;
+    parameters.b2 = b2_temp_vec;
+    parameters.c1 = c1_temp_vec;
+    parameters.c2 = c2_temp_vec;
+
+    ids.push_back(id_counter++);
+    magnitudes.push_back(parameters);
+
+    geometry_msgs::Vector3 cur_dir_1;
+    geometry_msgs::Vector3 cur_dir_2;
+    geometry_msgs::Vector3 cur_dir_3;
+    cur_dir_1.x = direction_estimate.col(0).x();
+    cur_dir_1.y = direction_estimate.col(0).y();
+    cur_dir_1.z = direction_estimate.col(0).z();
+    cur_dir_2.x = direction_estimate.col(1).x();
+    cur_dir_2.y = direction_estimate.col(1).y();
+    cur_dir_2.z = direction_estimate.col(1).z();
+    cur_dir_3.x = direction_estimate.col(2).x();
+    cur_dir_3.y = direction_estimate.col(2).y();
+    cur_dir_3.z = direction_estimate.col(2).z();
+    dir_1.push_back(cur_dir_1);
+    dir_2.push_back(cur_dir_2);
+    dir_3.push_back(cur_dir_3);
+
+    geometry_msgs::Vector3 cur_center;
+    cur_center.x = center_estimate.x();
+    cur_center.y = center_estimate.y();
+    cur_center.z = center_estimate.z();
+    centers.push_back(cur_center);
 
     double a1_max = a1.maxCoeff() > std::fabs(a1.minCoeff()) ? a1.maxCoeff()
                                                              : a1.minCoeff();
@@ -451,7 +504,7 @@ void MeshGeneration::evaluateProposals(
     element->push_back(pcl::PointXYZ(p7.x(), p7.y(), p7.z()));
     element->push_back(pcl::PointXYZ(p8.x(), p8.y(), p8.z()));
 
-    std::string save = "/home/philipp/Schreibtisch/final_meshing_points" +
+    std::string save = "/home/philipp/Schreibtisch/ros_dir/final_meshing_points" +
                        std::to_string(i) + ".ply";
     pcl::io::savePLYFile(save, *element);
 
@@ -525,6 +578,16 @@ void MeshGeneration::evaluateProposals(
       ROS_INFO(" Couldn't reconstruct convex hull");
     }
   }
+
+  ::cpt_reconstruction::element_proposals element_proposals;
+  element_proposals.ids = ids;
+  element_proposals.magnitudes = magnitudes;
+  element_proposals.centers = centers;
+  element_proposals.dir_1 = dir_1;
+  element_proposals.dir_2 = dir_2;
+  element_proposals.dir_3 = dir_3;
+
+  publisher_.publish(element_proposals);
   ROS_INFO("All done");
 }
 
@@ -692,9 +755,8 @@ void MeshGeneration::computePlanarConvexHull(
 
       double dot_value = std::fabs(plane_normal.dot(face_normal));
       double z_abs = std::fabs(face_normal.z());
-      if ((dot_value > (1.0 - 10e-8)) ||
-          ((dot_value < 0.02 || dot_value > 0.999) &&
-           (z_abs < 0.01 || z_abs > 0.99))) {
+      if ((dot_value < 0.02 || dot_value > 0.999) &&
+           (z_abs < 0.02 || z_abs > 0.998)) {
         mesh_offsets.polygons.push_back(vertices);
       }
     }
@@ -914,21 +976,31 @@ void MeshGeneration::selectMainCandidateFaces(
     Eigen::Vector3d candidate_normal = mesh_plane_normals_.at(i);
     double candidate_d = mesh_plane_d_.at(i);
 
-    if (std::fabs(element_normal.dot(candidate_normal)) > 0.995) {
+    if (element_normal.dot(candidate_normal) < 0){
+      candidate_normal *= -1.0;
+      candidate_d *= -1.0;
+    }
+
+    if (element_normal.dot(candidate_normal) > 0.995) {
       std::vector<uint32_t> vertices = faces_model_.at(i).vertices;
 
+      bool found_candidate = false;
       double min_distance = 1000;
-      for (int p_idx = 0; p_idx < corners->size(); p_idx++) {
+      for (int p_idx = 0; p_idx < corners->size(); p_idx += 5) {
         pcl::PointXYZ p = (*corners)[p_idx];
         double error =
-            std::fabs(candidate_normal.x() * p.x + candidate_normal.y() * p.y +
-                      candidate_normal.z() * p.z + candidate_d);
+            candidate_normal.x() * p.x + candidate_normal.y() * p.y +
+                      candidate_normal.z() * p.z + candidate_d;
         if (error < min_distance) {
           min_distance = error;
+          if (min_distance >= -0.4 && min_distance <= 0.05){
+            found_candidate = true;
+            break;
+          }
         }
       }
 
-      if (min_distance <= 0.4) {
+      if (found_candidate) {
         candidate_faces_main_.push_back(i);
 
         // Do plane flipping
@@ -1285,13 +1357,16 @@ bool MeshGeneration::getReconstructionParameters(
 
   // Corp off confliction points
   // Source: https://pcl.readthedocs.io/en/latest/moment_of_inertia.html
+  /*
   pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
   feature_extractor.setInputCloud(filtered_cloud);
   feature_extractor.compute();
   Eigen::Vector3f major_vector, middle_vector, minor_vector;
   Eigen::Vector3f mass_center;
   feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
-  // feature_extractor.getMassCenter(mass_center);
+  feature_extractor.getMassCenter(mass_center);
+  */
+  Eigen::Vector3f mass_center;
   mass_center = mean_e.cast<float>() + 0.05 * element_normal.cast<float>();
 
   Eigen::Matrix3d corrected_dir = shape_directions_.at(idx);
@@ -1340,7 +1415,7 @@ bool MeshGeneration::getReconstructionParameters(
     }
   }
 
-  feature_extractor.setInputCloud(filtered_cloud);
+  //feature_extractor.setInputCloud(filtered_cloud);
   // feature_extractor.compute();
   // feature_extractor.getMassCenter(mass_center);
   // center_estimates.push_back(mass_center.cast<double>());
@@ -1367,7 +1442,7 @@ bool MeshGeneration::getReconstructionParameters(
 
   removeDuplicatedPoints(filtered_cloud, 0.003);
 
-  std::string save2 = "/home/philipp/Schreibtisch/resulting_points" +
+  std::string save2 = "/home/philipp/Schreibtisch/ros_dir/resulting_points" +
                       std::to_string(idx) + ".ply";
   pcl::io::savePLYFile(save2, *filtered_cloud);
 
@@ -1377,7 +1452,7 @@ bool MeshGeneration::getReconstructionParameters(
   center_point->push_back(
       pcl::PointXYZ(mass_center.x(), mass_center.y(), mass_center.z()));
   std::string save3 =
-      "/home/philipp/Schreibtisch/center_point" + std::to_string(idx) + ".ply";
+      "/home/philipp/Schreibtisch/ros_dir/center_point" + std::to_string(idx) + ".ply";
   pcl::io::savePLYFile(save3, *center_point);
   */
 
@@ -1399,7 +1474,7 @@ bool MeshGeneration::getReconstructionParameters(
   }
   removeDuplicatedPoints(alive_strong_points_cloud);
 
-  std::string save4 = "/home/philipp/Schreibtisch/alive_strong_points_cloud" +
+  std::string save4 = "/home/philipp/Schreibtisch/ros_dir/alive_strong_points_cloud" +
                       std::to_string(idx) + ".ply";
   pcl::io::savePLYFile(save4, *alive_strong_points_cloud);
 

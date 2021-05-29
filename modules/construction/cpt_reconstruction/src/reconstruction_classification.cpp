@@ -183,7 +183,7 @@ void Classification::classifyMesh(Mesh_M &mesh,
                                                                  features);
   std::ifstream in_config(
       "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/"
-      "cpt_reconstruction/resources/mesh_ethz_random_forest_random_area1.bin",
+      "cpt_reconstruction/resources/mesh_ethz_random_forest_random_area1_little_noise.bin",
       std::ios_base::in | std::ios_base::binary);
   classifier.load_configuration(in_config);
 

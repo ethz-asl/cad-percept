@@ -7,6 +7,8 @@
 #include <Eigen/Core>
 #include "cpt_reconstruction/classified_shapes.h"
 #include "cpt_reconstruction/clusters.h"
+#include "cpt_reconstruction/parameters.h"
+#include "cpt_reconstruction/element_proposals.h"
 #include "cpt_reconstruction/shape.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
@@ -68,7 +70,7 @@ namespace cpt_reconstruction {
 class MeshGeneration {
  public:
   MeshGeneration() = delete;
-  MeshGeneration(ros::NodeHandle nodeHandle);
+  MeshGeneration(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2);
 
   enum Semantics {
     WALL = 0,
@@ -80,6 +82,11 @@ class MeshGeneration {
   };
 
  private:
+  ros::NodeHandle nodeHandle1_;
+  ros::NodeHandle nodeHandle2_;
+  ros::Subscriber subscriber_;
+  ros::Publisher publisher_;
+
   // Data from msg
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds_;
   std::vector<int> meshing_classes_;
@@ -178,9 +185,13 @@ class MeshGeneration {
                                 double min_area = 0.0,
                                 bool plane_flipping = true);
 
-  void selectOrthoCandidateFaces(
+  void selectOrthoCandidateFacesWall(
       pcl::PointCloud<pcl::PointXYZ>::Ptr corners_side,
       pcl::PointCloud<pcl::PointXYZ>::Ptr corners_top_bottom,
+      Eigen::Vector3d &element_normal, double min_area = 0.0);
+
+  void selectOrthoCandidateFacesFloorCeiling(
+      pcl::PointCloud<pcl::PointXYZ>::Ptr corners,
       Eigen::Vector3d &element_normal, double min_area = 0.0);
 
   void computeArtificialVertices(
@@ -203,8 +214,6 @@ class MeshGeneration {
       std::vector<Eigen::Matrix3d> &direction_estimates,
       std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates);
 
-  ros::NodeHandle nodeHandle_;
-  ros::Subscriber subscriber_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

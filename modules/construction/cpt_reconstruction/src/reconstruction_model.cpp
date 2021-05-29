@@ -127,7 +127,7 @@ void Model::efficientRANSAC() {
   pcl::ExtractIndices<pcl::PointXYZ> extract;
 
   std::ofstream file;
-  file.open("/home/philipp/Schreibtisch/outliers_ros.xyz", std::ofstream::app);
+  file.open("/home/philipp/Schreibtisch/ros_dir/outliers_ros.xyz", std::ofstream::app);
   Efficient_ransac::Shape_range shapes = ransac.shapes();
   Efficient_ransac::Shape_range::iterator it = shapes.begin();
 

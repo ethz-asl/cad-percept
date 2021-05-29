@@ -8,8 +8,8 @@ Clustering::Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
       counter_(0),
       received_shapes_(0) {
   // preprocessBuildingModel();
-  subscriber_ = nodeHandle1_.subscribe("ransac_shape", 1000,
-                                       &Clustering::messageCallback, this);
+  subscriber_ =
+      nodeHandle1_.subscribe("ransac_shape", 1000, &Clustering::messageCallback, this);
   publisher_ =
       nodeHandle2_.advertise<::cpt_reconstruction::clusters>("clusters", 1000);
   ros::spin();
@@ -255,11 +255,10 @@ void Clustering::fusePlanes() {
       sor.filter(*fused_point_cloud);
 
       //
-      // Recompute ransac normal and filter points
+      // Recompute ransac normal and project/filter(??) points
       pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
       pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
       pcl::SACSegmentation<pcl::PointXYZ> seg;
-      pcl::ExtractIndices<pcl::PointXYZ> extract;
 
       seg.setOptimizeCoefficients(true);
       seg.setModelType(pcl::SACMODEL_PLANE);
@@ -269,11 +268,37 @@ void Clustering::fusePlanes() {
       seg.setInputCloud(fused_point_cloud);
       seg.segment(*inliers, *coefficients);
 
+      /*
+      int num_points = fused_point_cloud->size();
+      Eigen::MatrixXd A(num_points, 4);
+      Eigen::VectorXd B(num_points);
+      for (int i = 0; i < num_points; i++){
+        pcl::PointXYZ p = (*fused_point_cloud)[i];
+        A.block<1, 4>(i, 0) = Eigen::Vector4d(p.x, p.y, p.z, 1.0);
+        B(i) = 0;
+      }
+      Eigen::Vector4d plane_coeff = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(B);
+      Eigen::Vector3d plane_normal(plane_coeff(0),plane_coeff(1),
+                                   plane_coeff(2));
+      plane_normal.normalize();
+      double mean_x = A.col(0).mean();
+      double mean_y = A.col(1).mean();
+      double mean_z = A.col(2).mean();
+      double plane_d = -(mean_x * plane_normal.x() + mean_y * plane_normal.y() + mean_z * plane_normal.z());
+      pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+      coefficients->values.push_back(plane_normal.x());
+      coefficients->values.push_back(plane_normal.y());
+      coefficients->values.push_back(plane_normal.z());
+      coefficients->values.push_back(plane_d);
+      */
+
+      /*
+      pcl::ExtractIndices<pcl::PointXYZ> extract;
       extract.setInputCloud(fused_point_cloud);
       extract.setIndices(inliers);
       extract.setNegative(false);
       extract.filter(*fused_point_cloud);
-
+      */
       Eigen::Vector3d plane_normal(coefficients->values[0],
                                    coefficients->values[1],
                                    coefficients->values[2]);
@@ -353,7 +378,7 @@ void Clustering::removeConflictingClusters() {
       }
     }
     double coverage = ((double)matches) / ((double)cloud_i->size());
-    if (coverage >= 0.5) {
+    if (coverage >= 0.4) {
       remove_idx.push_back(i);
       blocked_idx.push_back(i);
     }
