@@ -10,6 +10,95 @@ import numpy as np
 
 from plyfile import PlyData, PlyElement
 
+import Tkinter as tk
+import threading
+
+manipulationPanel = None
+
+
+class ManipulationPanel:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.protocol("WM_DELETE_WINDOW", self.callback)
+
+        self.variable_a1 = tk.DoubleVar(value=0)
+        self.spinbox_a1 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+                                     textvariable=self.variable_a1)
+        self.spinbox_a1.pack()
+
+        self.variable_a2 = tk.DoubleVar(value=0)
+        self.spinbox_a2 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+                                     textvariable=self.variable_a2)
+        self.spinbox_a2.pack()
+
+        self.variable_b1 = tk.DoubleVar(value=0)
+        self.spinbox_b1 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+                                     textvariable=self.variable_b1)
+        self.spinbox_b1.pack()
+
+        self.variable_b2 = tk.DoubleVar(value=0)
+        self.spinbox_b2 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+                                     textvariable=self.variable_b2)
+        self.spinbox_b2.pack()
+
+        self.variable_c1 = tk.DoubleVar(value=0)
+        self.spinbox_c1 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+                                     textvariable=self.variable_c1)
+        self.spinbox_c1.pack()
+
+        self.variable_c2 = tk.DoubleVar(value=0)
+        self.spinbox_c2 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+                                     textvariable=self.variable_c2)
+        self.spinbox_c2.pack()
+
+    def startMainloop(self):
+        self.root.mainloop()
+
+    def callback(self):
+        self.root.quit()
+
+    def destroy(self):
+        self.root.destroy()
+
+    def quit(self):
+        self.root.quit()
+
+    def getA1Value(self):
+        return float(self.variable_a1.get())
+
+    def getA2Value(self):
+        return float(self.variable_a2.get())
+
+    def getB1Value(self):
+        return float(self.variable_b1.get())
+
+    def getB2Value(self):
+        return float(self.variable_b2.get())
+
+    def getC1Value(self):
+        return float(self.variable_c1.get())
+
+    def getC2Value(self):
+        return float(self.variable_c2.get())
+
+    def setValueA1(self, value):
+        self.variable_a1.set(value)
+
+    def setValueA2(self, value):
+        self.variable_a2.set(value)
+
+    def setValueB1(self, value):
+        self.variable_b1.set(value)
+
+    def setValueB2(self, value):
+        self.variable_b2.set(value)
+
+    def setValueC1(self, value):
+        self.variable_c1.set(value)
+
+    def setValueC2(self, value):
+        self.variable_c2.set(value)
+
 
 class UserInteraction:
     def __init__(self):
@@ -98,6 +187,9 @@ class UserInteraction:
             self.element_centers.append(cur_center)
 
     def loadCommandInterface(self):
+
+        done_meshes = []
+
         while (self.current_element_number < self.number_elements):
             idx = self.current_element_number
             rospy.loginfo(str(self.current_element_number))
@@ -122,6 +214,14 @@ class UserInteraction:
             dir_2 = self.element_directions_2[idx]
             dir_3 = self.element_directions_3[idx]
 
+            global manipulationPanel
+            manipulationPanel.setValueA1(a1[self.ptr_a1])
+            manipulationPanel.setValueA2(- a2[self.ptr_a2])
+            manipulationPanel.setValueB1(b1[self.ptr_b1])
+            manipulationPanel.setValueB2(- b2[self.ptr_b2])
+            manipulationPanel.setValueC1(c1[self.ptr_c1])
+            manipulationPanel.setValueC2(- c2[self.ptr_c2])
+
             p1, p2, p3, p4, p5, p6, p7, p8 = self.getPointsFromParameters(center, dir_1, dir_2, dir_3, a1[self.ptr_a1],
                                                                           a2[self.ptr_a2], b1[self.ptr_b1],
                                                                           b2[self.ptr_b2], c1[self.ptr_c1],
@@ -136,27 +236,32 @@ class UserInteraction:
             o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
             vis = o3d.visualization.VisualizerWithKeyCallback()
             vis.register_key_callback(65, self.callbackExit)  # a
-            vis.register_key_callback(82, self.callbackReduce)
+
             vis.create_window()
             vis.add_geometry(self.model_mesh)
             vis.add_geometry(element)
+            for el in done_meshes:
+                vis.add_geometry(el)
+
+            vis.get_render_option().light_on = True
+            vis.get_render_option().mesh_show_wireframe = True
+            vis.get_render_option().mesh_show_back_face = True
+
             self.render = True
             while (self.render):
-                p1_new, p2_new, p3_new, p4_new, p5_new, p6_new, p7_new, p8_new = self.getPointsFromParameters(center,
-                                                                                                              dir_1,
-                                                                                                              dir_2,
-                                                                                                              dir_3, a1[
-                                                                                                                  self.ptr_a1],
-                                                                                                              a2[
-                                                                                                                  self.ptr_a2],
-                                                                                                              b1[
-                                                                                                                  self.ptr_b1],
-                                                                                                              b2[
-                                                                                                                  self.ptr_b2],
-                                                                                                              c1[
-                                                                                                                  self.ptr_c1],
-                                                                                                              c2[
-                                                                                                                  self.ptr_c2])
+                a1_user = manipulationPanel.getA1Value()
+                a2_user = -manipulationPanel.getA2Value()
+                b1_user = manipulationPanel.getB1Value()
+                b2_user = -manipulationPanel.getB2Value()
+                c1_user = manipulationPanel.getC1Value()
+                c2_user = -manipulationPanel.getC2Value()
+
+                p1_new, p2_new, p3_new, p4_new, \
+                p5_new, p6_new, p7_new, p8_new = self.getPointsFromParameters(center, dir_1, dir_2, dir_3,
+                                                                              a1_user, a2_user,
+                                                                              b1_user, b2_user,
+                                                                              c1_user, c2_user)
+
                 P_updated, T_updated = self.prepareDatapointsForMeshing(p1_new, p2_new, p3_new, p4_new, p5_new, p6_new,
                                                                         p7_new, p8_new)
                 points_updated = o3d.utility.Vector3dVector(P_updated)
@@ -166,6 +271,10 @@ class UserInteraction:
                 vis.update_renderer()
                 if (self.render == False):
                     break
+
+            element.paint_uniform_color(np.array([0, 1, 0]))
+            done_meshes.append(element)
+
             vis.destroy_window()
             self.current_element_number = self.current_element_number + 1
 
@@ -240,7 +349,7 @@ class UserInteraction:
                       [p7[0], p7[1], p7[2]],
                       [p8[0], p8[1], p8[2]]])
 
-        T = [[0, 2, 4], [6, 4, 2], [4, 1, 0], [5, 1, 4], [6, 5, 4], [7, 5, 6], [1, 3, 5], [7, 5, 3], [3, 2, 7],
+        T = [[0, 4, 2], [4, 6, 2], [4, 1, 0], [5, 1, 4], [6, 5, 4], [7, 5, 6], [1, 3, 5], [7, 5, 3], [3, 2, 7],
              [6, 7, 2], [1, 0, 2], [3, 1, 2]]
 
         return P, T
@@ -248,14 +357,6 @@ class UserInteraction:
     def callbackExit(self, vis):
         rospy.loginfo("Pressed a ")
         self.render = False
-
-    def callbackReduce(self, vis):
-        rospy.loginfo("Pressed r ")
-        self.ptr_a1 = 0
-        self.ptr_b1 = 0
-        self.ptr_b2 = 0
-        self.ptr_c1 = 0
-        self.ptr_c2 = 0
 
 
 def callback(msg):
@@ -270,7 +371,11 @@ def model_integration():
     rospy.init_node('model_integration_node', anonymous=True)
     rospy.loginfo("Initialized Python_node")
     rospy.Subscriber("element_proposals", element_proposals, callback)
-    rospy.spin()
+
+    global manipulationPanel
+    manipulationPanel = ManipulationPanel()
+    manipulationPanel.startMainloop()
+    # rospy.spin()
 
 
 if __name__ == '__main__':

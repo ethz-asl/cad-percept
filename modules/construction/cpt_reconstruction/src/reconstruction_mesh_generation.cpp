@@ -823,7 +823,7 @@ void MeshGeneration::flagDuplicatedPlanes(double min_area) {
       double d_2 = mesh_plane_d_.at(j);
 
       if (std::fabs(plane_normal_1.dot(plane_normal_2)) > 0.999 &&
-          std::fabs(d_1 - d_2) < 0.005) {
+          std::fabs(d_1 - d_2) < 0.02) {
         duplicated_faces_.push_back(j);
       }
     }
