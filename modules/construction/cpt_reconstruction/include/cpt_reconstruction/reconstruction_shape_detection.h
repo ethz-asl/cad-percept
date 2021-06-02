@@ -48,6 +48,12 @@ class ShapeDetection {
   void startReceiving();
 
  private:
+  // Parameters
+  double MODEL_TOLERANCE_;
+  int OUTLIER_COUNT_;
+  bool USE_BUFFER_;
+  bool CLEAR_BUFFER_AFTER_ITERATION_;
+
   void messageCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
   ros::NodeHandle nodeHandle1_;
   ros::NodeHandle nodeHandle2_;

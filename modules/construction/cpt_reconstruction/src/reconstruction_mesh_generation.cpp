@@ -37,11 +37,11 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle1,
 void MeshGeneration::messageCallback(
     const ::cpt_reconstruction::classified_shapes &msg) {
   double min_area = 0.0;
+
+  // Consindering Planar Elements only
   pcl::PolygonMesh mesh_detected;
   getMessageData(msg, mesh_detected);
-
   preprocessFusedMesh(mesh_detected, min_area);
-
   getProposalVertices(min_area);
 
   // Split point cloud in three parts:
@@ -73,6 +73,9 @@ void MeshGeneration::messageCallback(
   pcl::PolygonMesh resulting_mesh;
   evaluateProposals(resulting_mesh, center_estimates, direction_estimates,
                     parameter_estimates);
+
+  // Adding cylinders
+
   pcl::io::savePLYFile(
       "/home/philipp/Schreibtisch/ros_dir/reconstructed_mesh.ply",
       resulting_mesh);
@@ -156,6 +159,7 @@ void MeshGeneration::getMessageData(
       axis_.push_back(cur_axis);
       radius_.push_back(cur_radius);
 
+      // Consider Planar elements only
       if (cur_id == 0) {
         pcl::PolygonMesh mesh;
         computePlanarConvexHull(cur_cloud, mesh, true);

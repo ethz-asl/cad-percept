@@ -1,0 +1,30 @@
+#Setup
+SensorType : 0 # 0 -> SuperMegaBot, 1 -> Leica Totalstation
+
+
+# Shape Detection
+ModelTolerance : 0.05
+OutlierCount: 60000 #Only for SMB
+
+UseBuffer : false
+ClearBufferAfterIteration: 2
+
+OctreeFilterResolution: 0.02
+
+RANSACProbability: 0.00001;
+RANSACMinPoints: 250
+RANSACEpsilon: 0.03
+RANSACClusterEpsilon: 0.2
+RANSACNormalThreshold: 0.90 
+
+#Clustering
+
+
+#Classification
+
+
+
+# Mesh Generation
+
+
+#Model Integration

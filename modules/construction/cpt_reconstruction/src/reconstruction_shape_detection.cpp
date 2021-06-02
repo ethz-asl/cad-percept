@@ -12,6 +12,12 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
       counter_planes_(0),
       counter_cyl_(0),
       iteration_counter_(0) {
+  nodeHandle1.getParam("ModelTolerance", MODEL_TOLERANCE_);
+  nodeHandle1.getParam("OutlierCount", OUTLIER_COUNT_);
+  nodeHandle1.getParam("UseBuffer", USE_BUFFER_);
+  nodeHandle1.getParam("ClearBufferAfterIteration",
+                       CLEAR_BUFFER_AFTER_ITERATION_);
+
   subscriber1_ = nodeHandle1_.subscribe("corrected_scan", 1000,
                                         &ShapeDetection::messageCallback, this);
   publisher_ =
@@ -75,7 +81,7 @@ void ShapeDetection::messageCallback(
     double z = (*pcl_cloud_transformed)[i].z;
     pcl::PointXYZ pcl_p(x, y, z);
     model_->queryTree(pcl_p);
-    if (model_->getMinDistance() >= 0.05) {
+    if (model_->getMinDistance() >= MODEL_TOLERANCE_) {
       model_->addOutlier(pcl_p);
       file1 << x << " " << y << " " << z << "\n";
     }
@@ -85,7 +91,7 @@ void ShapeDetection::messageCallback(
   file2.close();
 
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
-  if (model_->getOutlierCount() > 60000) {
+  if (model_->getOutlierCount() > OUTLIER_COUNT_) {
     model_->clearRansacShapes();
     model_->applyFilter();
     model_->efficientRANSAC();
@@ -134,7 +140,8 @@ void ShapeDetection::messageCallback(
       publisher_.publish(shape_msg);
     }
 
-    if (true || ((iteration_counter_ >= 2) && (iteration_counter_ % 2 == 0))) {
+    if (USE_BUFFER_ && CLEAR_BUFFER_AFTER_ITERATION_ >= 2 &&
+        CLEAR_BUFFER_AFTER_ITERATION_ % 2 == 0) {
       model_->clearBuffer();
     }
 

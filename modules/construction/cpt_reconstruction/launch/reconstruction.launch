@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+	<param name="use_sim_time" value="true"/>
+    <rosparam file="$(find cpt_reconstruction)/launch/parameters.yaml" />
+	
+	<node name="shape_detection" pkg ="cpt_reconstruction" type="reconstruction_shape_detection_node" output="screen" launch-prefix="gnome-terminal --tab -e"/>
+	
+	<node name="clustering" pkg ="cpt_reconstruction" type="reconstruction_clustering_node" output="screen" launch-prefix="gnome-terminal --tab -e"/>
+	
+	<node name="classification" pkg ="cpt_reconstruction" type="reconstruction_classification_node" output="screen" launch-prefix="gnome-terminal --tab -e"/>
+	
+	<node name="mesh_generation" pkg ="cpt_reconstruction" type="reconstruction_mesh_generation_node" output="screen" launch-prefix="gnome-terminal --tab -e"/>
+	
+	<node name="model_integration" pkg ="cpt_reconstruction" type="reconstruction_model_integration_node.py" output="screen"/>
+	
+</launch>
