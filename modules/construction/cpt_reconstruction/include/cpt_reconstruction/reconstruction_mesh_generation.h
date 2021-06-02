@@ -7,8 +7,8 @@
 #include <Eigen/Core>
 #include "cpt_reconstruction/classified_shapes.h"
 #include "cpt_reconstruction/clusters.h"
-#include "cpt_reconstruction/parameters.h"
 #include "cpt_reconstruction/element_proposals.h"
+#include "cpt_reconstruction/parameters.h"
 #include "cpt_reconstruction/shape.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
@@ -162,7 +162,8 @@ class MeshGeneration {
       pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
       pcl::PointCloud<pcl::PointXYZ>::Ptr backup_points);
 
-  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal);
+  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal,
+                             int cur_id);
 
   void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
 
@@ -213,7 +214,6 @@ class MeshGeneration {
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
       std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates);
-
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

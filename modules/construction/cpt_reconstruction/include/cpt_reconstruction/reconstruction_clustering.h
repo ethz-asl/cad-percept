@@ -77,8 +77,10 @@ class Clustering {
   bool checkValidPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                        int valid_size, int min_size);
   void fusePlanes();
-  void removeSingleDetections();
-  void removeConflictingClusters();
+  void fuseCylinders();
+  void removeSingleDetectionsPlanes();
+  void removeSingleDetectionsCylinders();
+  void removeConflictingClustersPlanes();
   void fit3DPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                   pcl::PolygonMesh &mesh);
   void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
@@ -88,12 +90,22 @@ class Clustering {
   ros::Subscriber subscriber_;
   ros::Publisher publisher_;
   int counter_;
-  int received_shapes_;
-  std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_;
-  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_;
+
+  // Planes
+  int received_shapes_plane_;
+  std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_plane_;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_plane_;
   std::vector<Eigen::Vector3d> ransac_normals_;
-  std::vector<int> fusing_count_;
+  std::vector<int> fusing_count_plane_;
   std::vector<Eigen::Vector3d> robot_positions_;
+
+  // Cylinders
+  int received_shapes_cyl_;
+  std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_cyl_;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_cyl_;
+  std::vector<Eigen::Vector3d> axis_;
+  std::vector<double> radius_;
+  std::vector<int> fusing_count_cyl_;
 
   // Fit plane
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> detected_shapes_points_;

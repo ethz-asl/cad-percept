@@ -31,7 +31,6 @@ void Classification::messageCallback(
   std::vector<PointVectorPair_R> points;
   for (int i = 0; i < clouds.size(); i++) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud = clouds.at(i);
-
     for (int j = 0; j < cur_cloud->size(); j++) {
       PointVectorPair_R pvp;
       pcl::PointXYZ p = (*cur_cloud)[j];
@@ -183,7 +182,8 @@ void Classification::classifyMesh(Mesh_M &mesh,
                                                                  features);
   std::ifstream in_config(
       "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/"
-      "cpt_reconstruction/resources/mesh_ethz_random_forest_random_area1_little_noise.bin",
+      "cpt_reconstruction/resources/"
+      "mesh_ethz_random_forest_random_area1_little_noise.bin",
       std::ios_base::in | std::ios_base::binary);
   classifier.load_configuration(in_config);
 

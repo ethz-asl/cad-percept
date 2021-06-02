@@ -65,7 +65,8 @@ void ShapeDetection::messageCallback(
 
   std::ofstream file1;
   std::ofstream file2;
-  file1.open("/home/philipp/Schreibtisch/ros_dir/outliers_ros.xyz", std::ofstream::app);
+  file1.open("/home/philipp/Schreibtisch/ros_dir/outliers_ros.xyz",
+             std::ofstream::app);
   file2.open("/home/philipp/Schreibtisch/ros_dir/outliers_ros_full.xyz",
              std::ofstream::app);
   for (int i = 0; i < pcl_cloud_transformed->size(); i++) {
@@ -74,7 +75,7 @@ void ShapeDetection::messageCallback(
     double z = (*pcl_cloud_transformed)[i].z;
     pcl::PointXYZ pcl_p(x, y, z);
     model_->queryTree(pcl_p);
-    if (model_->getMinDistance() >= 0.15) {
+    if (model_->getMinDistance() >= 0.05) {
       model_->addOutlier(pcl_p);
       file1 << x << " " << y << " " << z << "\n";
     }
@@ -84,7 +85,7 @@ void ShapeDetection::messageCallback(
   file2.close();
 
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
-  if (model_->getOutlierCount() > 50000) {
+  if (model_->getOutlierCount() > 60000) {
     model_->clearRansacShapes();
     model_->applyFilter();
     model_->efficientRANSAC();

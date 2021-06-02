@@ -36,6 +36,8 @@
 #include <CGAL/mst_orient_normals.h>
 #include <CGAL/property_map.h>
 #include <CGAL/tags.h>
+#include <cpt_reconstruction/reconstruction_custom_cylinder.h>
+#include <cpt_reconstruction/reconstruction_custom_plane.h>
 //#include <CGAL/GLPK_mixed_integer_program_traits.h>
 
 // Type declarations.
@@ -49,11 +51,8 @@ typedef CGAL::Shape_detection::Efficient_RANSAC_traits<Kernel, Pwn_vector,
                                                        Point_map, Normal_map>
     Traits;
 typedef CGAL::Shape_detection::Efficient_RANSAC<Traits> Efficient_ransac;
-typedef CGAL::Shape_detection::Cone<Traits> Cone;
-typedef CGAL::Shape_detection::Cylinder<Traits> Cylinder;
-typedef CGAL::Shape_detection::Plane<Traits> Plane;
-typedef CGAL::Shape_detection::Sphere<Traits> Sphere;
-typedef CGAL::Shape_detection::Torus<Traits> Torus;
+typedef CGAL::Shape_detection::Custom_Cylinder<Traits> Cylinder;
+typedef CGAL::Shape_detection::Custom_Plane<Traits> Plane;
 // typedef CGAL::Parallel_tag Concurrency_tag;
 
 namespace cad_percept {

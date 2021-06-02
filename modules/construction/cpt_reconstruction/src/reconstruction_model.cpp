@@ -1,23 +1,5 @@
 #include <cpt_reconstruction/reconstruction_model.h>
 
-// Type declarations.
-typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
-typedef Kernel::FT FT;
-typedef std::pair<Kernel::Point_3, Kernel::Vector_3> Point_with_normal;
-typedef std::vector<Point_with_normal> Pwn_vector;
-typedef CGAL::First_of_pair_property_map<Point_with_normal> Point_map;
-typedef CGAL::Second_of_pair_property_map<Point_with_normal> Normal_map;
-typedef CGAL::Shape_detection::Efficient_RANSAC_traits<Kernel, Pwn_vector,
-                                                       Point_map, Normal_map>
-    Traits;
-typedef CGAL::Shape_detection::Efficient_RANSAC<Traits> Efficient_ransac;
-typedef CGAL::Shape_detection::Cone<Traits> Cone;
-typedef CGAL::Shape_detection::Cylinder<Traits> Cylinder;
-typedef CGAL::Shape_detection::Plane<Traits> Plane;
-typedef CGAL::Shape_detection::Sphere<Traits> Sphere;
-typedef CGAL::Shape_detection::Torus<Traits> Torus;
-// typedef CGAL::Parallel_tag Concurrency_tag;
-
 namespace cad_percept {
 namespace cpt_reconstruction {
 
@@ -112,10 +94,10 @@ void Model::efficientRANSAC() {
 
   Efficient_ransac::Parameters parameters;
   parameters.probability = 0.00001;
-  parameters.min_points = 200;
+  parameters.min_points = 250;
   parameters.epsilon = 0.03;
-  parameters.cluster_epsilon = 0.1;  // 0.5
-  parameters.normal_threshold = 0.80;
+  parameters.cluster_epsilon = 0.2;  // 0.5
+  parameters.normal_threshold = 0.90;
 
   ransac.detect(parameters);
 
@@ -126,8 +108,6 @@ void Model::efficientRANSAC() {
   pcl::PointIndices::Ptr detected_points(new pcl::PointIndices());
   pcl::ExtractIndices<pcl::PointXYZ> extract;
 
-  std::ofstream file;
-  file.open("/home/philipp/Schreibtisch/ros_dir/outliers_ros.xyz", std::ofstream::app);
   Efficient_ransac::Shape_range shapes = ransac.shapes();
   Efficient_ransac::Shape_range::iterator it = shapes.begin();
 
@@ -156,7 +136,6 @@ void Model::efficientRANSAC() {
         Eigen::Vector3d p_orig(p.x(), p.y(), p.z());
         Eigen::Vector3d p_proj =
             p_orig - (p_orig.dot(ransac_normal) + plane_3.d()) * ransac_normal;
-        file << p_proj.x() << " " << p_proj.y() << " " << p_proj.z() << "\n";
         points.block<3, 1>(0, i) =
             Eigen::Vector3d(p_proj.x(), p_proj.y(), p_proj.z());
       }
@@ -174,13 +153,13 @@ void Model::efficientRANSAC() {
         detected_points->indices.push_back(idx_assigned_points.at(i));
         Point_with_normal point_with_normal = outliers[idx_assigned_points[i]];
         Kernel::Point_3 p = point_with_normal.first;
-        file << p.x() << " " << p.y() << " " << p.z() << "\n";
         points.block<3, 1>(0, i) = Eigen::Vector3d(p.x(), p.y(), p.z());
       }
       Kernel::Vector_3 axis_temp = cyl->axis().to_vector();
       Eigen::Vector3d axis(axis_temp.x(), axis_temp.y(), axis_temp.z());
       axis.normalized();
       double radius = cyl->radius();
+      ROS_INFO("Radius is : %f", radius);
       points_shape_.push_back(points);
       ransac_normals_.push_back(Eigen::Vector3d::Zero());
       shape_id_.push_back(1);
@@ -189,7 +168,6 @@ void Model::efficientRANSAC() {
     }
     it++;
   }
-  file.close();
 
   extract.setInputCloud(meshing_points_);
   extract.setIndices(detected_points);
