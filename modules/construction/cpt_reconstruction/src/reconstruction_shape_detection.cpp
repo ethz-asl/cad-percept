@@ -4,7 +4,7 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
-                               ros::NodeHandle nodeHandle2, Model* model)
+                               ros::NodeHandle nodeHandle2, Model *model)
     : nodeHandle1_(nodeHandle1),
       nodeHandle2_(nodeHandle2),
       model_(model),
@@ -12,11 +12,21 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
       counter_planes_(0),
       counter_cyl_(0),
       iteration_counter_(0) {
+  nodeHandle1.getParam("SensorType", SENSOR_TYPE_);
+  nodeHandle1.getParam("TransformationMatrix", TRANSFORMATION_VEC_);
   nodeHandle1.getParam("ModelTolerance", MODEL_TOLERANCE_);
   nodeHandle1.getParam("OutlierCount", OUTLIER_COUNT_);
   nodeHandle1.getParam("UseBuffer", USE_BUFFER_);
   nodeHandle1.getParam("ClearBufferAfterIteration",
                        CLEAR_BUFFER_AFTER_ITERATION_);
+  nodeHandle1.getParam("OutputAllPointsFile", ALL_POINTS_PATH_);
+  nodeHandle1.getParam("OutputOutlierPointsFile", OUTLIER_POINTS_PATH_);
+
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      TRANSFORMATION_(i, j) = TRANSFORMATION_VEC_.at(i * 4 + j);
+    }
+  }
 
   subscriber1_ = nodeHandle1_.subscribe("corrected_scan", 1000,
                                         &ShapeDetection::messageCallback, this);
@@ -26,7 +36,7 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
 }
 
 void ShapeDetection::messageCallback(
-    const sensor_msgs::PointCloud2ConstPtr& cloud_msg) {
+    const sensor_msgs::PointCloud2ConstPtr &cloud_msg) {
   if (update_transformation_) {
     tf::StampedTransform transform;
     tf_listener_.lookupTransform("/map", "/marker", ros::Time(0), transform);
@@ -71,10 +81,8 @@ void ShapeDetection::messageCallback(
 
   std::ofstream file1;
   std::ofstream file2;
-  file1.open("/home/philipp/Schreibtisch/ros_dir/outliers_ros.xyz",
-             std::ofstream::app);
-  file2.open("/home/philipp/Schreibtisch/ros_dir/outliers_ros_full.xyz",
-             std::ofstream::app);
+  file1.open(ALL_POINTS_PATH_, std::ofstream::app);
+  file2.open(OUTLIER_POINTS_PATH_, std::ofstream::app);
   for (int i = 0; i < pcl_cloud_transformed->size(); i++) {
     double x = (*pcl_cloud_transformed)[i].x;
     double y = (*pcl_cloud_transformed)[i].y;
@@ -97,11 +105,11 @@ void ShapeDetection::messageCallback(
     model_->efficientRANSAC();
     // model_->SACSegmentation();
 
-    std::vector<Eigen::MatrixXd>* points_shape = model_->getPointShapes();
-    std::vector<Eigen::Vector3d>* ransac_normal = model_->getRansacNormals();
-    std::vector<Eigen::Vector3d>* axis = model_->getAxis();
-    std::vector<double>* radius = model_->getRadius();
-    std::vector<int>* shapes_ids = model_->getShapeIDs();
+    std::vector<Eigen::MatrixXd> *points_shape = model_->getPointShapes();
+    std::vector<Eigen::Vector3d> *ransac_normal = model_->getRansacNormals();
+    std::vector<Eigen::Vector3d> *axis = model_->getAxis();
+    std::vector<double> *radius = model_->getRadius();
+    std::vector<int> *shapes_ids = model_->getShapeIDs();
 
     // Publish mesh to mesh_gereration
     for (int i = 0; i < shapes_ids->size(); i++) {
@@ -140,8 +148,8 @@ void ShapeDetection::messageCallback(
       publisher_.publish(shape_msg);
     }
 
-    if (USE_BUFFER_ && CLEAR_BUFFER_AFTER_ITERATION_ >= 2 &&
-        CLEAR_BUFFER_AFTER_ITERATION_ % 2 == 0) {
+    if ((!USE_BUFFER_) || (CLEAR_BUFFER_AFTER_ITERATION_ >= 2 &&
+                           CLEAR_BUFFER_AFTER_ITERATION_ % 2 == 0)) {
       model_->clearBuffer();
     }
 

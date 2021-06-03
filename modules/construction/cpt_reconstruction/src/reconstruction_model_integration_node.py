@@ -14,7 +14,7 @@ import Tkinter as tk
 import threading
 
 manipulationPanel = None
-
+BUILDING_MODEL_PATH_ = ""
 
 class ManipulationPanel:
     def __init__(self):
@@ -279,12 +279,12 @@ class UserInteraction:
             self.current_element_number = self.current_element_number + 1
 
     def setModelDataForO3D(self):
-        mesh = o3d.io.read_triangle_mesh('/home/philipp/Schreibtisch/data/CLA_MissingParts_3.ply')
+        mesh = o3d.io.read_triangle_mesh(BUILDING_MODEL_PATH_)
         mesh.paint_uniform_color(np.array([0, 0, 1]))
         self.model_mesh = mesh
 
     def prepeareModelData(self):
-        plydata = PlyData.read('/home/philipp/Schreibtisch/data/CLA_MissingParts_3.ply')
+        plydata = PlyData.read(BUILDING_MODEL_PATH_)
 
         num_faces = plydata['face'].count
         x = np.array([])
@@ -369,6 +369,10 @@ def callback(msg):
 
 def model_integration():
     rospy.init_node('model_integration_node', anonymous=True)
+
+    global BUILDING_MODEL_PATH_
+    BUILDING_MODEL_PATH_ = rospy.get_param("BuildingModelMeshFile")
+
     rospy.loginfo("Initialized Python_node")
     rospy.Subscriber("element_proposals", element_proposals, callback)
 

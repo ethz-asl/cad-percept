@@ -3,16 +3,24 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 
-Model::Model(std::string filename, Eigen::Matrix4d transformation)
-    : meshing_points_(new pcl::PointCloud<pcl::PointXYZ>),
-      filename_(filename),
-      transformation_(transformation) {}
+Model::Model(const ros::NodeHandle& nodeHandle)
+    : meshing_points_(new pcl::PointCloud<pcl::PointXYZ>) {
+  nodeHandle.getParam("UpsampledBuildingModelFile",
+                      UPSAMPLED_BUILDING_MODEL_PATH_);
+  nodeHandle.getParam("UseFilter", USE_FILTER_);
+  nodeHandle.getParam("OctreeFilterResolution", OCTREE_FILTER_RESOLUTION_);
+  nodeHandle.getParam("RANSACProbability", RANSAC_PROBABILITY_);
+  nodeHandle.getParam("RANSACMinPoints", RANSAC_MIN_POINTS_);
+  nodeHandle.getParam("RANSACEpsilon", RANSAC_EPSILON_);
+  nodeHandle.getParam("RANSACClusterEpsilon", RANSAC_CLUSTER_EPSILON_);
+  nodeHandle.getParam("RANSACNormalThreshold", RANSAC_NORMAL_THRESHOLD_);
+}
 
 void Model::preprocess() {
   pcl::PointCloud<pcl::PointXYZ>::Ptr model_points(
       new pcl::PointCloud<pcl::PointXYZ>);
   pcl::PLYReader reader;
-  reader.read(filename_, *model_points);
+  reader.read(UPSAMPLED_BUILDING_MODEL_PATH_, *model_points);
   model_points_ = model_points;
 
   // Build Search Tree
@@ -44,27 +52,29 @@ void Model::addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 }
 
 void Model::applyFilter() {
-  ROS_INFO("Size before VoxelGridFiltering: %d\n", meshing_points_->size());
-  pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(
-      0.02f);
-  octree_filter.setInputCloud(meshing_points_);
-  octree_filter.addPointsFromInputCloud();
-  pcl::PointCloud<pcl::PointXYZ>::VectorType voxelCentroids;
-  octree_filter.getVoxelCentroids(voxelCentroids);
-  meshing_points_->clear();
-  for (int i = 0; i < voxelCentroids.size(); i++) {
-    meshing_points_->push_back(voxelCentroids[i]);
+  if (USE_FILTER_) {
+    ROS_INFO("Size before VoxelGridFiltering: %d\n", meshing_points_->size());
+    pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(
+        OCTREE_FILTER_RESOLUTION_);
+    octree_filter.setInputCloud(meshing_points_);
+    octree_filter.addPointsFromInputCloud();
+    pcl::PointCloud<pcl::PointXYZ>::VectorType voxelCentroids;
+    octree_filter.getVoxelCentroids(voxelCentroids);
+    meshing_points_->clear();
+    for (int i = 0; i < voxelCentroids.size(); i++) {
+      meshing_points_->push_back(voxelCentroids[i]);
+    }
+    /*
+    Error for too big point clouds
+    [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset.
+    Integer indices would overflow.[ pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
+    voxel_grid.setInputCloud(meshing_points_);
+    voxel_grid.setLeafSize(0.01f, 0.01f, 0.01f);
+    voxel_grid.filter(*meshing_points_);
+    */
+    ROS_INFO("Size after VoxelGridFiltering: %d\n", meshing_points_->size());
   }
-  /*
-  Error for too big point clouds
-  [pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset.
-  Integer indices would overflow.[ pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
-  voxel_grid.setInputCloud(meshing_points_);
-  voxel_grid.setLeafSize(0.01f, 0.01f, 0.01f);
-  voxel_grid.filter(*meshing_points_);
-  */
-  ROS_INFO("Size after VoxelGridFiltering: %d\n", meshing_points_->size());
-};
+}
 
 void Model::efficientRANSAC() {
   pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
@@ -93,11 +103,11 @@ void Model::efficientRANSAC() {
   ransac.add_shape_factory<Cylinder>();
 
   Efficient_ransac::Parameters parameters;
-  parameters.probability = 0.00001;
-  parameters.min_points = 250;
-  parameters.epsilon = 0.03;
-  parameters.cluster_epsilon = 0.2;  // 0.5
-  parameters.normal_threshold = 0.90;
+  parameters.probability = RANSAC_PROBABILITY_;
+  parameters.min_points = RANSAC_MIN_POINTS_;
+  parameters.epsilon = RANSAC_EPSILON_;
+  parameters.cluster_epsilon = RANSAC_CLUSTER_EPSILON_;  // 0.5
+  parameters.normal_threshold = RANSAC_NORMAL_THRESHOLD_;
 
   ransac.detect(parameters);
 

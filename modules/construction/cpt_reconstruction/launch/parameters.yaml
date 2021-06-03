@@ -1,30 +1,88 @@
-#Setup
-SensorType : 0 # 0 -> SuperMegaBot, 1 -> Leica Totalstation
+# Setup
+# 0 -> SuperMegaBot, 1 -> Totalstation
+SensorType : 0
+
+#For Totalstation only:
+TransformationMatrix: [1.0, 0.0, 0.0, 0.0,
+                       0.0, 1.0, 0.0, 0.0,
+                       0.0, 0.0, 1.0, 0.0,
+                       0.0, 0.0, 0.0, 1.0]
 
 
-# Shape Detection
-ModelTolerance : 0.05
+########################################################################
+### Paths
+BuildingModelMeshFile: "/home/philipp/Schreibtisch/data/CLA_MissingParts_3.ply"
+UpsampledBuildingModelFile: "/home/philipp/Schreibtisch/data/CLA_MissingParts_3_5m.ply"
+ClassificationConfigFile: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area1_little_noise.bin"
+
+OutputAllPointsFile: "/home/philipp/Schreibtisch/ros_dir/outliers_ros.xyz"
+OutputOutlierPointsFile: "/home/philipp/Schreibtisch/ros_dir/outliers_ros_full.xyz"
+OutputShapesPath: "/home/philipp/Schreibtisch/Shapes/"
+OutputMeshesPath: "/home/philipp/Schreibtisch/Meshes/"
+OutoutClassificationResultFile: "/home/philipp/Schreibtisch/ros_dir/mesh_classification_test.ply"
+OutputMeshingTempPath: "/home/philipp/Schreibtisch/ros_dir/"
+
+
+########################################################################
+### Shape Detection
+ModelTolerance: 0.05
 OutlierCount: 60000 #Only for SMB
 
-UseBuffer : false
+UseBuffer: false
 ClearBufferAfterIteration: 2
 
+UseFilter: true
 OctreeFilterResolution: 0.02
 
-RANSACProbability: 0.00001;
-RANSACMinPoints: 250
+RANSACProbability: 0.00001
+RANSACMinPoints: 200
 RANSACEpsilon: 0.03
 RANSACClusterEpsilon: 0.2
-RANSACNormalThreshold: 0.90 
-
-#Clustering
-
-
-#Classification
+RANSACNormalThreshold: 0.90
+########################################################################
 
 
+### Clustering
+VoxelGridFilterResolution: 0.01
+MinSizeValidPlane: 50
+ValidSizeThresholdPlane: 1000
+ThresholdSecondEigenvalue: 0.00015
+IntervalFusingClusters: 50
+IntervalCleaningClusters: 200
+IntervalForwardingClusters: 200
 
-# Mesh Generation
+#Fusing Planes
+DotProductNormals: 0.99
+DotProductAxis: 0.99
+DistanceMatchingPoint: 0.05
+Coverage: 0.01
+
+#Conflicting Clusters
+DistanceConflictingPoint: 0.03
+Overlap: 0.4
+
+DetectionCount: 1
+
+########################################################################
+### Classification
+CellSize: 0.1
+SmoothingIterations: 4
+MaxFacetLength: 0.5
+NumberOfScales: 5
+NRingQuery: 2
 
 
-#Model Integration
+########################################################################
+### Mesh Generation
+UpsampledModelOctreeResolution: 0.05
+MinArea: 0.0
+DefaultOffset: 0.2
+
+DuplicateDotProduct: 0.999
+DuplicateDiffD: 0.02
+
+
+########################################################################
+### Model Integration
+
+

@@ -60,7 +60,7 @@ namespace cpt_reconstruction {
 class Model {
  public:
   Model() = delete;
-  Model(std::string filename, Eigen::Matrix4d transformation);
+  Model(const ros::NodeHandle& nodeHandle);
 
   void preprocess();
   void queryTree(pcl::PointXYZ p);
@@ -83,8 +83,15 @@ class Model {
   void clearBuffer();
 
  private:
-  Eigen::Matrix4d transformation_;
-  std::string filename_;
+  std::string UPSAMPLED_BUILDING_MODEL_PATH_;
+  bool USE_FILTER_;
+  float OCTREE_FILTER_RESOLUTION_;
+  double RANSAC_PROBABILITY_;
+  int RANSAC_MIN_POINTS_;
+  double RANSAC_EPSILON_;
+  double RANSAC_CLUSTER_EPSILON_;
+  double RANSAC_NORMAL_THRESHOLD_;
+
   pcl::PointCloud<pcl::PointXYZ>::Ptr model_points_;
   pcl::PointCloud<pcl::PointXYZ>::Ptr meshing_points_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree_;

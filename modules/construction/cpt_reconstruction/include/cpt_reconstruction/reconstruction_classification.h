@@ -99,6 +99,14 @@ class Classification {
   Classification(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2);
 
  private:
+  std::string RF_CONFIG_PATH_;
+  std::string RF_RESULT_PATH_;
+  double CELL_SIZE_;
+  int SMOOTHING_ITERATIONS_;
+  double MAX_FACET_LENGTH_;
+  int NUMBER_OF_SCALES_;
+  int N_RING_QUERY_;
+
   void messageCallback(const ::cpt_reconstruction::clusters &msg);
   void computeReconstructedSurfaceMesh(
       std::vector<PointVectorPair_R> &points, Mesh_M &mesh,

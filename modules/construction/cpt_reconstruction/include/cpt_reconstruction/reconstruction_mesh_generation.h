@@ -87,6 +87,15 @@ class MeshGeneration {
   ros::Subscriber subscriber_;
   ros::Publisher publisher_;
 
+  std::string UPSAMPLED_BUILDING_MODEL_PATH_;
+  std::string BUILDING_MODEL_PATH_;
+  std::string OUTPUT_DIR_;
+  float UPSAMPLED_MODEL_OCTREE_RESOLUTION_;
+  double MIN_AREA_;
+  double DEFAULT_OFFSET_;
+  double DUPLICATE_DOT_PRODUCT_;
+  double DUPLICATE_DIFF_D_;
+
   // Data from msg
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds_;
   std::vector<int> meshing_classes_;

@@ -73,6 +73,23 @@ class Clustering {
   Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2);
 
  private:
+  std::string SHAPES_PATH_;
+  std::string MESHES_PATH_;
+  float VOXEL_GRID_FILTER_RESOLUTION_;
+  int MIN_SIZE_VALID_PLANE_;
+  int VALID_SIZE_THRESHOLD_PLANE_;
+  double THRESHOLD_SECOND_EIGENVALUE_;
+  int INTERVAL_FUSING_CLUSTERS_;
+  int INTERVAL_CLEANING_CLUSTERS_;
+  int INTERVAL_FORWARDING_CLUSTERS_;
+  double DOT_PRODUCT_NORMALS_;
+  double DOT_PRODUCT_AXIS_;
+  double DISTANCE_MATCHING_POINT_;
+  double COVERAGE_;
+  double DISTANCE_CONFLICTING_POINT_;
+  double OVERLAP_;
+  int DETECTION_COUNT_;
+
   void messageCallback(const ::cpt_reconstruction::shape &msg);
   bool checkValidPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                        int valid_size, int min_size);

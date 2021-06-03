@@ -5,6 +5,14 @@ namespace cpt_reconstruction {
 Classification::Classification(ros::NodeHandle nodeHandle1,
                                ros::NodeHandle nodeHandle2)
     : nodeHandle1_(nodeHandle1), nodeHandle2_(nodeHandle2) {
+  nodeHandle1.getParam("ClassificationConfigFile", RF_CONFIG_PATH_);
+  nodeHandle1.getParam("OutoutClassificationResultFile", RF_RESULT_PATH_);
+  nodeHandle1.getParam("CellSize", CELL_SIZE_);
+  nodeHandle1.getParam("SmoothingIterations", SMOOTHING_ITERATIONS_);
+  nodeHandle1.getParam("MaxFacetLength", MAX_FACET_LENGTH_);
+  nodeHandle1.getParam("NumberOfScales", NUMBER_OF_SCALES_);
+  nodeHandle1.getParam("NRingQuery", N_RING_QUERY_);
+
   subscriber_ = nodeHandle1_.subscribe("clusters", 1000,
                                        &Classification::messageCallback, this);
 
@@ -103,7 +111,7 @@ void Classification::computeReconstructedSurfaceMesh(
               CGAL::First_of_pair_property_map<PointVectorPair_R>()));
   points.erase(outlier_points_begin, points.end());
 
-  double cell_size = 0.1;
+  double cell_size = CELL_SIZE_;
   std::vector<PointVectorPair_R>::iterator unwanted_points_begin =
       CGAL::grid_simplify_point_set(
           points, cell_size,
@@ -121,12 +129,13 @@ void Classification::computeReconstructedSurfaceMesh(
   // Smooth using 4 iterations of Jet Smoothing
 
   reconstruct.increase_scale(
-      4, CGAL::Scale_space_reconstruction_3::Jet_smoother<Kernel_R>());
+      SMOOTHING_ITERATIONS_,
+      CGAL::Scale_space_reconstruction_3::Jet_smoother<Kernel_R>());
 
   // TODO - CHECK: Mesher Error undefined reference to mpfr_get_emin
   reconstruct.reconstruct_surface(
       CGAL::Scale_space_reconstruction_3::Advancing_front_mesher<Kernel_R>(
-          0.5));
+          MAX_FACET_LENGTH_));
 
   assert(reconstruct.number_of_points() == points_only.size());
 
@@ -160,7 +169,7 @@ void Classification::computeReconstructedSurfaceMesh(
 // Source: https://doc.cgal.org/5.0.4/Classification/index.html
 void Classification::classifyMesh(Mesh_M &mesh,
                                   std::vector<int> &label_indices) {
-  std::size_t number_of_scales = 5;
+  std::size_t number_of_scales = NUMBER_OF_SCALES_;
   Face_point_map face_point_map(&mesh);
   Feature_generator generator(mesh, face_point_map, number_of_scales);
 
@@ -180,16 +189,13 @@ void Classification::classifyMesh(Mesh_M &mesh,
 
   CGAL::Classification::ETHZ_random_forest_classifier classifier(labels,
                                                                  features);
-  std::ifstream in_config(
-      "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/"
-      "cpt_reconstruction/resources/"
-      "mesh_ethz_random_forest_random_area1_little_noise.bin",
-      std::ios_base::in | std::ios_base::binary);
+  std::ifstream in_config(RF_CONFIG_PATH_,
+                          std::ios_base::in | std::ios_base::binary);
   classifier.load_configuration(in_config);
 
   CGAL::Classification::classify_with_graphcut<CGAL::Sequential_tag>(
       mesh.faces(), Face_with_bbox_map(&mesh), labels, classifier,
-      generator.neighborhood().n_ring_neighbor_query(2), 0.2f, 1,
+      generator.neighborhood().n_ring_neighbor_query(N_RING_QUERY_), 0.2f, 1,
       label_indices);
 
   ROS_INFO("classification done");
@@ -256,7 +262,7 @@ void Classification::classifyMesh(Mesh_M &mesh,
   }
 
   // Write result
-  pcl::io::savePLYFileBinary("mesh_classification_test.ply", *result);
+  pcl::io::savePLYFileBinary(RF_RESULT_PATH_, *result);
   ROS_INFO("All done");
 }
 

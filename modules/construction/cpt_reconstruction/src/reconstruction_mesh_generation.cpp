@@ -10,18 +10,28 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle1,
       vertices_model_only_(new pcl::PointCloud<pcl::PointXYZ>()),
       vertices_model_(new pcl::PointCloud<pcl::PointXYZ>()),
       upsampled_model_(new pcl::PointCloud<pcl::PointXYZ>()),
-      model_octree_(
-          new pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>(0.05)),
       model_upsampled_kdtree_(new pcl::search::KdTree<pcl::PointXYZ>()) {
-  pcl::io::loadPolygonFilePLY(
-      "/home/philipp/Schreibtisch/data/CLA_MissingParts_3.ply", mesh_model_);
+  nodeHandle1.getParam("UpsampledBuildingModelFile",
+                       UPSAMPLED_BUILDING_MODEL_PATH_);
+  nodeHandle1.getParam("BuildingModelMeshFile", BUILDING_MODEL_PATH_);
+  nodeHandle1.getParam("OutputMeshingTempPath", OUTPUT_DIR_);
+  nodeHandle1.getParam("UpsampledModelOctreeResolution",
+                       UPSAMPLED_MODEL_OCTREE_RESOLUTION_);
+  nodeHandle1.getParam("MinArea", MIN_AREA_);
+  nodeHandle1.getParam("DefaultOffset", DEFAULT_OFFSET_);
+  nodeHandle1.getParam("DuplicateDotProduct", DUPLICATE_DOT_PRODUCT_);
+  nodeHandle1.getParam("DuplicateDiffD", DUPLICATE_DIFF_D_);
+
+  model_octree_.reset(new pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>(
+      UPSAMPLED_MODEL_OCTREE_RESOLUTION_));
+
+  pcl::io::loadPolygonFilePLY(BUILDING_MODEL_PATH_, mesh_model_);
 
   pcl::fromPCLPointCloud2(mesh_model_.cloud, *vertices_model_only_);
   faces_model_only_ = mesh_model_.polygons;
 
   pcl::PLYReader reader;
-  reader.read("/home/philipp/Schreibtisch/data/CLA_MissingParts_3_5m.ply",
-              *upsampled_model_);
+  reader.read(UPSAMPLED_BUILDING_MODEL_PATH_, *upsampled_model_);
   model_octree_->setInputCloud(upsampled_model_);
   model_octree_->addPointsFromInputCloud();
   model_upsampled_kdtree_->setInputCloud(upsampled_model_);
@@ -57,12 +67,9 @@ void MeshGeneration::messageCallback(
       new pcl::PointCloud<pcl::PointXYZ>);
   getHierarchicalVertices(strong_points, weak_points, backup_points);
 
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/ros_dir/strong_points.ply",
-                       *strong_points);
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/ros_dir/weak_points.ply",
-                       *weak_points);
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/ros_dir/backup_points.ply",
-                       *backup_points);
+  pcl::io::savePLYFile(OUTPUT_DIR_ + "strong_points.ply", *strong_points);
+  pcl::io::savePLYFile(OUTPUT_DIR_ + "weak_points.ply", *weak_points);
+  pcl::io::savePLYFile(OUTPUT_DIR_ + "backup_points.ply", *backup_points);
 
   std::vector<Eigen::Vector3d> center_estimates;
   std::vector<Eigen::Matrix3d> direction_estimates;
@@ -76,16 +83,13 @@ void MeshGeneration::messageCallback(
 
   // Adding cylinders
 
-  pcl::io::savePLYFile(
-      "/home/philipp/Schreibtisch/ros_dir/reconstructed_mesh.ply",
-      resulting_mesh);
+  pcl::io::savePLYFile(OUTPUT_DIR_ + "reconstructed_mesh.ply", resulting_mesh);
 }
 
 void MeshGeneration::preprocessFusedMesh(pcl::PolygonMesh &mesh_detected,
                                          double min_area) {
   pcl::PolygonMesh mesh_model(mesh_model_);
-  pcl::io::savePLYFile("/home/philipp/Schreibtisch/ros_dir/mesh_detected.ply",
-                       mesh_detected);
+  pcl::io::savePLYFile(OUTPUT_DIR_ + "mesh_detected.ply", mesh_detected);
   combineMeshes(mesh_detected, mesh_model);
 
   faces_model_ = mesh_model.polygons;
@@ -524,8 +528,7 @@ void MeshGeneration::evaluateProposals(
     element->push_back(pcl::PointXYZ(p8.x(), p8.y(), p8.z()));
 
     std::string save =
-        "/home/philipp/Schreibtisch/ros_dir/final_meshing_points" +
-        std::to_string(i) + ".ply";
+        OUTPUT_DIR_ + "final_meshing_points" + std::to_string(i) + ".ply";
     pcl::io::savePLYFile(save, *element);
 
     try {
@@ -1465,19 +1468,9 @@ bool MeshGeneration::getReconstructionParameters(
 
   removeDuplicatedPoints(filtered_cloud, 0.003);
 
-  std::string save2 = "/home/philipp/Schreibtisch/ros_dir/resulting_points" +
-                      std::to_string(idx) + ".ply";
+  std::string save2 =
+      OUTPUT_DIR_ + "resulting_points" + std::to_string(idx) + ".ply";
   pcl::io::savePLYFile(save2, *filtered_cloud);
-
-  /*
-  pcl::PointCloud<pcl::PointXYZ>::Ptr center_point(
-      new pcl::PointCloud<pcl::PointXYZ>());
-  center_point->push_back(
-      pcl::PointXYZ(mass_center.x(), mass_center.y(), mass_center.z()));
-  std::string save3 =
-      "/home/philipp/Schreibtisch/ros_dir/center_point" + std::to_string(idx) +
-  ".ply"; pcl::io::savePLYFile(save3, *center_point);
-  */
 
   // Structure of strong points
   pcl::PointCloud<pcl::PointXYZ>::Ptr alive_strong_points_cloud(
@@ -1498,8 +1491,7 @@ bool MeshGeneration::getReconstructionParameters(
   removeDuplicatedPoints(alive_strong_points_cloud);
 
   std::string save4 =
-      "/home/philipp/Schreibtisch/ros_dir/alive_strong_points_cloud" +
-      std::to_string(idx) + ".ply";
+      OUTPUT_DIR_ + "alive_strong_points_cloud" + std::to_string(idx) + ".ply";
   pcl::io::savePLYFile(save4, *alive_strong_points_cloud);
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr alive_element_points(

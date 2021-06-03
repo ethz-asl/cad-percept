@@ -8,6 +8,28 @@ Clustering::Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
       counter_(0),
       received_shapes_plane_(0) {
   // preprocessBuildingModel();
+
+  nodeHandle1.getParam("OutputShapesPath", SHAPES_PATH_);
+  nodeHandle1.getParam("OutputMeshesPath", MESHES_PATH_);
+
+  nodeHandle1.getParam("VoxelGridFilterResolution",
+                       VOXEL_GRID_FILTER_RESOLUTION_);
+  nodeHandle1.getParam("MinSizeValidPlane", MIN_SIZE_VALID_PLANE_);
+  nodeHandle1.getParam("ValidSizeThresholdPlane", VALID_SIZE_THRESHOLD_PLANE_);
+  nodeHandle1.getParam("ThresholdSecondEigenvalue",
+                       THRESHOLD_SECOND_EIGENVALUE_);
+  nodeHandle1.getParam("IntervalFusingClusters", INTERVAL_FUSING_CLUSTERS_);
+  nodeHandle1.getParam("IntervalCleaningClusters", INTERVAL_CLEANING_CLUSTERS_);
+  nodeHandle1.getParam("IntervalForwardingClusters",
+                       INTERVAL_FORWARDING_CLUSTERS_);
+  nodeHandle1.getParam("DotProductNormals", DOT_PRODUCT_NORMALS_);
+  nodeHandle1.getParam("DotProductAxis", DOT_PRODUCT_AXIS_);
+  nodeHandle1.getParam("DistanceMatchingPoint", DISTANCE_MATCHING_POINT_);
+  nodeHandle1.getParam("Coverage", COVERAGE_);
+  nodeHandle1.getParam("DistanceConflictingPoint", DISTANCE_CONFLICTING_POINT_);
+  nodeHandle1.getParam("Overlap", OVERLAP_);
+  nodeHandle1.getParam("DetectionCount", DETECTION_COUNT_);
+
   subscriber_ = nodeHandle1_.subscribe("ransac_shape", 1000,
                                        &Clustering::messageCallback, this);
   publisher_ =
@@ -33,7 +55,8 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
   // Apply Voxel Grid filtering
   pcl::VoxelGrid<pcl::PointXYZ> sor;
   sor.setInputCloud(points_cloud);
-  sor.setLeafSize(0.01f, 0.01f, 0.01f);
+  sor.setLeafSize(VOXEL_GRID_FILTER_RESOLUTION_, VOXEL_GRID_FILTER_RESOLUTION_,
+                  VOXEL_GRID_FILTER_RESOLUTION_);
   sor.filter(*points_cloud);
 
   if (msg.id == 0) {
@@ -47,7 +70,8 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     Eigen::Vector3d robot_position(rp_temp.x, rp_temp.y, rp_temp.z);
 
     // For planes with size min_size - valid_size threshold second eigenvalue
-    bool valid_plane = checkValidPlane(points_cloud, 1000, 50);
+    bool valid_plane = checkValidPlane(
+        points_cloud, VALID_SIZE_THRESHOLD_PLANE_, MIN_SIZE_VALID_PLANE_);
 
     if (valid_plane) {
       // Add new plane to data structure
@@ -86,15 +110,16 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     axis_.push_back(axis);
     fusing_count_cyl_.push_back(1);
 
-    std::string result = "/home/philipp/Schreibtisch/Shapes/valid_shape_" +
-                         std::to_string(counter_) + "_cyl.ply";
+    std::string result =
+        SHAPES_PATH_ + "valid_shape_" + std::to_string(counter_) + "_cyl.ply";
     pcl::io::savePLYFile(result, *points_cloud);
 
     ROS_INFO("[Mesh Generation] Counter: %d", counter_);
     counter_++;
   }
 
-  if (counter_ >= 50 && (counter_ % 50 == 0)) {
+  if (counter_ >= INTERVAL_FUSING_CLUSTERS_ &&
+      (counter_ % INTERVAL_FUSING_CLUSTERS_ == 0)) {
     ROS_INFO("Size before fuseing plane: %d \n", clouds_plane_.size());
     ROS_INFO("Size before fuseing cylinders: %d \n", clouds_cyl_.size());
     this->fusePlanes();
@@ -103,7 +128,8 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     ROS_INFO("Size after fuseing cylinders: %d \n", clouds_cyl_.size());
   }
 
-  if (counter_ >= 200 && (counter_ % 200 == 0)) {
+  if (counter_ >= INTERVAL_CLEANING_CLUSTERS_ &&
+      (counter_ % INTERVAL_CLEANING_CLUSTERS_ == 0)) {
     ROS_INFO("Size before fuseing plane: %d \n", clouds_plane_.size());
     ROS_INFO("Size before fuseing cylinders: %d \n", clouds_cyl_.size());
     this->fusePlanes();
@@ -118,7 +144,8 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
   }
 
   // TODO - Change ~200
-  if (counter_ >= 200 && (counter_ % 200 == 0)) {
+  if (counter_ >= INTERVAL_FORWARDING_CLUSTERS_ &&
+      (counter_ % INTERVAL_FORWARDING_CLUSTERS_ == 0)) {
     std::vector<sensor_msgs::PointCloud2> clusters_vec;
     std::vector<geometry_msgs::Vector3> robot_positions_vec;
     std::vector<geometry_msgs::Vector3> ransac_normal_vec;
@@ -127,7 +154,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     std::vector<int> id_vec;
 
     for (unsigned i = 0; i < clouds_plane_.size(); i++) {
-      if (fusing_count_plane_.at(i) > 0) {
+      if (fusing_count_plane_.at(i) >= DETECTION_COUNT_) {
         pcl::PCLPointCloud2 temp_pcl;
         pcl::toPCLPointCloud2(*(clouds_plane_.at(i)), temp_pcl);
 
@@ -159,7 +186,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     }
 
     for (unsigned i = 0; i < clouds_cyl_.size(); i++) {
-      if (fusing_count_cyl_.at(i) > 0) {
+      if (fusing_count_cyl_.at(i) >= DETECTION_COUNT_) {
         pcl::PCLPointCloud2 temp_pcl;
         pcl::toPCLPointCloud2(*(clouds_cyl_.at(i)), temp_pcl);
 
@@ -210,16 +237,16 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
         this->fit3DPlane(clouds_plane_[i], mesh);
         this->combineMeshes(mesh, mesh_all);
 
-        std::string result = "/home/philipp/Schreibtisch/Meshes/points_" +
+        std::string result = MESHES_PATH_ + "points_" +
                              std::to_string(i) + ".ply";
         pcl::io::savePLYFile(result, *clouds_plane_[i]);
 
-        std::string result2 = "/home/philipp/Schreibtisch/Meshes/mesh_" +
+        std::string result2 = MESHES_PATH_ + "/mesh_" +
                               std::to_string(i) + ".ply";
         pcl::io::savePLYFile(result2, mesh);
       }
     }
-    pcl::io::savePLYFile("/home/philipp/Schreibtisch/Meshes/mesh_all.ply",
+    pcl::io::savePLYFile(MESHES_PATH_ + "mesh_all.ply",
                          mesh_all);
   }
   */
@@ -232,8 +259,8 @@ bool Clustering::checkValidPlane(
 
   if (cloud->size() >= valid_size) {
     is_valid = true;
-    std::string result = "/home/philipp/Schreibtisch/Shapes/valid_shape_" +
-                         std::to_string(counter_) + "_plane.ply";
+    std::string result =
+        SHAPES_PATH_ + "valid_shape_" + std::to_string(counter_) + "_plane.ply";
     pcl::io::savePLYFile(result, *cloud);
     ROS_INFO("Valid plane %d\n", received_shapes_plane_);
   } else if (cloud->size() >= min_size) {
@@ -244,18 +271,18 @@ bool Clustering::checkValidPlane(
     feature_extractor.getEigenValues(major_value, middle_value, minor_value);
 
     // assumption: w x .10 plane as minimum size
-    if (middle_value > 0.00015) {
+    if (middle_value > THRESHOLD_SECOND_EIGENVALUE_) {
       is_valid = true;
       ROS_INFO("Valid plane %d with l2 = %f\n", received_shapes_plane_,
                middle_value);
-      std::string result = "/home/philipp/Schreibtisch/Shapes/valid_shape_" +
+      std::string result = SHAPES_PATH_ + "valid_shape_" +
                            std::to_string(received_shapes_plane_) +
                            "_plane.ply";
       pcl::io::savePLYFile(result, *cloud);
     } else {
       ROS_INFO("Invalid plane %d with l2 = %f \n", received_shapes_plane_,
                middle_value);
-      std::string result = "/home/philipp/Schreibtisch/Shapes/invalid_shape_" +
+      std::string result = SHAPES_PATH_ + "invalid_shape_" +
                            std::to_string(received_shapes_plane_) +
                            "_plane.ply";
       pcl::io::savePLYFile(result, *cloud);
@@ -284,19 +311,19 @@ void Clustering::fusePlanes() {
       }
 
       double dot_prod = ransac_normals_[i].dot(ransac_normals_[j]);
-      if (std::abs(dot_prod) > 0.99) {
+      if (std::abs(dot_prod) > DOT_PRODUCT_NORMALS_) {
         pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_i = kd_trees_plane_[i];
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_j = clouds_plane_[j];
         int matches = 0;
         for (int k = 0; k < cloud_j->size(); k++) {
           pcl::PointXYZ p = (*cloud_j)[k];
           tree_i->nearestKSearch(p, 1, nn_indices, nn_dists);
-          if (std::sqrt(nn_dists[0]) < 0.05) {
+          if (std::sqrt(nn_dists[0]) < DISTANCE_MATCHING_POINT_) {
             matches++;
           }
         }
         double coverage = ((double)matches) / ((double)cloud_j->size());
-        if (coverage >= 0.01) {
+        if (coverage >= COVERAGE_) {
           blocked_idx.push_back(j);
           fusing_temp.push_back(j);
         }
@@ -327,7 +354,9 @@ void Clustering::fusePlanes() {
     if (fused_point_cloud->size() > 10) {
       pcl::VoxelGrid<pcl::PointXYZ> sor;
       sor.setInputCloud(fused_point_cloud);
-      sor.setLeafSize(0.01f, 0.01f, 0.01f);
+      sor.setLeafSize(VOXEL_GRID_FILTER_RESOLUTION_,
+                      VOXEL_GRID_FILTER_RESOLUTION_,
+                      VOXEL_GRID_FILTER_RESOLUTION_);
       sor.filter(*fused_point_cloud);
 
       //
@@ -428,19 +457,19 @@ void Clustering::fuseCylinders() {
       }
 
       double dot_prod = axis_.at(i).dot(axis_.at(j));
-      if (std::abs(dot_prod) > 0.99) {
+      if (std::abs(dot_prod) > DOT_PRODUCT_AXIS_) {
         pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_i = kd_trees_cyl_[i];
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_j = clouds_cyl_[j];
         int matches = 0;
         for (int k = 0; k < cloud_j->size(); k++) {
           pcl::PointXYZ p = (*cloud_j)[k];
           tree_i->nearestKSearch(p, 1, nn_indices, nn_dists);
-          if (std::sqrt(nn_dists[0]) < 0.05) {
+          if (std::sqrt(nn_dists[0]) < DISTANCE_CONFLICTING_POINT_) {
             matches++;
           }
         }
         double coverage = ((double)matches) / ((double)cloud_j->size());
-        if (coverage >= 0.01) {
+        if (coverage >= COVERAGE_) {
           blocked_idx.push_back(j);
           fusing_temp.push_back(j);
         }
@@ -467,7 +496,9 @@ void Clustering::fuseCylinders() {
     if (fused_point_cloud->size() > 10) {
       pcl::VoxelGrid<pcl::PointXYZ> sor;
       sor.setInputCloud(fused_point_cloud);
-      sor.setLeafSize(0.01f, 0.01f, 0.01f);
+      sor.setLeafSize(VOXEL_GRID_FILTER_RESOLUTION_,
+                      VOXEL_GRID_FILTER_RESOLUTION_,
+                      VOXEL_GRID_FILTER_RESOLUTION_);
       sor.filter(*fused_point_cloud);
 
       //
@@ -621,13 +652,13 @@ void Clustering::removeConflictingClustersPlanes() {
       for (int k = 0; k < cloud_i->size(); k++) {
         pcl::PointXYZ p = (*cloud_i)[k];
         tree_j->nearestKSearch(p, 1, nn_indices, nn_dists);
-        if (std::sqrt(nn_dists[0]) < 0.03) {
+        if (std::sqrt(nn_dists[0]) < DISTANCE_CONFLICTING_POINT_) {
           matches++;
         }
       }
     }
     double coverage = ((double)matches) / ((double)cloud_i->size());
-    if (coverage >= 0.4) {
+    if (coverage >= OVERLAP_) {
       remove_idx.push_back(i);
       blocked_idx.push_back(i);
     }

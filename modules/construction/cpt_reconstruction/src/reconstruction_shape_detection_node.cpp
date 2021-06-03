@@ -10,12 +10,10 @@ int main(int argc, char** argv) {
   ros::NodeHandle nodeHandle1;
   ros::NodeHandle nodeHandle2;
 
-  std::string model_path =
-      "/home/philipp/Schreibtisch/data/"
-      "CLA_MissingParts_1_8m.ply";
-  Eigen::Matrix4d transformation;
-  transformation.setIdentity();
-  cad_percept::cpt_reconstruction::Model model(model_path, transformation);
+  std::string model_path;
+  nodeHandle1.getParam("UpsampledBuildingModelFile", model_path);
+
+  cad_percept::cpt_reconstruction::Model model(nodeHandle1);
   model.preprocess();
 
   cad_percept::cpt_reconstruction::ShapeDetection subscriber(

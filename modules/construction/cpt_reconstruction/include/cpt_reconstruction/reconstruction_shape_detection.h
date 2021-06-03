@@ -49,10 +49,15 @@ class ShapeDetection {
 
  private:
   // Parameters
+  int SENSOR_TYPE_;
+  std::vector<double> TRANSFORMATION_VEC_;
+  Eigen::Matrix4d TRANSFORMATION_;
   double MODEL_TOLERANCE_;
   int OUTLIER_COUNT_;
   bool USE_BUFFER_;
-  bool CLEAR_BUFFER_AFTER_ITERATION_;
+  int CLEAR_BUFFER_AFTER_ITERATION_;
+  std::string ALL_POINTS_PATH_;
+  std::string OUTLIER_POINTS_PATH_;
 
   void messageCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
   ros::NodeHandle nodeHandle1_;
