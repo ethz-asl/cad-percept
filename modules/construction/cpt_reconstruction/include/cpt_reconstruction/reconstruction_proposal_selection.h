@@ -27,45 +27,46 @@
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/keypoints/harris_3d.h>
+#include <pcl/octree/octree_search.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl/octree/octree_search.h>
 
 namespace cad_percept {
 namespace cpt_reconstruction {
 class ProposalSelection {
  public:
   ProposalSelection() = delete;
-  ProposalSelection(std::vector<Eigen::Vector3d> &center_estimates,
-                    std::vector<Eigen::Matrix3d> &direction_estimates,
-                    std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
-                    std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
-                    std::vector<double> &radius_estimates);
+  ProposalSelection(
+      std::vector<Eigen::Vector3d> &center_estimates,
+      std::vector<Eigen::Matrix3d> &direction_estimates,
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
+      std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
+      std::vector<double> &radius_estimates);
 
   void selectProposals();
   void organizeDatastructure();
   void removeConflictingElements();
+  void removeInsufficientElements();
 
   void getSelectedProposals();
 
  private:
-  //Planes
+  // Planes
   std::vector<Eigen::Vector3d> center_estimates_;
   std::vector<Eigen::Matrix3d> direction_estimates_;
   std::vector<std::vector<Eigen::VectorXd>> parameter_estimates_;
 
-  //Cylinders
+  // Cylinders
   std::vector<Eigen::MatrixXd> bounded_axis_estimates_;
   std::vector<double> radius_estimates_;
 
   // Remove Conflicting Shapes
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> structured_point_clouds_;
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_;
-
 };
-}
-}
+}  // namespace cpt_reconstruction
+}  // namespace cad_percept
 
-#endif //CPT_RECONSTRUCTION_SRC_RECONSTRUCTION_PROPOSAL_SELECTION_H_
+#endif  // CPT_RECONSTRUCTION_SRC_RECONSTRUCTION_PROPOSAL_SELECTION_H_

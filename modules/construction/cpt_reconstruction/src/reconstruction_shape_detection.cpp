@@ -148,8 +148,9 @@ void ShapeDetection::messageCallback(
       publisher_.publish(shape_msg);
     }
 
-    if ((!USE_BUFFER_) || (iteration_counter_ >= CLEAR_BUFFER_AFTER_ITERATION_ &&
-                           iteration_counter_ % CLEAR_BUFFER_AFTER_ITERATION_ == 0)){
+    if ((!USE_BUFFER_) ||
+        (iteration_counter_ >= CLEAR_BUFFER_AFTER_ITERATION_ &&
+         iteration_counter_ % CLEAR_BUFFER_AFTER_ITERATION_ == 0)) {
       model_->clearBuffer();
     }
 

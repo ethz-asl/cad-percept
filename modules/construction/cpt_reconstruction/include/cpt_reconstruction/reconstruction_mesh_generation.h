@@ -160,9 +160,9 @@ class MeshGeneration {
       pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points,
       pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points);
 
-  void getElementProposalsCylinders(std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
-                                    std::vector<double> &radius_estimates);
-
+  void getElementProposalsCylinders(
+      std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
+      std::vector<double> &radius_estimates);
 
   void evaluateProposals(
       pcl::PolygonMesh &resulting_mesh,

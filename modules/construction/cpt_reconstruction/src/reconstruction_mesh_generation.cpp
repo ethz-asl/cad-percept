@@ -71,21 +71,22 @@ void MeshGeneration::messageCallback(
   pcl::io::savePLYFile(OUTPUT_DIR_ + "weak_points.ply", *weak_points);
   pcl::io::savePLYFile(OUTPUT_DIR_ + "backup_points.ply", *backup_points);
 
-  //Compute Proposals from Planes
+  // Compute Proposals from Planes
   std::vector<Eigen::Vector3d> center_estimates;
   std::vector<Eigen::Matrix3d> direction_estimates;
   std::vector<std::vector<Eigen::VectorXd>> parameter_estimates;
   getElementProposalsPlanes(center_estimates, direction_estimates,
                             parameter_estimates, strong_points, weak_points);
 
-  //Compute Proposals from Cylinders
+  // Compute Proposals from Cylinders
   std::vector<Eigen::MatrixXd> bounded_axis_estimates;
   std::vector<double> radius_estimates;
   getElementProposalsCylinders(bounded_axis_estimates, radius_estimates);
 
-
-  //Select a subset from proposals and forward it to the model integration node
-  ProposalSelection proposalSelection(center_estimates, direction_estimates, parameter_estimates, bounded_axis_estimates, radius_estimates);
+  // Select a subset from proposals and forward it to the model integration node
+  ProposalSelection proposalSelection(center_estimates, direction_estimates,
+                                      parameter_estimates,
+                                      bounded_axis_estimates, radius_estimates);
   proposalSelection.selectProposals();
   proposalSelection.getSelectedProposals();
 
@@ -394,19 +395,20 @@ void MeshGeneration::getElementProposalsPlanes(
   } while (done_shapes.size() < artificial_vertices_vector_.size());
 }
 
-void MeshGeneration::getElementProposalsCylinders(std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
-                                                  std::vector<double> &radius_estimates) {
-
-  for(int i = 0; i < meshing_clouds_.size(); i++){
-    if (ids_.at(i) != 1 && meshing_classes_.at(i) == Semantics::COLUMN){
+void MeshGeneration::getElementProposalsCylinders(
+    std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
+    std::vector<double> &radius_estimates) {
+  for (int i = 0; i < meshing_clouds_.size(); i++) {
+    if (ids_.at(i) != 1 && meshing_classes_.at(i) == Semantics::COLUMN) {
       continue;
     }
-    //Get Data
+    // Get Data
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = meshing_clouds_.at(i);
-    //Eigen::Vector3d axis = axis_.at(i);
-    //double radius = radius_.at(i);
+    // Eigen::Vector3d axis = axis_.at(i);
+    // double radius = radius_.at(i);
 
-    //Estimate Parameters again (to ensure that a point on the axis is available)
+    // Estimate Parameters again (to ensure that a point on the axis is
+    // available)
     //
     // Recompute axis/randius and project/filter(??) points
     pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
@@ -416,8 +418,7 @@ void MeshGeneration::getElementProposalsCylinders(std::vector<Eigen::MatrixXd> &
     pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
         new pcl::search::KdTree<pcl::PointXYZ>);
     searchTree->setInputCloud(cloud);
-    pcl::PointCloud<pcl::Normal>::Ptr normals(
-        new pcl::PointCloud<pcl::Normal>);
+    pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
     pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
     normalEstimator.setInputCloud(cloud);
     normalEstimator.setSearchMethod(searchTree);
@@ -433,13 +434,16 @@ void MeshGeneration::getElementProposalsCylinders(std::vector<Eigen::MatrixXd> &
     seg.setInputNormals(normals);
     seg.segment(*inliers, *coefficients);
 
-    Eigen::Vector3d point_on_axis(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
-    Eigen::Vector3d axis(coefficients->values[3], coefficients->values[4], coefficients->values[5]);
+    Eigen::Vector3d point_on_axis(coefficients->values[0],
+                                  coefficients->values[1],
+                                  coefficients->values[2]);
+    Eigen::Vector3d axis(coefficients->values[3], coefficients->values[4],
+                         coefficients->values[5]);
     axis.normalize();
     double radius = coefficients->values[6];
 
     pcl::PointXYZ center(0.0, 0.0, 0.0);
-    for (int j = 0; j < cloud->size(); j++){
+    for (int j = 0; j < cloud->size(); j++) {
       pcl::PointXYZ p = (*cloud)[j];
       center.x += p.x;
       center.y += p.y;
@@ -453,33 +457,34 @@ void MeshGeneration::getElementProposalsCylinders(std::vector<Eigen::MatrixXd> &
     Eigen::Vector3d center_to_axis_point = center_mean - point_on_axis;
     double t = center_to_axis_point.dot(axis);
 
-    Eigen::Vector3d center_aligned(point_on_axis.x() + t * axis.x(), point_on_axis.y()+ t * axis.y(), point_on_axis.z() + t * axis.z());
+    Eigen::Vector3d center_aligned(point_on_axis.x() + t * axis.x(),
+                                   point_on_axis.y() + t * axis.y(),
+                                   point_on_axis.z() + t * axis.z());
 
-
-    //Estimate upper and lower bound from scan
+    // Estimate upper and lower bound from scan
     double min_h = 1000;
     double max_h = -1000;
     double d_min = 0;
     double d_max = 0;
-    for (int j = 0; j < cloud->size(); j++){
+    for (int j = 0; j < cloud->size(); j++) {
       pcl::PointXYZ p = (*cloud)[j];
       Eigen::Vector3d p_e(p.x, p.y, p.z);
       Eigen::Vector3d diff = p_e - center_aligned;
 
       double dot = axis.dot(diff);
-      if (dot > max_h){
+      if (dot > max_h) {
         max_h = dot;
         d_max = -(axis.x() * p.x + axis.y() * p.y + axis.z() * p.z);
       }
-      if (dot < min_h){
+      if (dot < min_h) {
         min_h = dot;
         d_min = -(axis.x() * p.x + axis.y() * p.y + axis.z() * p.z);
       }
     }
 
-    //TODO: Raytracing
+    // TODO: Raytracing
 
-    //Line plane Intersection
+    // Line plane Intersection
     double t1 = -(d_min + center_aligned.dot(axis));
     double t2 = -(d_max + center_aligned.dot(axis));
 
@@ -719,8 +724,6 @@ void MeshGeneration::evaluateProposals(
   publisher_.publish(element_proposals);
   ROS_INFO("All done");
 }
-
-
 
 bool MeshGeneration::checkShapeConstraints(int sem_class,
                                            Eigen::Vector3d &normal,
