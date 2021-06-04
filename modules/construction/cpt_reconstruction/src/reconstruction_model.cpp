@@ -3,10 +3,9 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 
-Model::Model(const ros::NodeHandle& nodeHandle)
+Model::Model(const ros::NodeHandle &nodeHandle)
     : meshing_points_(new pcl::PointCloud<pcl::PointXYZ>) {
-  nodeHandle.getParam("UpsampledBuildingModelFile",
-                      UPSAMPLED_BUILDING_MODEL_PATH_);
+  nodeHandle.getParam("UpsampledBuildingModelFile",UPSAMPLED_BUILDING_MODEL_PATH_);
   nodeHandle.getParam("UseFilter", USE_FILTER_);
   nodeHandle.getParam("OctreeFilterResolution", OCTREE_FILTER_RESOLUTION_);
   nodeHandle.getParam("RANSACProbability", RANSAC_PROBABILITY_);
@@ -22,6 +21,9 @@ void Model::preprocess() {
   pcl::PLYReader reader;
   reader.read(UPSAMPLED_BUILDING_MODEL_PATH_, *model_points);
   model_points_ = model_points;
+
+  std::cout << "Test" << std::endl;
+  std::cout << UPSAMPLED_BUILDING_MODEL_PATH_ << std::endl;
 
   // Build Search Tree
   pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(

@@ -60,7 +60,7 @@ namespace cpt_reconstruction {
 class Model {
  public:
   Model() = delete;
-  Model(const ros::NodeHandle& nodeHandle);
+  Model(const ros::NodeHandle &nodeHandle);
 
   void preprocess();
   void queryTree(pcl::PointXYZ p);

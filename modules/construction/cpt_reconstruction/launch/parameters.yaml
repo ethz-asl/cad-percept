@@ -26,7 +26,7 @@ OutputMeshingTempPath: "/home/philipp/Schreibtisch/ros_dir/"
 ########################################################################
 ### Shape Detection
 ModelTolerance: 0.05
-OutlierCount: 60000 #Only for SMB
+OutlierCount: 50000 #Only for SMB
 
 UseBuffer: false
 ClearBufferAfterIteration: 2
@@ -34,11 +34,11 @@ ClearBufferAfterIteration: 2
 UseFilter: true
 OctreeFilterResolution: 0.02
 
-RANSACProbability: 0.00001
+RANSACProbability: 0.000001
 RANSACMinPoints: 200
 RANSACEpsilon: 0.03
 RANSACClusterEpsilon: 0.2
-RANSACNormalThreshold: 0.90
+RANSACNormalThreshold: 0.80
 ########################################################################
 
 
@@ -48,8 +48,8 @@ MinSizeValidPlane: 50
 ValidSizeThresholdPlane: 1000
 ThresholdSecondEigenvalue: 0.00015
 IntervalFusingClusters: 50
-IntervalCleaningClusters: 200
-IntervalForwardingClusters: 200
+IntervalCleaningClusters: 50 #200
+IntervalForwardingClusters: 50 #200
 
 #Fusing Planes
 DotProductNormals: 0.99

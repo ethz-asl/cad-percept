@@ -1,5 +1,5 @@
-
 #include "cpt_reconstruction/reconstruction_mesh_generation.h"
+#include "cpt_reconstruction/reconstruction_proposal_selection.h"
 
 namespace cad_percept {
 namespace cpt_reconstruction {
@@ -52,7 +52,7 @@ void MeshGeneration::messageCallback(
   pcl::PolygonMesh mesh_detected;
   getMessageData(msg, mesh_detected);
   preprocessFusedMesh(mesh_detected, min_area);
-  getProposalVertices(min_area);
+  getProposalVerticesPlanes(min_area);
 
   // Split point cloud in three parts:
   // 1. Points which are matching the vertices in the building model (strong
@@ -71,19 +71,31 @@ void MeshGeneration::messageCallback(
   pcl::io::savePLYFile(OUTPUT_DIR_ + "weak_points.ply", *weak_points);
   pcl::io::savePLYFile(OUTPUT_DIR_ + "backup_points.ply", *backup_points);
 
+  //Compute Proposals from Planes
   std::vector<Eigen::Vector3d> center_estimates;
   std::vector<Eigen::Matrix3d> direction_estimates;
   std::vector<std::vector<Eigen::VectorXd>> parameter_estimates;
-  getElementProposals(center_estimates, direction_estimates,
-                      parameter_estimates, strong_points, weak_points);
+  getElementProposalsPlanes(center_estimates, direction_estimates,
+                            parameter_estimates, strong_points, weak_points);
 
+  //Compute Proposals from Cylinders
+  std::vector<Eigen::MatrixXd> bounded_axis_estimates;
+  std::vector<double> radius_estimates;
+  getElementProposalsCylinders(bounded_axis_estimates, radius_estimates);
+
+
+  //Select a subset from proposals and forward it to the model integration node
+  ProposalSelection proposalSelection(center_estimates, direction_estimates, parameter_estimates, bounded_axis_estimates, radius_estimates);
+  proposalSelection.selectProposals();
+  proposalSelection.getSelectedProposals();
+
+  /*
   pcl::PolygonMesh resulting_mesh;
   evaluateProposals(resulting_mesh, center_estimates, direction_estimates,
                     parameter_estimates);
 
-  // Adding cylinders
-
   pcl::io::savePLYFile(OUTPUT_DIR_ + "reconstructed_mesh.ply", resulting_mesh);
+  */
 }
 
 void MeshGeneration::preprocessFusedMesh(pcl::PolygonMesh &mesh_detected,
@@ -173,7 +185,7 @@ void MeshGeneration::getMessageData(
   }
 }
 
-void MeshGeneration::getProposalVertices(double min_area) {
+void MeshGeneration::getProposalVerticesPlanes(double min_area) {
   artificial_vertices_vector_.clear();
   artificial_kdtrees_vector_.clear();
   normal_detected_shapes_vector_.clear();
@@ -315,7 +327,7 @@ void MeshGeneration::getHierarchicalVertices(
   removeDuplicatedPoints(backup_points);
 }
 
-void MeshGeneration::getElementProposals(
+void MeshGeneration::getElementProposalsPlanes(
     std::vector<Eigen::Vector3d> &center_estimates,
     std::vector<Eigen::Matrix3d> &direction_estimates,
     std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
@@ -363,11 +375,11 @@ void MeshGeneration::getElementProposals(
              max_idx, max_value);
 
     // TODO: Weak points vs backup_points
-    getReconstructionParameters(max_idx, strong_points_reconstruction,
-                                artificial_vertices_vector_.at(max_idx),
-                                artificial_vertices_vector_.at(max_idx),
-                                center_estimates, direction_estimates,
-                                parameter_estimates);
+    getReconstructionParametersPlanes(max_idx, strong_points_reconstruction,
+                                      artificial_vertices_vector_.at(max_idx),
+                                      artificial_vertices_vector_.at(max_idx),
+                                      center_estimates, direction_estimates,
+                                      parameter_estimates);
 
     // TODO Remove?
     /*
@@ -382,6 +394,104 @@ void MeshGeneration::getElementProposals(
   } while (done_shapes.size() < artificial_vertices_vector_.size());
 }
 
+void MeshGeneration::getElementProposalsCylinders(std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
+                                                  std::vector<double> &radius_estimates) {
+
+  for(int i = 0; i < meshing_clouds_.size(); i++){
+    if (ids_.at(i) != 1 && meshing_classes_.at(i) == Semantics::COLUMN){
+      continue;
+    }
+    //Get Data
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = meshing_clouds_.at(i);
+    //Eigen::Vector3d axis = axis_.at(i);
+    //double radius = radius_.at(i);
+
+    //Estimate Parameters again (to ensure that a point on the axis is available)
+    //
+    // Recompute axis/randius and project/filter(??) points
+    pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+    pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
+    // Estimate Normals
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
+        new pcl::search::KdTree<pcl::PointXYZ>);
+    searchTree->setInputCloud(cloud);
+    pcl::PointCloud<pcl::Normal>::Ptr normals(
+        new pcl::PointCloud<pcl::Normal>);
+    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
+    normalEstimator.setInputCloud(cloud);
+    normalEstimator.setSearchMethod(searchTree);
+    normalEstimator.setKSearch(10);
+    normalEstimator.compute(*normals);
+
+    seg.setOptimizeCoefficients(true);
+    seg.setModelType(pcl::SACMODEL_CYLINDER);
+    seg.setMethodType(pcl::SAC_RANSAC);
+    seg.setDistanceThreshold(0.05);
+    seg.setMaxIterations(1000);
+    seg.setInputCloud(cloud);
+    seg.setInputNormals(normals);
+    seg.segment(*inliers, *coefficients);
+
+    Eigen::Vector3d point_on_axis(coefficients->values[0], coefficients->values[1], coefficients->values[2]);
+    Eigen::Vector3d axis(coefficients->values[3], coefficients->values[4], coefficients->values[5]);
+    axis.normalize();
+    double radius = coefficients->values[6];
+
+    pcl::PointXYZ center(0.0, 0.0, 0.0);
+    for (int j = 0; j < cloud->size(); j++){
+      pcl::PointXYZ p = (*cloud)[j];
+      center.x += p.x;
+      center.y += p.y;
+      center.z += p.z;
+    }
+    center.x /= cloud->size();
+    center.y /= cloud->size();
+    center.z /= cloud->size();
+    Eigen::Vector3d center_mean(center.x, center.y, center.z);
+
+    Eigen::Vector3d center_to_axis_point = center_mean - point_on_axis;
+    double t = center_to_axis_point.dot(axis);
+
+    Eigen::Vector3d center_aligned(point_on_axis.x() + t * axis.x(), point_on_axis.y()+ t * axis.y(), point_on_axis.z() + t * axis.z());
+
+
+    //Estimate upper and lower bound from scan
+    double min_h = 1000;
+    double max_h = -1000;
+    double d_min = 0;
+    double d_max = 0;
+    for (int j = 0; j < cloud->size(); j++){
+      pcl::PointXYZ p = (*cloud)[j];
+      Eigen::Vector3d p_e(p.x, p.y, p.z);
+      Eigen::Vector3d diff = p_e - center_aligned;
+
+      double dot = axis.dot(diff);
+      if (dot > max_h){
+        max_h = dot;
+        d_max = -(axis.x() * p.x + axis.y() * p.y + axis.z() * p.z);
+      }
+      if (dot < min_h){
+        min_h = dot;
+        d_min = -(axis.x() * p.x + axis.y() * p.y + axis.z() * p.z);
+      }
+    }
+
+    //TODO: Raytracing
+
+    //Line plane Intersection
+    double t1 = -(d_min + center_aligned.dot(axis));
+    double t2 = -(d_max + center_aligned.dot(axis));
+
+    Eigen::Matrix<double, 3, 2> bounding_points;
+    bounding_points.col(0) = center_aligned + t1 * axis;
+    bounding_points.col(1) = center_aligned + t2 * axis;
+
+    bounded_axis_estimates.push_back(bounding_points);
+    radius_estimates.push_back(radius);
+  }
+}
+
 void MeshGeneration::evaluateProposals(
     pcl::PolygonMesh &resulting_mesh,
     std::vector<Eigen::Vector3d> &center_estimates,
@@ -394,10 +504,6 @@ void MeshGeneration::evaluateProposals(
   std::vector<geometry_msgs::Vector3> dir_3;
   std::vector<geometry_msgs::Vector3> centers;
   std::vector<::cpt_reconstruction::parameters> magnitudes;
-
-  // Check for Overlap - Full overlap vs partial overlap
-  // Check for structure in strong points
-  // Check for proximity
 
   for (int i = 0; i < center_estimates.size(); i++) {
     Eigen::Vector3d center_estimate = center_estimates.at(i);
@@ -613,6 +719,8 @@ void MeshGeneration::evaluateProposals(
   publisher_.publish(element_proposals);
   ROS_INFO("All done");
 }
+
+
 
 bool MeshGeneration::checkShapeConstraints(int sem_class,
                                            Eigen::Vector3d &normal,
@@ -1327,7 +1435,7 @@ void MeshGeneration::removeDuplicatedValues(std::vector<double> &vector,
   vector.erase(unique_end, vector.end());
 }
 
-bool MeshGeneration::getReconstructionParameters(
+bool MeshGeneration::getReconstructionParametersPlanes(
     int idx,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr &strong_points_reconstruction,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr &weak_points,

@@ -10,9 +10,6 @@ int main(int argc, char** argv) {
   ros::NodeHandle nodeHandle1;
   ros::NodeHandle nodeHandle2;
 
-  std::string model_path;
-  nodeHandle1.getParam("UpsampledBuildingModelFile", model_path);
-
   cad_percept::cpt_reconstruction::Model model(nodeHandle1);
   model.preprocess();
 

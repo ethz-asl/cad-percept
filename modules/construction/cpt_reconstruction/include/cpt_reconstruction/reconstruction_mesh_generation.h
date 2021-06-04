@@ -151,14 +151,18 @@ class MeshGeneration {
 
   void preprocessFusedMesh(pcl::PolygonMesh &mesh_detected, double min_area);
 
-  void getProposalVertices(double min_area);
+  void getProposalVerticesPlanes(double min_area);
 
-  void getElementProposals(
+  void getElementProposalsPlanes(
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
       std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
       pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points,
       pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points);
+
+  void getElementProposalsCylinders(std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
+                                    std::vector<double> &radius_estimates);
+
 
   void evaluateProposals(
       pcl::PolygonMesh &resulting_mesh,
@@ -215,7 +219,7 @@ class MeshGeneration {
 
   void removeDuplicatedValues(std::vector<double> &vector, double eps = 10e-6);
 
-  bool getReconstructionParameters(
+  bool getReconstructionParametersPlanes(
       int idx,
       const pcl::PointCloud<pcl::PointXYZ>::Ptr &strong_points_reconstruction,
       const pcl::PointCloud<pcl::PointXYZ>::Ptr &weak_points,

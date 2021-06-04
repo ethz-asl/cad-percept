@@ -19,6 +19,7 @@ cs_add_library(${PROJECT_NAME}
 		src/reconstruction_clustering.cpp
 		src/reconstruction_mesh_generation.cpp
 		src/reconstruction_classification.cpp
+		src/reconstruction_proposal_selection.cpp
         )
 
 ############
