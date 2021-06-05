@@ -1,13 +1,13 @@
 # Setup
 # 0 -> SuperMegaBot, 1 -> Totalstation
-SensorType : 0
+SensorType : 1
 
 #For Totalstation only:
 TransformationMatrix: [1.0, 0.0, 0.0, 0.0,
                        0.0, 1.0, 0.0, 0.0,
                        0.0, 0.0, 1.0, 0.0,
                        0.0, 0.0, 0.0, 1.0]
-
+ScanPointsFile: "/home/philipp/Schreibtisch/leica/new_scan1_aligned.ply"
 
 ########################################################################
 ### Paths
@@ -37,7 +37,7 @@ OctreeFilterResolution: 0.02
 RANSACProbability: 0.000001
 RANSACMinPoints: 200
 RANSACEpsilon: 0.03
-RANSACClusterEpsilon: 0.2
+RANSACClusterEpsilon: 0.1
 RANSACNormalThreshold: 0.80
 ########################################################################
 
@@ -47,9 +47,9 @@ VoxelGridFilterResolution: 0.01
 MinSizeValidPlane: 50
 ValidSizeThresholdPlane: 1000
 ThresholdSecondEigenvalue: 0.00015
-IntervalFusingClusters: 50
-IntervalCleaningClusters: 50 #200
-IntervalForwardingClusters: 50 #200
+IntervalFusingClusters: 20
+IntervalCleaningClusters: 20 #200
+IntervalForwardingClusters: 20 #200
 
 #Fusing Planes
 DotProductNormals: 0.99

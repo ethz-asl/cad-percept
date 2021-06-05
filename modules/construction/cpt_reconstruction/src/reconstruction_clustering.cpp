@@ -135,10 +135,10 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     this->fusePlanes();
     this->fuseCylinders();
 
-    this->removeSingleDetectionsPlanes();
-    this->removeConflictingClustersPlanes();
+    // this->removeSingleDetectionsPlanes();
+    // this->removeConflictingClustersPlanes();
 
-    this->removeSingleDetectionsCylinders();
+    // this->removeSingleDetectionsCylinders();
     ROS_INFO("Size after fuseing plane: %d \n", clouds_plane_.size());
     ROS_INFO("Size after fuseing cylinders: %d \n", clouds_cyl_.size());
   }

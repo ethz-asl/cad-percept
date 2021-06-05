@@ -3,7 +3,9 @@
 <launch>
 	<param name="use_sim_time" value="true"/>
     <rosparam file="$(find cpt_reconstruction)/launch/parameters.yaml" />
-	
+
+	<node name="publisher" pkg ="cpt_reconstruction" type="reconstruction_points_publisher_node" output="screen" launch-prefix="gnome-terminal --tab -e"/>
+
 	<node name="shape_detection" pkg ="cpt_reconstruction" type="reconstruction_shape_detection_node" output="screen" launch-prefix="gnome-terminal --tab -e"/>
 	
 	<node name="clustering" pkg ="cpt_reconstruction" type="reconstruction_clustering_node" output="screen" launch-prefix="gnome-terminal --tab -e"/>

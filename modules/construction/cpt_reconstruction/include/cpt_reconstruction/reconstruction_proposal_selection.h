@@ -5,6 +5,7 @@
 
 #include <Eigen/Core>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -50,7 +51,10 @@ class ProposalSelection {
   void removeConflictingElements();
   void removeInsufficientElements();
 
-  void getSelectedProposals();
+  void getSelectedProposals(
+      std::vector<Eigen::Vector3d> &center_estimates,
+      std::vector<Eigen::Matrix3d> &direction_estimates,
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates);
 
  private:
   // Planes

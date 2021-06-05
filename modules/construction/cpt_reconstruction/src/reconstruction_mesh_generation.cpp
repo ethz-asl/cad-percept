@@ -88,7 +88,59 @@ void MeshGeneration::messageCallback(
                                       parameter_estimates,
                                       bounded_axis_estimates, radius_estimates);
   proposalSelection.selectProposals();
-  proposalSelection.getSelectedProposals();
+  proposalSelection.getSelectedProposals(center_estimates, direction_estimates,
+                                         parameter_estimates);
+
+  std::vector<geometry_msgs::Vector3> dir_1_msg;
+  std::vector<geometry_msgs::Vector3> dir_2_msg;
+  std::vector<geometry_msgs::Vector3> dir_3_msg;
+  std::vector<geometry_msgs::Vector3> centers_msg;
+  std::vector<::cpt_reconstruction::parameters> magnitudes_msg;
+  for (int i = 0; i < center_estimates.size(); i++) {
+    Eigen::Vector3d cur_center = center_estimates.at(i);
+    Eigen::Vector3d cur_dir_1 = direction_estimates.at(i).col(0);
+    Eigen::Vector3d cur_dir_2 = direction_estimates.at(i).col(1);
+    Eigen::Vector3d cur_dir_3 = direction_estimates.at(i).col(2);
+    std::vector<Eigen::VectorXd> cur_magnitudes = parameter_estimates.at(i);
+
+    geometry_msgs::Vector3 center_vec;
+    geometry_msgs::Vector3 dir_1_vec;
+    geometry_msgs::Vector3 dir_2_vec;
+    geometry_msgs::Vector3 dir_3_vec;
+    ::cpt_reconstruction::parameters magnitues_vec;
+
+    center_vec.x = cur_center.x();
+    center_vec.y = cur_center.y();
+    center_vec.z = cur_center.z();
+
+    dir_1_vec.x = cur_dir_1.x();
+    dir_1_vec.y = cur_dir_1.y();
+    dir_1_vec.z = cur_dir_1.z();
+    dir_2_vec.x = cur_dir_2.x();
+    dir_2_vec.y = cur_dir_2.y();
+    dir_2_vec.z = cur_dir_2.z();
+    dir_3_vec.x = cur_dir_3.x();
+    dir_3_vec.y = cur_dir_3.y();
+    dir_3_vec.z = cur_dir_3.z();
+
+    for (int j = 0; j < 6; j++) {
+      magnitues_vec.params.push_back(cur_magnitudes.at(j)[0]);
+    }
+
+    dir_1_msg.push_back(dir_1_vec);
+    dir_2_msg.push_back(dir_2_vec);
+    dir_3_msg.push_back(dir_3_vec);
+    centers_msg.push_back(center_vec);
+    magnitudes_msg.push_back(magnitues_vec);
+  }
+
+  ::cpt_reconstruction::element_proposals proposals_message;
+  proposals_message.centers = centers_msg;
+  proposals_message.dir_1 = dir_1_msg;
+  proposals_message.dir_2 = dir_2_msg;
+  proposals_message.dir_3 = dir_3_msg;
+  proposals_message.magnitudes = magnitudes_msg;
+  publisher_.publish(proposals_message);
 
   /*
   pcl::PolygonMesh resulting_mesh;
@@ -497,6 +549,7 @@ void MeshGeneration::getElementProposalsCylinders(
   }
 }
 
+/*
 void MeshGeneration::evaluateProposals(
     pcl::PolygonMesh &resulting_mesh,
     std::vector<Eigen::Vector3d> &center_estimates,
@@ -724,6 +777,7 @@ void MeshGeneration::evaluateProposals(
   publisher_.publish(element_proposals);
   ROS_INFO("All done");
 }
+*/
 
 bool MeshGeneration::checkShapeConstraints(int sem_class,
                                            Eigen::Vector3d &normal,
@@ -1025,6 +1079,7 @@ void MeshGeneration::processElementCloud(
       -(mean_point.x * element_normal.x() + mean_point.y * element_normal.y() +
         mean_point.z * element_normal.z());
 
+  /*
   pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
   pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
       new pcl::search::KdTree<pcl::PointXYZ>);
@@ -1035,8 +1090,10 @@ void MeshGeneration::processElementCloud(
   normalEstimator.setSearchMethod(searchTree);
   normalEstimator.setKSearch(10);
   normalEstimator.compute(*normals);
+  */
 
   // Filter corner points out
+  /* TODO: CHECK
   pcl::PointCloud<pcl::PointXYZI>::Ptr corners_intensity(
       new pcl::PointCloud<pcl::PointXYZI>);
   pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::Normal> harris;
@@ -1046,10 +1103,11 @@ void MeshGeneration::processElementCloud(
   harris.setThreshold(0.2f);
   harris.setNormals(normals);
   harris.compute(*corners_intensity);
+  */
 
   // Remove Intensity field
   // pcl::copyPointCloud(*corners_intensity, *corners);
-  pcl::copyPointCloud(*corners_intensity, *corners);
+  pcl::copyPointCloud(*element_points, *corners);
 
   // Corners -> Corners top and bottom, Corners side
   if (std::fabs(element_normal.z()) < 0.1) {

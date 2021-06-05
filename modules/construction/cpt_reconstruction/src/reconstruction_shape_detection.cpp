@@ -30,6 +30,7 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
 
   subscriber1_ = nodeHandle1_.subscribe("corrected_scan", 1000,
                                         &ShapeDetection::messageCallback, this);
+
   publisher_ =
       nodeHandle2_.advertise<::cpt_reconstruction::shape>("ransac_shape", 1000);
   ros::spin();
@@ -37,37 +38,47 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
 
 void ShapeDetection::messageCallback(
     const sensor_msgs::PointCloud2ConstPtr &cloud_msg) {
-  if (update_transformation_) {
-    tf::StampedTransform transform;
-    tf_listener_.lookupTransform("/map", "/marker", ros::Time(0), transform);
-    Eigen::Matrix3d rotation;
-    tf::matrixTFToEigen(transform.getBasis(), rotation);
-    Eigen::Vector3d translation;
-    tf::vectorTFToEigen(transform.getOrigin(), translation);
-    Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
-    transformation.block(0, 0, 3, 3) = rotation;
-    transformation.block(0, 3, 3, 1) = translation;
-    transformation_inv_ = transformation.inverse();
-    if ((transformation - transformation_).lpNorm<Eigen::Infinity>() < 0.0001) {
-      update_transformation_ = false;
-      ROS_INFO("Transformation changed!");
-      transformation_ = transformation;
+  // Transformations
+  if (SENSOR_TYPE_ == 0) {
+    if (update_transformation_) {
+      tf::StampedTransform transform;
+      tf_listener_.lookupTransform("/map", "/marker", ros::Time(0), transform);
+      Eigen::Matrix3d rotation;
+      tf::matrixTFToEigen(transform.getBasis(), rotation);
+      Eigen::Vector3d translation;
+      tf::vectorTFToEigen(transform.getOrigin(), translation);
+      Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
+      transformation.block(0, 0, 3, 3) = rotation;
+      transformation.block(0, 3, 3, 1) = translation;
+      transformation_inv_ = transformation.inverse();
+      if ((transformation - transformation_).lpNorm<Eigen::Infinity>() <
+          0.0001) {
+        update_transformation_ = false;
+        ROS_INFO("Transformation changed!");
+        transformation_ = transformation;
+      }
     }
+  } else {
+    transformation_ = TRANSFORMATION_;
+    transformation_inv_ = TRANSFORMATION_.inverse();
   }
 
-  tf::StampedTransform robot_pos_stamp;
-  tf_listener_.lookupTransform("/map", "/lidar", ros::Time(0), robot_pos_stamp);
+  // Robot Position
   Eigen::Vector3d robot_pos;
-  tf::vectorTFToEigen(robot_pos_stamp.getOrigin(), robot_pos);
-  Eigen::Vector4d translation_h(robot_pos.x(), robot_pos.y(), robot_pos.z(),
-                                1.0);
-  robot_pos = (transformation_inv_ * translation_h).block<3, 1>(0, 0);
+  if (SENSOR_TYPE_ == 0) {
+    tf::StampedTransform robot_pos_stamp;
+    tf_listener_.lookupTransform("/map", "/lidar", ros::Time(0),
+                                 robot_pos_stamp);
 
-  // ROS_INFO("Robot x: %f\n", robot_pos.x());
-  // ROS_INFO("Robot y: %f\n", robot_pos.y());
-  // ROS_INFO("Robot z: %f\n", robot_pos.z());
+    tf::vectorTFToEigen(robot_pos_stamp.getOrigin(), robot_pos);
+    Eigen::Vector4d translation_h(robot_pos.x(), robot_pos.y(), robot_pos.z(),
+                                  1.0);
+    robot_pos = (transformation_inv_ * translation_h).block<3, 1>(0, 0);
+  } else {
+    robot_pos = Eigen::Vector3d::Zero();
+  }
 
-  // TODO: Transform model instead of points
+  // Get Data from Message
   pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(
       new pcl::PointCloud<pcl::PointXYZ>);
   pcl::fromROSMsg(*cloud_msg, *pcl_cloud);
@@ -99,7 +110,7 @@ void ShapeDetection::messageCallback(
   file2.close();
 
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
-  if (model_->getOutlierCount() > OUTLIER_COUNT_) {
+  if (model_->getOutlierCount() > OUTLIER_COUNT_ || SENSOR_TYPE_ == 1) {
     model_->clearRansacShapes();
     model_->applyFilter();
     model_->efficientRANSAC();

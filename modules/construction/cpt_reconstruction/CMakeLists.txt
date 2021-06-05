@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.1.0)
 project(cpt_reconstruction)
 
 find_package(catkin_simple REQUIRED)
@@ -17,9 +17,9 @@ cs_add_library(${PROJECT_NAME}
 		src/reconstruction_shape_detection.cpp
         src/reconstruction_model.cpp
 		src/reconstruction_clustering.cpp
+		src/reconstruction_proposal_selection.cpp
 		src/reconstruction_mesh_generation.cpp
 		src/reconstruction_classification.cpp
-		src/reconstruction_proposal_selection.cpp
         )
 
 ############
@@ -29,27 +29,27 @@ cs_add_library(${PROJECT_NAME}
 cs_add_executable(reconstruction_points_publisher_node
         src/reconstruction_points_publisher_node.cpp
         )
-target_link_libraries(reconstruction_points_publisher_node ${PROJECT_NAME})# /usr/include /usr/local/lib/libscip.so)
+target_link_libraries(reconstruction_points_publisher_node ${PROJECT_NAME} /usr/include /usr/local/lib/libscip.so)
 
 cs_add_executable(reconstruction_shape_detection_node
 		src/reconstruction_shape_detection_node.cpp
         )
-target_link_libraries(reconstruction_shape_detection_node ${PROJECT_NAME})# /usr/include /usr/local/lib/libscip.so)
+target_link_libraries(reconstruction_shape_detection_node ${PROJECT_NAME} /usr/include /usr/local/lib/libscip.so)
 
 cs_add_executable(reconstruction_clustering_node
 		src/reconstruction_clustering_node.cpp
 		)
-target_link_libraries(reconstruction_clustering_node ${PROJECT_NAME})# /usr/include /usr/local/lib/libscip.so)
+target_link_libraries(reconstruction_clustering_node ${PROJECT_NAME} /usr/include /usr/local/lib/libscip.so)
 
 cs_add_executable(reconstruction_classification_node
 		src/reconstruction_classification_node.cpp
 		)
-target_link_libraries(reconstruction_classification_node ${PROJECT_NAME})# /usr/include /usr/local/lib/libscip.so)
+target_link_libraries(reconstruction_classification_node ${PROJECT_NAME} /usr/include /usr/local/lib/libscip.so)
 
 cs_add_executable(reconstruction_mesh_generation_node
 		src/reconstruction_mesh_generation_node.cpp
 		)
-target_link_libraries(reconstruction_mesh_generation_node ${PROJECT_NAME})# /usr/include /usr/local/lib/libscip.so)
+target_link_libraries(reconstruction_mesh_generation_node ${PROJECT_NAME} /usr/include /usr/local/lib/libscip.so)
 
 ##########
 # EXPORT #

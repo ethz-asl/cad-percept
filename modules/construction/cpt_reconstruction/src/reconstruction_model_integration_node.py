@@ -22,32 +22,32 @@ class ManipulationPanel:
         self.root.protocol("WM_DELETE_WINDOW", self.callback)
 
         self.variable_a1 = tk.DoubleVar(value=0)
-        self.spinbox_a1 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+        self.spinbox_a1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
                                      textvariable=self.variable_a1)
         self.spinbox_a1.pack()
 
         self.variable_a2 = tk.DoubleVar(value=0)
-        self.spinbox_a2 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+        self.spinbox_a2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
                                      textvariable=self.variable_a2)
         self.spinbox_a2.pack()
 
         self.variable_b1 = tk.DoubleVar(value=0)
-        self.spinbox_b1 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+        self.spinbox_b1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
                                      textvariable=self.variable_b1)
         self.spinbox_b1.pack()
 
         self.variable_b2 = tk.DoubleVar(value=0)
-        self.spinbox_b2 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+        self.spinbox_b2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
                                      textvariable=self.variable_b2)
         self.spinbox_b2.pack()
 
         self.variable_c1 = tk.DoubleVar(value=0)
-        self.spinbox_c1 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+        self.spinbox_c1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
                                      textvariable=self.variable_c1)
         self.spinbox_c1.pack()
 
         self.variable_c2 = tk.DoubleVar(value=0)
-        self.spinbox_c2 = tk.Spinbox(self.root, from_=0, to=100, increment=0.05, width=5, justify=tk.RIGHT,
+        self.spinbox_c2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
                                      textvariable=self.variable_c2)
         self.spinbox_c2.pack()
 
@@ -118,44 +118,18 @@ class UserInteraction:
         self.model_mesh = 0
         self.render = True
 
-        self.ptr_a1 = 0
-        self.ptr_a2 = 0
-        self.ptr_b1 = 0
-        self.ptr_b2 = 0
-        self.ptr_c1 = 0
-        self.ptr_c2 = 0
-
     def getElementProposalsFromMessage(self, msg):
-        self.number_elements = len(msg.ids)
+        self.number_elements = len(msg.centers)
 
         for i in range(0, self.number_elements):
             paras = msg.magnitudes[i]
 
-            cur_a1 = np.array([])
-            cur_a2 = np.array([])
-            cur_b1 = np.array([])
-            cur_b2 = np.array([])
-            cur_c1 = np.array([])
-            cur_c2 = np.array([])
-            for j in range(0, len(paras.a1)):
-                cur_a1 = np.append(cur_a1, paras.a1[j])
-            for j in range(0, len(paras.a2)):
-                cur_a2 = np.append(cur_a2, paras.a2[j])
-            for j in range(0, len(paras.b1)):
-                cur_b1 = np.append(cur_b1, paras.b1[j])
-            for j in range(0, len(paras.b2)):
-                cur_b2 = np.append(cur_b2, paras.b2[j])
-            for j in range(0, len(paras.c1)):
-                cur_c1 = np.append(cur_c1, paras.c1[j])
-            for j in range(0, len(paras.c2)):
-                cur_c2 = np.append(cur_c2, paras.c2[j])
-
-            cur_a1 = np.sort(cur_a1)
-            cur_a2 = -np.sort(-cur_a2)
-            cur_b1 = np.sort(cur_b1)
-            cur_b2 = -np.sort(-cur_b2)
-            cur_c1 = np.sort(cur_c1)
-            cur_c2 = -np.sort(-cur_c2)
+            cur_a1 = paras.params[0]
+            cur_a2 = paras.params[1]
+            cur_b1 = paras.params[2]
+            cur_b2 = paras.params[3]
+            cur_c1 = paras.params[4]
+            cur_c2 = paras.params[5]
 
             self.element_a1.append(cur_a1)
             self.element_a2.append(cur_a2)
@@ -201,13 +175,6 @@ class UserInteraction:
             c1 = self.element_c1[idx]
             c2 = self.element_c2[idx]
 
-            self.ptr_a1 = len(a1) - 1
-            self.ptr_a2 = len(a2) - 1
-            self.ptr_b1 = len(b1) - 1
-            self.ptr_b2 = len(b2) - 1
-            self.ptr_c1 = len(c1) - 1
-            self.ptr_c2 = len(c2) - 1
-
             center = self.element_centers[idx]
 
             dir_1 = self.element_directions_1[idx]
@@ -215,17 +182,15 @@ class UserInteraction:
             dir_3 = self.element_directions_3[idx]
 
             global manipulationPanel
-            manipulationPanel.setValueA1(a1[self.ptr_a1])
-            manipulationPanel.setValueA2(- a2[self.ptr_a2])
-            manipulationPanel.setValueB1(b1[self.ptr_b1])
-            manipulationPanel.setValueB2(- b2[self.ptr_b2])
-            manipulationPanel.setValueC1(c1[self.ptr_c1])
-            manipulationPanel.setValueC2(- c2[self.ptr_c2])
+            manipulationPanel.setValueA1(a1)
+            manipulationPanel.setValueA2(a2)
+            manipulationPanel.setValueB1(b1)
+            manipulationPanel.setValueB2(b2)
+            manipulationPanel.setValueC1(c1)
+            manipulationPanel.setValueC2(c2)
 
-            p1, p2, p3, p4, p5, p6, p7, p8 = self.getPointsFromParameters(center, dir_1, dir_2, dir_3, a1[self.ptr_a1],
-                                                                          a2[self.ptr_a2], b1[self.ptr_b1],
-                                                                          b2[self.ptr_b2], c1[self.ptr_c1],
-                                                                          c2[self.ptr_c2])
+            p1, p2, p3, p4, p5, p6, p7, p8 = self.getPointsFromParameters(center, dir_1, dir_2, dir_3, a1,
+                                                                          a2, b1, b2, c1, c2)
             P, T = self.prepareDatapointsForMeshing(p1, p2, p3, p4, p5, p6, p7, p8)
 
             points = o3d.utility.Vector3dVector(P)
@@ -250,11 +215,11 @@ class UserInteraction:
             self.render = True
             while (self.render):
                 a1_user = manipulationPanel.getA1Value()
-                a2_user = -manipulationPanel.getA2Value()
+                a2_user = manipulationPanel.getA2Value()
                 b1_user = manipulationPanel.getB1Value()
-                b2_user = -manipulationPanel.getB2Value()
+                b2_user = manipulationPanel.getB2Value()
                 c1_user = manipulationPanel.getC1Value()
-                c2_user = -manipulationPanel.getC2Value()
+                c2_user = manipulationPanel.getC2Value()
 
                 p1_new, p2_new, p3_new, p4_new, \
                 p5_new, p6_new, p7_new, p8_new = self.getPointsFromParameters(center, dir_1, dir_2, dir_3,
@@ -282,32 +247,6 @@ class UserInteraction:
         mesh = o3d.io.read_triangle_mesh(BUILDING_MODEL_PATH_)
         mesh.paint_uniform_color(np.array([0, 0, 1]))
         self.model_mesh = mesh
-
-    def prepeareModelData(self):
-        plydata = PlyData.read(BUILDING_MODEL_PATH_)
-
-        num_faces = plydata['face'].count
-        x = np.array([])
-        y = np.array([])
-        z = np.array([])
-        t = []
-        for i in range(0, num_faces):
-            vertices = plydata['face'][i][0]
-
-            v1 = vertices[0]
-            v2 = vertices[1]
-            v3 = vertices[2]
-            t.append([v1, v2, v3])
-            if (len(vertices) > 3):
-                print(len(vertices))
-
-        num_vertices = plydata['vertex'].count
-        for i in range(0, num_vertices):
-            p = plydata['vertex'][i]
-            x = np.append(x, p[0])
-            y = np.append(y, p[1])
-            z = np.append(z, p[2])
-        return x, y, z, t
 
     def getPointsFromParameters(self, center, dir1, dir2, dir3, a1, a2, b1, b2, c1, c2):
         p1 = np.array([])
@@ -360,7 +299,7 @@ class UserInteraction:
 
 
 def callback(msg):
-    rospy.loginfo(rospy.get_caller_id() + "I heard %d", len(msg.ids))
+    rospy.loginfo(rospy.get_caller_id() + "I heard %d", len(msg.centers))
     graphical_interface = UserInteraction()
     graphical_interface.setModelDataForO3D()
     graphical_interface.getElementProposalsFromMessage(msg)

@@ -4,41 +4,39 @@ namespace cad_percept {
 namespace cpt_reconstruction {
 
 ReconstructionPointsPublisher::ReconstructionPointsPublisher(
-    ros::NodeHandle nodeHandle, std::string filename, int batch_size) {
+    ros::NodeHandle nodeHandle) {
   nodeHandle_ = nodeHandle;
-  filename_ = filename;
-  batch_size = batch_size;
+
+  nodeHandle.getParam("SensorType", SENSOR_TYPE_);
+  nodeHandle.getParam("ScanPointsFile", SCAN_PATH_FILE_);
+
+  publisher_ =
+      nodeHandle_.advertise<sensor_msgs::PointCloud2>("corrected_scan", 1);
+
+  this->publishPoints();
+
+  ros::spin();
 }
 
 void ReconstructionPointsPublisher::publishPoints() {
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_scan(
       new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::PLYReader reader;
-  reader.read(filename_, *cloud_scan);
+  if (SENSOR_TYPE_ == 1) {
+    pcl::PLYReader reader;
+    reader.read(SCAN_PATH_FILE_, *cloud_scan);
 
-  ros::Publisher publisher =
-      nodeHandle_.advertise<::cpt_reconstruction::coordinates>("points", 1000);
-  ros::Rate loop_rate(8000);
+    sensor_msgs::PointCloud2 message_data;
+    pcl::PCLPointCloud2 pcl2;
+    pcl::toPCLPointCloud2(*cloud_scan, pcl2);
+    pcl_conversions::moveFromPCL(pcl2, message_data);
 
-  int count = 0;
-  while (ros::ok() && count < cloud_scan->size()) {
-    pcl::PointXYZ p = (*cloud_scan)[count];
-
-    ::cpt_reconstruction::coordinates msg;
-    msg.idx = count;
-    msg.x = p.x;
-    msg.y = p.y;
-    msg.z = p.z;
-
-    ROS_INFO("[Publisher] published Point %d at %f %f %f\n", msg.idx, msg.x,
-             msg.y, msg.z);
-
-    publisher.publish(msg);
-
-    ros::spinOnce();
-
-    loop_rate.sleep();
-    count++;
+    ROS_INFO("Waiting ...");
+    sleep(10);
+    ROS_INFO("Waiting Done ...");
+    // sensor_msgs::PointCloud2::Ptr message(new
+    // sensor_msgs::PointCloud2(message_data));
+    publisher_.publish(message_data);
+    ROS_INFO("Published_Message");
   }
 }
 
