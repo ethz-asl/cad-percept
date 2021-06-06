@@ -155,33 +155,65 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
 
     for (unsigned i = 0; i < clouds_plane_.size(); i++) {
       if (fusing_count_plane_.at(i) >= DETECTION_COUNT_) {
-        pcl::PCLPointCloud2 temp_pcl;
-        pcl::toPCLPointCloud2(*(clouds_plane_.at(i)), temp_pcl);
+        pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
+            new pcl::search::KdTree<pcl::PointXYZ>);
+        tree->setInputCloud(clouds_plane_.at(i));
 
-        sensor_msgs::PointCloud2 temp_ros;
-        pcl_conversions::moveFromPCL(temp_pcl, temp_ros);
-        clusters_vec.push_back(temp_ros);
+        std::vector<pcl::PointIndices> cluster_indices;
+        pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+        ec.setClusterTolerance(0.08);  // 2cm
+        ec.setMinClusterSize(200);
+        ec.setMaxClusterSize(500000);
+        ec.setSearchMethod(tree);
+        ec.setInputCloud(clouds_plane_.at(i));
+        ec.extract(cluster_indices);
 
-        geometry_msgs::Vector3 temp_robot_pos;
-        temp_robot_pos.x = robot_positions_.at(i).x();
-        temp_robot_pos.y = robot_positions_.at(i).y();
-        temp_robot_pos.z = robot_positions_.at(i).z();
-        robot_positions_vec.push_back(temp_robot_pos);
+        int j = 0;
+        for (std::vector<pcl::PointIndices>::const_iterator it =
+                 cluster_indices.begin();
+             it != cluster_indices.end(); ++it) {
+          pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(
+              new pcl::PointCloud<pcl::PointXYZ>);
+          for (const auto &idx : it->indices) {
+            cloud_cluster->push_back((*clouds_plane_.at(i))[idx]);
+          }
+          cloud_cluster->width = cloud_cluster->size();
+          cloud_cluster->height = 1;
+          cloud_cluster->is_dense = true;
 
-        geometry_msgs::Vector3 ransac_normal_temp;
-        ransac_normal_temp.x = ransac_normals_.at(i).x();
-        ransac_normal_temp.y = ransac_normals_.at(i).y();
-        ransac_normal_temp.z = ransac_normals_.at(i).z();
-        ransac_normal_vec.push_back(ransac_normal_temp);
+          std::string result_cluster = SHAPES_PATH_ + "cluster_" +
+                                       std::to_string(i) + "_" +
+                                       std::to_string(j++) + "_plane.ply";
+          pcl::io::savePLYFile(result_cluster, *cloud_cluster);
 
-        geometry_msgs::Vector3 axis_temp;
-        axis_temp.x = 0;
-        axis_temp.y = 0;
-        axis_temp.z = 0;
+          pcl::PCLPointCloud2 temp_pcl;
+          pcl::toPCLPointCloud2(*(cloud_cluster), temp_pcl);
 
-        axis_vec.push_back(axis_temp);
-        radius_vec.push_back(0.0);
-        id_vec.push_back(0);
+          sensor_msgs::PointCloud2 temp_ros;
+          pcl_conversions::moveFromPCL(temp_pcl, temp_ros);
+          clusters_vec.push_back(temp_ros);
+
+          geometry_msgs::Vector3 temp_robot_pos;
+          temp_robot_pos.x = robot_positions_.at(i).x();
+          temp_robot_pos.y = robot_positions_.at(i).y();
+          temp_robot_pos.z = robot_positions_.at(i).z();
+          robot_positions_vec.push_back(temp_robot_pos);
+
+          geometry_msgs::Vector3 ransac_normal_temp;
+          ransac_normal_temp.x = ransac_normals_.at(i).x();
+          ransac_normal_temp.y = ransac_normals_.at(i).y();
+          ransac_normal_temp.z = ransac_normals_.at(i).z();
+          ransac_normal_vec.push_back(ransac_normal_temp);
+
+          geometry_msgs::Vector3 axis_temp;
+          axis_temp.x = 0;
+          axis_temp.y = 0;
+          axis_temp.z = 0;
+
+          axis_vec.push_back(axis_temp);
+          radius_vec.push_back(0.0);
+          id_vec.push_back(0);
+        }
       }
     }
 

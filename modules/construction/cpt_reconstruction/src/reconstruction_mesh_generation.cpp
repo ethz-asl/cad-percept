@@ -26,7 +26,6 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle1,
       UPSAMPLED_MODEL_OCTREE_RESOLUTION_));
 
   pcl::io::loadPolygonFilePLY(BUILDING_MODEL_PATH_, mesh_model_);
-
   pcl::fromPCLPointCloud2(mesh_model_.cloud, *vertices_model_only_);
   faces_model_only_ = mesh_model_.polygons;
 
@@ -194,6 +193,28 @@ void MeshGeneration::getMessageData(
 
     // Get current class from msg
     int cur_class = msg.classes.at(i);
+
+    if (cur_class == Semantics::WALL) {
+      std::string save0 =
+          OUTPUT_DIR_ + "received_points_wall" + std::to_string(i) + ".ply";
+      pcl::io::savePLYFile(save0, *cur_cloud);
+    } else if (cur_class == Semantics::BEAM) {
+      std::string save0 =
+          OUTPUT_DIR_ + "received_points_beam" + std::to_string(i) + ".ply";
+      pcl::io::savePLYFile(save0, *cur_cloud);
+    } else if (cur_class == Semantics::CEILING) {
+      std::string save0 =
+          OUTPUT_DIR_ + "received_points_ceiling" + std::to_string(i) + ".ply";
+      pcl::io::savePLYFile(save0, *cur_cloud);
+    } else if (cur_class == Semantics::FLOOR) {
+      std::string save0 =
+          OUTPUT_DIR_ + "received_points_floor" + std::to_string(i) + ".ply";
+      pcl::io::savePLYFile(save0, *cur_cloud);
+    } else if (cur_class == Semantics::WALL) {
+      std::string save0 =
+          OUTPUT_DIR_ + "received_points_clutter" + std::to_string(i) + ".ply";
+      pcl::io::savePLYFile(save0, *cur_cloud);
+    }
 
     // Get current robot position from msg
     geometry_msgs::Vector3 robot_position_temp = msg.robot_positions.at(i);
@@ -782,7 +803,8 @@ void MeshGeneration::evaluateProposals(
 bool MeshGeneration::checkShapeConstraints(int sem_class,
                                            Eigen::Vector3d &normal,
                                            int cur_id) {
-  if (cur_id == 0 && (sem_class == Semantics::WALL || Semantics::BEAM)) {
+  if (cur_id == 0 &&
+      (sem_class == Semantics::WALL || sem_class == Semantics::BEAM)) {
     if (std::fabs(normal.z()) < 0.1) {
       return true;
     } else {
@@ -891,6 +913,7 @@ void MeshGeneration::computePlanarConvexHull(
   pcl::PointCloud<pcl::PointXYZ>::Ptr corners_no_i(
       new pcl::PointCloud<pcl::PointXYZ>);
   pcl::copyPointCloud(*corners, *corners_no_i);
+
   Eigen::Vector3d plane_normal(coefficients->values[0], coefficients->values[1],
                                coefficients->values[2]);
   plane_normal.normalize();
@@ -947,8 +970,8 @@ void MeshGeneration::computePlanarConvexHull(
 
       double dot_value = std::fabs(plane_normal.dot(face_normal));
       double z_abs = std::fabs(face_normal.z());
-      if ((dot_value < 0.02 || dot_value > 0.999) &&
-          (z_abs < 0.02 || z_abs > 0.998)) {
+      if ((dot_value < 0.02 || dot_value > 0.998) &&
+          (z_abs < 0.02 || z_abs > 0.99)) {
         mesh_offsets.polygons.push_back(vertices);
       }
     }

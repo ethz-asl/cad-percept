@@ -24,8 +24,6 @@ void Classification::messageCallback(
     const ::cpt_reconstruction::clusters &msg) {
   ROS_INFO("Received %d", msg.clouds.size());
 
-  // TODO: Split up planes, get components; for Leica data
-
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds;
   for (int i = 0; i < msg.clouds.size(); i++) {
     sensor_msgs::PointCloud2 msg_cloud = msg.clouds.at(i);
