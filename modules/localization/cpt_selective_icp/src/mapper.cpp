@@ -184,13 +184,22 @@ void Mapper::gotCloud(const sensor_msgs::PointCloud2 &cloud_msg_in) {
      */
     if (!parameters_.standalone_icp) {
       try {
+	PM::TransformationParameters T_scanner_rotation = 
+	  PointMatcher_ros::eigenMatrixToDim<float>(
+            PointMatcher_ros::transformListenerToEigenMatrix<float>(
+                tf_listener_,
+                "arm_base",  // to
+                "rslidar_urdf_base_link",   // from
+                stamp),
+            dimp1);
+        T_scanner_rotation.block(0,3,3,1).setZero();	
         T_scanner_to_map_ = PointMatcher_ros::eigenMatrixToDim<float>(
             PointMatcher_ros::transformListenerToEigenMatrix<float>(
                 tf_listener_,
                 parameters_.tf_map_frame,  // to
                 parameters_.lidar_frame,   // from
                 stamp),
-            dimp1);
+            dimp1) * T_scanner_rotation;
       } catch (tf::ExtrapolationException e) {
         ROS_ERROR_STREAM("Extrapolation Exception. stamp = "
                          << stamp << " now = " << ros::Time::now()

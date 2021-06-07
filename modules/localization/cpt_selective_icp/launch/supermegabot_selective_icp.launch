@@ -5,7 +5,7 @@ Launch file for Selective ICP
 
 <launch>
 
-	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla.json" />
+	<arg name="cad_file" default="$(find cpt_selective_icp)/resources/cla_grinding_string.json" />
 
 	<node name="mapper" type="cpt_selective_icp_node" pkg="cpt_selective_icp" output="screen" >
     <rosparam command="load" file="$(find cpt_selective_icp)/config/mapper_parameters.yaml" />
@@ -17,10 +17,10 @@ Launch file for Selective ICP
 			   value="$(find cpt_selective_icp)/config/selective_icp.yaml" />
 		<param name="inputFiltersConfig"
 			   value="$(find cpt_selective_icp)/config/input_filters.yaml" />
-		<param name="mapPostFiltersConfig"
-			   value="$(find cpt_selective_icp)/config/map_post_filter.yaml" />
-		<param name="mapPreFiltersConfig"
-			   value="$(find cpt_selective_icp)/config/map_pre_filter.yaml" />
+		<!--param name="mapPostFiltersConfig"
+			   value="$(find cpt_selective_icp)/config/map_post_filter.yaml" /-->
+		<!--param name="mapPreFiltersConfig"
+			   value="$(find cpt_selective_icp)/config/map_pre_filter.yaml" /-->
 		<param name="path"
 				 value="$(find cpt_selective_icp)" />
 	</node>
@@ -46,6 +46,6 @@ Launch file for Selective ICP
     	<param name="frame_name" value="marker"/>
   	</node>
 
-	<node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/>
+	<!--node pkg="tf" type="static_transform_publisher" name="laser" args="0 0 0 0 0 0 1  /lidar /rslidar  100"/-->
 
 </launch>
