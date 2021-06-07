@@ -341,6 +341,14 @@ class UserInteraction:
             vis.destroy_window()
             self.current_element_number_cylinders = self.current_element_number_cylinders + 1
 
+        final_mesh = o3d.io.read_triangle_mesh(BUILDING_MODEL_PATH_)
+        for el in done_meshes:
+            final_mesh = final_mesh + el
+
+        final_mesh.merge_close_vertices(0.01)
+        final_mesh.remove_duplicated_vertices()
+        o3d.io.write_triangle_mesh("/home/philipp/Schreibtisch/final_reconstructed_mesh.ply", final_mesh)
+
 
     def setModelDataForO3D(self):
         mesh = o3d.io.read_triangle_mesh(BUILDING_MODEL_PATH_)
