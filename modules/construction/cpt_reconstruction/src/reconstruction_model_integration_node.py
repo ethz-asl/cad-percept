@@ -102,8 +102,10 @@ class ManipulationPanel:
 
 class UserInteraction:
     def __init__(self):
-        self.current_element_number = 0
-        self.number_elements = 0
+        # Planar Elements
+        self.current_element_number_planar = 0
+        self.number_elements_planar = 0
+
         self.element_centers = []
         self.element_directions_1 = []
         self.element_directions_2 = []
@@ -115,13 +117,23 @@ class UserInteraction:
         self.element_c1 = []
         self.element_c2 = []
 
+        #Cylinders
+        self.current_element_number_cylinders = 0
+        self.number_elements_cylinders = 0
+
+        self.element_radius = []
+        self.element_p1 = []
+        self.element_p2 = []
+        self.element_axis = []
+
         self.model_mesh = 0
         self.render = True
 
     def getElementProposalsFromMessage(self, msg):
-        self.number_elements = len(msg.centers)
+        self.number_elements_planar = len(msg.centers)
+        self.number_elements_cylinders = len(msg.radius)
 
-        for i in range(0, self.number_elements):
+        for i in range(0, self.number_elements_planar):
             paras = msg.magnitudes[i]
 
             cur_a1 = paras.params[0]
@@ -160,13 +172,29 @@ class UserInteraction:
             cur_center = np.append(cur_center, msg.centers[i].z)
             self.element_centers.append(cur_center)
 
+        for i in range(0, self.number_elements_cylinders):
+            cur_radius = msg.radius[i]
+            p1 = msg.cyl_p1[i]
+            p2 = msg.cyl_p2[i]
+
+            norm = np.sqrt( (p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2)
+            axis_x = (p2.x - p1.x) / norm
+            axis_y = (p2.y - p1.y) / norm
+            axis_z = (p2.z - p1.z) / norm
+            axis = np.array([axis_x, axis_y, axis_z])
+
+            self.element_radius.append(cur_radius)
+            self.element_p1.append(np.array([p1.x, p1.y, p1.z]))
+            self.element_p2.append(np.array([p2.x, p2.y, p2.z]))
+            self.element_axis.append(axis)
+
     def loadCommandInterface(self):
 
         done_meshes = []
 
-        while (self.current_element_number < self.number_elements):
-            idx = self.current_element_number
-            rospy.loginfo(str(self.current_element_number))
+        while (self.current_element_number_planar < self.number_elements_planar):
+            idx = self.current_element_number_planar
+            rospy.loginfo(str(self.current_element_number_planar))
 
             a1 = self.element_a1[idx]
             a2 = self.element_a2[idx]
@@ -241,7 +269,78 @@ class UserInteraction:
             done_meshes.append(element)
 
             vis.destroy_window()
-            self.current_element_number = self.current_element_number + 1
+            self.current_element_number_planar = self.current_element_number_planar + 1
+
+
+        while (self.current_element_number_cylinders < self.number_elements_cylinders):
+            idx = self.current_element_number_cylinders
+            rospy.loginfo(str(self.current_element_number_cylinders))
+
+            radius = self.element_radius[idx]
+            p1 = self.element_p1[idx]
+            p2 = self.element_p2[idx]
+            axis = self.element_axis[idx]
+
+            height = np.sqrt( (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
+            #global manipulationPanel
+
+            info_1 = "height is: " + str(height)
+            info_2 = "radius is: " + str(radius)
+            rospy.loginfo(info_1)
+            rospy.loginfo(info_2)
+            cyl_mesh = o3d.geometry.TriangleMesh()
+            cyl_mesh = cyl_mesh.create_cylinder(radius, height, 20, 4)
+            cyl_mesh.paint_uniform_color(np.array([1, 0, 0]))
+
+            vec1 = np.array([0,0,1])
+            vec2 = axis
+            #Compute transformation matrix
+            #Source: https://stackoverflow.com/questions/45142959/calculate-rotation-matrix-to-align-two-vectors-in-3d-space
+            a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
+            v = np.cross(a, b)
+            rotation_matrix = np.eye(3)
+            if any(v):
+                c = np.dot(a, b)
+                s = np.linalg.norm(v)
+                kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+                rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
+
+            transformation_matrix = np.eye(4)
+            transformation_matrix[0:3, 0:3] = rotation_matrix
+
+            cyl_mesh.transform(transformation_matrix)
+
+            center_2 = np.array([ (p1[0] + p2[0]) / 2.0, (p1[1] + p2[1]) / 2.0, (p1[2] + p2[2]) / 2.0])
+            cyl_mesh.translate(center_2, False)
+
+            o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+            vis = o3d.visualization.VisualizerWithKeyCallback()
+            vis.register_key_callback(65, self.callbackExit)  # a
+
+            vis.create_window()
+            vis.add_geometry(self.model_mesh)
+            vis.add_geometry(cyl_mesh)
+            for el in done_meshes:
+                vis.add_geometry(el)
+
+            vis.get_render_option().light_on = True
+            vis.get_render_option().mesh_show_wireframe = True
+            vis.get_render_option().mesh_show_back_face = True
+
+            self.render = True
+            while (self.render):
+                vis.update_geometry(cyl_mesh)
+                vis.poll_events()
+                vis.update_renderer()
+                if (self.render == False):
+                    break
+
+            cyl_mesh.paint_uniform_color(np.array([0, 1, 0]))
+            done_meshes.append(cyl_mesh)
+
+            vis.destroy_window()
+            self.current_element_number_cylinders = self.current_element_number_cylinders + 1
+
 
     def setModelDataForO3D(self):
         mesh = o3d.io.read_triangle_mesh(BUILDING_MODEL_PATH_)
@@ -299,7 +398,8 @@ class UserInteraction:
 
 
 def callback(msg):
-    rospy.loginfo(rospy.get_caller_id() + "I heard %d", len(msg.centers))
+    rospy.loginfo(rospy.get_caller_id() + "Nr planar elements %d", len(msg.centers))
+    rospy.loginfo(rospy.get_caller_id() + "Nr cyl elements %d", len(msg.radius))
     graphical_interface = UserInteraction()
     graphical_interface.setModelDataForO3D()
     graphical_interface.getElementProposalsFromMessage(msg)

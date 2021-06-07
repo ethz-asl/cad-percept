@@ -709,6 +709,10 @@ void Clustering::fuseCylinders() {
       pcl::search::KdTree<pcl::PointXYZ>::Ptr fused_kd_tree(
           new pcl::search::KdTree<pcl::PointXYZ>());
 
+      std::string result = SHAPES_PATH_ + "fused_cylider_" +
+          std::to_string(i) + ".ply";
+      pcl::io::savePLYFile(result, *fused_point_cloud);
+
       fused_kd_tree->setInputCloud(fused_point_cloud);
       fused_clouds.push_back(fused_point_cloud);
       fused_kd_trees.push_back(fused_kd_tree);

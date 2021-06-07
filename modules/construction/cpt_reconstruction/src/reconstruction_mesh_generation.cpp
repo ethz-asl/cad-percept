@@ -86,6 +86,7 @@ void MeshGeneration::messageCallback(
   ProposalSelection proposalSelection(center_estimates, direction_estimates,
                                       parameter_estimates,
                                       bounded_axis_estimates, radius_estimates);
+
   proposalSelection.selectProposals();
   proposalSelection.getSelectedProposals(center_estimates, direction_estimates,
                                          parameter_estimates);
@@ -133,12 +134,38 @@ void MeshGeneration::messageCallback(
     magnitudes_msg.push_back(magnitues_vec);
   }
 
+
+  std::vector<double> radius_msg;
+  std::vector<geometry_msgs::Vector3> p1_msg;
+  std::vector<geometry_msgs::Vector3> p2_msg;
+  for (int i = 0; i < radius_estimates.size(); i++){
+    double cur_radius = radius_estimates.at(i);
+    Eigen::MatrixXd cur_bounded_axis_estimates = bounded_axis_estimates.at(i);
+    Eigen::Vector3d cur_p1 = cur_bounded_axis_estimates.col(0);
+    Eigen::Vector3d cur_p2 = cur_bounded_axis_estimates.col(1);
+
+    radius_msg.push_back(cur_radius);
+    geometry_msgs::Vector3 p1_temp;
+    geometry_msgs::Vector3 p2_temp;
+    p1_temp.x = cur_p1.x();
+    p1_temp.y = cur_p1.y();
+    p1_temp.z = cur_p1.z();
+    p2_temp.x = cur_p2.x();
+    p2_temp.y = cur_p2.y();
+    p2_temp.z = cur_p2.z();
+    p1_msg.push_back(p1_temp);
+    p2_msg.push_back(p2_temp);
+  }
+
   ::cpt_reconstruction::element_proposals proposals_message;
   proposals_message.centers = centers_msg;
   proposals_message.dir_1 = dir_1_msg;
   proposals_message.dir_2 = dir_2_msg;
   proposals_message.dir_3 = dir_3_msg;
   proposals_message.magnitudes = magnitudes_msg;
+  proposals_message.radius = radius_msg;
+  proposals_message.cyl_p1 = p1_msg;
+  proposals_message.cyl_p2 = p2_msg;
   publisher_.publish(proposals_message);
 
   /*
@@ -472,101 +499,105 @@ void MeshGeneration::getElementProposalsCylinders(
     std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
     std::vector<double> &radius_estimates) {
   for (int i = 0; i < meshing_clouds_.size(); i++) {
-    if (ids_.at(i) != 1 && meshing_classes_.at(i) == Semantics::COLUMN) {
-      continue;
-    }
-    // Get Data
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = meshing_clouds_.at(i);
-    // Eigen::Vector3d axis = axis_.at(i);
-    // double radius = radius_.at(i);
+    if (ids_.at(i) == 1){ //&& meshing_classes_.at(i) == Semantics::COLUMN) {
+      // Get Data
+      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = meshing_clouds_.at(i);
+      // Eigen::Vector3d axis = axis_.at(i);
+      // double radius = radius_.at(i);
 
-    // Estimate Parameters again (to ensure that a point on the axis is
-    // available)
-    //
-    // Recompute axis/randius and project/filter(??) points
-    pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-    pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
-    // Estimate Normals
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
-        new pcl::search::KdTree<pcl::PointXYZ>);
-    searchTree->setInputCloud(cloud);
-    pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
-    normalEstimator.setInputCloud(cloud);
-    normalEstimator.setSearchMethod(searchTree);
-    normalEstimator.setKSearch(10);
-    normalEstimator.compute(*normals);
+      // Estimate Parameters again (to ensure that a point on the axis is
+      // available)
+      //
+      // Recompute axis/randius and project/filter(??) points
+      pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+      pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+      pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
+      // Estimate Normals
+      pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
+          new pcl::search::KdTree<pcl::PointXYZ>);
+      searchTree->setInputCloud(cloud);
+      pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+      pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
+      normalEstimator.setInputCloud(cloud);
+      normalEstimator.setSearchMethod(searchTree);
+      normalEstimator.setKSearch(10);
+      normalEstimator.compute(*normals);
 
-    seg.setOptimizeCoefficients(true);
-    seg.setModelType(pcl::SACMODEL_CYLINDER);
-    seg.setMethodType(pcl::SAC_RANSAC);
-    seg.setDistanceThreshold(0.05);
-    seg.setMaxIterations(1000);
-    seg.setInputCloud(cloud);
-    seg.setInputNormals(normals);
-    seg.segment(*inliers, *coefficients);
+      seg.setOptimizeCoefficients(true);
+      seg.setModelType(pcl::SACMODEL_CYLINDER);
+      seg.setMethodType(pcl::SAC_RANSAC);
+      seg.setRadiusLimits(0.1, 1.0);
+      seg.setDistanceThreshold(0.05);
+      seg.setMaxIterations(1000);
+      seg.setInputCloud(cloud);
+      seg.setInputNormals(normals);
+      seg.segment(*inliers, *coefficients);
 
-    Eigen::Vector3d point_on_axis(coefficients->values[0],
-                                  coefficients->values[1],
-                                  coefficients->values[2]);
-    Eigen::Vector3d axis(coefficients->values[3], coefficients->values[4],
-                         coefficients->values[5]);
-    axis.normalize();
-    double radius = coefficients->values[6];
+      Eigen::Vector3d point_on_axis(coefficients->values[0],
+                                    coefficients->values[1],
+                                    coefficients->values[2]);
+      Eigen::Vector3d axis(coefficients->values[3], coefficients->values[4],
+                           coefficients->values[5]);
+      axis.normalize();
+      double radius = coefficients->values[6];
 
-    pcl::PointXYZ center(0.0, 0.0, 0.0);
-    for (int j = 0; j < cloud->size(); j++) {
-      pcl::PointXYZ p = (*cloud)[j];
-      center.x += p.x;
-      center.y += p.y;
-      center.z += p.z;
-    }
-    center.x /= cloud->size();
-    center.y /= cloud->size();
-    center.z /= cloud->size();
-    Eigen::Vector3d center_mean(center.x, center.y, center.z);
-
-    Eigen::Vector3d center_to_axis_point = center_mean - point_on_axis;
-    double t = center_to_axis_point.dot(axis);
-
-    Eigen::Vector3d center_aligned(point_on_axis.x() + t * axis.x(),
-                                   point_on_axis.y() + t * axis.y(),
-                                   point_on_axis.z() + t * axis.z());
-
-    // Estimate upper and lower bound from scan
-    double min_h = 1000;
-    double max_h = -1000;
-    double d_min = 0;
-    double d_max = 0;
-    for (int j = 0; j < cloud->size(); j++) {
-      pcl::PointXYZ p = (*cloud)[j];
-      Eigen::Vector3d p_e(p.x, p.y, p.z);
-      Eigen::Vector3d diff = p_e - center_aligned;
-
-      double dot = axis.dot(diff);
-      if (dot > max_h) {
-        max_h = dot;
-        d_max = -(axis.x() * p.x + axis.y() * p.y + axis.z() * p.z);
+      if ( !(radius > 0.05 && radius < 0.8)){
+        continue;
       }
-      if (dot < min_h) {
-        min_h = dot;
-        d_min = -(axis.x() * p.x + axis.y() * p.y + axis.z() * p.z);
+
+      pcl::PointXYZ center(0.0, 0.0, 0.0);
+      for (int j = 0; j < cloud->size(); j++) {
+        pcl::PointXYZ p = (*cloud)[j];
+        center.x += p.x;
+        center.y += p.y;
+        center.z += p.z;
       }
+      center.x /= cloud->size();
+      center.y /= cloud->size();
+      center.z /= cloud->size();
+      Eigen::Vector3d center_mean(center.x, center.y, center.z);
+
+      Eigen::Vector3d center_to_axis_point = center_mean - point_on_axis;
+      double t = center_to_axis_point.dot(axis);
+
+      Eigen::Vector3d center_aligned(point_on_axis.x() + t * axis.x(),
+                                     point_on_axis.y() + t * axis.y(),
+                                     point_on_axis.z() + t * axis.z());
+
+      // Estimate upper and lower bound from scan
+      double min_h = 1000;
+      double max_h = -1000;
+      double d_min = 0;
+      double d_max = 0;
+      for (int j = 0; j < cloud->size(); j++) {
+        pcl::PointXYZ p = (*cloud)[j];
+        Eigen::Vector3d p_e(p.x, p.y, p.z);
+        Eigen::Vector3d diff = p_e - center_aligned;
+
+        double dot = axis.dot(diff);
+        if (dot > max_h) {
+          max_h = dot;
+          d_max = -(axis.x() * p.x + axis.y() * p.y + axis.z() * p.z);
+        }
+        if (dot < min_h) {
+          min_h = dot;
+          d_min = -(axis.x() * p.x + axis.y() * p.y + axis.z() * p.z);
+        }
+      }
+
+      // TODO: Raytracing
+
+      // Line plane Intersection
+      double t1 = -(d_min + center_aligned.dot(axis));
+      double t2 = -(d_max + center_aligned.dot(axis));
+
+      Eigen::Matrix<double, 3, 2> bounding_points;
+      bounding_points.col(0) = center_aligned + t1 * axis;
+      bounding_points.col(1) = center_aligned + t2 * axis;
+
+      bounded_axis_estimates.push_back(bounding_points);
+      radius_estimates.push_back(radius);
     }
-
-    // TODO: Raytracing
-
-    // Line plane Intersection
-    double t1 = -(d_min + center_aligned.dot(axis));
-    double t2 = -(d_max + center_aligned.dot(axis));
-
-    Eigen::Matrix<double, 3, 2> bounding_points;
-    bounding_points.col(0) = center_aligned + t1 * axis;
-    bounding_points.col(1) = center_aligned + t2 * axis;
-
-    bounded_axis_estimates.push_back(bounding_points);
-    radius_estimates.push_back(radius);
   }
 }
 

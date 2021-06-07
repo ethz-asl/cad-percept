@@ -37,7 +37,7 @@ OctreeFilterResolution: 0.02
 RANSACProbability: 0.000001
 RANSACMinPoints: 200
 RANSACEpsilon: 0.03
-RANSACClusterEpsilon: 0.1
+RANSACClusterEpsilon: 0.2
 RANSACNormalThreshold: 0.80
 ########################################################################
 
