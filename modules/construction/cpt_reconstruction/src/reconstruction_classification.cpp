@@ -25,6 +25,7 @@ void Classification::messageCallback(
   ROS_INFO("Received %d", msg.clouds.size());
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds;
+  pcl::PointCloud<pcl::PointXYZ> all_points;
   for (int i = 0; i < msg.clouds.size(); i++) {
     sensor_msgs::PointCloud2 msg_cloud = msg.clouds.at(i);
     pcl::PCLPointCloud2 pcl_cloud;
@@ -34,7 +35,11 @@ void Classification::messageCallback(
         new pcl::PointCloud<pcl::PointXYZ>());
     pcl::fromPCLPointCloud2(pcl_cloud, *cur_cloud);
     clouds.push_back(cur_cloud);
+    all_points += (*cur_cloud);
   }
+
+  //TODO REMOVE
+  pcl::io::savePLYFileBinary("/home/philipp/Schreibtisch/ros_dir/scale_space_points.ply", all_points);
 
   std::vector<PointVectorPair_R> points;
   for (int i = 0; i < clouds.size(); i++) {
@@ -57,6 +62,11 @@ void Classification::messageCallback(
       new pcl::search::KdTree<pcl::PointXYZ>());
   centers_kd_tree->setInputCloud(face_centers);
 
+  std::string filename_mesh =
+      "/home/philipp/Schreibtisch/ros_dir/scale_space_mesh_scan.off";
+  std::ofstream out_mesh(filename_mesh.c_str());
+  CGAL::write_off(out_mesh, mesh);
+
   classifyMesh(mesh, label_indices);
 
   std::vector<int> nn_indices{1};
@@ -69,8 +79,12 @@ void Classification::messageCallback(
     for (int j = 0; j < cur_cloud->size(); j++) {
       pcl::PointXYZ p = (*cur_cloud)[j];
       centers_kd_tree->nearestKSearch(p, 1, nn_indices, nn_dists);
-      int lable = label_indices[nn_indices[0]];
-      class_vote.at(lable) += 1;
+      if (std::sqrt(nn_dists[0]) < 0.2){
+        int lable = label_indices[nn_indices[0]];
+        class_vote.at(lable) += 1;
+      } else {
+        class_vote.at(5) += 1;
+      }
     }
     int best_vote = std::max_element(class_vote.begin(), class_vote.end()) -
                     class_vote.begin();

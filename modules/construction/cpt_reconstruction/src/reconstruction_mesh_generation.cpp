@@ -221,28 +221,6 @@ void MeshGeneration::getMessageData(
     // Get current class from msg
     int cur_class = msg.classes.at(i);
 
-    if (cur_class == Semantics::WALL) {
-      std::string save0 =
-          OUTPUT_DIR_ + "received_points_wall" + std::to_string(i) + ".ply";
-      pcl::io::savePLYFile(save0, *cur_cloud);
-    } else if (cur_class == Semantics::BEAM) {
-      std::string save0 =
-          OUTPUT_DIR_ + "received_points_beam" + std::to_string(i) + ".ply";
-      pcl::io::savePLYFile(save0, *cur_cloud);
-    } else if (cur_class == Semantics::CEILING) {
-      std::string save0 =
-          OUTPUT_DIR_ + "received_points_ceiling" + std::to_string(i) + ".ply";
-      pcl::io::savePLYFile(save0, *cur_cloud);
-    } else if (cur_class == Semantics::FLOOR) {
-      std::string save0 =
-          OUTPUT_DIR_ + "received_points_floor" + std::to_string(i) + ".ply";
-      pcl::io::savePLYFile(save0, *cur_cloud);
-    } else if (cur_class == Semantics::WALL) {
-      std::string save0 =
-          OUTPUT_DIR_ + "received_points_clutter" + std::to_string(i) + ".ply";
-      pcl::io::savePLYFile(save0, *cur_cloud);
-    }
-
     // Get current robot position from msg
     geometry_msgs::Vector3 robot_position_temp = msg.robot_positions.at(i);
     Eigen::Vector3d robot_position(robot_position_temp.x, robot_position_temp.y,
@@ -263,10 +241,32 @@ void MeshGeneration::getMessageData(
     // Get current radius from msg
     double cur_radius = msg.radius.at(i);
 
-    bool valid_class = checkShapeConstraints(cur_class, plane_normal, cur_id);
+    bool valid_class = checkShapeConstraints(cur_class, plane_normal, cur_cloud, cur_id);
 
     if (valid_class) {
       // Register data of valid shapes
+
+      if (cur_class == Semantics::WALL) {
+        std::string save0 =
+            OUTPUT_DIR_ + "received_points_wall" + std::to_string(i) + ".ply";
+        pcl::io::savePLYFile(save0, *cur_cloud);
+      } else if (cur_class == Semantics::BEAM) {
+        std::string save0 =
+            OUTPUT_DIR_ + "received_points_beam" + std::to_string(i) + ".ply";
+        pcl::io::savePLYFile(save0, *cur_cloud);
+      } else if (cur_class == Semantics::CEILING) {
+        std::string save0 =
+            OUTPUT_DIR_ + "received_points_ceiling" + std::to_string(i) + ".ply";
+        pcl::io::savePLYFile(save0, *cur_cloud);
+      } else if (cur_class == Semantics::FLOOR) {
+        std::string save0 =
+            OUTPUT_DIR_ + "received_points_floor" + std::to_string(i) + ".ply";
+        pcl::io::savePLYFile(save0, *cur_cloud);
+      } else if (cur_class == Semantics::WALL) {
+        std::string save0 =
+            OUTPUT_DIR_ + "received_points_clutter" + std::to_string(i) + ".ply";
+        pcl::io::savePLYFile(save0, *cur_cloud);
+      }
 
       meshing_clouds_.push_back(cur_cloud);
       meshing_classes_.push_back(cur_class);
@@ -833,7 +833,21 @@ void MeshGeneration::evaluateProposals(
 
 bool MeshGeneration::checkShapeConstraints(int sem_class,
                                            Eigen::Vector3d &normal,
+                                           pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud,
                                            int cur_id) {
+
+  double min_area = 1.0;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::ConvexHull<pcl::PointXYZ> hull;
+  hull.setDimension(2);
+  hull.setComputeAreaVolume(true);
+  hull.setInputCloud(cur_cloud);
+  hull.reconstruct(*hull_points);
+  double area = hull.getTotalArea();
+  if (area < min_area){
+    return false;
+  }
+
   if (cur_id == 0 &&
       (sem_class == Semantics::WALL || sem_class == Semantics::BEAM)) {
     if (std::fabs(normal.z()) < 0.1) {
@@ -1242,7 +1256,7 @@ void MeshGeneration::selectMainCandidateFaces(
                        candidate_normal.z() * p.z + candidate_d;
         if (error < min_distance) {
           min_distance = error;
-          if (min_distance >= -0.4 && min_distance <= 0.05) {
+          if (min_distance >= -0.05 && min_distance <= 0.4) {
             found_candidate = true;
             break;
           }
@@ -1386,6 +1400,8 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
     pcl::PointCloud<pcl::PointXYZ>::Ptr corners,
     Eigen::Vector3d &element_normal, double min_area) {
   pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
+
+  /*
   feature_extractor.setInputCloud(corners);
   feature_extractor.compute();
   Eigen::Vector3f major_vector, middle_vector, minor_vector;
@@ -1393,6 +1409,9 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
   feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
   Eigen::Vector3d major = major_vector.cast<double>();
   major.normalize();
+  */
+  Eigen::Vector3d major_vector(1.0, 0.0, 0.0);
+  Eigen::Vector3d middle_vector(0.0, 1.0, 0.0);
 
   for (int i = 0; i < faces_model_.size(); i++) {
     // Ignore duplicated planes or very small areas
@@ -1408,7 +1427,7 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
         std::fabs(candidate_normal.z()) < 0.15) {
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
-      if (std::fabs(candidate_normal.dot(major)) > 0.98) {
+      if (std::fabs(candidate_normal.dot(major_vector)) > 0.98) {
         for (int p_idx = 0; p_idx < corners->size(); p_idx++) {
           pcl::PointXYZ p = (*corners)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1421,7 +1440,7 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
         if (min_distance <= 0.4) {
           candidate_faces_ortho_vertical_.push_back(i);
         }
-      } else if (std::fabs(candidate_normal.dot(major)) < 0.15) {
+      } else if (std::fabs(candidate_normal.dot(middle_vector)) > 0.98) {
         for (int p_idx = 0; p_idx < corners->size(); p_idx++) {
           pcl::PointXYZ p = (*corners)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +

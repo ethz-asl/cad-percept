@@ -14,7 +14,8 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
       iteration_counter_(0) {
   nodeHandle1.getParam("SensorType", SENSOR_TYPE_);
   nodeHandle1.getParam("TransformationMatrix", TRANSFORMATION_VEC_);
-  nodeHandle1.getParam("ModelTolerance", MODEL_TOLERANCE_);
+  nodeHandle1.getParam("TransformationMatrix", STATIONARY_POSITION_VEC_);
+    nodeHandle1.getParam("ModelTolerance", MODEL_TOLERANCE_);
   nodeHandle1.getParam("OutlierCount", OUTLIER_COUNT_);
   nodeHandle1.getParam("UseBuffer", USE_BUFFER_);
   nodeHandle1.getParam("ClearBufferAfterIteration",
@@ -26,6 +27,10 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
     for (int j = 0; j < 4; j++) {
       TRANSFORMATION_(i, j) = TRANSFORMATION_VEC_.at(i * 4 + j);
     }
+  }
+
+  for (int i = 0; i < 3; i++){
+    stationary_position_[i] = STATIONARY_POSITION_VEC_.at(i);
   }
 
   subscriber1_ = nodeHandle1_.subscribe("corrected_scan", 1000,
@@ -75,7 +80,7 @@ void ShapeDetection::messageCallback(
                                   1.0);
     robot_pos = (transformation_inv_ * translation_h).block<3, 1>(0, 0);
   } else {
-    robot_pos = Eigen::Vector3d::Zero();
+    robot_pos = stationary_position_;
   }
 
   // Get Data from Message

@@ -175,7 +175,7 @@ class MeshGeneration {
       pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
       pcl::PointCloud<pcl::PointXYZ>::Ptr backup_points);
 
-  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal,
+  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal, pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud,
                              int cur_id);
 
   void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);

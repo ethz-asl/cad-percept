@@ -51,6 +51,7 @@ class ShapeDetection {
   // Parameters
   int SENSOR_TYPE_;
   std::vector<double> TRANSFORMATION_VEC_;
+  std::vector<double> STATIONARY_POSITION_VEC_;
   Eigen::Matrix4d TRANSFORMATION_;
   double MODEL_TOLERANCE_;
   int OUTLIER_COUNT_;
@@ -67,6 +68,7 @@ class ShapeDetection {
   tf::TransformListener tf_listener_;
   Model* model_;
   Eigen::Matrix4d transformation_;
+  Eigen::Vector3d stationary_position_;
   bool update_transformation_;
   Eigen::Matrix4d transformation_inv_;
   int counter_planes_;
