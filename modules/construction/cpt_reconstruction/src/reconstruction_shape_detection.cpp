@@ -15,7 +15,7 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
   nodeHandle1.getParam("SensorType", SENSOR_TYPE_);
   nodeHandle1.getParam("TransformationMatrix", TRANSFORMATION_VEC_);
   nodeHandle1.getParam("TransformationMatrix", STATIONARY_POSITION_VEC_);
-    nodeHandle1.getParam("ModelTolerance", MODEL_TOLERANCE_);
+  nodeHandle1.getParam("ModelTolerance", MODEL_TOLERANCE_);
   nodeHandle1.getParam("OutlierCount", OUTLIER_COUNT_);
   nodeHandle1.getParam("UseBuffer", USE_BUFFER_);
   nodeHandle1.getParam("ClearBufferAfterIteration",
@@ -29,7 +29,7 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
     }
   }
 
-  for (int i = 0; i < 3; i++){
+  for (int i = 0; i < 3; i++) {
     stationary_position_[i] = STATIONARY_POSITION_VEC_.at(i);
   }
 

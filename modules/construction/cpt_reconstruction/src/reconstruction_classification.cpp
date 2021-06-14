@@ -38,8 +38,9 @@ void Classification::messageCallback(
     all_points += (*cur_cloud);
   }
 
-  //TODO REMOVE
-  pcl::io::savePLYFileBinary("/home/philipp/Schreibtisch/ros_dir/scale_space_points.ply", all_points);
+  // TODO REMOVE
+  pcl::io::savePLYFileBinary(
+      "/home/philipp/Schreibtisch/ros_dir/scale_space_points.ply", all_points);
 
   std::vector<PointVectorPair_R> points;
   for (int i = 0; i < clouds.size(); i++) {
@@ -79,7 +80,7 @@ void Classification::messageCallback(
     for (int j = 0; j < cur_cloud->size(); j++) {
       pcl::PointXYZ p = (*cur_cloud)[j];
       centers_kd_tree->nearestKSearch(p, 1, nn_indices, nn_dists);
-      if (std::sqrt(nn_dists[0]) < 0.2){
+      if (std::sqrt(nn_dists[0]) < 0.2) {
         int lable = label_indices[nn_indices[0]];
         class_vote.at(lable) += 1;
       } else {
@@ -116,14 +117,16 @@ void Classification::computeReconstructedSurfaceMesh(
       CGAL::parameters::point_map(
           CGAL::First_of_pair_property_map<PointVectorPair_R>())
           .normal_map(CGAL::Second_of_pair_property_map<PointVectorPair_R>())
-          .neighbor_radius(2. * spacing));
+          .neighbor_radius(4. * spacing));
 
+  /*
   std::vector<PointVectorPair_R>::iterator outlier_points_begin =
       CGAL::remove_outliers(
           points, 5,
           CGAL::parameters::point_map(
               CGAL::First_of_pair_property_map<PointVectorPair_R>()));
   points.erase(outlier_points_begin, points.end());
+  */
 
   double cell_size = CELL_SIZE_;
   std::vector<PointVectorPair_R>::iterator unwanted_points_begin =

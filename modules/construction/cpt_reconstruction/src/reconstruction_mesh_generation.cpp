@@ -134,11 +134,10 @@ void MeshGeneration::messageCallback(
     magnitudes_msg.push_back(magnitues_vec);
   }
 
-
   std::vector<double> radius_msg;
   std::vector<geometry_msgs::Vector3> p1_msg;
   std::vector<geometry_msgs::Vector3> p2_msg;
-  for (int i = 0; i < radius_estimates.size(); i++){
+  for (int i = 0; i < radius_estimates.size(); i++) {
     double cur_radius = radius_estimates.at(i);
     Eigen::MatrixXd cur_bounded_axis_estimates = bounded_axis_estimates.at(i);
     Eigen::Vector3d cur_p1 = cur_bounded_axis_estimates.col(0);
@@ -241,7 +240,8 @@ void MeshGeneration::getMessageData(
     // Get current radius from msg
     double cur_radius = msg.radius.at(i);
 
-    bool valid_class = checkShapeConstraints(cur_class, plane_normal, cur_cloud, cur_id);
+    bool valid_class =
+        checkShapeConstraints(cur_class, plane_normal, cur_cloud, cur_id);
 
     if (valid_class) {
       // Register data of valid shapes
@@ -255,16 +255,16 @@ void MeshGeneration::getMessageData(
             OUTPUT_DIR_ + "received_points_beam" + std::to_string(i) + ".ply";
         pcl::io::savePLYFile(save0, *cur_cloud);
       } else if (cur_class == Semantics::CEILING) {
-        std::string save0 =
-            OUTPUT_DIR_ + "received_points_ceiling" + std::to_string(i) + ".ply";
+        std::string save0 = OUTPUT_DIR_ + "received_points_ceiling" +
+                            std::to_string(i) + ".ply";
         pcl::io::savePLYFile(save0, *cur_cloud);
       } else if (cur_class == Semantics::FLOOR) {
         std::string save0 =
             OUTPUT_DIR_ + "received_points_floor" + std::to_string(i) + ".ply";
         pcl::io::savePLYFile(save0, *cur_cloud);
       } else if (cur_class == Semantics::WALL) {
-        std::string save0 =
-            OUTPUT_DIR_ + "received_points_clutter" + std::to_string(i) + ".ply";
+        std::string save0 = OUTPUT_DIR_ + "received_points_clutter" +
+                            std::to_string(i) + ".ply";
         pcl::io::savePLYFile(save0, *cur_cloud);
       }
 
@@ -499,7 +499,7 @@ void MeshGeneration::getElementProposalsCylinders(
     std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
     std::vector<double> &radius_estimates) {
   for (int i = 0; i < meshing_clouds_.size(); i++) {
-    if (ids_.at(i) == 1){ //&& meshing_classes_.at(i) == Semantics::COLUMN) {
+    if (ids_.at(i) == 1) {  //&& meshing_classes_.at(i) == Semantics::COLUMN) {
       // Get Data
       pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = meshing_clouds_.at(i);
       // Eigen::Vector3d axis = axis_.at(i);
@@ -516,7 +516,8 @@ void MeshGeneration::getElementProposalsCylinders(
       pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
           new pcl::search::KdTree<pcl::PointXYZ>);
       searchTree->setInputCloud(cloud);
-      pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+      pcl::PointCloud<pcl::Normal>::Ptr normals(
+          new pcl::PointCloud<pcl::Normal>);
       pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
       normalEstimator.setInputCloud(cloud);
       normalEstimator.setSearchMethod(searchTree);
@@ -541,7 +542,7 @@ void MeshGeneration::getElementProposalsCylinders(
       axis.normalize();
       double radius = coefficients->values[6];
 
-      if ( !(radius > 0.05 && radius < 0.8)){
+      if (!(radius > 0.05 && radius < 0.8)) {
         continue;
       }
 
@@ -831,20 +832,19 @@ void MeshGeneration::evaluateProposals(
 }
 */
 
-bool MeshGeneration::checkShapeConstraints(int sem_class,
-                                           Eigen::Vector3d &normal,
-                                           pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud,
-                                           int cur_id) {
-
+bool MeshGeneration::checkShapeConstraints(
+    int sem_class, Eigen::Vector3d &normal,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud, int cur_id) {
   double min_area = 1.0;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points(
+      new pcl::PointCloud<pcl::PointXYZ>());
   pcl::ConvexHull<pcl::PointXYZ> hull;
   hull.setDimension(2);
   hull.setComputeAreaVolume(true);
   hull.setInputCloud(cur_cloud);
   hull.reconstruct(*hull_points);
   double area = hull.getTotalArea();
-  if (area < min_area){
+  if (area < min_area) {
     return false;
   }
 
@@ -1015,10 +1015,14 @@ void MeshGeneration::computePlanarConvexHull(
 
       double dot_value = std::fabs(plane_normal.dot(face_normal));
       double z_abs = std::fabs(face_normal.z());
+
+      mesh_offsets.polygons.push_back(vertices);
+      /*
       if ((dot_value < 0.02 || dot_value > 0.998) &&
           (z_abs < 0.02 || z_abs > 0.99)) {
         mesh_offsets.polygons.push_back(vertices);
       }
+      */
     }
     combineMeshes(mesh_offsets, mesh);
   } else {
@@ -1158,10 +1162,10 @@ void MeshGeneration::processElementCloud(
   normalEstimator.setSearchMethod(searchTree);
   normalEstimator.setKSearch(10);
   normalEstimator.compute(*normals);
-  */
+
 
   // Filter corner points out
-  /* TODO: CHECK
+
   pcl::PointCloud<pcl::PointXYZI>::Ptr corners_intensity(
       new pcl::PointCloud<pcl::PointXYZI>);
   pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::Normal> harris;
@@ -1463,18 +1467,23 @@ void MeshGeneration::computeArtificialVertices(
     std::vector<Eigen::Matrix3d> &shape_directions) {
   Eigen::Vector3f p1;
   Eigen::Vector4f plane_m1, plane_h1, plane_v1;
+  Eigen::Vector3f normal_m1, normal_h1, normal_v1;
 
   for (int i = 0; i < candidate_faces_main_.size(); i++) {
     planeFromIdx(plane_m1, candidate_faces_main_.at(i));
-
+    normal_m1 = plane_m1.head(3);
     for (int j = 0; j < candidate_faces_ortho_vertical_.size(); j++) {
       planeFromIdx(plane_v1, candidate_faces_ortho_vertical_.at(j));
-
+      normal_v1 = plane_v1.head(3);
       for (int k = 0; k < candidate_faces_ortho_horizontal_.size(); k++) {
         planeFromIdx(plane_h1, candidate_faces_ortho_horizontal_.at(k));
+        normal_h1 = plane_h1.head(3);
 
-        pcl::threePlanesIntersection(plane_m1, plane_v1, plane_h1, p1);
-        artificial_vertices->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
+        double ortho_score = (normal_m1.cross(normal_v1)).dot(normal_h1);
+        if (std::fabs(ortho_score) > 0.999) {
+          pcl::threePlanesIntersection(plane_m1, plane_v1, plane_h1, p1);
+          artificial_vertices->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
+        }
       }
     }
   }
@@ -1611,6 +1620,10 @@ bool MeshGeneration::getReconstructionParametersPlanes(
       -(mean_point.x * element_normal.x() + mean_point.y * element_normal.y() +
         mean_point.z * element_normal.z());
 
+  std::string save00 =
+      OUTPUT_DIR_ + "unfilterd_points" + std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save00, *weak_points);
+
   // Filter points (remaining vertices -> vertices on axis and free side)
   pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(
       new pcl::PointCloud<pcl::PointXYZ>);
@@ -1635,7 +1648,7 @@ bool MeshGeneration::getReconstructionParametersPlanes(
   feature_extractor.getMassCenter(mass_center);
   */
   Eigen::Vector3f mass_center;
-  mass_center = mean_e.cast<float>() + 0.05 * element_normal.cast<float>();
+  mass_center = mean_e.cast<float>() + 0.08 * element_normal.cast<float>();
 
   Eigen::Matrix3d corrected_dir = shape_directions_.at(idx);
   direction_estimates.push_back(corrected_dir);
@@ -1748,12 +1761,16 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     for (int j = 0; j < filtered_cloud->size(); j++) {
       pcl::PointXYZ p_s = (*filtered_cloud)[j];
       element_kdtree->nearestKSearch(p_s, 1, nn_indices, nn_dists);
-      if (std::sqrt(nn_dists[0]) < 0.01) {
+      if (std::sqrt(nn_dists[0]) < 0.05) {
         alive_element_points->push_back(p_s);
         alive_element_points_normal.push_back(cur_element_normal);
       }
     }
   }
+
+  std::string save5 =
+      OUTPUT_DIR_ + "alive_element_points_cloud" + std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save5, *alive_element_points);
 
   ROS_INFO("Nr. Strong Point alive: %d", alive_strong_points_cloud->size());
   ROS_INFO("Nr. Element Points alive:  %d", alive_element_points->size());
@@ -1798,18 +1815,18 @@ bool MeshGeneration::getReconstructionParametersPlanes(
   for (int i = 0; i < alive_element_points->size(); i++) {
     pcl::PointXYZ cur_point = (*alive_element_points)[i];
     Eigen::Vector3f e_p(cur_point.x, cur_point.y, cur_point.z);
-    Eigen::Vector3f center_point = e_p - mass_center;
-    double a = center_point.dot(corrected_dir.col(0).cast<float>());
-    double b = center_point.dot(corrected_dir.col(1).cast<float>());
-    double c = center_point.dot(corrected_dir.col(2).cast<float>());
+    Eigen::Vector3f center_vec = e_p - mass_center;
+    double a = center_vec.dot(corrected_dir.col(0).cast<float>());
+    double b = center_vec.dot(corrected_dir.col(1).cast<float>());
+    double c = center_vec.dot(corrected_dir.col(2).cast<float>());
 
     Eigen::Vector3d cur_element_normal = alive_element_points_normal.at(i);
     bool ortho_a =
-        std::fabs(cur_element_normal.dot(corrected_dir.col(0))) > 0.9;
+        std::fabs(cur_element_normal.dot(corrected_dir.col(0))) > 0.98;
     bool ortho_b =
-        std::fabs(cur_element_normal.dot(corrected_dir.col(1))) > 0.9;
+        std::fabs(cur_element_normal.dot(corrected_dir.col(1))) > 0.98;
     bool ortho_c =
-        std::fabs(cur_element_normal.dot(corrected_dir.col(2))) > 0.9;
+        std::fabs(cur_element_normal.dot(corrected_dir.col(2))) > 0.98;
 
     if (ortho_a) {
       if (a > 0 && a1_incomplete) {
@@ -1842,6 +1859,10 @@ bool MeshGeneration::getReconstructionParametersPlanes(
   c1_incomplete = c1.empty();
   c2_incomplete = c2.empty();
 
+  std::string save6 =
+      OUTPUT_DIR_ + "filtered_points_cloud" + std::to_string(idx) + ".ply";
+  pcl::io::savePLYFile(save6, *filtered_cloud);
+
   for (int i = 0; i < filtered_cloud->size(); i++) {
     pcl::PointXYZ cur_point = (*filtered_cloud)[i];
     Eigen::Vector3f e_p(cur_point.x, cur_point.y, cur_point.z);
@@ -1866,6 +1887,31 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     } else if (c < 0 && c2_incomplete) {
       c2.push_back(c);
     }
+  }
+
+  a1_incomplete = a1.empty();
+  a2_incomplete = a2.empty();
+  b1_incomplete = b1.empty();
+  b2_incomplete = b2.empty();
+  c1_incomplete = c1.empty();
+  c2_incomplete = c2.empty();
+  if (a1_incomplete) {
+    a1.push_back(0);
+  }
+  if (a2_incomplete) {
+    a2.push_back(0);
+  }
+  if (b1_incomplete) {
+    b1.push_back(0);
+  }
+  if (b2_incomplete) {
+    b2.push_back(0);
+  }
+  if (c1_incomplete) {
+    c1.push_back(0);
+  }
+  if (c2_incomplete) {
+    c2.push_back(0);
   }
 
   removeDuplicatedValues(a1, 0.03);

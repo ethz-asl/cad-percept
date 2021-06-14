@@ -16,9 +16,9 @@ ProposalSelection::ProposalSelection(
       radius_estimates_(radius_estimates) {}
 
 void ProposalSelection::selectProposals() {
-  this->removeInsufficientElements();
+  // this->removeInsufficientElements();
   this->organizeDatastructure();
-  this->removeConflictingElements();
+  // this->removeConflictingElements();
 
   // Minimize Number of unique Plane, Favour Model Structure and Size
 
@@ -42,6 +42,7 @@ void ProposalSelection::selectProposals() {
   dir_buckets.push_back(Eigen::Vector3d(0.5774, -0.5774, -0.5774));
   dir_buckets.push_back(Eigen::Vector3d(0, 0, 1));
 
+  ROS_INFO("1");
   std::vector<Eigen::Vector3d> bucket_assignments;
   for (int i = 0; i < direction_estimates_.size(); i++) {
     Eigen::Matrix3d directions = direction_estimates_.at(i);
@@ -77,164 +78,230 @@ void ProposalSelection::selectProposals() {
   }
 
   // Evaluate plane coeffs
-  std::vector<std::vector<std::pair<int, int>>> id_parameters_in_buckets;
-  std::vector<std::vector<std::vector<double>>> parameters_in_buckets;
-  std::vector<std::vector<std::vector<double>>> score_parameters_in_buckets;
+  std::vector<std::vector<std::vector<double>>>
+      parameters_in_buckets;  // Parameter estimates
+  std::vector<std::vector<std::pair<int, int>>>
+      id_parameters_in_buckets;  // Pair of (Element,Direction)
+
   for (int i = 0; i < dir_buckets.size(); i++) {
-    std::vector<std::pair<int, int>> id_params_in_bucket;
     std::vector<std::vector<double>> params_in_bucket;
-    std::vector<std::vector<double>> score_params_in_bucket;
+    std::vector<std::pair<int, int>> id_params_in_bucket;
+
     Eigen::Vector3d dir_bucket = dir_buckets.at(i);
 
     for (int j = 0; j < bucket_assignments.size(); j++) {
       Eigen::Vector3d assigned_dirs = bucket_assignments.at(j);
 
-      for (int k = 0; k < 6; k += 2) {
+      for (int k = 0; k < 3; k++) {
         if (assigned_dirs[k] == i) {
-          Eigen::Vector3d center_of_element = center_estimates_.at(j);
-          Eigen::Matrix3d dir_element = direction_estimates_.at(j);
           std::vector<Eigen::VectorXd> magnitudes_element =
               parameter_estimates_.at(j);
 
-          Eigen::VectorXd para_1 = magnitudes_element.at(k);
-          Eigen::VectorXd para_2 = magnitudes_element.at(k + 1);
+          Eigen::VectorXd para_1;
+          Eigen::VectorXd para_2;
+          std::pair<int, int> id_1;
+          std::pair<int, int> id_2;
+          if (k == 0) {
+            para_1 = magnitudes_element.at(0);
+            para_2 = magnitudes_element.at(1);
+            id_1 = std::make_pair(j, 0);
+            id_2 = std::make_pair(j, 1);
+          } else if (k == 1) {
+            para_1 = magnitudes_element.at(2);
+            para_2 = magnitudes_element.at(3);
+            id_1 = std::make_pair(j, 2);
+            id_2 = std::make_pair(j, 3);
+          } else {
+            para_1 = magnitudes_element.at(4);
+            para_2 = magnitudes_element.at(5);
+            id_1 = std::make_pair(j, 4);
+            id_2 = std::make_pair(j, 5);
+          }
 
           std::vector<double> params_per_element_1;
           std::vector<double> params_per_element_2;
-
-          std::vector<double> score_params_per_element_1;
-          std::vector<double> score_params_per_element_2;
-
-          std::pair<int, int> id_1(j, k);
-          std::pair<int, int> id_2(j, k + 1);
-
-          double norm_para_1 = para_1.norm();
-          double norm_para_2 = para_2.norm();
-
-          for (int l = 0; l < para_1.size(); l++) {
-            Eigen::Vector3d point =
-                center_of_element + para_1[l] * dir_element.col(k);
-            double d =
-                -(point.x() * dir_bucket.x() + point.y() * dir_bucket.y() +
-                  point.z() * dir_bucket.z());
-            params_per_element_1.push_back(d);
-            score_params_per_element_1.push_back(
-                std::fabs(para_1[l] / norm_para_1));
+          for (int l1 = 0; l1 < para_1.size(); l1++) {
+            params_per_element_1.push_back(para_1[l1]);
           }
-          for (int m = 0; m < para_2.size(); m++) {
-            Eigen::Vector3d point =
-                center_of_element + para_2[m] * dir_element.col(k);
-            double d =
-                -(point.x() * dir_bucket.x() + point.y() * dir_bucket.y() +
-                  point.z() * dir_bucket.z());
-            params_per_element_2.push_back(d);
-            score_params_per_element_2.push_back(
-                std::fabs(para_2[m] / norm_para_2));
+          for (int l2 = 0; l2 < para_2.size(); l2++) {
+            params_per_element_2.push_back(para_2[l2]);
           }
-          id_params_in_bucket.push_back(id_1);
-          id_params_in_bucket.push_back(id_2);
+
           params_in_bucket.push_back(params_per_element_1);
           params_in_bucket.push_back(params_per_element_2);
-          score_params_in_bucket.push_back(score_params_per_element_1);
-          score_params_in_bucket.push_back(score_params_per_element_2);
+          id_params_in_bucket.push_back(id_1);
+          id_params_in_bucket.push_back(id_2);
         }
       }
     }
-    id_parameters_in_buckets.push_back(id_params_in_bucket);
     parameters_in_buckets.push_back(params_in_bucket);
-    score_parameters_in_buckets.push_back(score_params_in_bucket);
+    id_parameters_in_buckets.push_back(id_params_in_bucket);
   }
 
   // Select combinations reducting the number of unique plans
   for (int i = 0; i < parameters_in_buckets.size(); i++) {
     std::vector<std::vector<double>> parameter_vec =
         parameters_in_buckets.at(i);
-    std::vector<std::vector<double>> score_parameter_vec =
-        score_parameters_in_buckets.at(i);
-
+    std::vector<std::pair<int, int>> id_vec = id_parameters_in_buckets.at(i);
     if (parameter_vec.size() == 0) {
       continue;
-      ;
     }
 
-    // Get Min and Max parameter and setup a grid structure
-    double min_parameter = 1000;
-    double max_parameter = -1000;
-    for (int j = 0; j < parameter_vec.size(); j++) {
-      std::vector<double> cur_element_dim = parameter_vec.at(j);
-      for (int k = 0; k < cur_element_dim.size(); k++) {
-        double target = cur_element_dim.at(k);
-        if (target > max_parameter) {
-          max_parameter = target;
+    // Compute meaningful possible combinations
+    // Source:
+    // https://stackoverflow.com/questions/48270565/create-all-possible-combinations-of-multiple-vectors
+    while (parameter_vec.size() > 0) {
+      std::vector<std::vector<double>> all_combination_values;
+      std::vector<std::vector<std::pair<int, int>>>
+          all_combination_ids;  // Element nr, and dir
+
+      std::vector<std::vector<double>> parameter_vec_subset;
+      parameter_vec_subset.push_back(parameter_vec.at(0));
+
+      std::vector<std::pair<int, int>> id_vec_subset;
+      id_vec_subset.push_back(id_vec.at(0));
+
+      parameter_vec.erase(parameter_vec.begin());
+      id_vec.erase(id_vec.begin());
+
+      unsigned long long int max = 1;
+      for (auto const &v : parameter_vec_subset) {
+        max *= v.size();
+      }
+      ROS_INFO("Number of Combinations %d", max);
+
+      for (unsigned long long int j = 0; j < max; j++) {
+        auto temp = j;
+        std::vector<double> cur_combination_values;
+        std::vector<std::pair<int, int>> cur_combination_ids;
+        for (int k = 0; k < parameter_vec_subset.size(); k++) {
+          std::vector<double> cur_vec = parameter_vec_subset.at(k);
+          std::pair<int, int> cur_ids = id_vec_subset.at(k);
+          auto index = temp % cur_vec.size();
+          temp /= cur_vec.size();
+          cur_combination_values.push_back(cur_vec[index]);
+          cur_combination_ids.push_back(cur_ids);
         }
-        if (target < min_parameter) {
-          min_parameter = target;
+        all_combination_values.push_back(cur_combination_values);
+        all_combination_ids.push_back(cur_combination_ids);
+      }
+
+      // Evaluate combinations
+      std::vector<double> combination_scores;
+      for (int l = 0; l < all_combination_values.size(); l++) {
+        std::vector<double> cur_combination = all_combination_values.at(l);
+        std::vector<std::pair<int, int>> cur_idx = all_combination_ids.at(l);
+        // Area value
+        double area_score = 0;
+        for (auto &c : cur_combination) {
+          area_score += std::fabs(c);
         }
-      }
-    }
-    int length = (int)((max_parameter - min_parameter) / 0.03) + 10;
-    std::vector<int> plane_counter(length, 0);
 
-    // Count planes
-    for (int j = 0; j < parameter_vec.size(); j++) {
-      std::vector<double> cur_element_dim = parameter_vec.at(j);
-      for (int k = 0; k < cur_element_dim.size(); k++) {
-        double target = cur_element_dim.at(k);
-        int idx = (int)std::round((target - min_parameter) / 0.03);
-        plane_counter.at(idx) += 1;
-      }
-    }
-    int max_plane_counter =
-        *std::max_element(plane_counter.begin(), plane_counter.end());
+        // Compute d parameter and cout similar values
+        double shared_planes = 0;
 
-    for (int j = 0; j < parameter_vec.size(); j++) {
-      std::vector<double> cur_element_dim = parameter_vec.at(j);
-      std::vector<double> score_cur_element_dim = score_parameter_vec.at(j);
-      for (int k = 0; k < cur_element_dim.size(); k++) {
-        double target = cur_element_dim.at(k);
-        int idx = (int)std::round((target - min_parameter) / 0.03);
-        score_parameters_in_buckets.at(i).at(j).at(k) *=
-            ((double)plane_counter.at(idx) / (double)max_plane_counter);
+        // Model integration score
+
+        // Conflicting elements score
+        double total_score = area_score;
+        combination_scores.push_back(total_score);
+      }
+      int max_idx = std::max_element(combination_scores.begin(),
+                                     combination_scores.end()) -
+                    combination_scores.begin();
+      std::vector<double> final_combination =
+          all_combination_values.at(max_idx);
+      std::vector<std::pair<int, int>> final_idx =
+          all_combination_ids.at(max_idx);
+      for (int f = 0; f < final_combination.size(); f++) {
+        std::pair<int, int> f_id = final_idx.at(f);
+        parameter_estimates_.at(f_id.first).at(f_id.second).resize(1, 1);
+        parameter_estimates_.at(f_id.first).at(f_id.second)[0] =
+            final_combination.at(f);
       }
     }
   }
-
-  // TODO Remove
-  for (int i = 0; i < parameters_in_buckets.size(); i++) {
-    ROS_INFO("BUCKET_NUMBER: %d", i);
-    std::vector<std::vector<double>> parameter_vec =
-        parameters_in_buckets.at(i);
-    std::vector<std::vector<double>> score_parameter_vec =
-        score_parameters_in_buckets.at(i);
-    for (int j = 0; j < parameter_vec.size(); j++) {
-      ROS_INFO("  Parameters Per Element: %d", j);
-      std::vector<double> cur_element_dim = parameter_vec.at(j);
-      std::vector<double> score_cur_element_dim = score_parameter_vec.at(j);
-      for (int k = 0; k < cur_element_dim.size(); k++) {
-        ROS_INFO("      Para: %f, Score: %f", cur_element_dim.at(k),
-                 score_cur_element_dim.at(k));
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /*
+  // Get Min and Max parameter and setup a grid structure
+  double min_parameter = 1000;
+  double max_parameter = -1000;
+  for (int j = 0; j < parameter_vec.size(); j++) {
+    std::vector<double> cur_element_dim = parameter_vec.at(j);
+    for (int k = 0; k < cur_element_dim.size(); k++) {
+      double target = cur_element_dim.at(k);
+      if (target > max_parameter) {
+        max_parameter = target;
+      }
+      if (target < min_parameter) {
+        min_parameter = target;
       }
     }
   }
+  int length = (int)((max_parameter - min_parameter) / 0.03) + 10;
+  std::vector<int> plane_counter(length, 0);
 
-  // Select most likely Parameter
-  for (int i = 0; i < score_parameters_in_buckets.size(); i++) {
-    for (int j = 0; j < score_parameters_in_buckets.at(i).size(); j++) {
-      std::vector<double> cur_scores = score_parameters_in_buckets.at(i).at(j);
-      std::pair<int, int> cur_id = id_parameters_in_buckets.at(i).at(j);
-
-      int element_nr = cur_id.first;
-      int parameter_nr = cur_id.second;
-
-      int max_idx = std::max_element(cur_scores.begin(), cur_scores.end()) -
-                    cur_scores.begin();
-      double most_likely_parameter =
-          parameter_estimates_.at(element_nr).at(parameter_nr)[max_idx];
-      parameter_estimates_.at(element_nr).at(parameter_nr).resize(1, 1);
-      parameter_estimates_.at(element_nr).at(parameter_nr)[0] =
-          most_likely_parameter;
+  // Count planes
+  for (int j = 0; j < parameter_vec.size(); j++) {
+    std::vector<double> cur_element_dim = parameter_vec.at(j);
+    for (int k = 0; k < cur_element_dim.size(); k++) {
+      double target = cur_element_dim.at(k);
+      int idx = (int)std::round((target - min_parameter) / 0.03);
+      plane_counter.at(idx) += 1;
     }
   }
+  int max_plane_counter =
+      *std::max_element(plane_counter.begin(), plane_counter.end());
+
+  for (int j = 0; j < parameter_vec.size(); j++) {
+    std::vector<double> cur_element_dim = parameter_vec.at(j);
+    std::vector<double> score_cur_element_dim = score_parameter_vec.at(j);
+    for (int k = 0; k < cur_element_dim.size(); k++) {
+      double target = cur_element_dim.at(k);
+      int idx = (int)std::round((target - min_parameter) / 0.03);
+      score_parameters_in_buckets.at(i).at(j).at(k) *=
+          ((double)plane_counter.at(idx) / (double)max_plane_counter);
+    }
+  }
+}
+
+// TODO Remove
+for (int i = 0; i < parameters_in_buckets.size(); i++) {
+  ROS_INFO("BUCKET_NUMBER: %d", i);
+  std::vector<std::vector<double>> parameter_vec =
+      parameters_in_buckets.at(i);
+  std::vector<std::vector<double>> score_parameter_vec =
+      score_parameters_in_buckets.at(i);
+  for (int j = 0; j < parameter_vec.size(); j++) {
+    ROS_INFO("  Parameters Per Element: %d", j);
+    std::vector<double> cur_element_dim = parameter_vec.at(j);
+    std::vector<double> score_cur_element_dim = score_parameter_vec.at(j);
+    for (int k = 0; k < cur_element_dim.size(); k++) {
+      ROS_INFO("      Para: %f, Score: %f", cur_element_dim.at(k),
+               score_cur_element_dim.at(k));
+    }
+  }
+}
+
+// Select most likely Parameter
+for (int i = 0; i < score_parameters_in_buckets.size(); i++) {
+  for (int j = 0; j < score_parameters_in_buckets.at(i).size(); j++) {
+    std::vector<double> cur_scores = score_parameters_in_buckets.at(i).at(j);
+    std::pair<int, int> cur_id = id_parameters_in_buckets.at(i).at(j);
+
+    int element_nr = cur_id.first;
+    int parameter_nr = cur_id.second;
+
+    int max_idx = std::max_element(cur_scores.begin(), cur_scores.end()) -
+                  cur_scores.begin();
+    double most_likely_parameter =
+        parameter_estimates_.at(element_nr).at(parameter_nr)[max_idx];
+    parameter_estimates_.at(element_nr).at(parameter_nr).resize(1, 1);
+    parameter_estimates_.at(element_nr).at(parameter_nr)[0] =
+        most_likely_parameter;
+  }
+}
+*/
 }
 
 void ProposalSelection::removeInsufficientElements() {

@@ -7,6 +7,8 @@ TransformationMatrix: [1.0, 0.0, 0.0, 0.0,
                        0.0, 1.0, 0.0, 0.0,
                        0.0, 0.0, 1.0, 0.0,
                        0.0, 0.0, 0.0, 1.0]
+StationaryPosition: [5.5, -1.9, 0.5]
+
 ScanPointsFile: "/home/philipp/Schreibtisch/leica/new_scan1_aligned.ply"
 
 ########################################################################
@@ -25,7 +27,7 @@ OutputMeshingTempPath: "/home/philipp/Schreibtisch/ros_dir/"
 
 ########################################################################
 ### Shape Detection
-ModelTolerance: 0.05
+ModelTolerance: 0.1
 OutlierCount: 50000 #Only for SMB
 
 UseBuffer: false
@@ -47,9 +49,9 @@ VoxelGridFilterResolution: 0.01
 MinSizeValidPlane: 50
 ValidSizeThresholdPlane: 1000
 ThresholdSecondEigenvalue: 0.00015
-IntervalFusingClusters: 20
-IntervalCleaningClusters: 20 #200
-IntervalForwardingClusters: 20 #200
+IntervalFusingClusters: 40
+IntervalCleaningClusters: 40 #200
+IntervalForwardingClusters: 40 #200
 
 #Fusing Planes
 DotProductNormals: 0.99
@@ -69,7 +71,7 @@ CellSize: 0.1
 SmoothingIterations: 4
 MaxFacetLength: 0.5
 NumberOfScales: 5
-NRingQuery: 2
+NRingQuery: 2 #TODO
 
 
 ########################################################################

@@ -98,12 +98,16 @@ class Clustering {
   void removeSingleDetectionsPlanes();
   void removeSingleDetectionsCylinders();
   void removeConflictingClustersPlanes();
-  void tryHorizontalSplit(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d &ransac_normal,
-                          std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
-  void splitUpElement(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d &ransac_normal,
-                          std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
+  void tryHorizontalSplit(
+      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d &ransac_normal,
+      std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
+  void splitUpElement(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                      Eigen::Vector3d &ransac_normal,
+                      std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
 
-  void performSplit(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d cut_dir, std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
+  void performSplit(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                    Eigen::Vector3d cut_dir,
+                    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
 
   void fit3DPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                   pcl::PolygonMesh &mesh);
