@@ -75,6 +75,7 @@ class Clustering {
  private:
   std::string SHAPES_PATH_;
   std::string MESHES_PATH_;
+  int SENSOR_TYPE_;
   float VOXEL_GRID_FILTER_RESOLUTION_;
   int MIN_SIZE_VALID_PLANE_;
   int VALID_SIZE_THRESHOLD_PLANE_;

@@ -3,22 +3,30 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 ProposalSelection::ProposalSelection(
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree,
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds,
     std::vector<Eigen::Vector3d> &center_estimates,
     std::vector<Eigen::Matrix3d> &direction_estimates,
     std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
     std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
     std::vector<double> &radius_estimates)
-    : center_estimates_(center_estimates),
+    : model_upsampled_kdtree_(upsampled_kd_tree),
+      scan_kdtree_(new pcl::search::KdTree<pcl::PointXYZ>()),
+      center_estimates_(center_estimates),
       direction_estimates_(direction_estimates),
       parameter_estimates_(parameter_estimates),
 
       bounded_axis_estimates_(bounded_axis_estimates),
-      radius_estimates_(radius_estimates) {}
+      radius_estimates_(radius_estimates) {
+  pcl::PointCloud<pcl::PointXYZ>::Ptr meshing_points (new pcl::PointCloud<pcl::PointXYZ>());
+  for (int i = 0; i < meshing_clouds.size(); i++){
+    (*meshing_points) += *(meshing_clouds.at(i));
+  }
+  scan_kdtree_->setInputCloud(meshing_points);
+}
 
 void ProposalSelection::selectProposals() {
-  // this->removeInsufficientElements();
-  this->organizeDatastructure();
-  // this->removeConflictingElements();
+  this->removeInsufficientElements();
 
   // Minimize Number of unique Plane, Favour Model Structure and Size
 
@@ -155,14 +163,58 @@ void ProposalSelection::selectProposals() {
       std::vector<std::vector<std::pair<int, int>>>
           all_combination_ids;  // Element nr, and dir
 
+
+      //Compute Range of d Parameters for first element
+      Eigen::Vector3d center_0 = center_estimates_.at(id_vec.at(0).first);
+      Eigen::Vector3d dir_0 = direction_estimates_.at(id_vec.at(0).first).col(id_vec.at(0).second % 3);
+      double min_d0 = 10000;
+      double max_d0 = -1000;
+      for (auto const &cur_p : parameter_vec.at(0)){
+        Eigen::Vector3d point_e = center_0 + dir_0 * cur_p;
+        double cur_d = -(point_e.x() * dir_0.x() + point_e.y() * dir_0.y() + point_e.z() * dir_0.z());
+        if (cur_d > max_d0){
+          max_d0 =cur_d;
+        }
+        if (cur_d < min_d0){
+          min_d0 =cur_d;
+        }
+      }
+
+      //Search for max 2 elements with a d in the computed range
+      std::vector<int> subset_idx;
+      subset_idx.push_back(0);
+
+      /*
+      for (int p_idx = 1; p_idx < parameter_vec.size(); p_idx++){
+        Eigen::Vector3d center_i = center_estimates_.at(id_vec.at(p_idx).first);
+        Eigen::Vector3d dir_i = direction_estimates_.at(id_vec.at(p_idx).first).col(id_vec.at(p_idx).second % 3);
+        for (auto const &param_i : parameter_vec.at(p_idx)){
+          Eigen::Vector3d point_i = center_i + dir_i * param_i;
+          double cur_d = -(point_i.x() * dir_i.x() + point_i.y() * dir_i.y() + point_i.z() * dir_i.z());
+          if (cur_d > min_d0 && cur_d < max_d0){
+            subset_idx.push_back(p_idx);
+            break;
+          }
+        }
+        if (subset_idx.size() > 1){
+          break;
+        }
+      }
+      */
       std::vector<std::vector<double>> parameter_vec_subset;
-      parameter_vec_subset.push_back(parameter_vec.at(0));
-
       std::vector<std::pair<int, int>> id_vec_subset;
-      id_vec_subset.push_back(id_vec.at(0));
+      for (auto const &idx_to_add : subset_idx){
+        parameter_vec_subset.push_back(parameter_vec.at(idx_to_add));
+        id_vec_subset.push_back(id_vec.at(idx_to_add));
+      }
 
-      parameter_vec.erase(parameter_vec.begin());
-      id_vec.erase(id_vec.begin());
+      int idx_corr = 0;
+      for (unsigned r = 0; r < subset_idx.size(); r++) {
+        int idx = subset_idx.at(r);
+        parameter_vec.erase(parameter_vec.begin() + idx - idx_corr);
+        id_vec.erase(id_vec.begin() + idx - idx_corr);
+        idx_corr++;
+      }
 
       unsigned long long int max = 1;
       for (auto const &v : parameter_vec_subset) {
@@ -197,13 +249,35 @@ void ProposalSelection::selectProposals() {
           area_score += std::fabs(c);
         }
 
-        // Compute d parameter and cout similar values
-        double shared_planes = 0;
+        //Score for model alignment
+        double model_alignment_score = 0;
+        double scan_alignment_score = 0;
+        // Compute d parameter and model alignment score
+        std::vector<double> d_parameters;
+        std::vector<int> nn_indices{1};
+        std::vector<float> nn_dists{1};
+        for (int d_o = 0; d_o < cur_combination.size(); d_o ++){
+          Eigen::Vector3d center_i = center_estimates_.at(cur_idx.at(d_o).first);
+          Eigen::Vector3d dir_i = direction_estimates_.at(cur_idx.at(d_o).first).col(cur_idx.at(d_o).second % 3);
+          Eigen::Vector3d point_i = center_i + dir_i * cur_combination.at(d_o);
+          pcl::PointXYZ point_pcl (point_i.x(), point_i.y(), point_i.z());
+          model_upsampled_kdtree_->nearestKSearch(point_pcl, 1, nn_indices, nn_dists);
+          if (std::sqrt(nn_dists[0]) < 0.03){
+            model_alignment_score += 1.0 - 33.3 * std::sqrt(nn_dists[0]);
+          }
+          scan_kdtree_->nearestKSearch(point_pcl, 1, nn_indices, nn_dists);
+          if (std::sqrt(nn_dists[0]) < 0.03){
+            scan_alignment_score += 1.0 - 33.3 * std::sqrt(nn_dists[0]);
+          }
 
-        // Model integration score
+          double cur_d = -(point_i.x() * dir_i.x() + point_i.y() * dir_i.y() + point_i.z() * dir_i.z());
+          d_parameters.push_back(cur_d);
+        }
+        removeDuplicatedValues(d_parameters, 0.03);
 
-        // Conflicting elements score
-        double total_score = area_score;
+        int shared_planes = cur_combination.size() - d_parameters.size();
+
+        double total_score = 2.0 * area_score + 0.0 * shared_planes + 5.0 * model_alignment_score + 0.0 * scan_alignment_score;
         combination_scores.push_back(total_score);
       }
       int max_idx = std::max_element(combination_scores.begin(),
@@ -221,6 +295,8 @@ void ProposalSelection::selectProposals() {
       }
     }
   }
+  //this->organizeDatastructure();
+  //this->removeConflictingElements();
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /*
   // Get Min and Max parameter and setup a grid structure
@@ -316,9 +392,30 @@ void ProposalSelection::removeInsufficientElements() {
     Eigen::VectorXd c1 = magnitudes.at(4);
     Eigen::VectorXd c2 = magnitudes.at(5);
 
-    if (a1.size() == 0 || a2.size() == 0 || b1.size() == 0 || b2.size() == 0 ||
-        c1.size() == 0 || c2.size() == 0) {
+    int counter_non_zero_elements = 0;
+    if (a1.size() > 1){
+      counter_non_zero_elements++;
+    }
+    if (a2.size() > 1){
+      counter_non_zero_elements++;
+    }
+    if (b1.size() > 1){
+      counter_non_zero_elements++;
+    }
+    if (b2.size() > 1){
+      counter_non_zero_elements++;
+    }
+    if (c1.size() > 1){
+      counter_non_zero_elements++;
+    }
+    if (c2.size() > 1){
+      counter_non_zero_elements++;
+    }
+
+    //Allow for one missed parameter
+    if (counter_non_zero_elements <= 4){
       elements_to_remove.push_back(i);
+      ROS_INFO("Removed element due to insufficent number of paramters");
     }
   }
   int idx_corr = 0;
@@ -359,19 +456,12 @@ void ProposalSelection::organizeDatastructure() {
     Eigen::VectorXd c1 = magnitudes.at(4);
     Eigen::VectorXd c2 = magnitudes.at(5);
 
-    double a_max = a1.maxCoeff();
-    double a_min = a2.minCoeff();
-    double b_max = b1.maxCoeff();
-    double b_min = b2.minCoeff();
-    double c_max = c1.maxCoeff();
-    double c_min = c2.minCoeff();
-
-    ROS_INFO("a_max: %f", a_max);
-    ROS_INFO("a_min: %f", a_min);
-    ROS_INFO("b_max: %f", b_max);
-    ROS_INFO("b_min: %f", b_min);
-    ROS_INFO("c_max: %f", c_max);
-    ROS_INFO("c_min: %f", c_min);
+    double a_max = a1[0];
+    double a_min = a2[0];
+    double b_max = b1[0];
+    double b_min = b2[0];
+    double c_max = c1[0];
+    double c_min = c2[0];
 
     double step = 0.05;
     int steps_a = (int)((a_max - a_min) / step + 1);
@@ -406,6 +496,22 @@ void ProposalSelection::organizeDatastructure() {
   }
 }
 
+void ProposalSelection::removeDuplicatedValues(std::vector<double> &vector,
+                                            double eps) {
+  // Source:
+  // https://stackoverflow.com/questions/34481190/removing-duplicates-of-3d-points-in-a-vector-in-c/34481426
+  std::sort(vector.begin(), vector.end(),
+            [eps](double p1, double p2) -> bool { return p1 > p2; });
+  auto unique_end = std::unique(vector.begin(), vector.end(),
+                                [eps](double p1, double p2) -> bool {
+                                  if (std::fabs(p1 - p2) < eps) {
+                                    return true;
+                                  }
+                                  return false;
+                                });
+  vector.erase(unique_end, vector.end());
+}
+
 void ProposalSelection::removeConflictingElements() {
   int number_planar_elements = structured_point_clouds_.size();
   std::vector<int> nn_indices{1};
@@ -435,7 +541,7 @@ void ProposalSelection::removeConflictingElements() {
       }
     }
     double coverage = ((double)nr_matches / (double)cur_cloud->size());
-    if (coverage > 0.5) {
+    if (coverage > 0.75) {
       conflicting_elements.push_back(i);
     }
   }

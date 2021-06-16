@@ -27,7 +27,7 @@ OutputMeshingTempPath: "/home/philipp/Schreibtisch/ros_dir/"
 
 ########################################################################
 ### Shape Detection
-ModelTolerance: 0.1
+ModelTolerance: 0.08
 OutlierCount: 50000 #Only for SMB
 
 UseBuffer: false
@@ -71,7 +71,7 @@ CellSize: 0.1
 SmoothingIterations: 4
 MaxFacetLength: 0.5
 NumberOfScales: 5
-NRingQuery: 2 #TODO
+NRingQuery: 2
 
 
 ########################################################################

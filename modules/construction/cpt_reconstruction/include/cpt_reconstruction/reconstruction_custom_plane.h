@@ -123,7 +123,7 @@ class Custom_Plane : public Shape_base<Traits> {
 
     // Are the points almost singular?
     // if (length < (FT)0.0001) {
-    if (length < (FT)0.003) {
+    if (length < (FT)0.0005) {
       return;
     }
 

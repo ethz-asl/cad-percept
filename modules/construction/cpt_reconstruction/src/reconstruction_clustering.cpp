@@ -9,6 +9,7 @@ Clustering::Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
       received_shapes_plane_(0) {
   // preprocessBuildingModel();
 
+  nodeHandle1.getParam("SensorType", SENSOR_TYPE_);
   nodeHandle1.getParam("OutputShapesPath", SHAPES_PATH_);
   nodeHandle1.getParam("OutputMeshesPath", MESHES_PATH_);
 
@@ -158,40 +159,43 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
         std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> publish_clouds_vec;
 
         std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> splitted_clouds;
-        splitUpElement(clouds_plane_.at(i), ransac_normals_.at(i),
-                       splitted_clouds);
+        if (SENSOR_TYPE_ == 1) {
+          splitUpElement(clouds_plane_.at(i), ransac_normals_.at(i),
+                         splitted_clouds);
+          for (int s = 0; s < splitted_clouds.size(); s++) {
+            pcl::PointCloud<pcl::PointXYZ>::Ptr cur_split = splitted_clouds.at(s);
+            pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
+                new pcl::search::KdTree<pcl::PointXYZ>);
+            tree->setInputCloud(cur_split);
 
-        for (int s = 0; s < splitted_clouds.size(); s++) {
-          pcl::PointCloud<pcl::PointXYZ>::Ptr cur_split = splitted_clouds.at(s);
-          pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
-              new pcl::search::KdTree<pcl::PointXYZ>);
-          tree->setInputCloud(cur_split);
+            std::vector<pcl::PointIndices> cluster_indices;
+            pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+            ec.setClusterTolerance(0.2);
+            ec.setMinClusterSize(100);
+            ec.setMaxClusterSize(500000);
+            ec.setSearchMethod(tree);
+            ec.setInputCloud(cur_split);
+            ec.extract(cluster_indices);
 
-          std::vector<pcl::PointIndices> cluster_indices;
-          pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-          ec.setClusterTolerance(0.2);
-          ec.setMinClusterSize(100);
-          ec.setMaxClusterSize(500000);
-          ec.setSearchMethod(tree);
-          ec.setInputCloud(cur_split);
-          ec.extract(cluster_indices);
+            int j = 0;
+            for (std::vector<pcl::PointIndices>::const_iterator it =
+                cluster_indices.begin();
+                 it != cluster_indices.end(); ++it) {
+              pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(
+                  new pcl::PointCloud<pcl::PointXYZ>);
+              for (const auto &idx : it->indices) {
+                cloud_cluster->push_back((*cur_split)[idx]);
+              }
+              cloud_cluster->width = cloud_cluster->size();
+              cloud_cluster->height = 1;
+              cloud_cluster->is_dense = true;
+              j++;
 
-          int j = 0;
-          for (std::vector<pcl::PointIndices>::const_iterator it =
-                   cluster_indices.begin();
-               it != cluster_indices.end(); ++it) {
-            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(
-                new pcl::PointCloud<pcl::PointXYZ>);
-            for (const auto &idx : it->indices) {
-              cloud_cluster->push_back((*cur_split)[idx]);
+              publish_clouds_vec.push_back(cloud_cluster);
             }
-            cloud_cluster->width = cloud_cluster->size();
-            cloud_cluster->height = 1;
-            cloud_cluster->is_dense = true;
-            j++;
-
-            publish_clouds_vec.push_back(cloud_cluster);
           }
+        } else {
+            publish_clouds_vec.push_back(clouds_plane_.at(i));
         }
         for (int pub = 0; pub < publish_clouds_vec.size(); pub++) {
           pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_to_publish =
@@ -276,6 +280,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     publisher_.publish(cluster_msg);
   }
 
+  /*
   if (counter_ >= INTERVAL_FORWARDING_CLUSTERS_ &&
       (counter_ % INTERVAL_FORWARDING_CLUSTERS_ == 0)) {
     pcl::PolygonMesh mesh_all;
@@ -296,6 +301,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     }
     pcl::io::savePLYFile(MESHES_PATH_ + "mesh_all.ply", mesh_all);
   }
+   */
 }
 
 void Clustering::tryHorizontalSplit(
@@ -485,8 +491,13 @@ void Clustering::performSplit(
   if (max_score > 1.1 * init_score) {
     int max_idx = std::distance(std::begin(splitting_scores), max_score_it);
 
-    result.push_back(splitted_clouds.at(max_idx).first);
-    result.push_back(splitted_clouds.at(max_idx).second);
+    if (splitted_clouds.at(max_idx).first->size() > 100){
+      result.push_back(splitted_clouds.at(max_idx).first);
+    }
+    if (splitted_clouds.at(max_idx).second->size() > 100){
+      result.push_back(splitted_clouds.at(max_idx).second);
+    }
+
   } else {
     result.push_back(cloud);
   }
@@ -504,7 +515,7 @@ void Clustering::splitUpElement(
   Eigen::Vector3d unit_z(0, 0, 1);
 
   // Vertical Element
-  if (std::fabs(ransac_normal.z()) < 0.1) {
+  if (std::fabs(ransac_normal.z()) < 0.3) {
     cut_1 = unit_z;
 
     double score_x = std::fabs(ransac_normal.dot(unit_x));

@@ -345,10 +345,14 @@ class UserInteraction:
         for el in done_meshes:
             final_mesh = final_mesh + el
 
+        added_mesh = o3d.geometry.TriangleMesh()
+        for el in done_meshes:
+            added_mesh = added_mesh + el
+
         final_mesh.merge_close_vertices(0.01)
         final_mesh.remove_duplicated_vertices()
         o3d.io.write_triangle_mesh("/home/philipp/Schreibtisch/final_reconstructed_mesh.ply", final_mesh)
-
+        o3d.io.write_triangle_mesh("/home/philipp/Schreibtisch/added_reconstructed_mesh.ply", added_mesh)
 
     def setModelDataForO3D(self):
         mesh = o3d.io.read_triangle_mesh(BUILDING_MODEL_PATH_)

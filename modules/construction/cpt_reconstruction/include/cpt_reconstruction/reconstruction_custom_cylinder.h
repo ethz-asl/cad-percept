@@ -123,7 +123,7 @@ class Custom_Cylinder : public Shape_base<Traits> {
     FT lineDist = n2x * Ox + n2y * Oy;
 
     // Abort if radius exceeds threshold
-    if (CGAL::abs(lineDist / n2x) > 0.6) {
+    if (CGAL::abs(lineDist / n2x) > 0.8) {
       return;
     }
     m_radius = lineDist / n2x;
