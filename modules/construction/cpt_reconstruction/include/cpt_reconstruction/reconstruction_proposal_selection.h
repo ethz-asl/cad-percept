@@ -16,6 +16,10 @@
 #include <utility>
 #include <vector>
 
+#include <pcl_conversions/pcl_conversions.h>
+
+#include <pcl/PCLPointCloud2.h>
+#include <pcl/PolygonMesh.h>
 #include <pcl/Vertices.h>
 #include <pcl/common/io.h>
 #include <pcl/common/pca.h>
@@ -42,6 +46,7 @@ class ProposalSelection {
   ProposalSelection(
       pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree,
       std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds,
+      pcl::PolygonMesh mesh_model,
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
       std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
@@ -49,10 +54,14 @@ class ProposalSelection {
       std::vector<double> &radius_estimates);
 
   void selectProposals();
+  void selectProposals2();  // TODO: REMOVE
   void organizeDatastructure();
+  Eigen::VectorXd computePosterior(const Eigen::VectorXd &prior,
+                                   const Eigen::VectorXd &posterior);
   void removeDuplicatedValues(std::vector<double> &vector, double eps);
   void removeConflictingElements();
   void removeInsufficientElements();
+  void processModelPlanes();
 
   void getSelectedProposals(
       std::vector<Eigen::Vector3d> &center_estimates,
@@ -73,10 +82,15 @@ class ProposalSelection {
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> structured_point_clouds_;
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_;
 
-  //Score computation
+  // Score computation
   pcl::search::KdTree<pcl::PointXYZ>::Ptr model_upsampled_kdtree_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr scan_kdtree_;
 
+  //
+  pcl::PolygonMesh mesh_model_;
+  std::vector<double> mesh_plane_d_;
+  std::vector<double> mesh_area_;
+  std::vector<Eigen::Vector3d> mesh_plane_normals_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

@@ -5,28 +5,30 @@ namespace cpt_reconstruction {
 ProposalSelection::ProposalSelection(
     pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree,
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds,
-    std::vector<Eigen::Vector3d> &center_estimates,
+    pcl::PolygonMesh mesh_model, std::vector<Eigen::Vector3d> &center_estimates,
     std::vector<Eigen::Matrix3d> &direction_estimates,
     std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
     std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
     std::vector<double> &radius_estimates)
     : model_upsampled_kdtree_(upsampled_kd_tree),
       scan_kdtree_(new pcl::search::KdTree<pcl::PointXYZ>()),
+      mesh_model_(mesh_model),
       center_estimates_(center_estimates),
       direction_estimates_(direction_estimates),
       parameter_estimates_(parameter_estimates),
 
       bounded_axis_estimates_(bounded_axis_estimates),
       radius_estimates_(radius_estimates) {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr meshing_points (new pcl::PointCloud<pcl::PointXYZ>());
-  for (int i = 0; i < meshing_clouds.size(); i++){
+  pcl::PointCloud<pcl::PointXYZ>::Ptr meshing_points(
+      new pcl::PointCloud<pcl::PointXYZ>());
+  for (int i = 0; i < meshing_clouds.size(); i++) {
     (*meshing_points) += *(meshing_clouds.at(i));
   }
   scan_kdtree_->setInputCloud(meshing_points);
 }
 
-void ProposalSelection::selectProposals() {
-  this->removeInsufficientElements();
+void ProposalSelection::selectProposals2() {
+  // this->removeInsufficientElements();
 
   // Minimize Number of unique Plane, Favour Model Structure and Size
 
@@ -163,37 +165,37 @@ void ProposalSelection::selectProposals() {
       std::vector<std::vector<std::pair<int, int>>>
           all_combination_ids;  // Element nr, and dir
 
-
-      //Compute Range of d Parameters for first element
+      // Compute Range of d Parameters for first element
       Eigen::Vector3d center_0 = center_estimates_.at(id_vec.at(0).first);
-      Eigen::Vector3d dir_0 = direction_estimates_.at(id_vec.at(0).first).col(id_vec.at(0).second % 3);
+      Eigen::Vector3d dir_0 = direction_estimates_.at(id_vec.at(0).first)
+                                  .col(id_vec.at(0).second % 3);
       double min_d0 = 10000;
       double max_d0 = -1000;
-      for (auto const &cur_p : parameter_vec.at(0)){
+      for (auto const &cur_p : parameter_vec.at(0)) {
         Eigen::Vector3d point_e = center_0 + dir_0 * cur_p;
-        double cur_d = -(point_e.x() * dir_0.x() + point_e.y() * dir_0.y() + point_e.z() * dir_0.z());
-        if (cur_d > max_d0){
-          max_d0 =cur_d;
+        double cur_d = -(point_e.x() * dir_0.x() + point_e.y() * dir_0.y() +
+                         point_e.z() * dir_0.z());
+        if (cur_d > max_d0) {
+          max_d0 = cur_d;
         }
-        if (cur_d < min_d0){
-          min_d0 =cur_d;
+        if (cur_d < min_d0) {
+          min_d0 = cur_d;
         }
       }
 
-      //Search for max 2 elements with a d in the computed range
+      // Search for max 2 elements with a d in the computed range
       std::vector<int> subset_idx;
       subset_idx.push_back(0);
 
       /*
       for (int p_idx = 1; p_idx < parameter_vec.size(); p_idx++){
         Eigen::Vector3d center_i = center_estimates_.at(id_vec.at(p_idx).first);
-        Eigen::Vector3d dir_i = direction_estimates_.at(id_vec.at(p_idx).first).col(id_vec.at(p_idx).second % 3);
-        for (auto const &param_i : parameter_vec.at(p_idx)){
-          Eigen::Vector3d point_i = center_i + dir_i * param_i;
-          double cur_d = -(point_i.x() * dir_i.x() + point_i.y() * dir_i.y() + point_i.z() * dir_i.z());
-          if (cur_d > min_d0 && cur_d < max_d0){
-            subset_idx.push_back(p_idx);
-            break;
+        Eigen::Vector3d dir_i =
+      direction_estimates_.at(id_vec.at(p_idx).first).col(id_vec.at(p_idx).second
+      % 3); for (auto const &param_i : parameter_vec.at(p_idx)){ Eigen::Vector3d
+      point_i = center_i + dir_i * param_i; double cur_d = -(point_i.x() *
+      dir_i.x() + point_i.y() * dir_i.y() + point_i.z() * dir_i.z()); if (cur_d
+      > min_d0 && cur_d < max_d0){ subset_idx.push_back(p_idx); break;
           }
         }
         if (subset_idx.size() > 1){
@@ -203,7 +205,7 @@ void ProposalSelection::selectProposals() {
       */
       std::vector<std::vector<double>> parameter_vec_subset;
       std::vector<std::pair<int, int>> id_vec_subset;
-      for (auto const &idx_to_add : subset_idx){
+      for (auto const &idx_to_add : subset_idx) {
         parameter_vec_subset.push_back(parameter_vec.at(idx_to_add));
         id_vec_subset.push_back(id_vec.at(idx_to_add));
       }
@@ -249,35 +251,41 @@ void ProposalSelection::selectProposals() {
           area_score += std::fabs(c);
         }
 
-        //Score for model alignment
+        // Score for model alignment
         double model_alignment_score = 0;
         double scan_alignment_score = 0;
         // Compute d parameter and model alignment score
         std::vector<double> d_parameters;
         std::vector<int> nn_indices{1};
         std::vector<float> nn_dists{1};
-        for (int d_o = 0; d_o < cur_combination.size(); d_o ++){
-          Eigen::Vector3d center_i = center_estimates_.at(cur_idx.at(d_o).first);
-          Eigen::Vector3d dir_i = direction_estimates_.at(cur_idx.at(d_o).first).col(cur_idx.at(d_o).second % 3);
+        for (int d_o = 0; d_o < cur_combination.size(); d_o++) {
+          Eigen::Vector3d center_i =
+              center_estimates_.at(cur_idx.at(d_o).first);
+          Eigen::Vector3d dir_i = direction_estimates_.at(cur_idx.at(d_o).first)
+                                      .col(cur_idx.at(d_o).second % 3);
           Eigen::Vector3d point_i = center_i + dir_i * cur_combination.at(d_o);
-          pcl::PointXYZ point_pcl (point_i.x(), point_i.y(), point_i.z());
-          model_upsampled_kdtree_->nearestKSearch(point_pcl, 1, nn_indices, nn_dists);
-          if (std::sqrt(nn_dists[0]) < 0.03){
+          pcl::PointXYZ point_pcl(point_i.x(), point_i.y(), point_i.z());
+          model_upsampled_kdtree_->nearestKSearch(point_pcl, 1, nn_indices,
+                                                  nn_dists);
+          if (std::sqrt(nn_dists[0]) < 0.03) {
             model_alignment_score += 1.0 - 33.3 * std::sqrt(nn_dists[0]);
           }
           scan_kdtree_->nearestKSearch(point_pcl, 1, nn_indices, nn_dists);
-          if (std::sqrt(nn_dists[0]) < 0.03){
+          if (std::sqrt(nn_dists[0]) < 0.03) {
             scan_alignment_score += 1.0 - 33.3 * std::sqrt(nn_dists[0]);
           }
 
-          double cur_d = -(point_i.x() * dir_i.x() + point_i.y() * dir_i.y() + point_i.z() * dir_i.z());
+          double cur_d = -(point_i.x() * dir_i.x() + point_i.y() * dir_i.y() +
+                           point_i.z() * dir_i.z());
           d_parameters.push_back(cur_d);
         }
         removeDuplicatedValues(d_parameters, 0.03);
 
         int shared_planes = cur_combination.size() - d_parameters.size();
 
-        double total_score = 2.0 * area_score + 0.0 * shared_planes + 5.0 * model_alignment_score + 0.0 * scan_alignment_score;
+        double total_score = 2.0 * area_score + 0.0 * shared_planes +
+                             5.0 * model_alignment_score +
+                             0.0 * scan_alignment_score;
         combination_scores.push_back(total_score);
       }
       int max_idx = std::max_element(combination_scores.begin(),
@@ -295,8 +303,8 @@ void ProposalSelection::selectProposals() {
       }
     }
   }
-  //this->organizeDatastructure();
-  //this->removeConflictingElements();
+  // this->organizeDatastructure();
+  // this->removeConflictingElements();
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /*
   // Get Min and Max parameter and setup a grid structure
@@ -380,6 +388,183 @@ for (int i = 0; i < score_parameters_in_buckets.size(); i++) {
 */
 }
 
+void ProposalSelection::processModelPlanes() {
+  pcl::PointCloud<pcl::PointXYZ>::Ptr vertices_model(
+      new pcl::PointCloud<pcl::PointXYZ>());
+  std::vector<::pcl::Vertices> faces_model;
+  pcl::fromPCLPointCloud2(mesh_model_.cloud, *vertices_model);
+  faces_model = mesh_model_.polygons;
+  for (int i = 0; i < faces_model.size(); i++) {
+    std::vector<uint32_t> vertices = faces_model.at(i).vertices;
+    pcl::PointXYZ p1 = (*vertices_model)[vertices.at(0)];
+    pcl::PointXYZ p2 = (*vertices_model)[vertices.at(1)];
+    pcl::PointXYZ p3 = (*vertices_model)[vertices.at(2)];
+    Eigen::Vector3d v1(p1.x, p1.y, p1.z);
+    Eigen::Vector3d v2(p2.x, p2.y, p2.z);
+    Eigen::Vector3d v3(p3.x, p3.y, p3.z);
+    Eigen::Vector3d n = (v2 - v1).cross(v3 - v1);
+
+    mesh_area_.push_back(n.norm() / 2.0);
+    n.normalize();
+
+    mesh_plane_normals_.push_back(n);
+    double d = -(n.x() * p1.x + n.y() * p1.y + n.z() * p1.z);
+    mesh_plane_d_.push_back(d);
+  }
+}
+
+Eigen::VectorXd ProposalSelection::computePosterior(
+    const Eigen::VectorXd &prior, const Eigen::VectorXd &posterior) {
+  int size = prior.size();
+  Eigen::VectorXd new_probability(size);
+
+  double normalizer = 0;
+  for (int i = 0; i < size; i++) {
+    normalizer += prior[i] * posterior[i];
+  }
+
+  for (int i = 0; i < size; i++) {
+    new_probability[i] = prior[i] * posterior[i] / normalizer;
+  }
+
+  return new_probability;
+}
+
+void ProposalSelection::selectProposals() {
+  // Compute all plane from the building model
+  this->processModelPlanes();
+  ROS_INFO("Preprocessed Planes");
+
+  std::vector<std::vector<Eigen::VectorXd>> parameter_probabilities(
+      parameter_estimates_);
+
+  // Normalize parameters as prior probability
+  for (int i = 0; i < parameter_probabilities.size(); i++) {
+    for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
+      Eigen::VectorXd para_temp = parameter_probabilities.at(i).at(j);
+      para_temp = para_temp.cwiseAbs();
+      para_temp.normalize();
+      parameter_probabilities.at(i).at(j) = para_temp;
+    }
+  }
+  ROS_INFO("Computed Probabilities");
+
+  for (int i = 0; i < parameter_estimates_.size(); i++) {
+    Eigen::Vector3d cur_center = center_estimates_.at(i);
+    for (int j = 0; j < parameter_estimates_.at(i).size(); j++) {
+      Eigen::VectorXd cur_parameters = parameter_estimates_.at(i).at(j);
+
+      Eigen::Vector3d cur_dir;
+      if (j == 0 || j == 1) {
+        cur_dir = direction_estimates_.at(i).col(0);
+      } else if (j == 2 || j == 3) {
+        cur_dir = direction_estimates_.at(i).col(1);
+      } else {
+        cur_dir = direction_estimates_.at(i).col(2);
+      }
+
+      // Posteriors
+      std::vector<double> number_of_shared_planes;
+
+      std::vector<int> nn_indices{1};
+      std::vector<float> nn_dists{1};
+      std::vector<double> scan_alignment_score;
+      std::vector<double> model_alignment_score;
+      for (int k = 0; k < cur_parameters.size(); k++) {
+        double parameter = cur_parameters[k];
+        Eigen::Vector3d point = cur_center + parameter * cur_dir;
+        double d = -(point.x() * cur_dir.x() + point.y() * cur_dir.y() +
+                     point.z() * cur_dir.z());
+
+        // Score for shared planes with the building modle
+        double shared_plane_score = 0.01;
+        for (int l = 0; l < mesh_plane_d_.size(); l++) {
+          Eigen::Vector3d candidate_normal = mesh_plane_normals_.at(l);
+          double candidate_d = mesh_plane_d_.at(l);
+
+          if (candidate_normal.dot(cur_dir) < 0) {
+            candidate_d *= -1.0;
+          }
+          double d_diff = std::fabs(d - candidate_d);
+          if (std::fabs(candidate_normal.dot(cur_dir)) > 0.99 &&
+              d_diff < 0.05) {
+            shared_plane_score += ((1.0 - 19.9 * d_diff) * mesh_area_.at(l));
+          }
+        }
+        number_of_shared_planes.push_back(shared_plane_score);
+
+        pcl::PointXYZ point_pcl(point.x(), point.y(), point.z());
+        // Score for scan alignment
+        scan_kdtree_->nearestKSearch(point_pcl, 1, nn_indices, nn_dists);
+        if (std::sqrt(nn_dists[0]) < 0.05) {
+          double scan_alignment = 1.0 - 19.9 * std::sqrt(nn_dists[0]);
+          scan_alignment_score.push_back(scan_alignment);
+        } else {
+          scan_alignment_score.push_back(0.00001);
+        }
+
+        // Score for model alignment
+        model_upsampled_kdtree_->nearestKSearch(point_pcl, 1, nn_indices,
+                                                nn_dists);
+        if (std::sqrt(nn_dists[0]) < 0.05) {
+          double model_alignment = 1.0 - 19.9 * std::sqrt(nn_dists[0]);
+          model_alignment_score.push_back(model_alignment);
+        } else {
+          model_alignment_score.push_back(0.00001);
+        }
+      }
+      Eigen::VectorXd shared_planes_vec =
+          Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+              number_of_shared_planes.data(), number_of_shared_planes.size());
+      shared_planes_vec.normalize();
+
+      Eigen::VectorXd scan_alignment_vec =
+          Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+              scan_alignment_score.data(), scan_alignment_score.size());
+      scan_alignment_vec.normalize();
+
+      Eigen::VectorXd model_alignment_vec =
+          Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+              model_alignment_score.data(), model_alignment_score.size());
+      model_alignment_vec.normalize();
+
+      Eigen::VectorXd updated_prob1 = this->computePosterior(
+          parameter_probabilities.at(i).at(j), shared_planes_vec);
+      parameter_probabilities.at(i).at(j) = updated_prob1;
+
+      Eigen::VectorXd updated_prob2 = this->computePosterior(
+          parameter_probabilities.at(i).at(j), scan_alignment_vec);
+      parameter_probabilities.at(i).at(j) = updated_prob2;
+
+      Eigen::VectorXd updated_prob3 = this->computePosterior(
+          parameter_probabilities.at(i).at(j), model_alignment_vec);
+      parameter_probabilities.at(i).at(j) = updated_prob3;
+    }
+  }
+
+  for (int i = 0; i < parameter_probabilities.size(); i++) {
+    ROS_INFO("Element %d", i);
+    for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
+      ROS_INFO("Dim %d", j);
+      Eigen::VectorXd probability_vec = parameter_probabilities.at(i).at(j);
+
+      double max_probability = 0.0;
+      int max_idx = 0;
+      for (int k = 0; k < probability_vec.size(); k++) {
+        double cur_prob = probability_vec[k];
+        ROS_INFO("Prob %f", cur_prob);
+        if (cur_prob > max_probability) {
+          max_probability = cur_prob;
+          max_idx = k;
+        }
+      }
+      double most_likely_para = parameter_estimates_.at(i).at(j)[max_idx];
+      parameter_estimates_.at(i).at(j).resize(1, 1);
+      parameter_estimates_.at(i).at(j)[0] = most_likely_para;
+    }
+  }
+}
+
 void ProposalSelection::removeInsufficientElements() {
   std::vector<int> elements_to_remove;
   for (int i = 0; i < parameter_estimates_.size(); i++) {
@@ -393,27 +578,27 @@ void ProposalSelection::removeInsufficientElements() {
     Eigen::VectorXd c2 = magnitudes.at(5);
 
     int counter_non_zero_elements = 0;
-    if (a1.size() > 1){
+    if (a1.size() > 1) {
       counter_non_zero_elements++;
     }
-    if (a2.size() > 1){
+    if (a2.size() > 1) {
       counter_non_zero_elements++;
     }
-    if (b1.size() > 1){
+    if (b1.size() > 1) {
       counter_non_zero_elements++;
     }
-    if (b2.size() > 1){
+    if (b2.size() > 1) {
       counter_non_zero_elements++;
     }
-    if (c1.size() > 1){
+    if (c1.size() > 1) {
       counter_non_zero_elements++;
     }
-    if (c2.size() > 1){
+    if (c2.size() > 1) {
       counter_non_zero_elements++;
     }
 
-    //Allow for one missed parameter
-    if (counter_non_zero_elements <= 4){
+    // Allow for one missed parameter
+    if (counter_non_zero_elements <= 4) {
       elements_to_remove.push_back(i);
       ROS_INFO("Removed element due to insufficent number of paramters");
     }
@@ -497,7 +682,7 @@ void ProposalSelection::organizeDatastructure() {
 }
 
 void ProposalSelection::removeDuplicatedValues(std::vector<double> &vector,
-                                            double eps) {
+                                               double eps) {
   // Source:
   // https://stackoverflow.com/questions/34481190/removing-duplicates-of-3d-points-in-a-vector-in-c/34481426
   std::sort(vector.begin(), vector.end(),

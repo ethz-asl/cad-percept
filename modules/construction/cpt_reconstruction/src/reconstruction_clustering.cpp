@@ -136,10 +136,10 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     this->fusePlanes();
     this->fuseCylinders();
 
-    // this->removeSingleDetectionsPlanes();
-    // this->removeConflictingClustersPlanes();
+    this->removeSingleDetectionsPlanes();
+    this->removeConflictingClustersPlanes();
 
-    // this->removeSingleDetectionsCylinders();
+    this->removeSingleDetectionsCylinders();
     ROS_INFO("Size after fuseing plane: %d \n", clouds_plane_.size());
     ROS_INFO("Size after fuseing cylinders: %d \n", clouds_cyl_.size());
   }
@@ -163,7 +163,8 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
           splitUpElement(clouds_plane_.at(i), ransac_normals_.at(i),
                          splitted_clouds);
           for (int s = 0; s < splitted_clouds.size(); s++) {
-            pcl::PointCloud<pcl::PointXYZ>::Ptr cur_split = splitted_clouds.at(s);
+            pcl::PointCloud<pcl::PointXYZ>::Ptr cur_split =
+                splitted_clouds.at(s);
             pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
                 new pcl::search::KdTree<pcl::PointXYZ>);
             tree->setInputCloud(cur_split);
@@ -179,7 +180,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
 
             int j = 0;
             for (std::vector<pcl::PointIndices>::const_iterator it =
-                cluster_indices.begin();
+                     cluster_indices.begin();
                  it != cluster_indices.end(); ++it) {
               pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(
                   new pcl::PointCloud<pcl::PointXYZ>);
@@ -195,7 +196,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
             }
           }
         } else {
-            publish_clouds_vec.push_back(clouds_plane_.at(i));
+          publish_clouds_vec.push_back(clouds_plane_.at(i));
         }
         for (int pub = 0; pub < publish_clouds_vec.size(); pub++) {
           pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_to_publish =
@@ -491,10 +492,10 @@ void Clustering::performSplit(
   if (max_score > 1.1 * init_score) {
     int max_idx = std::distance(std::begin(splitting_scores), max_score_it);
 
-    if (splitted_clouds.at(max_idx).first->size() > 100){
+    if (splitted_clouds.at(max_idx).first->size() > 100) {
       result.push_back(splitted_clouds.at(max_idx).first);
     }
-    if (splitted_clouds.at(max_idx).second->size() > 100){
+    if (splitted_clouds.at(max_idx).second->size() > 100) {
       result.push_back(splitted_clouds.at(max_idx).second);
     }
 

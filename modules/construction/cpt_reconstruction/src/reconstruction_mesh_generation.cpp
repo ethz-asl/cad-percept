@@ -85,18 +85,19 @@ void MeshGeneration::messageCallback(
   getElementProposalsCylinders(bounded_axis_estimates, radius_estimates);
 
   // Select a subset from proposals and forward it to the model integration node
-  ProposalSelection proposalSelection(model_upsampled_kdtree_, meshing_clouds_, center_estimates, direction_estimates,
-                                      parameter_estimates,
+  ProposalSelection proposalSelection(model_upsampled_kdtree_, meshing_clouds_,
+                                      mesh_model_, center_estimates,
+                                      direction_estimates, parameter_estimates,
                                       bounded_axis_estimates, radius_estimates);
 
   try {
     proposalSelection.selectProposals();
-    proposalSelection.getSelectedProposals(center_estimates, direction_estimates,
-                                           parameter_estimates);
-  } catch(const std::exception &exc){
+    proposalSelection.getSelectedProposals(
+        center_estimates, direction_estimates, parameter_estimates);
+  } catch (const std::exception &exc) {
     ROS_INFO("Error occured in proposal selection");
     ROS_INFO("%s", exc.what());
-    //std::cout << exc.what() << std::endl;
+    // std::cout << exc.what() << std::endl;
     sleep(30);
     return;
   }
@@ -201,7 +202,7 @@ void MeshGeneration::preprocessFusedMesh(pcl::PolygonMesh &mesh_detected,
   mesh_plane_normals_.clear();
 
   // Get all plane parameters from model
-  computeAllPlanes(false, 0.1);
+  computeAllPlanes(true, 0.1);
 
   // Flag duplicated planes
   duplicated_faces_.clear();
@@ -382,7 +383,7 @@ void MeshGeneration::getProposalVerticesPlanes(double min_area) {
         new pcl::PointCloud<pcl::PointXYZ>);
     computeArtificialVertices(artificial_vertices, shape_directions_);
 
-    if (artificial_vertices->size() == 0){
+    if (artificial_vertices->size() == 0) {
       ROS_INFO("Warning: No valid artifical vertices were found!");
       artificial_vertices->push_back(pcl::PointXYZ(0, 0, -3));
     }
@@ -922,8 +923,8 @@ void MeshGeneration::combineMeshes(const pcl::PolygonMesh &mesh,
 }
 
 void MeshGeneration::computePlanarConvexHull(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d robot_position, pcl::PolygonMesh &mesh,
-    bool include_offsets) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d robot_position,
+    pcl::PolygonMesh &mesh, bool include_offsets) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_copy(
       new pcl::PointCloud<pcl::PointXYZ>);
   pcl::copyPointCloud(*cloud, *cloud_copy);
@@ -977,14 +978,13 @@ void MeshGeneration::computePlanarConvexHull(
                                coefficients->values[2]);
   plane_normal.normalize();
 
-  //Orient normal with first point from cloud
+  // Orient normal with first point from cloud
   pcl::PointXYZ p0 = (*cloud)[0];
-  Eigen::Vector3d p_e (p0.x, p0.y,  p0.z);
+  Eigen::Vector3d p_e(p0.x, p0.y, p0.z);
   Eigen::Vector3d robot_to_point = p_e - robot_position;
-  if (robot_to_point.dot(plane_normal) < 0){
+  if (robot_to_point.dot(plane_normal) < 0) {
     plane_normal *= -1;
   }
-
 
   if (include_offsets) {
     pcl::ConvexHull<pcl::PointXYZ> chull;
@@ -1002,10 +1002,10 @@ void MeshGeneration::computePlanarConvexHull(
     Eigen::Vector3d offset2 = plane_normal * 0.25;
     for (int i = 0; i < hull_points->size(); i++) {
       pcl::PointXYZ p = (*hull_points)[i];
-      corners_shifted->push_back(
-          pcl::PointXYZ(p.x + offset1.x(), p.y + offset1.y(), p.z + offset1.z()));
-      corners_shifted->push_back(
-          pcl::PointXYZ(p.x + offset2.x(), p.y + offset2.y(), p.z + offset2.z()));
+      corners_shifted->push_back(pcl::PointXYZ(
+          p.x + offset1.x(), p.y + offset1.y(), p.z + offset1.z()));
+      corners_shifted->push_back(pcl::PointXYZ(
+          p.x + offset2.x(), p.y + offset2.y(), p.z + offset2.z()));
     }
     pcl::PolygonMesh mesh_offsets;
     pcl::ConvexHull<pcl::PointXYZ> chull_offsets;
@@ -1037,8 +1037,7 @@ void MeshGeneration::computePlanarConvexHull(
       Eigen::Vector3d face_normal = (e1 - e2).cross((e3 - e2));
       face_normal.normalize();
 
-
-      //TODO: Rotate faces
+      // TODO: Rotate faces
       /*
       Eigen::Vector3d face_center = (e1 + e2 + e3) / 3.0;
       if (std::fabs(face_normal.z()) < 0.1){
@@ -1053,7 +1052,10 @@ void MeshGeneration::computePlanarConvexHull(
       double dot_value = std::fabs(plane_normal.dot(face_normal));
       double z_abs = std::fabs(face_normal.z());
 
-      mesh_offsets.polygons.push_back(vertices);
+      if (z_abs < 0.1 || z_abs > 0.9) {
+        mesh_offsets.polygons.push_back(vertices);
+      }
+      // mesh_offsets.polygons.push_back(vertices);
       /*
       if ((dot_value < 0.02 || dot_value > 0.998) &&
           (z_abs < 0.02 || z_abs > 0.98)) {
@@ -1123,8 +1125,12 @@ void MeshGeneration::flagDuplicatedPlanes(double min_area) {
       Eigen::Vector3d plane_normal_2 = mesh_plane_normals_.at(j);
       double d_2 = mesh_plane_d_.at(j);
 
+      if (plane_normal_1.dot(plane_normal_2) < 0) {
+        d_2 *= -1.0;
+      }
+
       if (std::fabs(plane_normal_1.dot(plane_normal_2)) > 0.998 &&
-          std::fabs(d_1 - d_2) < 0.02) {
+          std::fabs(d_1 - d_2) < 0.01) {
         duplicated_faces_.push_back(j);
       }
     }
@@ -1219,7 +1225,7 @@ void MeshGeneration::processElementCloud(
   pcl::copyPointCloud(*element_points, *corners);
 
   // Corners -> Corners top and bottom, Corners side
-  if (false && std::fabs(element_normal.z()) < 0.1) {
+  if (std::fabs(element_normal.z()) < 0.1) {
     double max_z = -10000;
     double min_z = 10000;
     double max_xy = -10000;
@@ -1290,17 +1296,13 @@ void MeshGeneration::selectMainCandidateFaces(
       std::vector<uint32_t> vertices = faces_model_.at(i).vertices;
 
       bool found_candidate = false;
-      double min_distance = 1000;
       for (int p_idx = 0; p_idx < corners->size(); p_idx += 5) {
         pcl::PointXYZ p = (*corners)[p_idx];
         double error = candidate_normal.x() * p.x + candidate_normal.y() * p.y +
                        candidate_normal.z() * p.z + candidate_d;
-        if (error < min_distance) {
-          min_distance = error;
-          if (min_distance >= -0.05 && min_distance <= 0.4) {
-            found_candidate = true;
-            break;
-          }
+        if (error >= -0.4 && error <= 0.05) {
+          found_candidate = true;
+          break;
         }
       }
 
@@ -1406,7 +1408,7 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
     if (std::fabs(element_normal.dot(candidate_normal)) < 0.02) {
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
-      if (std::fabs(candidate_normal.z()) < 0.15) {
+      if (std::fabs(candidate_normal.z()) < 0.02) {
         for (int p_idx = 0; p_idx < corners_side->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_side)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1416,7 +1418,7 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
             min_distance = error;
           }
         }
-        if (min_distance <= 0.4) {
+        if (min_distance <= 0.5) {
           candidate_faces_ortho_vertical_.push_back(i);
         }
       } else if (std::fabs(candidate_normal.z()) > 0.98) {
@@ -1429,7 +1431,7 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
             min_distance = error;
           }
         }
-        if (min_distance <= 0.4) {
+        if (min_distance <= 0.5) {
           candidate_faces_ortho_horizontal_.push_back(i);
         }
       }
@@ -1459,42 +1461,42 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
   double min_d2 = 10000;
   double max_d2 = -10000;
 
-  for (int i = 0; i < corners->size(); i++){
+  for (int i = 0; i < corners->size(); i++) {
     pcl::PointXYZ cur_p = (*corners)[i];
-    Eigen::Vector3d cur_e (cur_p.x, cur_p.y, cur_p.z);
-    double cur_d1 = - cur_e.dot(major_vector);
-    double cur_d2 = - cur_e.dot(middle_vector);
-    if (cur_d1 > max_d1){
+    Eigen::Vector3d cur_e(cur_p.x, cur_p.y, cur_p.z);
+    double cur_d1 = -cur_e.dot(major_vector);
+    double cur_d2 = -cur_e.dot(middle_vector);
+    if (cur_d1 > max_d1) {
       max_d1 = cur_d1;
     }
-    if (cur_d1 < min_d1){
+    if (cur_d1 < min_d1) {
       min_d1 = cur_d1;
     }
-    if (cur_d2 > max_d2){
+    if (cur_d2 > max_d2) {
       max_d2 = cur_d2;
     }
-    if (cur_d2 < min_d2){
+    if (cur_d2 < min_d2) {
       min_d2 = cur_d2;
     }
   }
-  //set bounds
+  // set bounds
   min_d1 *= 0.85;
   max_d1 *= 0.85;
   min_d2 *= 0.85;
   max_d2 *= 0.85;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr red_corners (new pcl::PointCloud<pcl::PointXYZ>());
-  for (int i = 0; i < corners->size(); i++){
+  pcl::PointCloud<pcl::PointXYZ>::Ptr red_corners(
+      new pcl::PointCloud<pcl::PointXYZ>());
+  for (int i = 0; i < corners->size(); i++) {
     pcl::PointXYZ cur_p = (*corners)[i];
-    Eigen::Vector3d cur_e (cur_p.x, cur_p.y, cur_p.z);
-    double cur_d1 = - cur_e.dot(major_vector);
-    double cur_d2 = - cur_e.dot(middle_vector);
+    Eigen::Vector3d cur_e(cur_p.x, cur_p.y, cur_p.z);
+    double cur_d1 = -cur_e.dot(major_vector);
+    double cur_d2 = -cur_e.dot(middle_vector);
 
-    if (cur_d1 > max_d1 || cur_d1 < min_d1 || cur_d2 > max_d2 || cur_d2 < min_d2){
+    if (cur_d1 > max_d1 || cur_d1 < min_d1 || cur_d2 > max_d2 ||
+        cur_d2 < min_d2) {
       red_corners->push_back(cur_p);
     }
   }
-
-
 
   for (int i = 0; i < faces_model_.size(); i++) {
     // Ignore duplicated planes or very small areas
@@ -1510,7 +1512,7 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
         std::fabs(candidate_normal.z()) < 0.02) {
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
-      if (std::fabs(candidate_normal.dot(major_vector)) > 0.98) {
+      if (std::fabs(candidate_normal.dot(major_vector)) > 0.999) {
         for (int p_idx = 0; p_idx < red_corners->size(); p_idx++) {
           pcl::PointXYZ p = (*red_corners)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1523,7 +1525,7 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
         if (min_distance <= 0.4) {
           candidate_faces_ortho_vertical_.push_back(i);
         }
-      } else if (std::fabs(candidate_normal.dot(middle_vector)) > 0.95) {
+      } else if (std::fabs(candidate_normal.dot(middle_vector)) > 0.999) {
         for (int p_idx = 0; p_idx < red_corners->size(); p_idx++) {
           pcl::PointXYZ p = (*red_corners)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1559,8 +1561,8 @@ void MeshGeneration::computeArtificialVertices(
         normal_h1 = plane_h1.head(3);
 
         double ortho_score = (normal_m1.cross(normal_v1)).dot(normal_h1);
-        //TODO: Add paramter
-        if (std::fabs(ortho_score) > 0.999) {
+        // TODO: Add paramter
+        if (std::fabs(ortho_score) > 0.95) {
           pcl::threePlanesIntersection(plane_m1, plane_v1, plane_h1, p1);
           artificial_vertices->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
         }
@@ -1728,7 +1730,7 @@ bool MeshGeneration::getReconstructionParametersPlanes(
   feature_extractor.getMassCenter(mass_center);
   */
   Eigen::Vector3f mass_center;
-  mass_center = mean_e.cast<float>() + 0.12 * element_normal.cast<float>();
+  mass_center = mean_e.cast<float>() + 0.1 * element_normal.cast<float>();
 
   Eigen::Matrix3d corrected_dir = shape_directions_.at(idx);
   direction_estimates.push_back(corrected_dir);
@@ -1922,12 +1924,12 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     }
   }
 
-  a1_incomplete = a1.empty();
-  a2_incomplete = a2.empty();
-  b1_incomplete = b1.empty();
-  b2_incomplete = b2.empty();
-  c1_incomplete = c1.empty();
-  c2_incomplete = c2.empty();
+  // a1_incomplete = a1.empty();
+  // a2_incomplete = a2.empty();
+  // b1_incomplete = b1.empty();
+  // b2_incomplete = b2.empty();
+  // c1_incomplete = c1.empty();
+  // c2_incomplete = c2.empty();
 
   for (int i = 0; i < alive_element_points->size(); i++) {
     pcl::PointXYZ cur_point = (*alive_element_points)[i];
@@ -1969,38 +1971,38 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     }
   }
 
-  a1_incomplete = a1.empty();
-  a2_incomplete = a2.empty();
-  b1_incomplete = b1.empty();
-  b2_incomplete = b2.empty();
-  c1_incomplete = c1.empty();
-  c2_incomplete = c2.empty();
+  // a1_incomplete = a1.empty();
+  // a2_incomplete = a2.empty();
+  // b1_incomplete = b1.empty();
+  // b2_incomplete = b2.empty();
+  // c1_incomplete = c1.empty();
+  // c2_incomplete = c2.empty();
 
   if (a1_incomplete) {
-    a1.push_back(0);
+    a1.push_back(0.01);
   }
   if (a2_incomplete) {
-    a2.push_back(0);
+    a2.push_back(-0.01);
   }
   if (b1_incomplete) {
-    b1.push_back(0);
+    b1.push_back(0.01);
   }
   if (b2_incomplete) {
-    b2.push_back(0);
+    b2.push_back(-0.01);
   }
   if (c1_incomplete) {
-    c1.push_back(0);
+    c1.push_back(0.01);
   }
   if (c2_incomplete) {
-    c2.push_back(0);
+    c2.push_back(-0.01);
   }
 
-  removeDuplicatedValues(a1, 0.03);
-  removeDuplicatedValues(a2, 0.03);
-  removeDuplicatedValues(b1, 0.03);
-  removeDuplicatedValues(b2, 0.03);
-  removeDuplicatedValues(c1, 0.03);
-  removeDuplicatedValues(c2, 0.03);
+  removeDuplicatedValues(a1, 0.005);
+  removeDuplicatedValues(a2, 0.005);
+  removeDuplicatedValues(b1, 0.005);
+  removeDuplicatedValues(b2, 0.005);
+  removeDuplicatedValues(c1, 0.005);
+  removeDuplicatedValues(c2, 0.005);
 
   Eigen::VectorXd a1_vec =
       Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(a1.data(), a1.size());
