@@ -171,7 +171,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
 
             std::vector<pcl::PointIndices> cluster_indices;
             pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-            ec.setClusterTolerance(0.2);
+            ec.setClusterTolerance(0.5);
             ec.setMinClusterSize(100);
             ec.setMaxClusterSize(500000);
             ec.setSearchMethod(tree);

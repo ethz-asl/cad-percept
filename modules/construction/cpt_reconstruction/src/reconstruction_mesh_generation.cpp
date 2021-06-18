@@ -1408,7 +1408,7 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
     if (std::fabs(element_normal.dot(candidate_normal)) < 0.02) {
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
-      if (std::fabs(candidate_normal.z()) < 0.02) {
+      if (std::fabs(candidate_normal.z()) < 0.015) {
         for (int p_idx = 0; p_idx < corners_side->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_side)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1418,10 +1418,10 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
             min_distance = error;
           }
         }
-        if (min_distance <= 0.5) {
+        if (min_distance <= 0.6) {
           candidate_faces_ortho_vertical_.push_back(i);
         }
-      } else if (std::fabs(candidate_normal.z()) > 0.98) {
+      } else if (std::fabs(candidate_normal.z()) > 0.995) {
         for (int p_idx = 0; p_idx < corners_top_bottom->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_top_bottom)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1431,7 +1431,7 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
             min_distance = error;
           }
         }
-        if (min_distance <= 0.5) {
+        if (min_distance <= 0.6) {
           candidate_faces_ortho_horizontal_.push_back(i);
         }
       }
@@ -1979,22 +1979,22 @@ bool MeshGeneration::getReconstructionParametersPlanes(
   // c2_incomplete = c2.empty();
 
   if (a1_incomplete) {
-    a1.push_back(0.01);
+    a1.push_back(0.05);
   }
   if (a2_incomplete) {
-    a2.push_back(-0.01);
+    a2.push_back(-0.05);
   }
   if (b1_incomplete) {
-    b1.push_back(0.01);
+    b1.push_back(0.05);
   }
   if (b2_incomplete) {
-    b2.push_back(-0.01);
+    b2.push_back(-0.05);
   }
   if (c1_incomplete) {
-    c1.push_back(0.01);
+    c1.push_back(0.05);
   }
   if (c2_incomplete) {
-    c2.push_back(-0.01);
+    c2.push_back(-0.05);
   }
 
   removeDuplicatedValues(a1, 0.005);

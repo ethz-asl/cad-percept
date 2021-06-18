@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -59,6 +60,14 @@ class ProposalSelection {
   Eigen::VectorXd computePosterior(const Eigen::VectorXd &prior,
                                    const Eigen::VectorXd &posterior);
   void removeDuplicatedValues(std::vector<double> &vector, double eps);
+  void upsampledStructuredPointCloud(
+      double a1, double a2, double b1, double b2, double c1, double c2,
+      Eigen::Vector3d center, Eigen::Matrix3d directions,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud, double step = 0.03);
+  double findParameterFromLikelihood(const Eigen::VectorXd &params,
+                                     const Eigen::VectorXd &probabilities,
+                                     int k);
+  int findMaxIndexInEigenVector(const Eigen::VectorXd &vector);
   void removeConflictingElements();
   void removeInsufficientElements();
   void processModelPlanes();
