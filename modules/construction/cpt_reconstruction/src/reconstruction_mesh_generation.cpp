@@ -1017,9 +1017,11 @@ void MeshGeneration::computePlanarConvexHull(
         new pcl::PointCloud<pcl::PointXYZ>());
     pcl::fromPCLPointCloud2(mesh_offsets.cloud, *shifted_hull_points);
 
-    // Keep only meaningful faces
     std::vector<::pcl::Vertices> polygons = mesh_offsets.polygons;
-    mesh_offsets.polygons.clear();
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr structured_points (new pcl::PointCloud<pcl::PointXYZ>());
+    std::vector<::pcl::Vertices> structured_polygons;
+    int counter_vertices = 0;
     for (int i = 0; i < polygons.size(); i++) {
       ::pcl::Vertices vertices = polygons.at(i);
       int idx_1 = vertices.vertices.at(0);
@@ -1037,33 +1039,82 @@ void MeshGeneration::computePlanarConvexHull(
       Eigen::Vector3d face_normal = (e1 - e2).cross((e3 - e2));
       face_normal.normalize();
 
-      // TODO: Rotate faces
-      /*
-      Eigen::Vector3d face_center = (e1 + e2 + e3) / 3.0;
-      if (std::fabs(face_normal.z()) < 0.1){
-        Eigen::Vector3d new_normal (face_center.x(), face_center.y(), 0);
-        new_normal.normalize();
 
-      } else if (std::fabs(face_normal.z()) > 0.9){
-        Eigen::Vector3d new_normal (0, 0, 1);
-      }
-      */
+      Eigen::Vector3d new_point1, new_point2, new_point3;
 
-      double dot_value = std::fabs(plane_normal.dot(face_normal));
-      double z_abs = std::fabs(face_normal.z());
+      bool success = false;
+      if (std::fabs(face_normal.dot(plane_normal)) > 0.995){
+        new_point1 = e1;
+        new_point2 = e2;
+        new_point3 = e3;
+        success = true;
+      } else{
+        Eigen::Vector3d center_point = (e1 + e2 + e3) / 3.0;
+        Eigen::Vector3d new_direction;
+        if (std::fabs(plane_normal.dot(Eigen::Vector3d::UnitZ())) < 0.1){
+          if (std::fabs(face_normal.z()) < 0.707){
+            new_direction = plane_normal.cross(Eigen::Vector3d::UnitZ());
+            new_direction.normalize();
+          } else {
+            new_direction = Eigen::Vector3d::UnitZ();
+          }
 
-      if (z_abs < 0.1 || z_abs > 0.9) {
-        mesh_offsets.polygons.push_back(vertices);
+          double new_d = -(center_point.x() * new_direction.x() + center_point.y() * new_direction.y() + center_point.z() * new_direction.z());
+          double error_1 = e1.x() *  new_direction.x() + e1.y() *  new_direction.y() + e1.z() *  new_direction.z() + new_d;
+          double error_2 = e2.x() *  new_direction.x() + e2.y() *  new_direction.y() + e2.z() *  new_direction.z() + new_d;
+          double error_3 = e3.x() *  new_direction.x() + e3.y() *  new_direction.y() + e3.z() *  new_direction.z() + new_d;
+
+          e1 -= error_1 * new_direction;
+          e2 -= error_2 * new_direction;
+          e3 -= error_3 * new_direction;
+
+          new_point1 = e1;
+          new_point2 = e2;
+          new_point3 = e3;
+
+          success = true;
+        } else if (std::fabs(plane_normal.dot(Eigen::Vector3d::UnitZ())) > 0.9){
+          double score_x = std::fabs(face_normal.dot(Eigen::Vector3d::UnitX()));
+          double score_y = std::fabs(face_normal.dot(Eigen::Vector3d::UnitY()));
+
+          new_direction = (score_x > score_y) ? Eigen::Vector3d::UnitX() : Eigen::Vector3d::UnitY();
+
+          double new_d = -(center_point.x() * new_direction.x() + center_point.y() * new_direction.y() + center_point.z() * new_direction.z());
+          double error_1 = e1.x() *  new_direction.x() + e1.y() *  new_direction.y() + e1.z() *  new_direction.z() + new_d;
+          double error_2 = e2.x() *  new_direction.x() + e2.y() *  new_direction.y() + e2.z() *  new_direction.z() + new_d;
+          double error_3 = e3.x() *  new_direction.x() + e3.y() *  new_direction.y() + e3.z() *  new_direction.z() + new_d;
+
+          e1 -= error_1 * new_direction;
+          e2 -= error_2 * new_direction;
+          e3 -= error_3 * new_direction;
+
+          new_point1 = e1;
+          new_point2 = e2;
+          new_point3 = e3;
+          success = true;
+        }
       }
-      // mesh_offsets.polygons.push_back(vertices);
-      /*
-      if ((dot_value < 0.02 || dot_value > 0.998) &&
-          (z_abs < 0.02 || z_abs > 0.98)) {
-        mesh_offsets.polygons.push_back(vertices);
+      if(success){
+        ::pcl::Vertices structured_vertices;
+        structured_vertices.vertices.push_back(counter_vertices);
+        structured_vertices.vertices.push_back(counter_vertices + 1);
+        structured_vertices.vertices.push_back(counter_vertices + 2);
+        structured_polygons.push_back(structured_vertices);
+        counter_vertices += 3;
+
+        structured_points->push_back(pcl::PointXYZ(new_point1.x(), new_point1.y(), new_point1.z()));
+        structured_points->push_back(pcl::PointXYZ(new_point2.x(), new_point2.y(), new_point2.z()));
+        structured_points->push_back(pcl::PointXYZ(new_point3.x(), new_point3.y(), new_point3.z()));
       }
-      */
     }
-    combineMeshes(mesh_offsets, mesh);
+
+    pcl::PolygonMesh structured_offsets;
+    structured_offsets.polygons = structured_polygons;
+    pcl::PCLPointCloud2 structured_points_conv;
+    pcl::toPCLPointCloud2(*structured_points, structured_points_conv);
+    structured_offsets.cloud = structured_points_conv;
+
+    combineMeshes(structured_offsets, mesh);
   } else {
     // Compute Convex Hull
     pcl::ConvexHull<pcl::PointXYZ> chull;
@@ -1225,7 +1276,7 @@ void MeshGeneration::processElementCloud(
   pcl::copyPointCloud(*element_points, *corners);
 
   // Corners -> Corners top and bottom, Corners side
-  if (std::fabs(element_normal.z()) < 0.1) {
+  if (false && std::fabs(element_normal.z()) < 0.1) {
     double max_z = -10000;
     double min_z = 10000;
     double max_xy = -10000;
@@ -1513,8 +1564,8 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
       if (std::fabs(candidate_normal.dot(major_vector)) > 0.999) {
-        for (int p_idx = 0; p_idx < red_corners->size(); p_idx++) {
-          pcl::PointXYZ p = (*red_corners)[p_idx];
+        for (int p_idx = 0; p_idx < corners->size(); p_idx++) {
+          pcl::PointXYZ p = (*corners)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
                                    candidate_normal.y() * p.y +
                                    candidate_normal.z() * p.z + candidate_d);
@@ -1526,8 +1577,8 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
           candidate_faces_ortho_vertical_.push_back(i);
         }
       } else if (std::fabs(candidate_normal.dot(middle_vector)) > 0.999) {
-        for (int p_idx = 0; p_idx < red_corners->size(); p_idx++) {
-          pcl::PointXYZ p = (*red_corners)[p_idx];
+        for (int p_idx = 0; p_idx < corners->size(); p_idx++) {
+          pcl::PointXYZ p = (*corners)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
                                    candidate_normal.y() * p.y +
                                    candidate_normal.z() * p.z + candidate_d);

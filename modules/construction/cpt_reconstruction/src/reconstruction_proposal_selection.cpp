@@ -595,7 +595,7 @@ void ProposalSelection::selectProposals() {
   std::vector<int> nn_indices{1};
   std::vector<float> nn_dists{1};
   int counter = 0;
-  while (counter < 30) {
+  while (counter < 1) {
     ROS_INFO("Conficting loop start");
     conf_point_clouds.clear();
     conf_kd_trees.clear();

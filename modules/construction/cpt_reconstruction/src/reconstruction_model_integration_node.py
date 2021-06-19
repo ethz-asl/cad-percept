@@ -10,46 +10,149 @@ import numpy as np
 
 from plyfile import PlyData, PlyElement
 
+import ttk
 import Tkinter as tk
-import threading
 
 manipulationPanel = None
 BUILDING_MODEL_PATH_ = ""
+
 
 class ManipulationPanel:
     def __init__(self):
         self.root = tk.Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.callback)
 
+        self.root.title("Manipulation Panel")
+
+        self.label_planar_element = tk.Label(master=self.root, text='Planar Element: ')
+        self.label_planar_element.grid(row=0, column=0, padx='5', pady='5', sticky='ew')
+
+        self.planar_parameters = tk.Label(master=self.root, text='Parameters [m]: ')
+        self.planar_parameters.grid(row=1, column=1, padx='10', pady='5', sticky='ew')
+
+        self.label_a1 = tk.Label(master=self.root, text='a1: ', anchor='e')
         self.variable_a1 = tk.DoubleVar(value=0)
-        self.spinbox_a1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
+        self.spinbox_a1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
                                      textvariable=self.variable_a1)
-        self.spinbox_a1.pack()
 
+        self.label_a1.grid(row=2, column=1, padx='5', pady='5', sticky='ew')
+        self.spinbox_a1.grid(row=2, column=2, padx='5', pady='5', sticky='ew')
+
+        self.label_a2 = tk.Label(master=self.root, text='a2: ', anchor='e')
         self.variable_a2 = tk.DoubleVar(value=0)
-        self.spinbox_a2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
+        self.spinbox_a2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
                                      textvariable=self.variable_a2)
-        self.spinbox_a2.pack()
+        self.label_a2.grid(row=2, column=3, padx='5', pady='5', sticky='ew')
+        self.spinbox_a2.grid(row=2, column=4, padx='5', pady='5', sticky='ew')
 
+        self.label_b1 = tk.Label(master=self.root, text='b1: ', anchor='e')
         self.variable_b1 = tk.DoubleVar(value=0)
-        self.spinbox_b1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
+        self.spinbox_b1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
                                      textvariable=self.variable_b1)
-        self.spinbox_b1.pack()
+        self.label_b1.grid(row=3, column=1, padx='5', pady='5', sticky='ew')
+        self.spinbox_b1.grid(row=3, column=2, padx='5', pady='5', sticky='ew')
 
+        self.label_b2 = tk.Label(master=self.root, text='b2: ', anchor='e')
         self.variable_b2 = tk.DoubleVar(value=0)
-        self.spinbox_b2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
+        self.spinbox_b2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
                                      textvariable=self.variable_b2)
-        self.spinbox_b2.pack()
+        self.label_b2.grid(row=3, column=3, padx='5', pady='5', sticky='ew')
+        self.spinbox_b2.grid(row=3, column=4, padx='5', pady='5', sticky='ew')
 
+        self.label_c1 = tk.Label(master=self.root, text='c1: ', anchor='e')
         self.variable_c1 = tk.DoubleVar(value=0)
-        self.spinbox_c1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
+        self.spinbox_c1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
                                      textvariable=self.variable_c1)
-        self.spinbox_c1.pack()
+        self.label_c1.grid(row=4, column=1, padx='5', pady='5', sticky='ew')
+        self.spinbox_c1.grid(row=4, column=2, padx='5', pady='5', sticky='ew')
 
+        self.label_c2 = tk.Label(master=self.root, text='c2: ', anchor='e')
         self.variable_c2 = tk.DoubleVar(value=0)
-        self.spinbox_c2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.RIGHT,
+        self.spinbox_c2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
                                      textvariable=self.variable_c2)
-        self.spinbox_c2.pack()
+        self.label_c2.grid(row=4, column=3, padx='5', pady='5', sticky='ew')
+        self.spinbox_c2.grid(row=4, column=4, padx='5', pady='5', sticky='ew')
+
+        # Translation
+        self.planar_translation = tk.Label(master=self.root, text='Translation [m]: ')
+        self.planar_translation.grid(row=5, column=1, padx='10', pady='5', sticky='ew')
+
+        self.label_translation = tk.Label(master=self.root, text='(dx, dy, dz)', anchor='e')
+        self.label_translation.grid(row=6, column=1, padx='20', pady='5', sticky='ew')
+
+        self.variable_dx = tk.DoubleVar(value=0)
+        self.spinbox_dx = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_dx)
+        self.spinbox_dx.grid(row=6, column=2, padx='5', pady='20', sticky='ew')
+
+        self.variable_dy = tk.DoubleVar(value=0)
+        self.spinbox_dy = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_dy)
+        self.spinbox_dy.grid(row=6, column=3, padx='5', pady='20', sticky='ew')
+
+        self.variable_dz = tk.DoubleVar(value=0)
+        self.spinbox_dz = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_dz)
+        self.spinbox_dz.grid(row=6, column=4, padx='5', pady='20', sticky='ew')
+
+        # Rotation
+        self.planar_rotation = tk.Label(master=self.root, text='Rotation [deg]: ')
+        self.planar_rotation.grid(row=7, column=1, padx='10', pady='5', sticky='ew')
+
+        self.label_rotation = tk.Label(master=self.root, text=(u"(d\u03b1, d\u03b2, d\u03b3)"), anchor='e')
+        self.label_rotation.grid(row=8, column=1, padx='20', pady='5', sticky='ew')
+
+        self.variable_rx = tk.DoubleVar(value=0)
+        self.spinbox_rx = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_rx)
+        self.spinbox_rx.grid(row=8, column=2, padx='5', pady='20', sticky='ew')
+
+        self.variable_ry = tk.DoubleVar(value=0)
+        self.spinbox_ry = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_ry)
+        self.spinbox_ry.grid(row=8, column=3, padx='5', pady='20', sticky='ew')
+
+        self.variable_rz = tk.DoubleVar(value=0)
+        self.spinbox_rz = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_rz)
+        self.spinbox_rz.grid(row=8, column=4, padx='5', pady='20', sticky='ew')
+
+        self.separator = ttk.Separator(self.root, orient='horizontal')
+        self.separator.grid(row=9, column=0, columnspan=5, padx='5', pady='20', sticky='ew')
+
+        # Cylinders
+        self.label_cylider = tk.Label(master=self.root, text='Cylinder: ')
+        self.label_cylider.grid(row=10, column=0, padx='5', pady='10', sticky='ew')
+
+        self.lable_radius = tk.Label(master=self.root, text='Radius [m]: ')
+        self.lable_radius.grid(row=11, column=1, padx='5', pady='10', sticky='ew')
+
+        self.lable_r = tk.Label(master=self.root, text='r: ', anchor='e')
+        self.lable_r.grid(row=12, column=1, padx='5', pady='10', sticky='ew')
+
+        self.variable_radius = tk.DoubleVar(value=0)
+        self.spinbox_radius = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                         textvariable=self.variable_radius)
+        self.spinbox_radius.grid(row=12, column=2, padx='5', pady='20', sticky='ew')
+
+        self.label_height = tk.Label(master=self.root, text='Height [m]: ')
+        self.label_height.grid(row=13, column=1, padx='5', pady='10', sticky='ew')
+
+        self.label_height1 = tk.Label(master=self.root, text='h1: ', anchor='e')
+        self.label_height1.grid(row=14, column=1, padx='5', pady='10', sticky='ew')
+
+        self.variable_h1 = tk.DoubleVar(value=0)
+        self.spinbox_h1 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_h1)
+        self.spinbox_h1.grid(row=14, column=2, padx='5', pady='20', sticky='ew')
+
+        self.label_height2 = tk.Label(master=self.root, text='h2: ', anchor='e')
+        self.label_height2.grid(row=14, column=3, padx='5', pady='10', sticky='ew')
+
+        self.variable_h2 = tk.DoubleVar(value=0)
+        self.spinbox_h2 = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_h2)
+        self.spinbox_h2.grid(row=14, column=4, padx='5', pady='20', sticky='ew')
 
     def startMainloop(self):
         self.root.mainloop()
@@ -62,6 +165,48 @@ class ManipulationPanel:
 
     def quit(self):
         self.root.quit()
+
+    def activatePlanarElements(self):
+        self.spinbox_a1["state"] = "normal"
+        self.spinbox_a2["state"] = "normal"
+        self.spinbox_b1["state"] = "normal"
+        self.spinbox_b2["state"] = "normal"
+        self.spinbox_c1["state"] = "normal"
+        self.spinbox_c2["state"] = "normal"
+
+        self.spinbox_dx["state"] = "normal"
+        self.spinbox_dy["state"] = "normal"
+        self.spinbox_dz["state"] = "normal"
+
+        self.spinbox_rx["state"] = "normal"
+        self.spinbox_ry["state"] = "normal"
+        self.spinbox_rz["state"] = "normal"
+
+    def deactivatePlanarElements(self):
+        self.spinbox_a1["state"] = "disabled"
+        self.spinbox_a2["state"] = "disabled"
+        self.spinbox_b1["state"] = "disabled"
+        self.spinbox_b2["state"] = "disabled"
+        self.spinbox_c1["state"] = "disabled"
+        self.spinbox_c2["state"] = "disabled"
+
+        self.spinbox_dx["state"] = "disabled"
+        self.spinbox_dy["state"] = "disabled"
+        self.spinbox_dz["state"] = "disabled"
+
+        self.spinbox_rx["state"] = "disabled"
+        self.spinbox_ry["state"] = "disabled"
+        self.spinbox_rz["state"] = "disabled"
+
+    def activateCylinders(self):
+        self.spinbox_radius["state"] = "normal"
+        self.spinbox_h1["state"] = "normal"
+        self.spinbox_h2["state"] = "normal"
+
+    def deactivateCylinders(self):
+        self.spinbox_radius["state"] = "disabled"
+        self.spinbox_h1["state"] = "disabled"
+        self.spinbox_h2["state"] = "disabled"
 
     def getA1Value(self):
         return float(self.variable_a1.get())
@@ -81,6 +226,33 @@ class ManipulationPanel:
     def getC2Value(self):
         return float(self.variable_c2.get())
 
+    def getDxValue(self):
+        return float(self.variable_dx.get())
+
+    def getDyValue(self):
+        return float(self.variable_dy.get())
+
+    def getDzValue(self):
+        return float(self.variable_dz.get())
+
+    def getRxValue(self):
+        return float(self.variable_rx.get())
+
+    def getRyValue(self):
+        return float(self.variable_ry.get())
+
+    def getRzValue(self):
+        return float(self.variable_rz.get())
+
+    def getRadiusValue(self):
+        return float(self.variable_radius.get())
+
+    def getH1Value(self):
+        return float(self.variable_h1.get())
+
+    def getH2Value(self):
+        return float(self.variable_h2.get())
+
     def setValueA1(self, value):
         self.variable_a1.set(value)
 
@@ -98,6 +270,33 @@ class ManipulationPanel:
 
     def setValueC2(self, value):
         self.variable_c2.set(value)
+
+    def setDxValue(self, value):
+        self.variable_dx.set(value)
+
+    def setDyValue(self, value):
+        self.variable_dy.set(value)
+
+    def setDzValue(self, value):
+        self.variable_dz.set(value)
+
+    def setRxValue(self, value):
+        self.variable_rx.set(value)
+
+    def setRyValue(self, value):
+        self.variable_ry.set(value)
+
+    def setRzValue(self, value):
+        self.variable_rz.set(value)
+
+    def setRadiusValue(self, value):
+        self.variable_radius.set(value)
+
+    def setH1Value(self, value):
+        self.variable_h1.set(value)
+
+    def setH2Value(self, value):
+        self.variable_h2.set(value)
 
 
 class UserInteraction:
@@ -117,7 +316,7 @@ class UserInteraction:
         self.element_c1 = []
         self.element_c2 = []
 
-        #Cylinders
+        # Cylinders
         self.current_element_number_cylinders = 0
         self.number_elements_cylinders = 0
 
@@ -177,7 +376,7 @@ class UserInteraction:
             p1 = msg.cyl_p1[i]
             p2 = msg.cyl_p2[i]
 
-            norm = np.sqrt( (p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2)
+            norm = np.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2 + (p1.z - p2.z) ** 2)
             axis_x = (p2.x - p1.x) / norm
             axis_y = (p2.y - p1.y) / norm
             axis_z = (p2.z - p1.z) / norm
@@ -216,6 +415,12 @@ class UserInteraction:
             manipulationPanel.setValueB2(b2)
             manipulationPanel.setValueC1(c1)
             manipulationPanel.setValueC2(c2)
+            manipulationPanel.setDxValue(0.0)
+            manipulationPanel.setDyValue(0.0)
+            manipulationPanel.setDzValue(0.0)
+            manipulationPanel.setRxValue(0.0)
+            manipulationPanel.setRyValue(0.0)
+            manipulationPanel.setRzValue(0.0)
 
             p1, p2, p3, p4, p5, p6, p7, p8 = self.getPointsFromParameters(center, dir_1, dir_2, dir_3, a1,
                                                                           a2, b1, b2, c1, c2)
@@ -240,6 +445,16 @@ class UserInteraction:
             vis.get_render_option().mesh_show_wireframe = True
             vis.get_render_option().mesh_show_back_face = True
 
+            manipulationPanel.activatePlanarElements()
+            manipulationPanel.deactivateCylinders()
+
+            dx_prev = 0
+            dy_prev = 0
+            dz_prev = 0
+            rx_prev = 0
+            ry_prev = 0
+            rz_prev = 0
+
             self.render = True
             while (self.render):
                 a1_user = manipulationPanel.getA1Value()
@@ -248,6 +463,24 @@ class UserInteraction:
                 b2_user = manipulationPanel.getB2Value()
                 c1_user = manipulationPanel.getC1Value()
                 c2_user = manipulationPanel.getC2Value()
+                dx_user = manipulationPanel.getDxValue()
+                dy_user = manipulationPanel.getDyValue()
+                dz_user = manipulationPanel.getDzValue()
+                rx_user = manipulationPanel.getRxValue()
+                ry_user = manipulationPanel.getRyValue()
+                rz_user = manipulationPanel.getRzValue()
+
+                user_translation = np.array([dx_user - dx_prev, dy_user - dy_prev, dz_user - dz_prev])
+                user_rotation = element.get_rotation_matrix_from_xyz(np.array([(rx_user - rx_prev) * np.pi / 180.,
+                                                                     (ry_user - ry_prev) * np.pi / 180.,
+                                                                     (rz_user - rz_prev) * np.pi / 180.]))
+
+                #dx_prev = dx_user
+                #dy_prev = dy_user
+                #dz_prev = dz_user
+                #rx_prev = rx_user
+                #ry_prev = ry_user
+                #rz_prev = rz_user
 
                 p1_new, p2_new, p3_new, p4_new, \
                 p5_new, p6_new, p7_new, p8_new = self.getPointsFromParameters(center, dir_1, dir_2, dir_3,
@@ -259,6 +492,9 @@ class UserInteraction:
                                                                         p7_new, p8_new)
                 points_updated = o3d.utility.Vector3dVector(P_updated)
                 element.vertices = points_updated
+                element.translate(user_translation)
+                element.rotate(user_rotation)
+
                 vis.update_geometry(element)
                 vis.poll_events()
                 vis.update_renderer()
@@ -271,6 +507,8 @@ class UserInteraction:
             vis.destroy_window()
             self.current_element_number_planar = self.current_element_number_planar + 1
 
+        manipulationPanel.deactivatePlanarElements()
+        manipulationPanel.activateCylinders()
 
         while (self.current_element_number_cylinders < self.number_elements_cylinders):
             idx = self.current_element_number_cylinders
@@ -281,8 +519,8 @@ class UserInteraction:
             p2 = self.element_p2[idx]
             axis = self.element_axis[idx]
 
-            height = np.sqrt( (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
-            #global manipulationPanel
+            height = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2 + (p1[2] - p2[2]) ** 2)
+            # global manipulationPanel
 
             info_1 = "height is: " + str(height)
             info_2 = "radius is: " + str(radius)
@@ -292,10 +530,10 @@ class UserInteraction:
             cyl_mesh = cyl_mesh.create_cylinder(radius, height, 20, 4)
             cyl_mesh.paint_uniform_color(np.array([1, 0, 0]))
 
-            vec1 = np.array([0,0,1])
+            vec1 = np.array([0, 0, 1])
             vec2 = axis
-            #Compute transformation matrix
-            #Source: https://stackoverflow.com/questions/45142959/calculate-rotation-matrix-to-align-two-vectors-in-3d-space
+            # Compute transformation matrix
+            # Source: https://stackoverflow.com/questions/45142959/calculate-rotation-matrix-to-align-two-vectors-in-3d-space
             a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
             v = np.cross(a, b)
             rotation_matrix = np.eye(3)
@@ -310,7 +548,7 @@ class UserInteraction:
 
             cyl_mesh.transform(transformation_matrix)
 
-            center_2 = np.array([ (p1[0] + p2[0]) / 2.0, (p1[1] + p2[1]) / 2.0, (p1[2] + p2[2]) / 2.0])
+            center_2 = np.array([(p1[0] + p2[0]) / 2.0, (p1[1] + p2[1]) / 2.0, (p1[2] + p2[2]) / 2.0])
             cyl_mesh.translate(center_2, False)
 
             o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
