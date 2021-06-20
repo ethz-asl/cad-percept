@@ -27,367 +27,6 @@ ProposalSelection::ProposalSelection(
   scan_kdtree_->setInputCloud(meshing_points);
 }
 
-void ProposalSelection::selectProposals2() {
-  // this->removeInsufficientElements();
-
-  // Minimize Number of unique Plane, Favour Model Structure and Size
-
-  std::vector<Eigen::Vector3d> dir_buckets;
-  // Z = 0
-  dir_buckets.push_back(Eigen::Vector3d(1, 0, 0));
-  dir_buckets.push_back(Eigen::Vector3d(0, 1, 0));
-  dir_buckets.push_back(Eigen::Vector3d(0.7071, 0.7071, 0));
-  dir_buckets.push_back(Eigen::Vector3d(0.7071, -0.7071, 0));
-
-  // Z = - 1
-  dir_buckets.push_back(Eigen::Vector3d(0.7071, 0, 0.7071));
-  dir_buckets.push_back(Eigen::Vector3d(0, 0.7071, 0.7071));
-  dir_buckets.push_back(Eigen::Vector3d(0.5774, 0.5774, 0.5774));
-  dir_buckets.push_back(Eigen::Vector3d(0.5774, -0.5774, 0.5774));
-
-  // Z = 1
-  dir_buckets.push_back(Eigen::Vector3d(0.7071, 0, -0.7071));
-  dir_buckets.push_back(Eigen::Vector3d(0, 0.7071, -0.7071));
-  dir_buckets.push_back(Eigen::Vector3d(0.5774, 0.5774, -0.5774));
-  dir_buckets.push_back(Eigen::Vector3d(0.5774, -0.5774, -0.5774));
-  dir_buckets.push_back(Eigen::Vector3d(0, 0, 1));
-
-  ROS_INFO("1");
-  std::vector<Eigen::Vector3d> bucket_assignments;
-  for (int i = 0; i < direction_estimates_.size(); i++) {
-    Eigen::Matrix3d directions = direction_estimates_.at(i);
-    Eigen::Vector3d dir_1 = directions.col(0);
-    Eigen::Vector3d dir_2 = directions.col(1);
-    Eigen::Vector3d dir_3 = directions.col(2);
-
-    Eigen::Vector3d assignment;
-    double score_1 = -1.0;
-    double score_2 = -1.0;
-    double score_3 = -1.0;
-    for (int j = 0; j < dir_buckets.size(); j++) {
-      Eigen::Vector3d cur_bucket = dir_buckets.at(j);
-
-      double dot_1 = std::fabs(cur_bucket.dot(dir_1));
-      double dot_2 = std::fabs(cur_bucket.dot(dir_2));
-      double dot_3 = std::fabs(cur_bucket.dot(dir_3));
-
-      if (dot_1 > score_1) {
-        score_1 = dot_1;
-        assignment.x() = j;
-      }
-      if (dot_2 > score_2) {
-        score_2 = dot_2;
-        assignment.y() = j;
-      }
-      if (dot_3 > score_3) {
-        score_3 = dot_3;
-        assignment.z() = j;
-      }
-    }
-    bucket_assignments.push_back(assignment);
-  }
-
-  // Evaluate plane coeffs
-  std::vector<std::vector<std::vector<double>>>
-      parameters_in_buckets;  // Parameter estimates
-  std::vector<std::vector<std::pair<int, int>>>
-      id_parameters_in_buckets;  // Pair of (Element,Direction)
-
-  for (int i = 0; i < dir_buckets.size(); i++) {
-    std::vector<std::vector<double>> params_in_bucket;
-    std::vector<std::pair<int, int>> id_params_in_bucket;
-
-    Eigen::Vector3d dir_bucket = dir_buckets.at(i);
-
-    for (int j = 0; j < bucket_assignments.size(); j++) {
-      Eigen::Vector3d assigned_dirs = bucket_assignments.at(j);
-
-      for (int k = 0; k < 3; k++) {
-        if (assigned_dirs[k] == i) {
-          std::vector<Eigen::VectorXd> magnitudes_element =
-              parameter_estimates_.at(j);
-
-          Eigen::VectorXd para_1;
-          Eigen::VectorXd para_2;
-          std::pair<int, int> id_1;
-          std::pair<int, int> id_2;
-          if (k == 0) {
-            para_1 = magnitudes_element.at(0);
-            para_2 = magnitudes_element.at(1);
-            id_1 = std::make_pair(j, 0);
-            id_2 = std::make_pair(j, 1);
-          } else if (k == 1) {
-            para_1 = magnitudes_element.at(2);
-            para_2 = magnitudes_element.at(3);
-            id_1 = std::make_pair(j, 2);
-            id_2 = std::make_pair(j, 3);
-          } else {
-            para_1 = magnitudes_element.at(4);
-            para_2 = magnitudes_element.at(5);
-            id_1 = std::make_pair(j, 4);
-            id_2 = std::make_pair(j, 5);
-          }
-
-          std::vector<double> params_per_element_1;
-          std::vector<double> params_per_element_2;
-          for (int l1 = 0; l1 < para_1.size(); l1++) {
-            params_per_element_1.push_back(para_1[l1]);
-          }
-          for (int l2 = 0; l2 < para_2.size(); l2++) {
-            params_per_element_2.push_back(para_2[l2]);
-          }
-
-          params_in_bucket.push_back(params_per_element_1);
-          params_in_bucket.push_back(params_per_element_2);
-          id_params_in_bucket.push_back(id_1);
-          id_params_in_bucket.push_back(id_2);
-        }
-      }
-    }
-    parameters_in_buckets.push_back(params_in_bucket);
-    id_parameters_in_buckets.push_back(id_params_in_bucket);
-  }
-
-  // Select combinations reducting the number of unique plans
-  for (int i = 0; i < parameters_in_buckets.size(); i++) {
-    std::vector<std::vector<double>> parameter_vec =
-        parameters_in_buckets.at(i);
-    std::vector<std::pair<int, int>> id_vec = id_parameters_in_buckets.at(i);
-    if (parameter_vec.size() == 0) {
-      continue;
-    }
-
-    // Compute meaningful possible combinations
-    // Source:
-    // https://stackoverflow.com/questions/48270565/create-all-possible-combinations-of-multiple-vectors
-    while (parameter_vec.size() > 0) {
-      std::vector<std::vector<double>> all_combination_values;
-      std::vector<std::vector<std::pair<int, int>>>
-          all_combination_ids;  // Element nr, and dir
-
-      // Compute Range of d Parameters for first element
-      Eigen::Vector3d center_0 = center_estimates_.at(id_vec.at(0).first);
-      Eigen::Vector3d dir_0 = direction_estimates_.at(id_vec.at(0).first)
-                                  .col(id_vec.at(0).second % 3);
-      double min_d0 = 10000;
-      double max_d0 = -1000;
-      for (auto const &cur_p : parameter_vec.at(0)) {
-        Eigen::Vector3d point_e = center_0 + dir_0 * cur_p;
-        double cur_d = -(point_e.x() * dir_0.x() + point_e.y() * dir_0.y() +
-                         point_e.z() * dir_0.z());
-        if (cur_d > max_d0) {
-          max_d0 = cur_d;
-        }
-        if (cur_d < min_d0) {
-          min_d0 = cur_d;
-        }
-      }
-
-      // Search for max 2 elements with a d in the computed range
-      std::vector<int> subset_idx;
-      subset_idx.push_back(0);
-
-      /*
-      for (int p_idx = 1; p_idx < parameter_vec.size(); p_idx++){
-        Eigen::Vector3d center_i = center_estimates_.at(id_vec.at(p_idx).first);
-        Eigen::Vector3d dir_i =
-      direction_estimates_.at(id_vec.at(p_idx).first).col(id_vec.at(p_idx).second
-      % 3); for (auto const &param_i : parameter_vec.at(p_idx)){ Eigen::Vector3d
-      point_i = center_i + dir_i * param_i; double cur_d = -(point_i.x() *
-      dir_i.x() + point_i.y() * dir_i.y() + point_i.z() * dir_i.z()); if (cur_d
-      > min_d0 && cur_d < max_d0){ subset_idx.push_back(p_idx); break;
-          }
-        }
-        if (subset_idx.size() > 1){
-          break;
-        }
-      }
-      */
-      std::vector<std::vector<double>> parameter_vec_subset;
-      std::vector<std::pair<int, int>> id_vec_subset;
-      for (auto const &idx_to_add : subset_idx) {
-        parameter_vec_subset.push_back(parameter_vec.at(idx_to_add));
-        id_vec_subset.push_back(id_vec.at(idx_to_add));
-      }
-
-      int idx_corr = 0;
-      for (unsigned r = 0; r < subset_idx.size(); r++) {
-        int idx = subset_idx.at(r);
-        parameter_vec.erase(parameter_vec.begin() + idx - idx_corr);
-        id_vec.erase(id_vec.begin() + idx - idx_corr);
-        idx_corr++;
-      }
-
-      unsigned long long int max = 1;
-      for (auto const &v : parameter_vec_subset) {
-        max *= v.size();
-      }
-      ROS_INFO("Number of Combinations %d", max);
-
-      for (unsigned long long int j = 0; j < max; j++) {
-        auto temp = j;
-        std::vector<double> cur_combination_values;
-        std::vector<std::pair<int, int>> cur_combination_ids;
-        for (int k = 0; k < parameter_vec_subset.size(); k++) {
-          std::vector<double> cur_vec = parameter_vec_subset.at(k);
-          std::pair<int, int> cur_ids = id_vec_subset.at(k);
-          auto index = temp % cur_vec.size();
-          temp /= cur_vec.size();
-          cur_combination_values.push_back(cur_vec[index]);
-          cur_combination_ids.push_back(cur_ids);
-        }
-        all_combination_values.push_back(cur_combination_values);
-        all_combination_ids.push_back(cur_combination_ids);
-      }
-
-      // Evaluate combinations
-      std::vector<double> combination_scores;
-      for (int l = 0; l < all_combination_values.size(); l++) {
-        std::vector<double> cur_combination = all_combination_values.at(l);
-        std::vector<std::pair<int, int>> cur_idx = all_combination_ids.at(l);
-        // Area value
-        double area_score = 0;
-        for (auto &c : cur_combination) {
-          area_score += std::fabs(c);
-        }
-
-        // Score for model alignment
-        double model_alignment_score = 0;
-        double scan_alignment_score = 0;
-        // Compute d parameter and model alignment score
-        std::vector<double> d_parameters;
-        std::vector<int> nn_indices{1};
-        std::vector<float> nn_dists{1};
-        for (int d_o = 0; d_o < cur_combination.size(); d_o++) {
-          Eigen::Vector3d center_i =
-              center_estimates_.at(cur_idx.at(d_o).first);
-          Eigen::Vector3d dir_i = direction_estimates_.at(cur_idx.at(d_o).first)
-                                      .col(cur_idx.at(d_o).second % 3);
-          Eigen::Vector3d point_i = center_i + dir_i * cur_combination.at(d_o);
-          pcl::PointXYZ point_pcl(point_i.x(), point_i.y(), point_i.z());
-          model_upsampled_kdtree_->nearestKSearch(point_pcl, 1, nn_indices,
-                                                  nn_dists);
-          if (std::sqrt(nn_dists[0]) < 0.03) {
-            model_alignment_score += 1.0 - 33.3 * std::sqrt(nn_dists[0]);
-          }
-          scan_kdtree_->nearestKSearch(point_pcl, 1, nn_indices, nn_dists);
-          if (std::sqrt(nn_dists[0]) < 0.03) {
-            scan_alignment_score += 1.0 - 33.3 * std::sqrt(nn_dists[0]);
-          }
-
-          double cur_d = -(point_i.x() * dir_i.x() + point_i.y() * dir_i.y() +
-                           point_i.z() * dir_i.z());
-          d_parameters.push_back(cur_d);
-        }
-        removeDuplicatedValues(d_parameters, 0.03);
-
-        int shared_planes = cur_combination.size() - d_parameters.size();
-
-        double total_score = 2.0 * area_score + 0.0 * shared_planes +
-                             5.0 * model_alignment_score +
-                             0.0 * scan_alignment_score;
-        combination_scores.push_back(total_score);
-      }
-      int max_idx = std::max_element(combination_scores.begin(),
-                                     combination_scores.end()) -
-                    combination_scores.begin();
-      std::vector<double> final_combination =
-          all_combination_values.at(max_idx);
-      std::vector<std::pair<int, int>> final_idx =
-          all_combination_ids.at(max_idx);
-      for (int f = 0; f < final_combination.size(); f++) {
-        std::pair<int, int> f_id = final_idx.at(f);
-        parameter_estimates_.at(f_id.first).at(f_id.second).resize(1, 1);
-        parameter_estimates_.at(f_id.first).at(f_id.second)[0] =
-            final_combination.at(f);
-      }
-    }
-  }
-  // this->organizeDatastructure();
-  // this->removeConflictingElements();
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /*
-  // Get Min and Max parameter and setup a grid structure
-  double min_parameter = 1000;
-  double max_parameter = -1000;
-  for (int j = 0; j < parameter_vec.size(); j++) {
-    std::vector<double> cur_element_dim = parameter_vec.at(j);
-    for (int k = 0; k < cur_element_dim.size(); k++) {
-      double target = cur_element_dim.at(k);
-      if (target > max_parameter) {
-        max_parameter = target;
-      }
-      if (target < min_parameter) {
-        min_parameter = target;
-      }
-    }
-  }
-  int length = (int)((max_parameter - min_parameter) / 0.03) + 10;
-  std::vector<int> plane_counter(length, 0);
-
-  // Count planes
-  for (int j = 0; j < parameter_vec.size(); j++) {
-    std::vector<double> cur_element_dim = parameter_vec.at(j);
-    for (int k = 0; k < cur_element_dim.size(); k++) {
-      double target = cur_element_dim.at(k);
-      int idx = (int)std::round((target - min_parameter) / 0.03);
-      plane_counter.at(idx) += 1;
-    }
-  }
-  int max_plane_counter =
-      *std::max_element(plane_counter.begin(), plane_counter.end());
-
-  for (int j = 0; j < parameter_vec.size(); j++) {
-    std::vector<double> cur_element_dim = parameter_vec.at(j);
-    std::vector<double> score_cur_element_dim = score_parameter_vec.at(j);
-    for (int k = 0; k < cur_element_dim.size(); k++) {
-      double target = cur_element_dim.at(k);
-      int idx = (int)std::round((target - min_parameter) / 0.03);
-      score_parameters_in_buckets.at(i).at(j).at(k) *=
-          ((double)plane_counter.at(idx) / (double)max_plane_counter);
-    }
-  }
-}
-
-// TODO Remove
-for (int i = 0; i < parameters_in_buckets.size(); i++) {
-  ROS_INFO("BUCKET_NUMBER: %d", i);
-  std::vector<std::vector<double>> parameter_vec =
-      parameters_in_buckets.at(i);
-  std::vector<std::vector<double>> score_parameter_vec =
-      score_parameters_in_buckets.at(i);
-  for (int j = 0; j < parameter_vec.size(); j++) {
-    ROS_INFO("  Parameters Per Element: %d", j);
-    std::vector<double> cur_element_dim = parameter_vec.at(j);
-    std::vector<double> score_cur_element_dim = score_parameter_vec.at(j);
-    for (int k = 0; k < cur_element_dim.size(); k++) {
-      ROS_INFO("      Para: %f, Score: %f", cur_element_dim.at(k),
-               score_cur_element_dim.at(k));
-    }
-  }
-}
-
-// Select most likely Parameter
-for (int i = 0; i < score_parameters_in_buckets.size(); i++) {
-  for (int j = 0; j < score_parameters_in_buckets.at(i).size(); j++) {
-    std::vector<double> cur_scores = score_parameters_in_buckets.at(i).at(j);
-    std::pair<int, int> cur_id = id_parameters_in_buckets.at(i).at(j);
-
-    int element_nr = cur_id.first;
-    int parameter_nr = cur_id.second;
-
-    int max_idx = std::max_element(cur_scores.begin(), cur_scores.end()) -
-                  cur_scores.begin();
-    double most_likely_parameter =
-        parameter_estimates_.at(element_nr).at(parameter_nr)[max_idx];
-    parameter_estimates_.at(element_nr).at(parameter_nr).resize(1, 1);
-    parameter_estimates_.at(element_nr).at(parameter_nr)[0] =
-        most_likely_parameter;
-  }
-}
-*/
-}
-
 int ProposalSelection::findMaxIndexInEigenVector(
     const Eigen::VectorXd &vector) {
   double min_value = -1000;
@@ -541,7 +180,7 @@ void ProposalSelection::selectProposals() {
         // Score for scan alignment
         scan_kdtree_->nearestKSearch(point_pcl, 1, nn_indices, nn_dists);
         if (std::sqrt(nn_dists[0]) < 0.05) {
-          double scan_alignment = 1.0 - 10 * std::sqrt(nn_dists[0]);
+          double scan_alignment = 1.0 - 10.0 * std::sqrt(nn_dists[0]);
           scan_alignment_score.push_back(scan_alignment);
         } else {
           scan_alignment_score.push_back(0.5);
@@ -592,10 +231,12 @@ void ProposalSelection::selectProposals() {
   std::vector<std::pair<int, int>> conf_ids;
   std::vector<Eigen::VectorXd> conf_updated_probs;
 
+  std::vector<int> elements_without_conficts;
+
   std::vector<int> nn_indices{1};
   std::vector<float> nn_dists{1};
   int counter = 0;
-  while (counter < 1) {
+  while (counter < 30) {
     ROS_INFO("Conficting loop start");
     conf_point_clouds.clear();
     conf_kd_trees.clear();
@@ -604,33 +245,44 @@ void ProposalSelection::selectProposals() {
     conf_updated_probs.clear();
 
     for (int i = 0; i < parameter_probabilities.size(); i++) {
-      std::vector<double> most_likely_params_per_elements;
-      for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
-        Eigen::VectorXd probability_vec = parameter_probabilities.at(i).at(j);
-        int max_idx = this->findMaxIndexInEigenVector(probability_vec);
-        double most_likely_para = parameter_estimates_.at(i).at(j)[max_idx];
-        most_likely_params_per_elements.push_back(most_likely_para);
+      if (std::find(elements_without_conficts.begin(), elements_without_conficts.end(), i) != elements_without_conficts.end()) {
+        pcl::PointCloud<pcl::PointXYZ>::Ptr placeholder(
+            new pcl::PointCloud<pcl::PointXYZ>());
+        placeholder->push_back(pcl::PointXYZ(0, 0, 0));
+        pcl::search::KdTree<pcl::PointXYZ>::Ptr placeholder_kd_tree(
+            new pcl::search::KdTree<pcl::PointXYZ>());
+        placeholder_kd_tree->setInputCloud(placeholder);
+        conf_point_clouds.push_back(placeholder);
+        conf_kd_trees.push_back(placeholder_kd_tree);
+      } else {
+        std::vector<double> most_likely_params_per_elements;
+        for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
+          Eigen::VectorXd probability_vec = parameter_probabilities.at(i).at(j);
+          int max_idx = this->findMaxIndexInEigenVector(probability_vec);
+          double most_likely_para = parameter_estimates_.at(i).at(j)[max_idx];
+          most_likely_params_per_elements.push_back(most_likely_para);
+        }
+
+        double a1 = most_likely_params_per_elements.at(0);
+        double a2 = most_likely_params_per_elements.at(1);
+        double b1 = most_likely_params_per_elements.at(2);
+        double b2 = most_likely_params_per_elements.at(3);
+        double c1 = most_likely_params_per_elements.at(4);
+        double c2 = most_likely_params_per_elements.at(5);
+        Eigen::Vector3d center = center_estimates_.at(i);
+        Eigen::Matrix3d dirs = direction_estimates_.at(i);
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cloud(
+            new pcl::PointCloud<pcl::PointXYZ>());
+        this->upsampledStructuredPointCloud(a1, a2, b1, b2, c1, c2, center, dirs,
+                                            upsampled_cloud);
+        conf_point_clouds.push_back(upsampled_cloud);
+
+        pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree(
+            new pcl::search::KdTree<pcl::PointXYZ>());
+        upsampled_kd_tree->setInputCloud(upsampled_cloud);
+        conf_kd_trees.push_back(upsampled_kd_tree);
       }
-
-      double a1 = most_likely_params_per_elements.at(0);
-      double a2 = most_likely_params_per_elements.at(1);
-      double b1 = most_likely_params_per_elements.at(2);
-      double b2 = most_likely_params_per_elements.at(3);
-      double c1 = most_likely_params_per_elements.at(4);
-      double c2 = most_likely_params_per_elements.at(5);
-      Eigen::Vector3d center = center_estimates_.at(i);
-      Eigen::Matrix3d dirs = direction_estimates_.at(i);
-
-      pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cloud(
-          new pcl::PointCloud<pcl::PointXYZ>());
-      this->upsampledStructuredPointCloud(a1, a2, b1, b2, c1, c2, center, dirs,
-                                          upsampled_cloud);
-      conf_point_clouds.push_back(upsampled_cloud);
-
-      pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree(
-          new pcl::search::KdTree<pcl::PointXYZ>());
-      upsampled_kd_tree->setInputCloud(upsampled_cloud);
-      conf_kd_trees.push_back(upsampled_kd_tree);
     }
 
     ROS_INFO("Save result");
@@ -651,7 +303,9 @@ void ProposalSelection::selectProposals() {
       std::vector<double> overlap_vec;
       std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> overlap_dirs;
       for (int l2 = 0; l2 < conf_point_clouds.size(); l2++) {
-        if (l2 <= l1) {
+        if (std::find(elements_without_conficts.begin(), elements_without_conficts.end(), l1) != elements_without_conficts.end() ||
+            std::find(elements_without_conficts.begin(), elements_without_conficts.end(), l2) != elements_without_conficts.end() ||
+            l2 == l1){
           overlap_vec.push_back(0.0);
           overlap_dirs.push_back(
               std::make_pair(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero()));
@@ -693,7 +347,12 @@ void ProposalSelection::selectProposals() {
       std::pair<Eigen::Vector3d, Eigen::Vector3d> max_overlap_dir =
           overlap_dirs.at(max_idx);
       ROS_INFO("Check overlap");
-      if (max_overlap > 0.0) {
+      if (max_overlap <  0.000001){
+        if (std::find(elements_without_conficts.begin(), elements_without_conficts.end(), l1) == elements_without_conficts.end()){
+          elements_without_conficts.push_back(l1);
+        }
+      }
+      else {
         // Get conflicting dimension
         Eigen::Vector3d center_i = center_estimates_.at(l1);
         Eigen::Vector3d center_j = center_estimates_.at(max_idx);
@@ -756,135 +415,6 @@ void ProposalSelection::selectProposals() {
         } else {
           conf_ids.push_back(std::make_pair(max_idx, best_k_j));
         }
-
-        /*
-        Eigen::VectorXd para_i_1, para_i_2, probs_i_1, probs_i_2;
-        Eigen::VectorXd para_j_1, para_j_2, probs_j_1, probs_j_2;
-        if (best_k_i == 0) {
-          para_i_1 = parameters_i.at(0);
-          para_i_2 = parameters_i.at(1);
-          probs_i_1 = probabilites_i.at(0);
-          probs_i_2 = probabilites_i.at(1);
-        } else if (best_k_i == 1) {
-          para_i_1 = parameters_i.at(2);
-          para_i_2 = parameters_i.at(3);
-          probs_i_1 = probabilites_i.at(2);
-          probs_i_2 = probabilites_i.at(3);
-        } else {
-          para_i_1 = parameters_i.at(4);
-          para_i_2 = parameters_i.at(5);
-          probs_i_1 = probabilites_i.at(4);
-          probs_i_2 = probabilites_i.at(5);
-        }
-
-        if (best_k_j == 0) {
-          para_j_1 = parameters_j.at(0);
-          para_j_2 = parameters_j.at(1);
-          probs_j_1 = probabilites_j.at(0);
-          probs_j_2 = probabilites_j.at(1);
-        } else if (best_k_j == 1) {
-          para_j_1 = parameters_j.at(2);
-          para_j_2 = parameters_j.at(3);
-          probs_j_1 = probabilites_j.at(2);
-          probs_j_2 = probabilites_j.at(3);
-        } else {
-          para_j_1 = parameters_j.at(4);
-          para_j_2 = parameters_j.at(5);
-          probs_j_1 = probabilites_j.at(4);
-          probs_j_2 = probabilites_j.at(5);
-        }
-
-
-        double most_likely_para_i_1 =
-      this->findParameterFromLikelihood(para_i_1, probs_i_1, 0); double
-      most_likely_para_i_2 = this->findParameterFromLikelihood(para_i_2,
-      probs_i_2, 0);
-
-        double most_likely_para_j_1 =
-      this->findParameterFromLikelihood(para_j_1, probs_j_1, 0); double
-      most_likely_para_j_2 = this->findParameterFromLikelihood(para_j_2,
-      probs_j_2, 0);
-
-        //Find conflicting dimension
-        Eigen::Vector3d point_i_1 = center_i + dir_1 * most_likely_para_i_1;
-        Eigen::Vector3d point_i_2 = center_i + dir_1 * most_likely_para_i_2;
-        Eigen::Vector3d point_j_1 = center_j + dir_2 * most_likely_para_j_1;
-        Eigen::Vector3d point_j_2 = center_j + dir_2 * most_likely_para_j_2;
-
-        Eigen::Vector3d dir_2_oriented;
-        if (dir_1.dot(dir_2) < 0) {
-          dir_2_oriented = -1.0 * dir_2;
-        }
-
-        double d_i_1 = -(point_i_1.x() * dir_1.x() + point_i_1.y() * dir_1.y() +
-      point_i_1.z() * dir_1.z()); double d_i_2 = -(point_i_2.x() * dir_1.x() +
-      point_i_2.y() * dir_1.y() + point_i_2.z() * dir_1.z()); double d_j_1 =
-      -(point_j_1.x() * dir_2_oriented.x() + point_j_1.y() * dir_2_oriented.y()
-            + point_j_1.z() * dir_2_oriented.z());
-        double d_j_2 = -(point_j_2.x() * dir_2_oriented.x() + point_j_2.y() *
-      dir_2_oriented.y()
-            + point_j_2.z() * dir_2_oriented.z());
-
-        std::vector<double> d_vec;
-        d_vec.push_back(d_i_1);
-        d_vec.push_back(d_i_2);
-        d_vec.push_back(d_j_1);
-        d_vec.push_back(d_j_2);
-        std::vector<int> idx{1, 2, 3, 4};
-        std::stable_sort(idx.begin(), idx.end(), [&d_vec](int i1, int i2) {
-      return d_vec[i1] < d_vec[i2]; });
-
-        bool cond_overlap = (idx.at(0) == 1 && idx.at(1) == 2) ||
-            (idx.at(0) == 2 && idx.at(1) == 1) ||
-            (idx.at(2) == 1 && idx.at(3) == 2) ||
-            (idx.at(2) == 2 && idx.at(3) == 1);
-
-        //Reduce less likely dimension
-        if (!cond_overlap) {
-          ROS_INFO("Reduce a dimension");
-          int overlapping_dim_1 = idx.at(1);
-          int overlapping_dim_2 = idx.at(2);
-          double likelihood_1;
-          double likelihood_2;
-          int second_dim_1;
-          int second_dim_2;
-          if (overlapping_dim_1 == 1) {
-            likelihood_1 = probs_i_1.maxCoeff();
-            second_dim_1 = 0;
-          } else if (overlapping_dim_1 == 2) {
-            likelihood_1 = probs_i_2.maxCoeff();
-            second_dim_1 = 1;
-          } else if (overlapping_dim_1 == 3) {
-            likelihood_1 = probs_j_1.maxCoeff();
-            second_dim_1 = 0;
-          } else if (overlapping_dim_1 == 4) {
-            likelihood_1 = probs_j_2.maxCoeff();
-            second_dim_1 = 1;
-          }
-
-          if (overlapping_dim_2 == 1) {
-            likelihood_2 = probs_i_1.maxCoeff();
-            second_dim_2 = 0;
-          } else if (overlapping_dim_2 == 2) {
-            likelihood_2 = probs_i_2.maxCoeff();
-            second_dim_2 = 1;
-          } else if (overlapping_dim_2 == 3) {
-            likelihood_2 = probs_j_1.maxCoeff();
-            second_dim_2 = 0;
-          } else if (overlapping_dim_2 == 4) {
-            likelihood_2 = probs_j_2.maxCoeff();
-            second_dim_2 = 1;
-          }
-
-          if (likelihood_2 > likelihood_1) {
-            int dimension = best_k_i * 2 + second_dim_1;
-            conf_ids.push_back(std::make_pair(l1, dimension));
-          } else {
-            int dimension = best_k_j * 2 + second_dim_2;
-            conf_ids.push_back(std::make_pair(max_idx, dimension));
-          }
-        }
-      }*/
       }
     }
     ROS_INFO("Update Posterior");
@@ -1033,12 +563,17 @@ void ProposalSelection::upsampledStructuredPointCloud(
       for (int i3 = 0; i3 < steps_c; i3++) {
         double cur_c = (c2 + step * i3);
 
-        Eigen::Vector3d cur_e = center + directions.col(0) * cur_a +
-                                directions.col(1) * cur_b +
-                                directions.col(2) * cur_c;
+        if (i1 == 0 || i1 == (steps_a - 1) ||
+            i2 == 0 || i1 == (steps_b - 1) ||
+            i3 == 0 || i1 == (steps_c - 1)){
+          Eigen::Vector3d cur_e = center + directions.col(0) * cur_a +
+              directions.col(1) * cur_b +
+              directions.col(2) * cur_c;
 
-        pcl::PointXYZ p((float)cur_e.x(), (float)cur_e.y(), (float)cur_e.z());
-        result_cloud->push_back(p);
+          pcl::PointXYZ p((float)cur_e.x(), (float)cur_e.y(), (float)cur_e.z());
+          result_cloud->push_back(p);
+        }
+
       }
     }
   }

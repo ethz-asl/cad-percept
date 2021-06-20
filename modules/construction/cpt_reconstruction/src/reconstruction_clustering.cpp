@@ -41,86 +41,85 @@ Clustering::Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
 // Source:
 // https://pointclouds.org/documentation/tutorials/greedy_projection.html
 // https://pointclouds.org/documentation/tutorials/resampling.html
-void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
-  ROS_INFO("[Mesh Generation] Id: %d with size: %d", msg.id,
-           msg.points_msg.size());
+void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
+  for (const auto &cur_shape : msg.shapes){
 
-  // Store points from msg to point cloud
-  pcl::PointCloud<pcl::PointXYZ>::Ptr points_cloud(
-      new pcl::PointCloud<pcl::PointXYZ>);
-  std::vector<geometry_msgs::Vector3> points = msg.points_msg;
-  for (unsigned i = 0; i < points.size(); i++) {
-    geometry_msgs::Vector3 p = points.at(i);
-    points_cloud->push_back(pcl::PointXYZ(p.x, p.y, p.z));
-  }
-  // Apply Voxel Grid filtering
-  pcl::VoxelGrid<pcl::PointXYZ> sor;
-  sor.setInputCloud(points_cloud);
-  sor.setLeafSize(VOXEL_GRID_FILTER_RESOLUTION_, VOXEL_GRID_FILTER_RESOLUTION_,
-                  VOXEL_GRID_FILTER_RESOLUTION_);
-  sor.filter(*points_cloud);
+    // Store points from msg to point cloud
+    pcl::PointCloud<pcl::PointXYZ>::Ptr points_cloud(
+        new pcl::PointCloud<pcl::PointXYZ>);
+    std::vector<geometry_msgs::Vector3> points = cur_shape.points_msg;
+    for (unsigned i = 0; i < points.size(); i++) {
+      geometry_msgs::Vector3 p = points.at(i);
+      points_cloud->push_back(pcl::PointXYZ(p.x, p.y, p.z));
+    }
+    // Apply Voxel Grid filtering
+    pcl::VoxelGrid<pcl::PointXYZ> sor;
+    sor.setInputCloud(points_cloud);
+    sor.setLeafSize(VOXEL_GRID_FILTER_RESOLUTION_, VOXEL_GRID_FILTER_RESOLUTION_,
+                    VOXEL_GRID_FILTER_RESOLUTION_);
+    sor.filter(*points_cloud);
 
-  if (msg.id == 0) {
-    // Shape is a plane
+    if (cur_shape.id == 0) {
+      // Shape is a plane
 
-    // Get normal vector and robot position from message
-    geometry_msgs::Vector3 ransac_normal_temp = msg.ransac_normal;
-    Eigen::Vector3d ransac_normal(ransac_normal_temp.x, ransac_normal_temp.y,
-                                  ransac_normal_temp.z);
-    geometry_msgs::Vector3 rp_temp = msg.robot_position;
-    Eigen::Vector3d robot_position(rp_temp.x, rp_temp.y, rp_temp.z);
+      // Get normal vector and robot position from message
+      geometry_msgs::Vector3 ransac_normal_temp = cur_shape.ransac_normal;
+      Eigen::Vector3d ransac_normal(ransac_normal_temp.x, ransac_normal_temp.y,
+                                    ransac_normal_temp.z);
+      geometry_msgs::Vector3 rp_temp = cur_shape.robot_position;
+      Eigen::Vector3d robot_position(rp_temp.x, rp_temp.y, rp_temp.z);
 
-    // For planes with size min_size - valid_size threshold second eigenvalue
-    bool valid_plane = checkValidPlane(
-        points_cloud, VALID_SIZE_THRESHOLD_PLANE_, MIN_SIZE_VALID_PLANE_);
+      // For planes with size min_size - valid_size threshold second eigenvalue
+      bool valid_plane = checkValidPlane(
+          points_cloud, VALID_SIZE_THRESHOLD_PLANE_, MIN_SIZE_VALID_PLANE_);
 
-    if (valid_plane) {
-      // Add new plane to data structure
-      clouds_plane_.push_back(points_cloud);
+      if (valid_plane) {
+        // Add new plane to data structure
+        clouds_plane_.push_back(points_cloud);
+        pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
+            new pcl::search::KdTree<pcl::PointXYZ>());
+        kd_tree->setInputCloud(points_cloud);
+        kd_trees_plane_.push_back(kd_tree);
+        fusing_count_plane_.push_back(1);
+        ransac_normals_.push_back(ransac_normal);
+        robot_positions_.push_back(robot_position);
+
+        ROS_INFO("[Mesh Generation] Counter: %d", counter_);
+        counter_++;
+      }
+    } else if (cur_shape.id == 1) {
+      // If shape is a cylinder
+
+      // Get axis and radius from message
+      geometry_msgs::Vector3 axis_tmp = cur_shape.axis;
+      Eigen::Vector3d axis(axis_tmp.x, axis_tmp.y, axis_tmp.z);
+
+      double radius = cur_shape.radius;
+
+      std::cout << "Radius: " << radius << std::endl;
+      std::cout << "Axis: " << axis.x() << " " << axis.y() << " " << axis.z()
+                << std::endl;
+
+      // Add Cyl do datastructure
+      clouds_cyl_.push_back(points_cloud);
       pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
           new pcl::search::KdTree<pcl::PointXYZ>());
       kd_tree->setInputCloud(points_cloud);
-      kd_trees_plane_.push_back(kd_tree);
-      fusing_count_plane_.push_back(1);
-      ransac_normals_.push_back(ransac_normal);
-      robot_positions_.push_back(robot_position);
+      kd_trees_cyl_.push_back(kd_tree);
+      radius_.push_back(radius);
+      axis_.push_back(axis);
+      fusing_count_cyl_.push_back(1);
+
+      std::string result =
+          SHAPES_PATH_ + "valid_shape_" + std::to_string(counter_) + "_cyl.ply";
+      pcl::io::savePLYFile(result, *points_cloud);
 
       ROS_INFO("[Mesh Generation] Counter: %d", counter_);
       counter_++;
     }
-  } else if (msg.id == 1) {
-    // If shape is a cylinder
-
-    // Get axis and radius from message
-    geometry_msgs::Vector3 axis_tmp = msg.axis;
-    Eigen::Vector3d axis(axis_tmp.x, axis_tmp.y, axis_tmp.z);
-
-    double radius = msg.radius;
-
-    std::cout << "Radius: " << radius << std::endl;
-    std::cout << "Axis: " << axis.x() << " " << axis.y() << " " << axis.z()
-              << std::endl;
-
-    // Add Cyl do datastructure
-    clouds_cyl_.push_back(points_cloud);
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
-        new pcl::search::KdTree<pcl::PointXYZ>());
-    kd_tree->setInputCloud(points_cloud);
-    kd_trees_cyl_.push_back(kd_tree);
-    radius_.push_back(radius);
-    axis_.push_back(axis);
-    fusing_count_cyl_.push_back(1);
-
-    std::string result =
-        SHAPES_PATH_ + "valid_shape_" + std::to_string(counter_) + "_cyl.ply";
-    pcl::io::savePLYFile(result, *points_cloud);
-
-    ROS_INFO("[Mesh Generation] Counter: %d", counter_);
-    counter_++;
   }
-
-  if (counter_ >= INTERVAL_FUSING_CLUSTERS_ &&
-      (counter_ % INTERVAL_FUSING_CLUSTERS_ == 0)) {
+  if (SENSOR_TYPE_ == 0 &&  (counter_ >= INTERVAL_FUSING_CLUSTERS_ &&
+      (counter_ % INTERVAL_FUSING_CLUSTERS_ == 0))) {
     ROS_INFO("Size before fuseing plane: %d \n", clouds_plane_.size());
     ROS_INFO("Size before fuseing cylinders: %d \n", clouds_cyl_.size());
     this->fusePlanes();
@@ -129,7 +128,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     ROS_INFO("Size after fuseing cylinders: %d \n", clouds_cyl_.size());
   }
 
-  if (counter_ >= INTERVAL_CLEANING_CLUSTERS_ &&
+  if (SENSOR_TYPE_ == 0 && counter_ >= INTERVAL_CLEANING_CLUSTERS_ &&
       (counter_ % INTERVAL_CLEANING_CLUSTERS_ == 0)) {
     ROS_INFO("Size before fuseing plane: %d \n", clouds_plane_.size());
     ROS_INFO("Size before fuseing cylinders: %d \n", clouds_cyl_.size());
@@ -144,9 +143,8 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shape &msg) {
     ROS_INFO("Size after fuseing cylinders: %d \n", clouds_cyl_.size());
   }
 
-  // TODO - Change ~200
-  if (counter_ >= INTERVAL_FORWARDING_CLUSTERS_ &&
-      (counter_ % INTERVAL_FORWARDING_CLUSTERS_ == 0)) {
+  if (SENSOR_TYPE_ == 1 || (counter_ >= INTERVAL_FORWARDING_CLUSTERS_ &&
+      (counter_ % INTERVAL_FORWARDING_CLUSTERS_ == 0))) {
     std::vector<sensor_msgs::PointCloud2> clusters_vec;
     std::vector<geometry_msgs::Vector3> robot_positions_vec;
     std::vector<geometry_msgs::Vector3> ransac_normal_vec;

@@ -10,6 +10,7 @@
 #include <tf_conversions/tf_eigen.h>
 #include "cpt_reconstruction/coordinates.h"
 #include "cpt_reconstruction/shape.h"
+#include "cpt_reconstruction/shapes.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 

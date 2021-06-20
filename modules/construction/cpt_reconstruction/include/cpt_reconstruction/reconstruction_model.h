@@ -38,7 +38,6 @@
 #include <CGAL/tags.h>
 #include <cpt_reconstruction/reconstruction_custom_cylinder.h>
 #include <cpt_reconstruction/reconstruction_custom_plane.h>
-//#include <CGAL/GLPK_mixed_integer_program_traits.h>
 
 // Type declarations.
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;

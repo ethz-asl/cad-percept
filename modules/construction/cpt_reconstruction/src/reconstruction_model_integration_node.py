@@ -103,17 +103,17 @@ class ManipulationPanel:
         self.label_rotation.grid(row=8, column=1, padx='20', pady='5', sticky='ew')
 
         self.variable_rx = tk.DoubleVar(value=0)
-        self.spinbox_rx = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+        self.spinbox_rx = tk.Spinbox(self.root, from_=-1000, to=1000, increment=1.0, width=15, justify=tk.LEFT,
                                      textvariable=self.variable_rx)
         self.spinbox_rx.grid(row=8, column=2, padx='5', pady='20', sticky='ew')
 
         self.variable_ry = tk.DoubleVar(value=0)
-        self.spinbox_ry = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+        self.spinbox_ry = tk.Spinbox(self.root, from_=-1000, to=1000, increment=1.0, width=15, justify=tk.LEFT,
                                      textvariable=self.variable_ry)
         self.spinbox_ry.grid(row=8, column=3, padx='5', pady='20', sticky='ew')
 
         self.variable_rz = tk.DoubleVar(value=0)
-        self.spinbox_rz = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+        self.spinbox_rz = tk.Spinbox(self.root, from_=-1000, to=1000, increment=1.0, width=15, justify=tk.LEFT,
                                      textvariable=self.variable_rz)
         self.spinbox_rz.grid(row=8, column=4, padx='5', pady='20', sticky='ew')
 
@@ -448,12 +448,13 @@ class UserInteraction:
             manipulationPanel.activatePlanarElements()
             manipulationPanel.deactivateCylinders()
 
-            dx_prev = 0
-            dy_prev = 0
-            dz_prev = 0
-            rx_prev = 0
-            ry_prev = 0
-            rz_prev = 0
+            model_vertices = np.asarray(self.model_mesh.vertices)
+            num_model_vertices = model_vertices.shape[0]
+
+            model_cloud = o3d.geometry.PointCloud(self.model_mesh.vertices)
+            model_kd_tree = o3d.geometry.KDTreeFlann(model_cloud)
+
+            color_map = np.zeros(shape = (num_model_vertices, 3))
 
             self.render = True
             while (self.render):
@@ -470,17 +471,10 @@ class UserInteraction:
                 ry_user = manipulationPanel.getRyValue()
                 rz_user = manipulationPanel.getRzValue()
 
-                user_translation = np.array([dx_user - dx_prev, dy_user - dy_prev, dz_user - dz_prev])
-                user_rotation = element.get_rotation_matrix_from_xyz(np.array([(rx_user - rx_prev) * np.pi / 180.,
-                                                                     (ry_user - ry_prev) * np.pi / 180.,
-                                                                     (rz_user - rz_prev) * np.pi / 180.]))
-
-                #dx_prev = dx_user
-                #dy_prev = dy_user
-                #dz_prev = dz_user
-                #rx_prev = rx_user
-                #ry_prev = ry_user
-                #rz_prev = rz_user
+                user_translation = np.array([dx_user, dy_user, dz_user])
+                user_rotation = element.get_rotation_matrix_from_xyz(np.array([rx_user * np.pi / 180.,
+                                                                     ry_user * np.pi / 180.,
+                                                                     rz_user * np.pi / 180.]))
 
                 p1_new, p2_new, p3_new, p4_new, \
                 p5_new, p6_new, p7_new, p8_new = self.getPointsFromParameters(center, dir_1, dir_2, dir_3,
@@ -488,14 +482,32 @@ class UserInteraction:
                                                                               b1_user, b2_user,
                                                                               c1_user, c2_user)
 
-                P_updated, T_updated = self.prepareDatapointsForMeshing(p1_new, p2_new, p3_new, p4_new, p5_new, p6_new,
+                p_updated, t_updated = self.prepareDatapointsForMeshing(p1_new, p2_new, p3_new, p4_new, p5_new, p6_new,
                                                                         p7_new, p8_new)
-                points_updated = o3d.utility.Vector3dVector(P_updated)
+                points_updated = o3d.utility.Vector3dVector(p_updated)
                 element.vertices = points_updated
                 element.translate(user_translation)
                 element.rotate(user_rotation)
+                p_updated = np.asarray(element.vertices)
+
+                #Update colors
+                num_element_vertices = p_updated.shape[0]
+
+                color_map[:, 0] = 0
+                color_map[:, 1] = 0
+                color_map[:, 2] = 1
+                for i in range(0, num_element_vertices):
+                    [k, idx, _] = model_kd_tree.search_radius_vector_3d(np.transpose(p_updated[i, :]), 0.02)
+                    for j in range(0, k):
+                        idx_to_change = idx[j]
+                        color_map[idx_to_change, 0] = 1
+                        color_map[idx_to_change, 1] = 0.67
+                        color_map[idx_to_change, 2] = 0
+
+                self.model_mesh.vertex_colors = o3d.utility.Vector3dVector(color_map)
 
                 vis.update_geometry(element)
+                vis.update_geometry(self.model_mesh)
                 vis.poll_events()
                 vis.update_renderer()
                 if (self.render == False):
@@ -551,6 +563,10 @@ class UserInteraction:
             center_2 = np.array([(p1[0] + p2[0]) / 2.0, (p1[1] + p2[1]) / 2.0, (p1[2] + p2[2]) / 2.0])
             cyl_mesh.translate(center_2, False)
 
+            manipulationPanel.setRadiusValue(radius)
+            manipulationPanel.setH1Value(height / 2.0)
+            manipulationPanel.setH2Value(height / 2.0)
+
             o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
             vis = o3d.visualization.VisualizerWithKeyCallback()
             vis.register_key_callback(65, self.callbackExit)  # a
@@ -567,6 +583,25 @@ class UserInteraction:
 
             self.render = True
             while (self.render):
+                radius_user = manipulationPanel.getRadiusValue()
+                h1_user = manipulationPanel.getH1Value()
+                h2_user = manipulationPanel.getH2Value()
+
+                height_user = h1_user + h2_user
+                #Update center
+                p1_user = center_2 + h1_user * axis
+                p2_user = center_2 - h2_user * axis
+                center_user = np.array([(p1_user[0] + p2_user[0]) / 2.0, (p1_user[1] + p2_user[1]) / 2.0, (p1_user[2] + p2_user[2]) / 2.0])
+
+                cyl_user = o3d.geometry.TriangleMesh()
+                cyl_user = cyl_user.create_cylinder(radius_user, height_user, 20, 4)
+                cyl_user.paint_uniform_color(np.array([1, 0, 0]))
+                cyl_user.transform(transformation_matrix)
+                cyl_user.translate(center_user)
+
+                cyl_mesh.vertices = cyl_user.vertices
+                cyl_mesh.triangles = cyl_user.triangles
+
                 vis.update_geometry(cyl_mesh)
                 vis.poll_events()
                 vis.update_renderer()
@@ -587,7 +622,7 @@ class UserInteraction:
         for el in done_meshes:
             added_mesh = added_mesh + el
 
-        final_mesh.merge_close_vertices(0.01)
+        final_mesh.merge_close_vertices(0.02)
         final_mesh.remove_duplicated_vertices()
         o3d.io.write_triangle_mesh("/home/philipp/Schreibtisch/final_reconstructed_mesh.ply", final_mesh)
         o3d.io.write_triangle_mesh("/home/philipp/Schreibtisch/added_reconstructed_mesh.ply", added_mesh)

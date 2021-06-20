@@ -37,7 +37,7 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
                                         &ShapeDetection::messageCallback, this);
 
   publisher_ =
-      nodeHandle2_.advertise<::cpt_reconstruction::shape>("ransac_shape", 1000);
+      nodeHandle2_.advertise<::cpt_reconstruction::shapes>("ransac_shape", 1000);
   ros::spin();
 }
 
@@ -127,6 +127,7 @@ void ShapeDetection::messageCallback(
     std::vector<double> *radius = model_->getRadius();
     std::vector<int> *shapes_ids = model_->getShapeIDs();
 
+    std::vector<::cpt_reconstruction::shape> all_shapes;
     // Publish mesh to mesh_gereration
     for (int i = 0; i < shapes_ids->size(); i++) {
       std::vector<geometry_msgs::Vector3> pub_points;
@@ -161,8 +162,12 @@ void ShapeDetection::messageCallback(
       shape_msg.axis = pub_axis;
       shape_msg.radius = radius->at(i);
       shape_msg.id = shapes_ids->at(i);
-      publisher_.publish(shape_msg);
+      all_shapes.push_back(shape_msg);
     }
+
+    ::cpt_reconstruction::shapes all_shapes_msg;
+    all_shapes_msg.shapes = all_shapes;
+    publisher_.publish(all_shapes_msg);
 
     if ((!USE_BUFFER_) ||
         (iteration_counter_ >= CLEAR_BUFFER_AFTER_ITERATION_ &&

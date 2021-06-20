@@ -602,8 +602,6 @@ void MeshGeneration::getElementProposalsCylinders(
         }
       }
 
-      // TODO: Raytracing
-
       // Line plane Intersection
       double t1 = -(d_min + center_aligned.dot(axis));
       double t2 = -(d_max + center_aligned.dot(axis));
@@ -617,236 +615,6 @@ void MeshGeneration::getElementProposalsCylinders(
     }
   }
 }
-
-/*
-void MeshGeneration::evaluateProposals(
-    pcl::PolygonMesh &resulting_mesh,
-    std::vector<Eigen::Vector3d> &center_estimates,
-    std::vector<Eigen::Matrix3d> &direction_estimates,
-    std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates) {
-  int id_counter = 0;
-  std::vector<int> ids;
-  std::vector<geometry_msgs::Vector3> dir_1;
-  std::vector<geometry_msgs::Vector3> dir_2;
-  std::vector<geometry_msgs::Vector3> dir_3;
-  std::vector<geometry_msgs::Vector3> centers;
-  std::vector<::cpt_reconstruction::parameters> magnitudes;
-
-  for (int i = 0; i < center_estimates.size(); i++) {
-    Eigen::Vector3d center_estimate = center_estimates.at(i);
-    Eigen::Matrix3d direction_estimate = direction_estimates.at(i);
-    std::vector<Eigen::VectorXd> parameter_estimate = parameter_estimates.at(i);
-
-    Eigen::VectorXd a1 = parameter_estimate.at(0);
-    Eigen::VectorXd a2 = parameter_estimate.at(1);
-    Eigen::VectorXd b1 = parameter_estimate.at(2);
-    Eigen::VectorXd b2 = parameter_estimate.at(3);
-    Eigen::VectorXd c1 = parameter_estimate.at(4);
-    Eigen::VectorXd c2 = parameter_estimate.at(5);
-
-    ROS_INFO("a1 size: %d", a1.size());
-    ROS_INFO("a2 size: %d", a2.size());
-    ROS_INFO("b1 size: %d", b1.size());
-    ROS_INFO("b2 size: %d", b2.size());
-    ROS_INFO("c1 size: %d", c1.size());
-    ROS_INFO("c2 size: %d", c2.size());
-
-    if (a1.size() == 0 || a2.size() == 0 || b1.size() == 0 || b2.size() == 0 ||
-        c1.size() == 0 || c2.size() == 0) {
-      ROS_INFO("Skipped element %d", i);
-      continue;
-    }
-
-    // Writing message
-    ::cpt_reconstruction::parameters parameters;
-    std::vector<double> a1_temp_vec(&a1[0], a1.data() + a1.cols() * a1.rows());
-    std::vector<double> a2_temp_vec(&a2[0], a2.data() + a2.cols() * a2.rows());
-    std::vector<double> b1_temp_vec(&b1[0], b1.data() + b1.cols() * b1.rows());
-    std::vector<double> b2_temp_vec(&b2[0], b2.data() + b2.cols() * b2.rows());
-    std::vector<double> c1_temp_vec(&c1[0], c1.data() + c1.cols() * c1.rows());
-    std::vector<double> c2_temp_vec(&c2[0], c2.data() + c2.cols() * c2.rows());
-    parameters.a1 = a1_temp_vec;
-    parameters.a2 = a2_temp_vec;
-    parameters.b1 = b1_temp_vec;
-    parameters.b2 = b2_temp_vec;
-    parameters.c1 = c1_temp_vec;
-    parameters.c2 = c2_temp_vec;
-
-    ids.push_back(id_counter++);
-    magnitudes.push_back(parameters);
-
-    geometry_msgs::Vector3 cur_dir_1;
-    geometry_msgs::Vector3 cur_dir_2;
-    geometry_msgs::Vector3 cur_dir_3;
-    cur_dir_1.x = direction_estimate.col(0).x();
-    cur_dir_1.y = direction_estimate.col(0).y();
-    cur_dir_1.z = direction_estimate.col(0).z();
-    cur_dir_2.x = direction_estimate.col(1).x();
-    cur_dir_2.y = direction_estimate.col(1).y();
-    cur_dir_2.z = direction_estimate.col(1).z();
-    cur_dir_3.x = direction_estimate.col(2).x();
-    cur_dir_3.y = direction_estimate.col(2).y();
-    cur_dir_3.z = direction_estimate.col(2).z();
-    dir_1.push_back(cur_dir_1);
-    dir_2.push_back(cur_dir_2);
-    dir_3.push_back(cur_dir_3);
-
-    geometry_msgs::Vector3 cur_center;
-    cur_center.x = center_estimate.x();
-    cur_center.y = center_estimate.y();
-    cur_center.z = center_estimate.z();
-    centers.push_back(cur_center);
-
-    double a1_max = a1.maxCoeff() > std::fabs(a1.minCoeff()) ? a1.maxCoeff()
-                                                             : a1.minCoeff();
-    double a2_max = a2.maxCoeff() > std::fabs(a2.minCoeff()) ? a2.maxCoeff()
-                                                             : a2.minCoeff();
-    double b1_max = b1.maxCoeff() > std::fabs(b1.minCoeff()) ? b1.maxCoeff()
-                                                             : b1.minCoeff();
-    double b2_max = b2.maxCoeff() > std::fabs(b2.minCoeff()) ? b2.maxCoeff()
-                                                             : b2.minCoeff();
-    double c1_max = c1.maxCoeff() > std::fabs(c1.minCoeff()) ? c1.maxCoeff()
-                                                             : c1.minCoeff();
-    double c2_max = c2.maxCoeff() > std::fabs(c2.minCoeff()) ? c2.maxCoeff()
-                                                             : c2.minCoeff();
-
-    ROS_INFO("a1_max %f", a1_max);
-    ROS_INFO("a2_max %f", a2_max);
-    ROS_INFO("b1_max %f", b1_max);
-    ROS_INFO("b2_max %f", b2_max);
-    ROS_INFO("c1_max %f", c1_max);
-    ROS_INFO("c2_max %f", c2_max);
-
-    Eigen::Vector3d p1 = center_estimate + direction_estimate.col(0) * a1_max +
-                         direction_estimate.col(1) * b1_max +
-                         direction_estimate.col(2) * c1_max;
-
-    Eigen::Vector3d p2 = center_estimate + direction_estimate.col(0) * a1_max +
-                         direction_estimate.col(1) * b1_max +
-                         direction_estimate.col(2) * c2_max;
-
-    Eigen::Vector3d p3 = center_estimate + direction_estimate.col(0) * a1_max +
-                         direction_estimate.col(1) * b2_max +
-                         direction_estimate.col(2) * c1_max;
-
-    Eigen::Vector3d p4 = center_estimate + direction_estimate.col(0) * a1_max +
-                         direction_estimate.col(1) * b2_max +
-                         direction_estimate.col(2) * c2_max;
-
-    Eigen::Vector3d p5 = center_estimate + direction_estimate.col(0) * a2_max +
-                         direction_estimate.col(1) * b1_max +
-                         direction_estimate.col(2) * c1_max;
-
-    Eigen::Vector3d p6 = center_estimate + direction_estimate.col(0) * a2_max +
-                         direction_estimate.col(1) * b1_max +
-                         direction_estimate.col(2) * c2_max;
-
-    Eigen::Vector3d p7 = center_estimate + direction_estimate.col(0) * a2_max +
-                         direction_estimate.col(1) * b2_max +
-                         direction_estimate.col(2) * c1_max;
-
-    Eigen::Vector3d p8 = center_estimate + direction_estimate.col(0) * a2_max +
-                         direction_estimate.col(1) * b2_max +
-                         direction_estimate.col(2) * c2_max;
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr element(
-        new pcl::PointCloud<pcl::PointXYZ>());
-    element->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
-    element->push_back(pcl::PointXYZ(p2.x(), p2.y(), p2.z()));
-    element->push_back(pcl::PointXYZ(p3.x(), p3.y(), p3.z()));
-    element->push_back(pcl::PointXYZ(p4.x(), p4.y(), p4.z()));
-    element->push_back(pcl::PointXYZ(p5.x(), p5.y(), p5.z()));
-    element->push_back(pcl::PointXYZ(p6.x(), p6.y(), p6.z()));
-    element->push_back(pcl::PointXYZ(p7.x(), p7.y(), p7.z()));
-    element->push_back(pcl::PointXYZ(p8.x(), p8.y(), p8.z()));
-
-    std::string save =
-        OUTPUT_DIR_ + "final_meshing_points" + std::to_string(i) + ".ply";
-    pcl::io::savePLYFile(save, *element);
-
-    try {
-      pcl::PolygonMesh reconstructed_mesh;
-
-      pcl::PCLPointCloud2 meshing_points;
-      pcl::toPCLPointCloud2(*element, meshing_points);
-
-      reconstructed_mesh.cloud = meshing_points;
-      std::vector<::pcl::Vertices> polygons;
-
-      // a1
-      ::pcl::Vertices f1;
-      f1.vertices.push_back(0);
-      f1.vertices.push_back(1);
-      f1.vertices.push_back(3);
-      f1.vertices.push_back(2);
-
-      // a2
-      ::pcl::Vertices f2;
-      f2.vertices.push_back(4);
-      f2.vertices.push_back(5);
-      f2.vertices.push_back(7);
-      f2.vertices.push_back(6);
-
-      // b1
-      ::pcl::Vertices f3;
-      f3.vertices.push_back(0);
-      f3.vertices.push_back(1);
-      f3.vertices.push_back(5);
-      f3.vertices.push_back(4);
-
-      // b2
-      ::pcl::Vertices f4;
-      f4.vertices.push_back(2);
-      f4.vertices.push_back(3);
-      f4.vertices.push_back(7);
-      f4.vertices.push_back(6);
-
-      // c1
-      ::pcl::Vertices f5;
-      f5.vertices.push_back(0);
-      f5.vertices.push_back(2);
-      f5.vertices.push_back(6);
-      f5.vertices.push_back(4);
-
-      // c2
-      ::pcl::Vertices f6;
-      f6.vertices.push_back(1);
-      f6.vertices.push_back(3);
-      f6.vertices.push_back(7);
-      f6.vertices.push_back(5);
-
-      polygons.push_back(f1);
-      polygons.push_back(f2);
-      polygons.push_back(f3);
-      polygons.push_back(f4);
-      polygons.push_back(f5);
-      polygons.push_back(f6);
-
-      reconstructed_mesh.polygons = polygons;
-
-      // pcl::ConvexHull<pcl::PointXYZ> chull;
-      // chull.setInputCloud(element);
-      // chull.setDimension(3);
-      // chull.reconstruct(reconstructed_mesh);
-
-      combineMeshes(reconstructed_mesh, resulting_mesh);
-    } catch (...) {
-      ROS_INFO(" Couldn't reconstruct convex hull");
-    }
-  }
-
-  ::cpt_reconstruction::element_proposals element_proposals;
-  element_proposals.ids = ids;
-  element_proposals.magnitudes = magnitudes;
-  element_proposals.centers = centers;
-  element_proposals.dir_1 = dir_1;
-  element_proposals.dir_2 = dir_2;
-  element_proposals.dir_3 = dir_3;
-
-  publisher_.publish(element_proposals);
-  ROS_INFO("All done");
-}
-*/
 
 bool MeshGeneration::checkShapeConstraints(
     int sem_class, Eigen::Vector3d &normal,
@@ -1214,13 +982,6 @@ void MeshGeneration::processElementCloud(
   element_normal(2) = coefficients->values[2];
   element_normal.normalize();
 
-  /*
-  if (std::fabs(element_normal.z()) < 0.1) {
-    element_normal.z() = 0;
-    element_normal.normalize();
-  }
-  */
-
   Eigen::Vector3d rp_temp = robot_positions_.at(idx);
   pcl::PointXYZ robot_position(rp_temp.x(), rp_temp.y(), rp_temp.z());
 
@@ -1456,10 +1217,10 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
     Eigen::Vector3d candidate_normal = mesh_plane_normals_.at(i);
     double candidate_d = mesh_plane_d_.at(i);
 
-    if (std::fabs(element_normal.dot(candidate_normal)) < 0.02) {
+    if (std::fabs(element_normal.dot(candidate_normal)) < 0.05) {
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
-      if (std::fabs(candidate_normal.z()) < 0.015) {
+      if (std::fabs(candidate_normal.z()) < 0.03) {
         for (int p_idx = 0; p_idx < corners_side->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_side)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1560,7 +1321,7 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
     double candidate_d = mesh_plane_d_.at(i);
 
     if (std::fabs(element_normal.dot(candidate_normal)) < 0.05 &&
-        std::fabs(candidate_normal.z()) < 0.02) {
+        std::fabs(candidate_normal.z()) < 0.03) {
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
       if (std::fabs(candidate_normal.dot(major_vector)) > 0.999) {
@@ -1613,7 +1374,7 @@ void MeshGeneration::computeArtificialVertices(
 
         double ortho_score = (normal_m1.cross(normal_v1)).dot(normal_h1);
         // TODO: Add paramter
-        if (std::fabs(ortho_score) > 0.95) {
+        if (std::fabs(ortho_score) > 0.9) {
           pcl::threePlanesIntersection(plane_m1, plane_v1, plane_h1, p1);
           artificial_vertices->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
         }
@@ -1769,17 +1530,6 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     }
   }
 
-  // Corp off confliction points
-  // Source: https://pcl.readthedocs.io/en/latest/moment_of_inertia.html
-  /*
-  pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
-  feature_extractor.setInputCloud(filtered_cloud);
-  feature_extractor.compute();
-  Eigen::Vector3f major_vector, middle_vector, minor_vector;
-  Eigen::Vector3f mass_center;
-  feature_extractor.getEigenVectors(major_vector, middle_vector, minor_vector);
-  feature_extractor.getMassCenter(mass_center);
-  */
   Eigen::Vector3f mass_center;
   mass_center = mean_e.cast<float>() + 0.1 * element_normal.cast<float>();
 
@@ -1829,29 +1579,6 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     }
   }
 
-  // feature_extractor.setInputCloud(filtered_cloud);
-  // feature_extractor.compute();
-  // feature_extractor.getMassCenter(mass_center);
-  // center_estimates.push_back(mass_center.cast<double>());
-  /*
-  double max_n = -1000;
-  double min_n = 1000;
-  for (int i = 0; i < filtered_cloud->size(); i++) {
-    pcl::PointXYZ cur_p = (*filtered_cloud)[i];
-    Eigen::Vector3d cur_e(cur_p.x, cur_p.y, cur_p.z);
-    double cur_n = element_normal.dot((cur_e - mean_e));
-    if (cur_n > max_n) {
-      max_n = cur_n;
-    }
-    if (cur_n < min_n) {
-      min_n = cur_n;
-    }
-  }
-  double middle_n = (max_n + min_n) / 2.0;
-  Eigen::Vector3d new_center = mean_e + middle_n * element_normal;
-  center_estimates.push_back(new_center);
-  mass_center = new_center.cast<float>();
-  */
   center_estimates.push_back(mass_center.cast<double>());
 
   removeDuplicatedPoints(filtered_cloud, 0.003);
@@ -1949,39 +1676,6 @@ bool MeshGeneration::getReconstructionParametersPlanes(
       OUTPUT_DIR_ + "filtered_points_cloud" + std::to_string(idx) + ".ply";
   pcl::io::savePLYFile(save6, *filtered_cloud);
 
-  for (int i = 0; i < filtered_cloud->size(); i++) {
-    pcl::PointXYZ cur_point = (*filtered_cloud)[i];
-    Eigen::Vector3f e_p(cur_point.x, cur_point.y, cur_point.z);
-    Eigen::Vector3f center_point = e_p - mass_center;
-    double a = center_point.dot(corrected_dir.col(0).cast<float>());
-    double b = center_point.dot(corrected_dir.col(1).cast<float>());
-    double c = center_point.dot(corrected_dir.col(2).cast<float>());
-    if (a > 0 && a1_incomplete) {
-      a1.push_back(a);
-    } else if (a < 0 && a2_incomplete) {
-      a2.push_back(a);
-    }
-
-    if (b > 0 && b1_incomplete) {
-      b1.push_back(b);
-    } else if (b < 0 && b2_incomplete) {
-      b2.push_back(b);
-    }
-
-    if (c > 0 && c1_incomplete) {
-      c1.push_back(c);
-    } else if (c < 0 && c2_incomplete) {
-      c2.push_back(c);
-    }
-  }
-
-  // a1_incomplete = a1.empty();
-  // a2_incomplete = a2.empty();
-  // b1_incomplete = b1.empty();
-  // b2_incomplete = b2.empty();
-  // c1_incomplete = c1.empty();
-  // c2_incomplete = c2.empty();
-
   for (int i = 0; i < alive_element_points->size(); i++) {
     pcl::PointXYZ cur_point = (*alive_element_points)[i];
     Eigen::Vector3f e_p(cur_point.x, cur_point.y, cur_point.z);
@@ -2022,12 +1716,45 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     }
   }
 
-  // a1_incomplete = a1.empty();
-  // a2_incomplete = a2.empty();
-  // b1_incomplete = b1.empty();
-  // b2_incomplete = b2.empty();
-  // c1_incomplete = c1.empty();
-  // c2_incomplete = c2.empty();
+  //a1_incomplete = a1.empty();
+  //a2_incomplete = a2.empty();
+  //b1_incomplete = b1.empty();
+  //b2_incomplete = b2.empty();
+  //c1_incomplete = c1.empty();
+  //c2_incomplete = c2.empty();
+
+  for (int i = 0; i < filtered_cloud->size(); i++) {
+    pcl::PointXYZ cur_point = (*filtered_cloud)[i];
+    Eigen::Vector3f e_p(cur_point.x, cur_point.y, cur_point.z);
+    Eigen::Vector3f center_point = e_p - mass_center;
+    double a = center_point.dot(corrected_dir.col(0).cast<float>());
+    double b = center_point.dot(corrected_dir.col(1).cast<float>());
+    double c = center_point.dot(corrected_dir.col(2).cast<float>());
+    if (a > 0 && a1_incomplete) {
+      a1.push_back(a);
+    } else if (a < 0 && a2_incomplete) {
+      a2.push_back(a);
+    }
+
+    if (b > 0 && b1_incomplete) {
+      b1.push_back(b);
+    } else if (b < 0 && b2_incomplete) {
+      b2.push_back(b);
+    }
+
+    if (c > 0 && c1_incomplete) {
+      c1.push_back(c);
+    } else if (c < 0 && c2_incomplete) {
+      c2.push_back(c);
+    }
+  }
+
+  a1_incomplete = a1.empty();
+  a2_incomplete = a2.empty();
+  b1_incomplete = b1.empty();
+  b2_incomplete = b2.empty();
+  c1_incomplete = c1.empty();
+  c2_incomplete = c2.empty();
 
   if (a1_incomplete) {
     a1.push_back(0.05);

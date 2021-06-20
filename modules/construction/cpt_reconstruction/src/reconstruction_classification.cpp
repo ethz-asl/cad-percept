@@ -63,6 +63,7 @@ void Classification::messageCallback(
       new pcl::search::KdTree<pcl::PointXYZ>());
   centers_kd_tree->setInputCloud(face_centers);
 
+  //TODO Remove
   std::string filename_mesh =
       "/home/philipp/Schreibtisch/ros_dir/scale_space_mesh_scan.off";
   std::ofstream out_mesh(filename_mesh.c_str());

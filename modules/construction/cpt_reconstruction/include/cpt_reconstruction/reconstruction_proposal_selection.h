@@ -55,7 +55,6 @@ class ProposalSelection {
       std::vector<double> &radius_estimates);
 
   void selectProposals();
-  void selectProposals2();  // TODO: REMOVE
   void organizeDatastructure();
   Eigen::VectorXd computePosterior(const Eigen::VectorXd &prior,
                                    const Eigen::VectorXd &posterior);
