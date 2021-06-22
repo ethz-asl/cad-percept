@@ -265,6 +265,9 @@ void ProposalSelection::selectProposals() {
               std::to_string(i) + "_" + std::to_string(counter) + ".ply";
       pcl::io::savePLYFile(save00, *upsampled_cloud);
 
+      pcl::PointCloud<pcl::PointXYZ>::Ptr conf_points_debug(
+          new pcl::PointCloud<pcl::PointXYZ>());
+
       Eigen::Vector3d overlap_dir = Eigen::Vector3d::Zero();
       int matches = 0;
       for (const auto &p : (*upsampled_cloud)) {
@@ -274,26 +277,45 @@ void ProposalSelection::selectProposals() {
         //model_upsampled_octree_->approxNearestSearch(p, nearest_idx, sqrt_dist);
         model_upsampled_octree_->nearestKSearch(p, 1, nn_indices, nn_dists);
         if (std::sqrt(nn_dists[0]) < 0.03) {
-          matches++;
           //pcl::PointXYZ conf_point = (*model_upsampled_points_)[nn_indices[0]];
           //Eigen::Vector3d conf_pont_e(conf_point.x, conf_point.y,
           //                            conf_point.z);
-          Eigen::Vector3d conf_pont_e(p.x, p.y,
-                                      p.z);
+          conf_points_debug->push_back((*model_upsampled_points_)[nn_indices[0]]);
+          Eigen::Vector3d conf_pont_e(p.x, p.y, p.z);
           Eigen::Vector3d center1_e = center_estimates_.at(i);
           Eigen::Vector3d diff_1 = conf_pont_e - center1_e;
-          overlap_dir += diff_1;
+          diff_1.normalize();
+          if (matches == 0){
+            overlap_dir += diff_1;
+          } else {
+            if (diff_1.dot(overlap_dir) > 0.707){
+              overlap_dir += diff_1;
+              overlap_dir.normalize();
+            }
+          }
+          matches++;
         }
       }
+
+      std::string save05 =
+          "/home/philipp/Schreibtisch/ros_dir/confliction_model_points_" +
+              std::to_string(i) + "_" + std::to_string(counter) + ".ply";
+      pcl::io::savePLYFile(save05, *conf_points_debug);
+
       double cur_overlap = ((double)matches) / ((double)upsampled_cloud->size());
       overlap_dir.normalize();
 
-      if (cur_overlap <  10e-10){
+      if (matches == 0){
         break;
       } else {
         int best_k_i = 0;
         double best_kij_score = 0;
         Eigen::Matrix3d dir_i = direction_estimates_.at(i);
+        ROS_INFO("dir_1: %f %f %f", dir_i.col(0).x(),  dir_i.col(0).y(),  dir_i.col(0).z());
+        ROS_INFO("dir_2: %f %f %f", dir_i.col(1).x(),  dir_i.col(1).y(),  dir_i.col(1).z());
+        ROS_INFO("dir_3: %f %f %f", dir_i.col(2).x(),  dir_i.col(2).y(),  dir_i.col(2).z());
+
+        ROS_INFO("overlap_dir: %f %f %f", overlap_dir.x(), overlap_dir.y(), overlap_dir.z());
         for (int k_i = 0; k_i < 6; k_i++) {
           int col_1 = k_i % 2 == 0 ? k_i / 2 : (k_i - 1) / 2;
           Eigen::Vector3d dir_1 = dir_i.col(col_1);
@@ -301,14 +323,19 @@ void ProposalSelection::selectProposals() {
           Eigen::Vector3d dir_1_oriented;
           if (k_i % 2 != 0) {
             dir_1_oriented = -dir_1;
+          }  else {
+            dir_1_oriented = dir_1;
           }
 
+          ROS_INFO("dir_1_oriented: %f %f %f", dir_1_oriented.x(), dir_1_oriented.y(), dir_1_oriented.z());
           double cur_score = overlap_dir.dot(dir_1_oriented);
+          ROS_INFO("cur_score %f", cur_score);
           if (cur_score > best_kij_score) {
             best_kij_score = cur_score;
             best_k_i = k_i;
           }
         }
+        ROS_INFO("Bes_ki_score %f", best_kij_score);
 
         Eigen::VectorXd old_probabilites =
             parameter_probabilities.at(i).at(best_k_i);
@@ -391,7 +418,7 @@ void ProposalSelection::selectProposals() {
         pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cloud(
             new pcl::PointCloud<pcl::PointXYZ>());
         this->upsampledStructuredPointCloud(a1, a2, b1, b2, c1, c2, center, dirs,
-                                            upsampled_cloud, 0.03);
+                                            upsampled_cloud, 0.05);
         conf_point_clouds.push_back(upsampled_cloud);
 
         pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree(
@@ -436,17 +463,16 @@ void ProposalSelection::selectProposals() {
         for (const auto &p : (*cloud_i)) {
           kd_tree_j->nearestKSearch(p, 1, nn_indices, nn_dists);
           if (std::sqrt(nn_dists[0]) < 0.03) {
-            matches++;
-            pcl::PointXYZ conf_point =
-                (*(conf_point_clouds.at(l2)))[nn_indices[0]];
-            Eigen::Vector3d conf_pont_e(conf_point.x, conf_point.y,
-                                        conf_point.z);
+            Eigen::Vector3d conf_pont_e(p.x, p.y,
+                                        p.z);
             Eigen::Vector3d center1_e = center_estimates_.at(l1);
             Eigen::Vector3d center2_e = center_estimates_.at(l2);
             Eigen::Vector3d diff_1 = conf_pont_e - center1_e;
             Eigen::Vector3d diff_2 = conf_pont_e - center2_e;
+
             overlap_dir_1 += diff_1;
             overlap_dir_2 += diff_2;
+            matches++;
           }
         }
         double cur_overlap = ((double)matches) / ((double)cloud_i->size());
@@ -463,7 +489,7 @@ void ProposalSelection::selectProposals() {
       std::pair<Eigen::Vector3d, Eigen::Vector3d> max_overlap_dir =
           overlap_dirs.at(max_idx);
       ROS_INFO("Check overlap");
-      if (max_overlap <  10e-10){
+      if (max_overlap <  1.0 / ((double) cloud_i->size())){
         if (std::find(elements_without_conficts.begin(), elements_without_conficts.end(), l1) == elements_without_conficts.end()){
           elements_without_conficts.push_back(l1);
         }
@@ -485,7 +511,7 @@ void ProposalSelection::selectProposals() {
             parameter_probabilities.at(max_idx);
 
         // Reduce dimension with lower probability
-        ROS_INFO("Finde Dimension");
+        ROS_INFO("Find Dimension");
         int best_k_i = 0;
         int best_k_j = 0;
         double best_kij_score = 0;
@@ -503,9 +529,14 @@ void ProposalSelection::selectProposals() {
             Eigen::Vector3d dir_2_oriented;
             if (k_i % 2 != 0) {
               dir_1_oriented = -dir_1;
+            } else {
+              dir_1_oriented = dir_1;
             }
+
             if (k_j % 2 != 0) {
               dir_2_oriented = -dir_2;
+            } else {
+              dir_2_oriented = dir_2;
             }
 
             double cur_score_1 = max_overlap_dir.first.dot(dir_1_oriented);
