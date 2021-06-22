@@ -327,6 +327,7 @@ class UserInteraction:
 
         self.model_mesh = 0
         self.render = True
+        self.accept = False
 
     def getElementProposalsFromMessage(self, msg):
         self.number_elements_planar = len(msg.centers)
@@ -433,7 +434,8 @@ class UserInteraction:
 
             o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
             vis = o3d.visualization.VisualizerWithKeyCallback()
-            vis.register_key_callback(65, self.callbackExit)  # a
+            vis.register_key_callback(257, self.callbackAccept)  # enter
+            vis.register_key_callback(259, self.callbackReject)  # backspace
 
             vis.create_window()
             vis.add_geometry(self.model_mesh)
@@ -457,6 +459,7 @@ class UserInteraction:
             color_map = np.zeros(shape = (num_model_vertices, 3))
 
             self.render = True
+            self.accept = False
             while (self.render):
                 a1_user = manipulationPanel.getA1Value()
                 a2_user = manipulationPanel.getA2Value()
@@ -513,14 +516,16 @@ class UserInteraction:
                 if (self.render == False):
                     break
 
-            element.paint_uniform_color(np.array([0, 1, 0]))
-            done_meshes.append(element)
+            if (self.accept):
+                element.paint_uniform_color(np.array([0, 1, 0]))
+                done_meshes.append(element)
 
             vis.destroy_window()
             self.current_element_number_planar = self.current_element_number_planar + 1
 
         manipulationPanel.deactivatePlanarElements()
         manipulationPanel.activateCylinders()
+
 
         while (self.current_element_number_cylinders < self.number_elements_cylinders):
             idx = self.current_element_number_cylinders
@@ -569,7 +574,8 @@ class UserInteraction:
 
             o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
             vis = o3d.visualization.VisualizerWithKeyCallback()
-            vis.register_key_callback(65, self.callbackExit)  # a
+            vis.register_key_callback(257, self.callbackAccept)  # enter
+            vis.register_key_callback(259, self.callbackReject)  # backspace
 
             vis.create_window()
             vis.add_geometry(self.model_mesh)
@@ -582,6 +588,7 @@ class UserInteraction:
             vis.get_render_option().mesh_show_back_face = True
 
             self.render = True
+            self.accept = False
             while (self.render):
                 radius_user = manipulationPanel.getRadiusValue()
                 h1_user = manipulationPanel.getH1Value()
@@ -608,8 +615,9 @@ class UserInteraction:
                 if (self.render == False):
                     break
 
-            cyl_mesh.paint_uniform_color(np.array([0, 1, 0]))
-            done_meshes.append(cyl_mesh)
+            if (self.accept):
+                cyl_mesh.paint_uniform_color(np.array([0, 1, 0]))
+                done_meshes.append(cyl_mesh)
 
             vis.destroy_window()
             self.current_element_number_cylinders = self.current_element_number_cylinders + 1
@@ -677,10 +685,15 @@ class UserInteraction:
 
         return P, T
 
-    def callbackExit(self, vis):
-        rospy.loginfo("Pressed a ")
+    def callbackAccept(self, vis):
+        rospy.loginfo("Pressed n ")
         self.render = False
+        self.accept = True
 
+    def callbackReject(self, vis):
+        rospy.loginfo("Pressed r ")
+        self.render = False
+        self.accept = False
 
 def callback(msg):
     rospy.loginfo(rospy.get_caller_id() + "Nr planar elements %d", len(msg.centers))

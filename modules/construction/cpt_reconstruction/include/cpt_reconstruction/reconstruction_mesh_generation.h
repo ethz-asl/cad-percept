@@ -23,6 +23,8 @@
 #include <string>
 #include <utility>
 
+#include <pcl/octree/octree_search.h>
+#include <pcl/octree/octree_pointcloud_voxelcentroid.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/PCLHeader.h>
 #include <pcl/PCLPointCloud2.h>
@@ -141,6 +143,9 @@ class MeshGeneration {
   std::vector<int> candidate_faces_ortho_vertical_;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_model_;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_model_filtered_;
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr model_upsampled_filtered_kdtree_;
+
   pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr model_octree_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr model_upsampled_kdtree_;
 
@@ -175,7 +180,7 @@ class MeshGeneration {
       pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
       pcl::PointCloud<pcl::PointXYZ>::Ptr backup_points);
 
-  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal,
+  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal, double radius,
                              pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud,
                              int cur_id);
 

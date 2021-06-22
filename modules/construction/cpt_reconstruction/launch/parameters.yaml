@@ -13,9 +13,15 @@ ScanPointsFile: "/home/philipp/Schreibtisch/leica/new_scan1_aligned.ply"
 
 ########################################################################
 ### Paths
-BuildingModelMeshFile: "/home/philipp/Schreibtisch/data/CLA_MissingParts_3.ply"
-UpsampledBuildingModelFile: "/home/philipp/Schreibtisch/data/CLA_MissingParts_3_5m.ply"
-ClassificationConfigFile: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area1_little_noise.bin"
+BuildingModelMeshFile: "/home/philipp/Schreibtisch/data/CLA_MissingParts_4.ply"
+UpsampledBuildingModelFile: "/home/philipp/Schreibtisch/data/CLA_MissingParts_4_8m.ply"
+
+ClassificationConfigFile1: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area1.bin"
+ClassificationConfigFile2: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area2.bin"
+ClassificationConfigFile3: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area3.bin"
+ClassificationConfigFile4: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area4.bin"
+ClassificationConfigFile5: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area5.bin"
+
 
 OutputAllPointsFile: "/home/philipp/Schreibtisch/ros_dir/outliers_ros.xyz"
 OutputOutlierPointsFile: "/home/philipp/Schreibtisch/ros_dir/outliers_ros_full.xyz"
@@ -36,7 +42,7 @@ ClearBufferAfterIteration: 2
 UseFilter: true
 OctreeFilterResolution: 0.02
 
-RANSACProbability: 0.000001
+RANSACProbability: 0.0000001
 RANSACMinPoints: 200
 RANSACEpsilon: 0.03
 RANSACClusterEpsilon: 0.2
@@ -49,9 +55,9 @@ VoxelGridFilterResolution: 0.01
 MinSizeValidPlane: 50
 ValidSizeThresholdPlane: 1000
 ThresholdSecondEigenvalue: 0.00015
-IntervalFusingClusters: 40
-IntervalCleaningClusters: 40 #200
-IntervalForwardingClusters: 40 #200
+IntervalFusingClusters: 1000
+IntervalCleaningClusters: 1000 #200
+IntervalForwardingClusters: 10 #200
 
 #Fusing Planes
 DotProductNormals: 0.99

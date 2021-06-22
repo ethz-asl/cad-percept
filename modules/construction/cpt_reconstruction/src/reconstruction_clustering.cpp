@@ -241,6 +241,52 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
         pcl::PCLPointCloud2 temp_pcl;
         pcl::toPCLPointCloud2(*(clouds_cyl_.at(i)), temp_pcl);
 
+        /*
+        //Upsample cloud
+        pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cyl_cluster(new pcl::PointCloud<pcl::PointXYZ>());
+        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
+
+        // Estimate Normals
+        pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
+            new pcl::search::KdTree<pcl::PointXYZ>);
+        searchTree->setInputCloud(clouds_cyl_.at(i));
+        pcl::PointCloud<pcl::Normal>::Ptr normals(
+            new pcl::PointCloud<pcl::Normal>);
+        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
+        normalEstimator.setInputCloud(clouds_cyl_.at(i));
+        normalEstimator.setSearchMethod(searchTree);
+        normalEstimator.setKSearch(10);
+        normalEstimator.compute(*normals);
+
+        seg.setOptimizeCoefficients(true);
+        seg.setModelType(pcl::SACMODEL_CYLINDER);
+        seg.setMethodType(pcl::SAC_RANSAC);
+        seg.setDistanceThreshold(0.05);
+        seg.setMaxIterations(1000);
+        seg.setInputCloud(clouds_cyl_.at(i));
+        seg.setInputNormals(normals);
+        seg.segment(*inliers, *coefficients);
+
+        Eigen::Vector3d point_on_axis (coefficients->values[0], coefficients->values[1], coefficients->values[2]);
+        Eigen::Vector3d cur_axis (coefficients->values[3], coefficients->values[4], coefficients->values[5]);
+        cur_axis.normalize();
+        double cur_radius = coefficients->values[6];
+
+        for (const auto &p : *(clouds_cyl_.at(i))){
+          Eigen::Vector3d p_e(p.x, p.y, p.z);
+          double diff = (p_e - point_on_axis).dot(cur_axis);
+          Eigen::Vector3d cur_center = point_on_axis + diff * cur_axis;
+          Eigen::Vector3d normal_vec =  p_e - cur_center;
+          normal_vec.normalize();
+          Eigen::Vector3d mirrored_point = cur_center - normal_vec * cur_radius;
+
+          upsampled_cyl_cluster->push_back(p);
+          upsampled_cyl_cluster->push_back(pcl::PointXYZ(mirrored_point.x(), mirrored_point.y(), mirrored_point.z()));
+        }
+        pcl::toPCLPointCloud2(*upsampled_cyl_cluster, temp_pcl);
+        */
         sensor_msgs::PointCloud2 temp_ros;
         pcl_conversions::moveFromPCL(temp_pcl, temp_ros);
         clusters_vec.push_back(temp_ros);
@@ -263,7 +309,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
         axis_temp.z = axis_.at(i).z();
         axis_vec.push_back(axis_temp);
 
-        radius_vec.push_back(radius_.at(i));
+        radius_vec.push_back(std::fabs(radius_.at(i)));
         id_vec.push_back(1);
       }
     }

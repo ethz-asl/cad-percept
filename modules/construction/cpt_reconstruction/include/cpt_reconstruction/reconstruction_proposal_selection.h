@@ -19,6 +19,7 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <pcl/octree/octree_search.h>
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/PolygonMesh.h>
 #include <pcl/Vertices.h>
@@ -45,9 +46,10 @@ class ProposalSelection {
  public:
   ProposalSelection() = delete;
   ProposalSelection(
-      pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree,
+      pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr upsampled_octree,
       std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds,
       pcl::PolygonMesh mesh_model,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr model_upsampled_points,
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
       std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
@@ -62,7 +64,7 @@ class ProposalSelection {
   void upsampledStructuredPointCloud(
       double a1, double a2, double b1, double b2, double c1, double c2,
       Eigen::Vector3d center, Eigen::Matrix3d directions,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud, double step = 0.03);
+      pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud, double tol, double step = 0.03);
   double findParameterFromLikelihood(const Eigen::VectorXd &params,
                                      const Eigen::VectorXd &probabilities,
                                      int k);
@@ -91,11 +93,12 @@ class ProposalSelection {
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_;
 
   // Score computation
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr model_upsampled_kdtree_;
+  pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr model_upsampled_octree_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr scan_kdtree_;
 
   //
   pcl::PolygonMesh mesh_model_;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr model_upsampled_points_;
   std::vector<double> mesh_plane_d_;
   std::vector<double> mesh_area_;
   std::vector<Eigen::Vector3d> mesh_plane_normals_;

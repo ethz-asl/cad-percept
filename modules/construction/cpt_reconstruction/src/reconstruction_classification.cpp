@@ -5,13 +5,24 @@ namespace cpt_reconstruction {
 Classification::Classification(ros::NodeHandle nodeHandle1,
                                ros::NodeHandle nodeHandle2)
     : nodeHandle1_(nodeHandle1), nodeHandle2_(nodeHandle2) {
-  nodeHandle1.getParam("ClassificationConfigFile", RF_CONFIG_PATH_);
+  nodeHandle1.getParam("ClassificationConfigFile1", RF_CONFIG_1_PATH_);
+  nodeHandle1.getParam("ClassificationConfigFile2", RF_CONFIG_2_PATH_);
+  nodeHandle1.getParam("ClassificationConfigFile3", RF_CONFIG_3_PATH_);
+  nodeHandle1.getParam("ClassificationConfigFile4", RF_CONFIG_4_PATH_);
+  nodeHandle1.getParam("ClassificationConfigFile5", RF_CONFIG_5_PATH_);
+
   nodeHandle1.getParam("OutoutClassificationResultFile", RF_RESULT_PATH_);
   nodeHandle1.getParam("CellSize", CELL_SIZE_);
   nodeHandle1.getParam("SmoothingIterations", SMOOTHING_ITERATIONS_);
   nodeHandle1.getParam("MaxFacetLength", MAX_FACET_LENGTH_);
   nodeHandle1.getParam("NumberOfScales", NUMBER_OF_SCALES_);
   nodeHandle1.getParam("NRingQuery", N_RING_QUERY_);
+
+  all_classifier_paths_.push_back(RF_CONFIG_1_PATH_);
+  all_classifier_paths_.push_back(RF_CONFIG_2_PATH_);
+  all_classifier_paths_.push_back(RF_CONFIG_3_PATH_);
+  all_classifier_paths_.push_back(RF_CONFIG_4_PATH_);
+  all_classifier_paths_.push_back(RF_CONFIG_5_PATH_);
 
   subscriber_ = nodeHandle1_.subscribe("clusters", 1000,
                                        &Classification::messageCallback, this);
@@ -58,7 +69,6 @@ void Classification::messageCallback(
       new pcl::PointCloud<pcl::PointXYZ>());
   computeReconstructedSurfaceMesh(points, mesh, face_centers);
 
-  std::vector<int> label_indices(mesh.number_of_faces(), -1);
   pcl::search::KdTree<pcl::PointXYZ>::Ptr centers_kd_tree(
       new pcl::search::KdTree<pcl::PointXYZ>());
   centers_kd_tree->setInputCloud(face_centers);
@@ -69,7 +79,27 @@ void Classification::messageCallback(
   std::ofstream out_mesh(filename_mesh.c_str());
   CGAL::write_off(out_mesh, mesh);
 
-  classifyMesh(mesh, label_indices);
+  std::vector<std::vector<int>> combined_labels;
+  int counter_c = 1;
+  for (const auto &config_file : all_classifier_paths_){
+    std::vector<int> label_indices(mesh.number_of_faces(), -1);
+    classifyMesh(counter_c, config_file, mesh, label_indices);
+    combined_labels.push_back(label_indices);
+    counter_c++;
+  }
+
+  int number_of_labels = combined_labels.at(0).size();
+  std::vector<int> bagged_labels;
+
+  for (int i = 0; i < number_of_labels; i++){
+    std::vector<int> class_votes(6, 0);
+    for (const auto &cur_labels : combined_labels) {
+      int idx = cur_labels.at(i);
+      class_votes.at(idx) += 1;
+    }
+    int max_idx = std::max_element(class_votes.begin(), class_votes.end()) - class_votes.begin();
+    bagged_labels.push_back(max_idx);
+  }
 
   std::vector<int> nn_indices{1};
   std::vector<float> nn_dists{1};
@@ -82,7 +112,7 @@ void Classification::messageCallback(
       pcl::PointXYZ p = (*cur_cloud)[j];
       centers_kd_tree->nearestKSearch(p, 1, nn_indices, nn_dists);
       if (std::sqrt(nn_dists[0]) < 0.2) {
-        int lable = label_indices[nn_indices[0]];
+        int lable = bagged_labels[nn_indices[0]];
         class_vote.at(lable) += 1;
       } else {
         class_vote.at(5) += 1;
@@ -185,7 +215,7 @@ void Classification::computeReconstructedSurfaceMesh(
 }
 
 // Source: https://doc.cgal.org/5.0.4/Classification/index.html
-void Classification::classifyMesh(Mesh_M &mesh,
+void Classification::classifyMesh(int idx, const std::string config_path, Mesh_M &mesh,
                                   std::vector<int> &label_indices) {
   std::size_t number_of_scales = NUMBER_OF_SCALES_;
   Face_point_map face_point_map(&mesh);
@@ -205,9 +235,10 @@ void Classification::classifyMesh(Mesh_M &mesh,
 
   ROS_INFO("Using ETHZ Random Forest Classifier");
 
+
   CGAL::Classification::ETHZ_random_forest_classifier classifier(labels,
                                                                  features);
-  std::ifstream in_config(RF_CONFIG_PATH_,
+  std::ifstream in_config(config_path.c_str(),
                           std::ios_base::in | std::ios_base::binary);
   classifier.load_configuration(in_config);
 
@@ -280,8 +311,9 @@ void Classification::classifyMesh(Mesh_M &mesh,
   }
 
   // Write result
-  pcl::io::savePLYFileBinary(RF_RESULT_PATH_, *result);
-  ROS_INFO("All done");
+  std::string output_classified_points = "/home/philipp/Schreibtisch/ros_dir/classification_" + std::to_string(idx) + ".ply";
+  pcl::io::savePLYFileBinary(output_classified_points, *result);
+  //ROS_INFO("All done");
 }
 
 }  // namespace cpt_reconstruction

@@ -3,16 +3,19 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 ProposalSelection::ProposalSelection(
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree,
+    pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr upsampled_octree,
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds,
-    pcl::PolygonMesh mesh_model, std::vector<Eigen::Vector3d> &center_estimates,
+    pcl::PolygonMesh mesh_model,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr model_upsampled_points,
+    std::vector<Eigen::Vector3d> &center_estimates,
     std::vector<Eigen::Matrix3d> &direction_estimates,
     std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
     std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
     std::vector<double> &radius_estimates)
-    : model_upsampled_kdtree_(upsampled_kd_tree),
+    : model_upsampled_octree_(upsampled_octree),
       scan_kdtree_(new pcl::search::KdTree<pcl::PointXYZ>()),
       mesh_model_(mesh_model),
+      model_upsampled_points_(model_upsampled_points),
       center_estimates_(center_estimates),
       direction_estimates_(direction_estimates),
       parameter_estimates_(parameter_estimates),
@@ -100,7 +103,7 @@ Eigen::VectorXd ProposalSelection::computePosterior(
   for (int i = 0; i < size; i++) {
     normalizer += prior[i] * posterior[i];
   }
-  if (normalizer > 0) {
+  if (normalizer > 10e-5) {
     for (int i = 0; i < size; i++) {
       new_probability[i] = prior[i] * posterior[i] / normalizer;
     }
@@ -187,7 +190,7 @@ void ProposalSelection::selectProposals() {
         }
 
         // Score for model alignment
-        model_upsampled_kdtree_->nearestKSearch(point_pcl, 1, nn_indices,
+        model_upsampled_octree_->nearestKSearch(point_pcl, 1, nn_indices,
                                                 nn_dists);
         if (std::sqrt(nn_dists[0]) < 0.05) {
           double model_alignment = 1.0 - 10 * std::sqrt(nn_dists[0]);
@@ -225,6 +228,118 @@ void ProposalSelection::selectProposals() {
     }
   }
 
+  std::vector<int> nn_indices{1};
+  std::vector<float> nn_dists{1};
+
+
+  //Resolve Conflicts with buiding model
+  for (int i = 0; i < parameter_probabilities.size(); i++){
+    int counter = 0;
+    ROS_INFO("Model Conflicts for Element %d", i);
+    while(counter < 100){
+      ROS_INFO("Start Iteration");
+      std::vector<double> most_likely_params_per_elements;
+      for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
+        Eigen::VectorXd probability_vec = parameter_probabilities.at(i).at(j);
+        int max_idx = this->findMaxIndexInEigenVector(probability_vec);
+        double most_likely_para = parameter_estimates_.at(i).at(j)[max_idx];
+        most_likely_params_per_elements.push_back(most_likely_para);
+      }
+
+      double a1 = most_likely_params_per_elements.at(0);
+      double a2 = most_likely_params_per_elements.at(1);
+      double b1 = most_likely_params_per_elements.at(2);
+      double b2 = most_likely_params_per_elements.at(3);
+      double c1 = most_likely_params_per_elements.at(4);
+      double c2 = most_likely_params_per_elements.at(5);
+      Eigen::Vector3d center = center_estimates_.at(i);
+      Eigen::Matrix3d dirs = direction_estimates_.at(i);
+
+      pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cloud(
+          new pcl::PointCloud<pcl::PointXYZ>());
+      this->upsampledStructuredPointCloud(a1, a2, b1, b2, c1, c2, center, dirs,
+                                          upsampled_cloud, 0.06);
+
+      std::string save00 =
+          "/home/philipp/Schreibtisch/ros_dir/confliction_model_" +
+              std::to_string(i) + "_" + std::to_string(counter) + ".ply";
+      pcl::io::savePLYFile(save00, *upsampled_cloud);
+
+      Eigen::Vector3d overlap_dir = Eigen::Vector3d::Zero();
+      int matches = 0;
+      for (const auto &p : (*upsampled_cloud)) {
+        //model_upsampled_octree_->nearestKSearch(p, 1, nn_indices, nn_dists);
+        //int nearest_idx;
+        //float sqrt_dist;
+        //model_upsampled_octree_->approxNearestSearch(p, nearest_idx, sqrt_dist);
+        model_upsampled_octree_->nearestKSearch(p, 1, nn_indices, nn_dists);
+        if (std::sqrt(nn_dists[0]) < 0.03) {
+          matches++;
+          //pcl::PointXYZ conf_point = (*model_upsampled_points_)[nn_indices[0]];
+          //Eigen::Vector3d conf_pont_e(conf_point.x, conf_point.y,
+          //                            conf_point.z);
+          Eigen::Vector3d conf_pont_e(p.x, p.y,
+                                      p.z);
+          Eigen::Vector3d center1_e = center_estimates_.at(i);
+          Eigen::Vector3d diff_1 = conf_pont_e - center1_e;
+          overlap_dir += diff_1;
+        }
+      }
+      double cur_overlap = ((double)matches) / ((double)upsampled_cloud->size());
+      overlap_dir.normalize();
+
+      if (cur_overlap <  10e-10){
+        break;
+      } else {
+        int best_k_i = 0;
+        double best_kij_score = 0;
+        Eigen::Matrix3d dir_i = direction_estimates_.at(i);
+        for (int k_i = 0; k_i < 6; k_i++) {
+          int col_1 = k_i % 2 == 0 ? k_i / 2 : (k_i - 1) / 2;
+          Eigen::Vector3d dir_1 = dir_i.col(col_1);
+
+          Eigen::Vector3d dir_1_oriented;
+          if (k_i % 2 != 0) {
+            dir_1_oriented = -dir_1;
+          }
+
+          double cur_score = overlap_dir.dot(dir_1_oriented);
+          if (cur_score > best_kij_score) {
+            best_kij_score = cur_score;
+            best_k_i = k_i;
+          }
+        }
+
+        Eigen::VectorXd old_probabilites =
+            parameter_probabilities.at(i).at(best_k_i);
+        int old_idx = this->findMaxIndexInEigenVector(old_probabilites);
+        double old_para = parameter_estimates_.at(i).at(best_k_i)[old_idx];
+
+        Eigen::VectorXd posterior_update(old_probabilites.size());
+        for (int v = 0; v < old_probabilites.size(); v++) {
+          if (std::fabs(parameter_estimates_.at(i).at(best_k_i)[v]) >=
+              (std::fabs(old_para) - 0.015)) {
+            posterior_update[v] = 0.0;
+          } else {
+            posterior_update[v] = 1.0;
+          }
+        }
+        posterior_update.normalize();
+
+        Eigen::VectorXd posterior_updated = this->computePosterior(
+            parameter_probabilities.at(i).at(best_k_i),
+            posterior_update);
+
+        if ((posterior_updated - parameter_probabilities.at(i).at(best_k_i)).lpNorm<1>() < 10e-10) {
+          break;
+        }
+        parameter_probabilities.at(i).at(best_k_i) = posterior_updated;
+        counter++;
+      }
+    }
+  }
+
+
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> conf_point_clouds;
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> conf_kd_trees;
 
@@ -233,10 +348,11 @@ void ProposalSelection::selectProposals() {
 
   std::vector<int> elements_without_conficts;
 
-  std::vector<int> nn_indices{1};
-  std::vector<float> nn_dists{1};
+
+  ROS_INFO("Element Conficts");
   int counter = 0;
-  while (counter < 30) {
+  //Resolve Conflicts between elements
+  while (counter < 100) {
     ROS_INFO("Conficting loop start");
     conf_point_clouds.clear();
     conf_kd_trees.clear();
@@ -275,7 +391,7 @@ void ProposalSelection::selectProposals() {
         pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cloud(
             new pcl::PointCloud<pcl::PointXYZ>());
         this->upsampledStructuredPointCloud(a1, a2, b1, b2, c1, c2, center, dirs,
-                                            upsampled_cloud);
+                                            upsampled_cloud, 0.03);
         conf_point_clouds.push_back(upsampled_cloud);
 
         pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree(
@@ -347,7 +463,7 @@ void ProposalSelection::selectProposals() {
       std::pair<Eigen::Vector3d, Eigen::Vector3d> max_overlap_dir =
           overlap_dirs.at(max_idx);
       ROS_INFO("Check overlap");
-      if (max_overlap <  0.000001){
+      if (max_overlap <  10e-10){
         if (std::find(elements_without_conficts.begin(), elements_without_conficts.end(), l1) == elements_without_conficts.end()){
           elements_without_conficts.push_back(l1);
         }
@@ -440,7 +556,7 @@ void ProposalSelection::selectProposals() {
         if (std::fabs(parameter_estimates_.at(element_number)
                           .at(element_dimension)[v]) >=
             (std::fabs(old_para) - 0.015)) {
-          posterior_update[v] = 0.00;
+          posterior_update[v] = 0.0;
         } else {
           posterior_update[v] = 1.0;
         }
@@ -454,6 +570,7 @@ void ProposalSelection::selectProposals() {
           posterior_updated;
     }
 
+    /*
     for (int d1 = 0; d1 < parameter_probabilities.size(); d1++) {
       ROS_INFO("Element %d", d1);
       for (int d2 = 0; d2 < parameter_probabilities.at(d1).size(); d2++) {
@@ -466,6 +583,7 @@ void ProposalSelection::selectProposals() {
         }
       }
     }
+    */
 
     counter++;
   }
@@ -544,13 +662,13 @@ void ProposalSelection::getSelectedProposals(
 void ProposalSelection::upsampledStructuredPointCloud(
     double a1, double a2, double b1, double b2, double c1, double c2,
     Eigen::Vector3d center, Eigen::Matrix3d directions,
-    pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud, double step) {
-  a1 -= 0.025;
-  a2 += 0.025;
-  b1 -= 0.025;
-  b2 += 0.025;
-  c1 -= 0.025;
-  c2 += 0.025;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud, double tol, double step) {
+  a1 -= tol;
+  a2 += tol;
+  b1 -= tol;
+  b2 += tol;
+  c1 -= tol;
+  c2 += tol;
 
   int steps_a = (int)((a1 - a2) / step + 1);
   int steps_b = (int)((b1 - b2) / step + 1);
@@ -564,8 +682,8 @@ void ProposalSelection::upsampledStructuredPointCloud(
         double cur_c = (c2 + step * i3);
 
         if (i1 == 0 || i1 == (steps_a - 1) ||
-            i2 == 0 || i1 == (steps_b - 1) ||
-            i3 == 0 || i1 == (steps_c - 1)){
+            i2 == 0 || i2 == (steps_b - 1) ||
+            i3 == 0 || i3 == (steps_c - 1)){
           Eigen::Vector3d cur_e = center + directions.col(0) * cur_a +
               directions.col(1) * cur_b +
               directions.col(2) * cur_c;
@@ -573,11 +691,11 @@ void ProposalSelection::upsampledStructuredPointCloud(
           pcl::PointXYZ p((float)cur_e.x(), (float)cur_e.y(), (float)cur_e.z());
           result_cloud->push_back(p);
         }
-
       }
     }
   }
 }
+
 
 void ProposalSelection::organizeDatastructure() {
   int nr_planar_elements = center_estimates_.size();

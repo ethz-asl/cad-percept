@@ -12,7 +12,9 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle1,
       vertices_model_only_(new pcl::PointCloud<pcl::PointXYZ>()),
       vertices_model_(new pcl::PointCloud<pcl::PointXYZ>()),
       upsampled_model_(new pcl::PointCloud<pcl::PointXYZ>()),
-      model_upsampled_kdtree_(new pcl::search::KdTree<pcl::PointXYZ>()) {
+      model_upsampled_kdtree_(new pcl::search::KdTree<pcl::PointXYZ>()),
+      upsampled_model_filtered_(new pcl::PointCloud<pcl::PointXYZ>()),
+      model_upsampled_filtered_kdtree_(new pcl::search::KdTree<pcl::PointXYZ>()){
   nodeHandle1.getParam("UpsampledBuildingModelFile",
                        UPSAMPLED_BUILDING_MODEL_PATH_);
   nodeHandle1.getParam("BuildingModelMeshFile", BUILDING_MODEL_PATH_);
@@ -37,6 +39,18 @@ MeshGeneration::MeshGeneration(ros::NodeHandle nodeHandle1,
   model_octree_->addPointsFromInputCloud();
   model_upsampled_kdtree_->setInputCloud(upsampled_model_);
 
+  //Smaller kd-tree for proposal selection
+  pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZ> octree_filter(0.03f);
+  octree_filter.setInputCloud(upsampled_model_);
+  octree_filter.addPointsFromInputCloud();
+  pcl::PointCloud<pcl::PointXYZ>::VectorType voxelCentroids;
+  octree_filter.getVoxelCentroids(voxelCentroids);
+  for (int i = 0; i < voxelCentroids.size(); i++) {
+    upsampled_model_filtered_->push_back(voxelCentroids[i]);
+  }
+  model_upsampled_filtered_kdtree_->setInputCloud(upsampled_model_filtered_);
+
+  ROS_INFO("Done Preprocessing");
   subscriber_ = nodeHandle1_.subscribe("classified_shapes", 1000,
                                        &MeshGeneration::messageCallback, this);
 
@@ -85,8 +99,8 @@ void MeshGeneration::messageCallback(
   getElementProposalsCylinders(bounded_axis_estimates, radius_estimates);
 
   // Select a subset from proposals and forward it to the model integration node
-  ProposalSelection proposalSelection(model_upsampled_kdtree_, meshing_clouds_,
-                                      mesh_model_, center_estimates,
+  ProposalSelection proposalSelection(model_octree_, meshing_clouds_,
+                                      mesh_model_, upsampled_model_, center_estimates,
                                       direction_estimates, parameter_estimates,
                                       bounded_axis_estimates, radius_estimates);
 
@@ -252,7 +266,7 @@ void MeshGeneration::getMessageData(
     double cur_radius = msg.radius.at(i);
 
     bool valid_class =
-        checkShapeConstraints(cur_class, plane_normal, cur_cloud, cur_id);
+        checkShapeConstraints(cur_class, plane_normal, cur_radius, cur_cloud, cur_id);
 
     if (valid_class) {
       // Register data of valid shapes
@@ -273,9 +287,13 @@ void MeshGeneration::getMessageData(
         std::string save0 =
             OUTPUT_DIR_ + "received_points_floor" + std::to_string(i) + ".ply";
         pcl::io::savePLYFile(save0, *cur_cloud);
-      } else if (cur_class == Semantics::WALL) {
+      } else if (cur_class == Semantics::CLUTTER) {
         std::string save0 = OUTPUT_DIR_ + "received_points_clutter" +
                             std::to_string(i) + ".ply";
+        pcl::io::savePLYFile(save0, *cur_cloud);
+      }else if (cur_class == Semantics::COLUMN) {
+        std::string save0 = OUTPUT_DIR_ + "received_points_column" +
+            std::to_string(i) + ".ply";
         pcl::io::savePLYFile(save0, *cur_cloud);
       }
 
@@ -617,7 +635,7 @@ void MeshGeneration::getElementProposalsCylinders(
 }
 
 bool MeshGeneration::checkShapeConstraints(
-    int sem_class, Eigen::Vector3d &normal,
+    int sem_class, Eigen::Vector3d &normal, double radius,
     pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud, int cur_id) {
   double min_area = 1.0;
   pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points(
@@ -628,26 +646,25 @@ bool MeshGeneration::checkShapeConstraints(
   hull.setInputCloud(cur_cloud);
   hull.reconstruct(*hull_points);
   double area = hull.getTotalArea();
-  if (area < min_area) {
-    return false;
-  }
+
   if (cur_id == 0 &&
       (sem_class == Semantics::WALL || sem_class == Semantics::BEAM)) {
-    if (std::fabs(normal.z()) < 0.1) {
+    if (area > min_area && std::fabs(normal.z()) < 0.1) {
       return true;
     } else {
       return false;
     }
   } else if (cur_id == 0 && (sem_class == Semantics::FLOOR ||
                              sem_class == Semantics::CEILING)) {
-    if (std::fabs(normal.z()) > 0.9) {
+    if (area > min_area && std::fabs(normal.z()) > 0.9) {
       return true;
     } else {
       return false;
     }
-  } else if (cur_id == 1 && sem_class == Semantics::COLUMN) {
+  } else if (cur_id == 1 && radius > 0.04 && radius < 0.6 && sem_class != Semantics::CLUTTER) {
     return true;
   } else {
+    ROS_INFO("Rejected Column");
     return false;
   }
 }
@@ -1334,7 +1351,7 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
             min_distance = error;
           }
         }
-        if (min_distance <= 0.4) {
+        if (min_distance <= 1.0) {
           candidate_faces_ortho_vertical_.push_back(i);
         }
       } else if (std::fabs(candidate_normal.dot(middle_vector)) > 0.999) {
@@ -1347,7 +1364,7 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
             min_distance = error;
           }
         }
-        if (min_distance <= 0.4) {
+        if (min_distance <= 1.0) {
           candidate_faces_ortho_horizontal_.push_back(i);
         }
       }
