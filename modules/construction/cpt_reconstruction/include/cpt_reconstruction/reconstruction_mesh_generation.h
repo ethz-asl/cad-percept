@@ -23,8 +23,6 @@
 #include <string>
 #include <utility>
 
-#include <pcl/octree/octree_search.h>
-#include <pcl/octree/octree_pointcloud_voxelcentroid.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/PCLHeader.h>
 #include <pcl/PCLPointCloud2.h>
@@ -51,6 +49,7 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/keypoints/harris_3d.h>
 #include <pcl/octree/octree_pointcloud_changedetector.h>
+#include <pcl/octree/octree_pointcloud_voxelcentroid.h>
 #include <pcl/octree/octree_search.h>
 #include <pcl/point_types.h>
 #include <pcl/sample_consensus/method_types.h>
@@ -146,6 +145,9 @@ class MeshGeneration {
   pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_model_filtered_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr model_upsampled_filtered_kdtree_;
 
+  pcl::PointCloud<pcl::PointXYZ>::Ptr scan_points_;
+  pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr scan_octree_;
+
   pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr model_octree_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr model_upsampled_kdtree_;
 
@@ -162,6 +164,7 @@ class MeshGeneration {
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
       std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_hierarchies,
       pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points,
       pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points);
 
@@ -180,7 +183,8 @@ class MeshGeneration {
       pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
       pcl::PointCloud<pcl::PointXYZ>::Ptr backup_points);
 
-  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal, double radius,
+  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal,
+                             double radius,
                              pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud,
                              int cur_id);
 
@@ -226,6 +230,9 @@ class MeshGeneration {
 
   void removeDuplicatedValues(std::vector<double> &vector, double eps = 10e-6);
 
+  bool is_not_included(const std::vector<double> &vec, double value,
+                       double tol = 0.005);
+
   bool getReconstructionParametersPlanes(
       int idx,
       const pcl::PointCloud<pcl::PointXYZ>::Ptr &strong_points_reconstruction,
@@ -233,7 +240,8 @@ class MeshGeneration {
       const pcl::PointCloud<pcl::PointXYZ>::Ptr &backup_points,
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
-      std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates);
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_hierarchies);
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

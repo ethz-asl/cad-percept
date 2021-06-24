@@ -42,8 +42,7 @@ Clustering::Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
 // https://pointclouds.org/documentation/tutorials/greedy_projection.html
 // https://pointclouds.org/documentation/tutorials/resampling.html
 void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
-  for (const auto &cur_shape : msg.shapes){
-
+  for (const auto &cur_shape : msg.shapes) {
     // Store points from msg to point cloud
     pcl::PointCloud<pcl::PointXYZ>::Ptr points_cloud(
         new pcl::PointCloud<pcl::PointXYZ>);
@@ -55,7 +54,8 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
     // Apply Voxel Grid filtering
     pcl::VoxelGrid<pcl::PointXYZ> sor;
     sor.setInputCloud(points_cloud);
-    sor.setLeafSize(VOXEL_GRID_FILTER_RESOLUTION_, VOXEL_GRID_FILTER_RESOLUTION_,
+    sor.setLeafSize(VOXEL_GRID_FILTER_RESOLUTION_,
+                    VOXEL_GRID_FILTER_RESOLUTION_,
                     VOXEL_GRID_FILTER_RESOLUTION_);
     sor.filter(*points_cloud);
 
@@ -118,8 +118,8 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
       counter_++;
     }
   }
-  if (SENSOR_TYPE_ == 0 &&  (counter_ >= INTERVAL_FUSING_CLUSTERS_ &&
-      (counter_ % INTERVAL_FUSING_CLUSTERS_ == 0))) {
+  if (SENSOR_TYPE_ == 0 && (counter_ >= INTERVAL_FUSING_CLUSTERS_ &&
+                            (counter_ % INTERVAL_FUSING_CLUSTERS_ == 0))) {
     ROS_INFO("Size before fuseing plane: %d \n", clouds_plane_.size());
     ROS_INFO("Size before fuseing cylinders: %d \n", clouds_cyl_.size());
     this->fusePlanes();
@@ -144,7 +144,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
   }
 
   if (SENSOR_TYPE_ == 1 || (counter_ >= INTERVAL_FORWARDING_CLUSTERS_ &&
-      (counter_ % INTERVAL_FORWARDING_CLUSTERS_ == 0))) {
+                            (counter_ % INTERVAL_FORWARDING_CLUSTERS_ == 0))) {
     std::vector<sensor_msgs::PointCloud2> clusters_vec;
     std::vector<geometry_msgs::Vector3> robot_positions_vec;
     std::vector<geometry_msgs::Vector3> ransac_normal_vec;
@@ -243,9 +243,10 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
 
         /*
         //Upsample cloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cyl_cluster(new pcl::PointCloud<pcl::PointXYZ>());
-        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cyl_cluster(new
+        pcl::PointCloud<pcl::PointXYZ>()); pcl::ModelCoefficients::Ptr
+        coefficients(new pcl::ModelCoefficients); pcl::PointIndices::Ptr
+        inliers(new pcl::PointIndices);
         pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
 
         // Estimate Normals
@@ -269,10 +270,11 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
         seg.setInputNormals(normals);
         seg.segment(*inliers, *coefficients);
 
-        Eigen::Vector3d point_on_axis (coefficients->values[0], coefficients->values[1], coefficients->values[2]);
-        Eigen::Vector3d cur_axis (coefficients->values[3], coefficients->values[4], coefficients->values[5]);
-        cur_axis.normalize();
-        double cur_radius = coefficients->values[6];
+        Eigen::Vector3d point_on_axis (coefficients->values[0],
+        coefficients->values[1], coefficients->values[2]); Eigen::Vector3d
+        cur_axis (coefficients->values[3], coefficients->values[4],
+        coefficients->values[5]); cur_axis.normalize(); double cur_radius =
+        coefficients->values[6];
 
         for (const auto &p : *(clouds_cyl_.at(i))){
           Eigen::Vector3d p_e(p.x, p.y, p.z);
@@ -283,7 +285,8 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
           Eigen::Vector3d mirrored_point = cur_center - normal_vec * cur_radius;
 
           upsampled_cyl_cluster->push_back(p);
-          upsampled_cyl_cluster->push_back(pcl::PointXYZ(mirrored_point.x(), mirrored_point.y(), mirrored_point.z()));
+          upsampled_cyl_cluster->push_back(pcl::PointXYZ(mirrored_point.x(),
+        mirrored_point.y(), mirrored_point.z()));
         }
         pcl::toPCLPointCloud2(*upsampled_cyl_cluster, temp_pcl);
         */

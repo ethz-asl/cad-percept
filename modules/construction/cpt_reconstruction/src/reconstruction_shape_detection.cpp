@@ -36,8 +36,8 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
   subscriber1_ = nodeHandle1_.subscribe("corrected_scan", 1000,
                                         &ShapeDetection::messageCallback, this);
 
-  publisher_ =
-      nodeHandle2_.advertise<::cpt_reconstruction::shapes>("ransac_shape", 1000);
+  publisher_ = nodeHandle2_.advertise<::cpt_reconstruction::shapes>(
+      "ransac_shape", 1000);
   ros::spin();
 }
 

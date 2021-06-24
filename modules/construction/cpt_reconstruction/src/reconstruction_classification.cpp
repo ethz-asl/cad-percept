@@ -73,7 +73,7 @@ void Classification::messageCallback(
       new pcl::search::KdTree<pcl::PointXYZ>());
   centers_kd_tree->setInputCloud(face_centers);
 
-  //TODO Remove
+  // TODO Remove
   std::string filename_mesh =
       "/home/philipp/Schreibtisch/ros_dir/scale_space_mesh_scan.off";
   std::ofstream out_mesh(filename_mesh.c_str());
@@ -81,7 +81,7 @@ void Classification::messageCallback(
 
   std::vector<std::vector<int>> combined_labels;
   int counter_c = 1;
-  for (const auto &config_file : all_classifier_paths_){
+  for (const auto &config_file : all_classifier_paths_) {
     std::vector<int> label_indices(mesh.number_of_faces(), -1);
     classifyMesh(counter_c, config_file, mesh, label_indices);
     combined_labels.push_back(label_indices);
@@ -91,13 +91,14 @@ void Classification::messageCallback(
   int number_of_labels = combined_labels.at(0).size();
   std::vector<int> bagged_labels;
 
-  for (int i = 0; i < number_of_labels; i++){
+  for (int i = 0; i < number_of_labels; i++) {
     std::vector<int> class_votes(6, 0);
     for (const auto &cur_labels : combined_labels) {
       int idx = cur_labels.at(i);
       class_votes.at(idx) += 1;
     }
-    int max_idx = std::max_element(class_votes.begin(), class_votes.end()) - class_votes.begin();
+    int max_idx = std::max_element(class_votes.begin(), class_votes.end()) -
+                  class_votes.begin();
     bagged_labels.push_back(max_idx);
   }
 
@@ -215,7 +216,8 @@ void Classification::computeReconstructedSurfaceMesh(
 }
 
 // Source: https://doc.cgal.org/5.0.4/Classification/index.html
-void Classification::classifyMesh(int idx, const std::string config_path, Mesh_M &mesh,
+void Classification::classifyMesh(int idx, const std::string config_path,
+                                  Mesh_M &mesh,
                                   std::vector<int> &label_indices) {
   std::size_t number_of_scales = NUMBER_OF_SCALES_;
   Face_point_map face_point_map(&mesh);
@@ -234,7 +236,6 @@ void Classification::classifyMesh(int idx, const std::string config_path, Mesh_M
   Label_handle clutter = labels.add("clutter");
 
   ROS_INFO("Using ETHZ Random Forest Classifier");
-
 
   CGAL::Classification::ETHZ_random_forest_classifier classifier(labels,
                                                                  features);
@@ -311,9 +312,11 @@ void Classification::classifyMesh(int idx, const std::string config_path, Mesh_M
   }
 
   // Write result
-  std::string output_classified_points = "/home/philipp/Schreibtisch/ros_dir/classification_" + std::to_string(idx) + ".ply";
+  std::string output_classified_points =
+      "/home/philipp/Schreibtisch/ros_dir/classification_" +
+      std::to_string(idx) + ".ply";
   pcl::io::savePLYFileBinary(output_classified_points, *result);
-  //ROS_INFO("All done");
+  // ROS_INFO("All done");
 }
 
 }  // namespace cpt_reconstruction

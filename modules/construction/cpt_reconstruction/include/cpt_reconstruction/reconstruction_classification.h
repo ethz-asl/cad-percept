@@ -14,6 +14,7 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -23,7 +24,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <algorithm>
 
 #include <pcl/PCLHeader.h>
 #include <pcl/PCLPointCloud2.h>
@@ -117,7 +117,8 @@ class Classification {
   void computeReconstructedSurfaceMesh(
       std::vector<PointVectorPair_R> &points, Mesh_M &mesh,
       pcl::PointCloud<pcl::PointXYZ>::Ptr mesh_points);
-  void classifyMesh(int idx, const std::string config_path, Mesh_M &mesh, std::vector<int> &label_indices);
+  void classifyMesh(int idx, const std::string config_path, Mesh_M &mesh,
+                    std::vector<int> &label_indices);
 
   ros::NodeHandle nodeHandle1_;
   ros::NodeHandle nodeHandle2_;

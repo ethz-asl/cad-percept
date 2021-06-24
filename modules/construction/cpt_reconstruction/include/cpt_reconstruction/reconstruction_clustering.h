@@ -126,7 +126,6 @@ class Clustering {
   // Fit plane
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> detected_shapes_points_;
   std::vector<Eigen::Vector4d> detected_shapes_params_;
-
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

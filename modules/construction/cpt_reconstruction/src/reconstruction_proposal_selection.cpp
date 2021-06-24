@@ -7,18 +7,22 @@ ProposalSelection::ProposalSelection(
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds,
     pcl::PolygonMesh mesh_model,
     pcl::PointCloud<pcl::PointXYZ>::Ptr model_upsampled_points,
+    pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr scan_octree,
     std::vector<Eigen::Vector3d> &center_estimates,
     std::vector<Eigen::Matrix3d> &direction_estimates,
     std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
+    std::vector<std::vector<Eigen::VectorXd>> &parameter_hierarchies,
     std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
     std::vector<double> &radius_estimates)
     : model_upsampled_octree_(upsampled_octree),
       scan_kdtree_(new pcl::search::KdTree<pcl::PointXYZ>()),
       mesh_model_(mesh_model),
       model_upsampled_points_(model_upsampled_points),
+      scan_octree_(scan_octree),
       center_estimates_(center_estimates),
       direction_estimates_(direction_estimates),
       parameter_estimates_(parameter_estimates),
+      parameter_hierarchies_(parameter_hierarchies),
 
       bounded_axis_estimates_(bounded_axis_estimates),
       radius_estimates_(radius_estimates) {
@@ -103,7 +107,7 @@ Eigen::VectorXd ProposalSelection::computePosterior(
   for (int i = 0; i < size; i++) {
     normalizer += prior[i] * posterior[i];
   }
-  if (normalizer > 10e-5) {
+  if (normalizer > 10e-16) {
     for (int i = 0; i < size; i++) {
       new_probability[i] = prior[i] * posterior[i] / normalizer;
     }
@@ -129,7 +133,14 @@ void ProposalSelection::selectProposals() {
       Eigen::VectorXd para_temp = parameter_probabilities.at(i).at(j);
       para_temp = para_temp.cwiseAbs();
       para_temp.normalize();
-      parameter_probabilities.at(i).at(j) = para_temp;
+
+      Eigen::VectorXd hierarchies = parameter_hierarchies_.at(i).at(j);
+      hierarchies.normalize();
+
+      Eigen::VectorXd size_hierarchy_prob =
+          this->computePosterior(para_temp, hierarchies);
+
+      parameter_probabilities.at(i).at(j) = size_hierarchy_prob;
     }
   }
   ROS_INFO("Computed Probabilities");
@@ -231,12 +242,11 @@ void ProposalSelection::selectProposals() {
   std::vector<int> nn_indices{1};
   std::vector<float> nn_dists{1};
 
-
-  //Resolve Conflicts with buiding model
-  for (int i = 0; i < parameter_probabilities.size(); i++){
+  // Resolve Conflicts with buiding model
+  for (int i = 0; i < parameter_probabilities.size(); i++) {
     int counter = 0;
     ROS_INFO("Model Conflicts for Element %d", i);
-    while(counter < 100){
+    while (counter < 100) {
       ROS_INFO("Start Iteration");
       std::vector<double> most_likely_params_per_elements;
       for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
@@ -262,7 +272,7 @@ void ProposalSelection::selectProposals() {
 
       std::string save00 =
           "/home/philipp/Schreibtisch/ros_dir/confliction_model_" +
-              std::to_string(i) + "_" + std::to_string(counter) + ".ply";
+          std::to_string(i) + "_" + std::to_string(counter) + ".ply";
       pcl::io::savePLYFile(save00, *upsampled_cloud);
 
       pcl::PointCloud<pcl::PointXYZ>::Ptr conf_points_debug(
@@ -271,24 +281,27 @@ void ProposalSelection::selectProposals() {
       Eigen::Vector3d overlap_dir = Eigen::Vector3d::Zero();
       int matches = 0;
       for (const auto &p : (*upsampled_cloud)) {
-        //model_upsampled_octree_->nearestKSearch(p, 1, nn_indices, nn_dists);
-        //int nearest_idx;
-        //float sqrt_dist;
-        //model_upsampled_octree_->approxNearestSearch(p, nearest_idx, sqrt_dist);
+        // model_upsampled_octree_->nearestKSearch(p, 1, nn_indices, nn_dists);
+        // int nearest_idx;
+        // float sqrt_dist;
+        // model_upsampled_octree_->approxNearestSearch(p, nearest_idx,
+        // sqrt_dist);
         model_upsampled_octree_->nearestKSearch(p, 1, nn_indices, nn_dists);
         if (std::sqrt(nn_dists[0]) < 0.03) {
-          //pcl::PointXYZ conf_point = (*model_upsampled_points_)[nn_indices[0]];
-          //Eigen::Vector3d conf_pont_e(conf_point.x, conf_point.y,
+          // pcl::PointXYZ conf_point =
+          // (*model_upsampled_points_)[nn_indices[0]]; Eigen::Vector3d
+          // conf_pont_e(conf_point.x, conf_point.y,
           //                            conf_point.z);
-          conf_points_debug->push_back((*model_upsampled_points_)[nn_indices[0]]);
+          conf_points_debug->push_back(
+              (*model_upsampled_points_)[nn_indices[0]]);
           Eigen::Vector3d conf_pont_e(p.x, p.y, p.z);
           Eigen::Vector3d center1_e = center_estimates_.at(i);
           Eigen::Vector3d diff_1 = conf_pont_e - center1_e;
           diff_1.normalize();
-          if (matches == 0){
+          if (matches == 0) {
             overlap_dir += diff_1;
           } else {
-            if (diff_1.dot(overlap_dir) > 0.707){
+            if (diff_1.dot(overlap_dir) > 0.707) {
               overlap_dir += diff_1;
               overlap_dir.normalize();
             }
@@ -299,23 +312,28 @@ void ProposalSelection::selectProposals() {
 
       std::string save05 =
           "/home/philipp/Schreibtisch/ros_dir/confliction_model_points_" +
-              std::to_string(i) + "_" + std::to_string(counter) + ".ply";
+          std::to_string(i) + "_" + std::to_string(counter) + ".ply";
       pcl::io::savePLYFile(save05, *conf_points_debug);
 
-      double cur_overlap = ((double)matches) / ((double)upsampled_cloud->size());
+      double cur_overlap =
+          ((double)matches) / ((double)upsampled_cloud->size());
       overlap_dir.normalize();
 
-      if (matches == 0){
+      if (matches == 0) {
         break;
       } else {
         int best_k_i = 0;
         double best_kij_score = 0;
         Eigen::Matrix3d dir_i = direction_estimates_.at(i);
-        ROS_INFO("dir_1: %f %f %f", dir_i.col(0).x(),  dir_i.col(0).y(),  dir_i.col(0).z());
-        ROS_INFO("dir_2: %f %f %f", dir_i.col(1).x(),  dir_i.col(1).y(),  dir_i.col(1).z());
-        ROS_INFO("dir_3: %f %f %f", dir_i.col(2).x(),  dir_i.col(2).y(),  dir_i.col(2).z());
+        ROS_INFO("dir_1: %f %f %f", dir_i.col(0).x(), dir_i.col(0).y(),
+                 dir_i.col(0).z());
+        ROS_INFO("dir_2: %f %f %f", dir_i.col(1).x(), dir_i.col(1).y(),
+                 dir_i.col(1).z());
+        ROS_INFO("dir_3: %f %f %f", dir_i.col(2).x(), dir_i.col(2).y(),
+                 dir_i.col(2).z());
 
-        ROS_INFO("overlap_dir: %f %f %f", overlap_dir.x(), overlap_dir.y(), overlap_dir.z());
+        ROS_INFO("overlap_dir: %f %f %f", overlap_dir.x(), overlap_dir.y(),
+                 overlap_dir.z());
         for (int k_i = 0; k_i < 6; k_i++) {
           int col_1 = k_i % 2 == 0 ? k_i / 2 : (k_i - 1) / 2;
           Eigen::Vector3d dir_1 = dir_i.col(col_1);
@@ -323,11 +341,12 @@ void ProposalSelection::selectProposals() {
           Eigen::Vector3d dir_1_oriented;
           if (k_i % 2 != 0) {
             dir_1_oriented = -dir_1;
-          }  else {
+          } else {
             dir_1_oriented = dir_1;
           }
 
-          ROS_INFO("dir_1_oriented: %f %f %f", dir_1_oriented.x(), dir_1_oriented.y(), dir_1_oriented.z());
+          ROS_INFO("dir_1_oriented: %f %f %f", dir_1_oriented.x(),
+                   dir_1_oriented.y(), dir_1_oriented.z());
           double cur_score = overlap_dir.dot(dir_1_oriented);
           ROS_INFO("cur_score %f", cur_score);
           if (cur_score > best_kij_score) {
@@ -354,10 +373,10 @@ void ProposalSelection::selectProposals() {
         posterior_update.normalize();
 
         Eigen::VectorXd posterior_updated = this->computePosterior(
-            parameter_probabilities.at(i).at(best_k_i),
-            posterior_update);
+            parameter_probabilities.at(i).at(best_k_i), posterior_update);
 
-        if ((posterior_updated - parameter_probabilities.at(i).at(best_k_i)).lpNorm<1>() < 10e-10) {
+        if ((posterior_updated - parameter_probabilities.at(i).at(best_k_i))
+                .lpNorm<1>() < 10e-10) {
           break;
         }
         parameter_probabilities.at(i).at(best_k_i) = posterior_updated;
@@ -365,7 +384,6 @@ void ProposalSelection::selectProposals() {
       }
     }
   }
-
 
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> conf_point_clouds;
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> conf_kd_trees;
@@ -375,10 +393,9 @@ void ProposalSelection::selectProposals() {
 
   std::vector<int> elements_without_conficts;
 
-
   ROS_INFO("Element Conficts");
   int counter = 0;
-  //Resolve Conflicts between elements
+  // Resolve Conflicts between elements
   while (counter < 100) {
     ROS_INFO("Conficting loop start");
     conf_point_clouds.clear();
@@ -388,7 +405,9 @@ void ProposalSelection::selectProposals() {
     conf_updated_probs.clear();
 
     for (int i = 0; i < parameter_probabilities.size(); i++) {
-      if (std::find(elements_without_conficts.begin(), elements_without_conficts.end(), i) != elements_without_conficts.end()) {
+      if (std::find(elements_without_conficts.begin(),
+                    elements_without_conficts.end(),
+                    i) != elements_without_conficts.end()) {
         pcl::PointCloud<pcl::PointXYZ>::Ptr placeholder(
             new pcl::PointCloud<pcl::PointXYZ>());
         placeholder->push_back(pcl::PointXYZ(0, 0, 0));
@@ -417,8 +436,8 @@ void ProposalSelection::selectProposals() {
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cloud(
             new pcl::PointCloud<pcl::PointXYZ>());
-        this->upsampledStructuredPointCloud(a1, a2, b1, b2, c1, c2, center, dirs,
-                                            upsampled_cloud, 0.05);
+        this->upsampledStructuredPointCloud(a1, a2, b1, b2, c1, c2, center,
+                                            dirs, upsampled_cloud, 0.05);
         conf_point_clouds.push_back(upsampled_cloud);
 
         pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree(
@@ -446,9 +465,13 @@ void ProposalSelection::selectProposals() {
       std::vector<double> overlap_vec;
       std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> overlap_dirs;
       for (int l2 = 0; l2 < conf_point_clouds.size(); l2++) {
-        if (std::find(elements_without_conficts.begin(), elements_without_conficts.end(), l1) != elements_without_conficts.end() ||
-            std::find(elements_without_conficts.begin(), elements_without_conficts.end(), l2) != elements_without_conficts.end() ||
-            l2 == l1){
+        if (std::find(elements_without_conficts.begin(),
+                      elements_without_conficts.end(),
+                      l1) != elements_without_conficts.end() ||
+            std::find(elements_without_conficts.begin(),
+                      elements_without_conficts.end(),
+                      l2) != elements_without_conficts.end() ||
+            l2 == l1) {
           overlap_vec.push_back(0.0);
           overlap_dirs.push_back(
               std::make_pair(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero()));
@@ -463,8 +486,7 @@ void ProposalSelection::selectProposals() {
         for (const auto &p : (*cloud_i)) {
           kd_tree_j->nearestKSearch(p, 1, nn_indices, nn_dists);
           if (std::sqrt(nn_dists[0]) < 0.03) {
-            Eigen::Vector3d conf_pont_e(p.x, p.y,
-                                        p.z);
+            Eigen::Vector3d conf_pont_e(p.x, p.y, p.z);
             Eigen::Vector3d center1_e = center_estimates_.at(l1);
             Eigen::Vector3d center2_e = center_estimates_.at(l2);
             Eigen::Vector3d diff_1 = conf_pont_e - center1_e;
@@ -489,12 +511,13 @@ void ProposalSelection::selectProposals() {
       std::pair<Eigen::Vector3d, Eigen::Vector3d> max_overlap_dir =
           overlap_dirs.at(max_idx);
       ROS_INFO("Check overlap");
-      if (max_overlap <  1.0 / ((double) cloud_i->size())){
-        if (std::find(elements_without_conficts.begin(), elements_without_conficts.end(), l1) == elements_without_conficts.end()){
+      if (max_overlap < 1.0 / ((double)cloud_i->size())) {
+        if (std::find(elements_without_conficts.begin(),
+                      elements_without_conficts.end(),
+                      l1) == elements_without_conficts.end()) {
           elements_without_conficts.push_back(l1);
         }
-      }
-      else {
+      } else {
         // Get conflicting dimension
         Eigen::Vector3d center_i = center_estimates_.at(l1);
         Eigen::Vector3d center_j = center_estimates_.at(max_idx);
@@ -712,12 +735,11 @@ void ProposalSelection::upsampledStructuredPointCloud(
       for (int i3 = 0; i3 < steps_c; i3++) {
         double cur_c = (c2 + step * i3);
 
-        if (i1 == 0 || i1 == (steps_a - 1) ||
-            i2 == 0 || i2 == (steps_b - 1) ||
-            i3 == 0 || i3 == (steps_c - 1)){
+        if (i1 == 0 || i1 == (steps_a - 1) || i2 == 0 || i2 == (steps_b - 1) ||
+            i3 == 0 || i3 == (steps_c - 1)) {
           Eigen::Vector3d cur_e = center + directions.col(0) * cur_a +
-              directions.col(1) * cur_b +
-              directions.col(2) * cur_c;
+                                  directions.col(1) * cur_b +
+                                  directions.col(2) * cur_c;
 
           pcl::PointXYZ p((float)cur_e.x(), (float)cur_e.y(), (float)cur_e.z());
           result_cloud->push_back(p);
@@ -726,7 +748,6 @@ void ProposalSelection::upsampledStructuredPointCloud(
     }
   }
 }
-
 
 void ProposalSelection::organizeDatastructure() {
   int nr_planar_elements = center_estimates_.size();

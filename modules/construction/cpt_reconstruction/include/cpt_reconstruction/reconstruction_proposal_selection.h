@@ -19,7 +19,6 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 
-#include <pcl/octree/octree_search.h>
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/PolygonMesh.h>
 #include <pcl/Vertices.h>
@@ -50,9 +49,11 @@ class ProposalSelection {
       std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds,
       pcl::PolygonMesh mesh_model,
       pcl::PointCloud<pcl::PointXYZ>::Ptr model_upsampled_points,
+      pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr scan_octree,
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
       std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_hierarchies,
       std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
       std::vector<double> &radius_estimates);
 
@@ -64,7 +65,8 @@ class ProposalSelection {
   void upsampledStructuredPointCloud(
       double a1, double a2, double b1, double b2, double c1, double c2,
       Eigen::Vector3d center, Eigen::Matrix3d directions,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud, double tol, double step = 0.03);
+      pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud, double tol,
+      double step = 0.03);
   double findParameterFromLikelihood(const Eigen::VectorXd &params,
                                      const Eigen::VectorXd &probabilities,
                                      int k);
@@ -83,7 +85,7 @@ class ProposalSelection {
   std::vector<Eigen::Vector3d> center_estimates_;
   std::vector<Eigen::Matrix3d> direction_estimates_;
   std::vector<std::vector<Eigen::VectorXd>> parameter_estimates_;
-
+  std::vector<std::vector<Eigen::VectorXd>> parameter_hierarchies_;
   // Cylinders
   std::vector<Eigen::MatrixXd> bounded_axis_estimates_;
   std::vector<double> radius_estimates_;
@@ -93,8 +95,10 @@ class ProposalSelection {
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_;
 
   // Score computation
-  pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr model_upsampled_octree_;
+  pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr
+      model_upsampled_octree_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr scan_kdtree_;
+  pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr scan_octree_;
 
   //
   pcl::PolygonMesh mesh_model_;
