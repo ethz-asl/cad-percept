@@ -226,7 +226,7 @@ class MeshGeneration {
   void planeFromIdx(Eigen::Vector4f &result, int idx);
 
   void removeDuplicatedPoints(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                              double eps = 10e-6);
+                              double eps = 10e-3);
 
   void removeDuplicatedValues(std::vector<double> &vector, double eps = 10e-6);
 

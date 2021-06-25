@@ -1,6 +1,6 @@
 # Setup
 # 0 -> SuperMegaBot, 1 -> Totalstation
-SensorType : 1
+SensorType : 0
 
 #For Totalstation only:
 TransformationMatrix: [1.0, 0.0, 0.0, 0.0,
@@ -9,7 +9,8 @@ TransformationMatrix: [1.0, 0.0, 0.0, 0.0,
                        0.0, 0.0, 0.0, 1.0]
 StationaryPosition: [5.5, -1.9, 0.5]
 
-ScanPointsFile: "/home/philipp/Schreibtisch/leica/new_scan1_aligned.ply"
+#ScanPointsFile: "/home/philipp/Schreibtisch/leica/new_scan1_aligned.ply"
+ScanPointsFile: "/home/philipp/Schreibtisch/Faro/CLA_C_red_aligned.ply"
 
 ########################################################################
 ### Paths
@@ -55,15 +56,15 @@ VoxelGridFilterResolution: 0.01
 MinSizeValidPlane: 50
 ValidSizeThresholdPlane: 1000
 ThresholdSecondEigenvalue: 0.00015
-IntervalFusingClusters: 1000
-IntervalCleaningClusters: 1000 #200
-IntervalForwardingClusters: 10 #200
+IntervalFusingClusters: 50
+IntervalCleaningClusters: 50 #200
+IntervalForwardingClusters: 1600 #200
 
 #Fusing Planes
 DotProductNormals: 0.99
 DotProductAxis: 0.99
-DistanceMatchingPoint: 0.05
-Coverage: 0.01
+DistanceMatchingPoint: 0.08
+Coverage: 0.005
 
 #Conflicting Clusters
 DistanceConflictingPoint: 0.03

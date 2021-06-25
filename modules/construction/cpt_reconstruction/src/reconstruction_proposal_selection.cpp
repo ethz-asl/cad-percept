@@ -22,6 +22,7 @@ ProposalSelection::ProposalSelection(
       center_estimates_(center_estimates),
       direction_estimates_(direction_estimates),
       parameter_estimates_(parameter_estimates),
+      parameter_probabilities_(parameter_estimates), //for having the same structure
       parameter_hierarchies_(parameter_hierarchies),
 
       bounded_axis_estimates_(bounded_axis_estimates),
@@ -32,6 +33,7 @@ ProposalSelection::ProposalSelection(
     (*meshing_points) += *(meshing_clouds.at(i));
   }
   scan_kdtree_->setInputCloud(meshing_points);
+
 }
 
 int ProposalSelection::findMaxIndexInEigenVector(
@@ -107,7 +109,7 @@ Eigen::VectorXd ProposalSelection::computePosterior(
   for (int i = 0; i < size; i++) {
     normalizer += prior[i] * posterior[i];
   }
-  if (normalizer > 10e-16) {
+  if (normalizer > 10e-30) {
     for (int i = 0; i < size; i++) {
       new_probability[i] = prior[i] * posterior[i] / normalizer;
     }
@@ -118,32 +120,38 @@ Eigen::VectorXd ProposalSelection::computePosterior(
   }
 }
 
+void ProposalSelection::L1Normalizer(Eigen::VectorXd &vec){
+  double l1_norm = vec.lpNorm<1>();
+  vec /= l1_norm;
+}
+
 void ProposalSelection::selectProposals() {
   // Compute all plane from the building model
-  // this->removeInsufficientElements();
+  this->removeInsufficientElements();
   this->processModelPlanes();
   ROS_INFO("Preprocessed Planes");
 
-  std::vector<std::vector<Eigen::VectorXd>> parameter_probabilities(
-      parameter_estimates_);
+  //std::vector<std::vector<Eigen::VectorXd>> parameter_probabilities(
+  //    parameter_estimates_);
 
   // Normalize parameters as prior probability
-  for (int i = 0; i < parameter_probabilities.size(); i++) {
-    for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
-      Eigen::VectorXd para_temp = parameter_probabilities.at(i).at(j);
+  for (int i = 0; i < parameter_probabilities_.size(); i++) {
+    for (int j = 0; j < parameter_probabilities_.at(i).size(); j++) {
+      Eigen::VectorXd para_temp = parameter_probabilities_.at(i).at(j);
       para_temp = para_temp.cwiseAbs();
-      para_temp.normalize();
+      this->L1Normalizer(para_temp);
 
       Eigen::VectorXd hierarchies = parameter_hierarchies_.at(i).at(j);
-      hierarchies.normalize();
+      this->L1Normalizer(hierarchies);
 
       Eigen::VectorXd size_hierarchy_prob =
           this->computePosterior(para_temp, hierarchies);
 
-      parameter_probabilities.at(i).at(j) = size_hierarchy_prob;
+      parameter_probabilities_.at(i).at(j) = size_hierarchy_prob;
     }
   }
   ROS_INFO("Computed Probabilities");
+
 
   for (int i = 0; i < parameter_estimates_.size(); i++) {
     Eigen::Vector3d cur_center = center_estimates_.at(i);
@@ -173,7 +181,7 @@ void ProposalSelection::selectProposals() {
                      point.z() * cur_dir.z());
 
         // Score for shared planes with the building modle
-        double shared_plane_score = 1.0;
+        double shared_plane_score = 0.5;
         for (int l = 0; l < mesh_plane_d_.size(); l++) {
           Eigen::Vector3d candidate_normal = mesh_plane_normals_.at(l);
           double candidate_d = mesh_plane_d_.at(l);
@@ -185,7 +193,7 @@ void ProposalSelection::selectProposals() {
           if (std::fabs(candidate_normal.dot(cur_dir)) > 0.99 &&
               d_diff < 0.05) {
             shared_plane_score +=
-                ((1.0 - 19.9 * d_diff) * mesh_area_.at(l)) * 0.1;
+                ((1.0 - 19.9 * d_diff) * mesh_area_.at(l));
           }
         }
         number_of_shared_planes.push_back(shared_plane_score);
@@ -213,44 +221,47 @@ void ProposalSelection::selectProposals() {
       Eigen::VectorXd shared_planes_vec =
           Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
               number_of_shared_planes.data(), number_of_shared_planes.size());
-      shared_planes_vec.normalize();
+      this->L1Normalizer(shared_planes_vec);
 
       Eigen::VectorXd scan_alignment_vec =
           Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
               scan_alignment_score.data(), scan_alignment_score.size());
-      scan_alignment_vec.normalize();
+      this->L1Normalizer(scan_alignment_vec);
 
       Eigen::VectorXd model_alignment_vec =
           Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
               model_alignment_score.data(), model_alignment_score.size());
-      model_alignment_vec.normalize();
+      this->L1Normalizer(model_alignment_vec);
 
       Eigen::VectorXd updated_prob1 = this->computePosterior(
-          parameter_probabilities.at(i).at(j), shared_planes_vec);
-      parameter_probabilities.at(i).at(j) = updated_prob1;
+          parameter_probabilities_.at(i).at(j), shared_planes_vec);
+      parameter_probabilities_.at(i).at(j) = updated_prob1;
 
       Eigen::VectorXd updated_prob2 = this->computePosterior(
-          parameter_probabilities.at(i).at(j), scan_alignment_vec);
-      parameter_probabilities.at(i).at(j) = updated_prob2;
+          parameter_probabilities_.at(i).at(j), scan_alignment_vec);
+      parameter_probabilities_.at(i).at(j) = updated_prob2;
 
       Eigen::VectorXd updated_prob3 = this->computePosterior(
-          parameter_probabilities.at(i).at(j), model_alignment_vec);
-      parameter_probabilities.at(i).at(j) = updated_prob3;
+          parameter_probabilities_.at(i).at(j), model_alignment_vec);
+      parameter_probabilities_.at(i).at(j) = updated_prob3;
     }
   }
+
+  this->organizeDatastructure();
+  this->removeConflictingElements();
 
   std::vector<int> nn_indices{1};
   std::vector<float> nn_dists{1};
 
   // Resolve Conflicts with buiding model
-  for (int i = 0; i < parameter_probabilities.size(); i++) {
+  for (int i = 0; i < parameter_probabilities_.size(); i++) {
     int counter = 0;
     ROS_INFO("Model Conflicts for Element %d", i);
     while (counter < 100) {
       ROS_INFO("Start Iteration");
       std::vector<double> most_likely_params_per_elements;
-      for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
-        Eigen::VectorXd probability_vec = parameter_probabilities.at(i).at(j);
+      for (int j = 0; j < parameter_probabilities_.at(i).size(); j++) {
+        Eigen::VectorXd probability_vec = parameter_probabilities_.at(i).at(j);
         int max_idx = this->findMaxIndexInEigenVector(probability_vec);
         double most_likely_para = parameter_estimates_.at(i).at(j)[max_idx];
         most_likely_params_per_elements.push_back(most_likely_para);
@@ -357,29 +368,29 @@ void ProposalSelection::selectProposals() {
         ROS_INFO("Bes_ki_score %f", best_kij_score);
 
         Eigen::VectorXd old_probabilites =
-            parameter_probabilities.at(i).at(best_k_i);
+            parameter_probabilities_.at(i).at(best_k_i);
         int old_idx = this->findMaxIndexInEigenVector(old_probabilites);
         double old_para = parameter_estimates_.at(i).at(best_k_i)[old_idx];
 
         Eigen::VectorXd posterior_update(old_probabilites.size());
         for (int v = 0; v < old_probabilites.size(); v++) {
           if (std::fabs(parameter_estimates_.at(i).at(best_k_i)[v]) >=
-              (std::fabs(old_para) - 0.015)) {
+              (std::fabs(old_para) - 0.01)) {
             posterior_update[v] = 0.0;
           } else {
             posterior_update[v] = 1.0;
           }
         }
-        posterior_update.normalize();
+        this->L1Normalizer(posterior_update);
 
         Eigen::VectorXd posterior_updated = this->computePosterior(
-            parameter_probabilities.at(i).at(best_k_i), posterior_update);
+            parameter_probabilities_.at(i).at(best_k_i), posterior_update);
 
-        if ((posterior_updated - parameter_probabilities.at(i).at(best_k_i))
+        if ((posterior_updated - parameter_probabilities_.at(i).at(best_k_i))
                 .lpNorm<1>() < 10e-10) {
           break;
         }
-        parameter_probabilities.at(i).at(best_k_i) = posterior_updated;
+        parameter_probabilities_.at(i).at(best_k_i) = posterior_updated;
         counter++;
       }
     }
@@ -404,7 +415,7 @@ void ProposalSelection::selectProposals() {
     conf_ids.clear();
     conf_updated_probs.clear();
 
-    for (int i = 0; i < parameter_probabilities.size(); i++) {
+    for (int i = 0; i < parameter_probabilities_.size(); i++) {
       if (std::find(elements_without_conficts.begin(),
                     elements_without_conficts.end(),
                     i) != elements_without_conficts.end()) {
@@ -418,8 +429,8 @@ void ProposalSelection::selectProposals() {
         conf_kd_trees.push_back(placeholder_kd_tree);
       } else {
         std::vector<double> most_likely_params_per_elements;
-        for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
-          Eigen::VectorXd probability_vec = parameter_probabilities.at(i).at(j);
+        for (int j = 0; j < parameter_probabilities_.at(i).size(); j++) {
+          Eigen::VectorXd probability_vec = parameter_probabilities_.at(i).at(j);
           int max_idx = this->findMaxIndexInEigenVector(probability_vec);
           double most_likely_para = parameter_estimates_.at(i).at(j)[max_idx];
           most_likely_params_per_elements.push_back(most_likely_para);
@@ -437,7 +448,7 @@ void ProposalSelection::selectProposals() {
         pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cloud(
             new pcl::PointCloud<pcl::PointXYZ>());
         this->upsampledStructuredPointCloud(a1, a2, b1, b2, c1, c2, center,
-                                            dirs, upsampled_cloud, 0.05);
+                                            dirs, upsampled_cloud, 0.04);
         conf_point_clouds.push_back(upsampled_cloud);
 
         pcl::search::KdTree<pcl::PointXYZ>::Ptr upsampled_kd_tree(
@@ -529,9 +540,9 @@ void ProposalSelection::selectProposals() {
             parameter_estimates_.at(max_idx);
 
         std::vector<Eigen::VectorXd> probabilites_i =
-            parameter_probabilities.at(l1);
+            parameter_probabilities_.at(l1);
         std::vector<Eigen::VectorXd> probabilites_j =
-            parameter_probabilities.at(max_idx);
+            parameter_probabilities_.at(max_idx);
 
         // Reduce dimension with lower probability
         ROS_INFO("Find Dimension");
@@ -576,9 +587,9 @@ void ProposalSelection::selectProposals() {
         }
 
         double likelihood_1 =
-            parameter_probabilities.at(l1).at(best_k_i).maxCoeff();
+            parameter_probabilities_.at(l1).at(best_k_i).maxCoeff();
         double likelihood_2 =
-            parameter_probabilities.at(max_idx).at(best_k_j).maxCoeff();
+            parameter_probabilities_.at(max_idx).at(best_k_j).maxCoeff();
 
         if (likelihood_2 > likelihood_1) {
           conf_ids.push_back(std::make_pair(l1, best_k_i));
@@ -600,7 +611,7 @@ void ProposalSelection::selectProposals() {
       int element_dimension = update_idx.second;
 
       Eigen::VectorXd old_probabilites =
-          parameter_probabilities.at(element_number).at(element_dimension);
+          parameter_probabilities_.at(element_number).at(element_dimension);
       int old_idx = this->findMaxIndexInEigenVector(old_probabilites);
       double old_para = parameter_estimates_.at(element_number)
                             .at(element_dimension)[old_idx];
@@ -609,18 +620,18 @@ void ProposalSelection::selectProposals() {
       for (int v = 0; v < old_probabilites.size(); v++) {
         if (std::fabs(parameter_estimates_.at(element_number)
                           .at(element_dimension)[v]) >=
-            (std::fabs(old_para) - 0.015)) {
+            (std::fabs(old_para) - 0.01)) {
           posterior_update[v] = 0.0;
         } else {
           posterior_update[v] = 1.0;
         }
       }
-      posterior_update.normalize();
+      this->L1Normalizer(posterior_update);
 
       Eigen::VectorXd posterior_updated = this->computePosterior(
-          parameter_probabilities.at(element_number).at(element_dimension),
+          parameter_probabilities_.at(element_number).at(element_dimension),
           posterior_update);
-      parameter_probabilities.at(element_number).at(element_dimension) =
+      parameter_probabilities_.at(element_number).at(element_dimension) =
           posterior_updated;
     }
 
@@ -642,9 +653,9 @@ void ProposalSelection::selectProposals() {
     counter++;
   }
 
-  for (int i = 0; i < parameter_probabilities.size(); i++) {
-    for (int j = 0; j < parameter_probabilities.at(i).size(); j++) {
-      Eigen::VectorXd probability_vec = parameter_probabilities.at(i).at(j);
+  for (int i = 0; i < parameter_probabilities_.size(); i++) {
+    for (int j = 0; j < parameter_probabilities_.at(i).size(); j++) {
+      Eigen::VectorXd probability_vec = parameter_probabilities_.at(i).at(j);
       int max_idx = this->findMaxIndexInEigenVector(probability_vec);
       double most_likely_para = parameter_estimates_.at(i).at(j)[max_idx];
       parameter_estimates_.at(i).at(j).resize(1, 1);
@@ -697,6 +708,8 @@ void ProposalSelection::removeInsufficientElements() {
     center_estimates_.erase(center_estimates_.begin() + idx - idx_corr);
     direction_estimates_.erase(direction_estimates_.begin() + idx - idx_corr);
     parameter_estimates_.erase(parameter_estimates_.begin() + idx - idx_corr);
+    parameter_probabilities_.erase(parameter_probabilities_.begin() + idx - idx_corr);
+    parameter_hierarchies_.erase(parameter_hierarchies_.begin() + idx - idx_corr);
     idx_corr++;
   }
 }
@@ -717,12 +730,24 @@ void ProposalSelection::upsampledStructuredPointCloud(
     double a1, double a2, double b1, double b2, double c1, double c2,
     Eigen::Vector3d center, Eigen::Matrix3d directions,
     pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud, double tol, double step) {
-  a1 -= tol;
-  a2 += tol;
-  b1 -= tol;
-  b2 += tol;
-  c1 -= tol;
-  c2 += tol;
+  if (a1 > 0.08){
+    a1 -= tol;
+  }
+  if (a2 < -0.08){
+    a2 += tol;
+  }
+  if (b1 > 0.08){
+    b1 -= tol;
+  }
+  if (b2 < -0.08){
+    b2 += tol;
+  }
+  if (c1 > 0.08){
+    c1 -= tol;
+  }
+  if (c2 < -0.08){
+    c2 += tol;
+  }
 
   int steps_a = (int)((a1 - a2) / step + 1);
   int steps_b = (int)((b1 - b2) / step + 1);
@@ -757,34 +782,37 @@ void ProposalSelection::organizeDatastructure() {
     Eigen::Vector3d center = center_estimates_.at(i);
     Eigen::MatrixXd directions = direction_estimates_.at(i);
     std::vector<Eigen::VectorXd> magnitudes = parameter_estimates_.at(i);
+    std::vector<Eigen::VectorXd> probabilities = parameter_probabilities_.at(i);
 
-    Eigen::VectorXd a1 = magnitudes.at(0);
-    Eigen::VectorXd a2 = magnitudes.at(1);
-    Eigen::VectorXd b1 = magnitudes.at(2);
-    Eigen::VectorXd b2 = magnitudes.at(3);
-    Eigen::VectorXd c1 = magnitudes.at(4);
-    Eigen::VectorXd c2 = magnitudes.at(5);
+    int max_idx_a1 = this->findMaxIndexInEigenVector(probabilities.at(0));
+    double a1 = magnitudes.at(0)[max_idx_a1];
+    int max_idx_a2 = this->findMaxIndexInEigenVector(probabilities.at(1));
+    double a2 = magnitudes.at(1)[max_idx_a2];
 
-    double a_max = a1[0];
-    double a_min = a2[0];
-    double b_max = b1[0];
-    double b_min = b2[0];
-    double c_max = c1[0];
-    double c_min = c2[0];
+    int max_idx_b1 = this->findMaxIndexInEigenVector(probabilities.at(2));
+    double b1 = magnitudes.at(2)[max_idx_b1];
+    int max_idx_b2 = this->findMaxIndexInEigenVector(probabilities.at(3));
+    double b2 = magnitudes.at(3)[max_idx_b2];
+
+    int max_idx_c1 = this->findMaxIndexInEigenVector(probabilities.at(4));
+    double c1 = magnitudes.at(4)[max_idx_c1];
+    int max_idx_c2 = this->findMaxIndexInEigenVector(probabilities.at(5));
+    double c2 = magnitudes.at(5)[max_idx_c2];
+
 
     double step = 0.05;
-    int steps_a = (int)((a_max - a_min) / step + 1);
-    int steps_b = (int)((b_max - b_min) / step + 1);
-    int steps_c = (int)((c_max - c_min) / step + 1);
+    int steps_a = (int)((a1 - a2) / step + 1);
+    int steps_b = (int)((b1 - b2) / step + 1);
+    int steps_c = (int)((c1 - c2) / step + 1);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud(
         new pcl::PointCloud<pcl::PointXYZ>());
     for (int i1 = 0; i1 < steps_a; i1++) {
-      double cur_a = (a_min + step * i1);
+      double cur_a = (a2 + step * i1);
       for (int i2 = 0; i2 < steps_b; i2++) {
-        double cur_b = (b_min + step * i2);
+        double cur_b = (b2 + step * i2);
         for (int i3 = 0; i3 < steps_c; i3++) {
-          double cur_c = (c_min + step * i3);
+          double cur_c = (c2 + step * i3);
 
           Eigen::Vector3d cur_e = center + directions.col(0) * cur_a +
                                   directions.col(1) * cur_b +
@@ -795,7 +823,6 @@ void ProposalSelection::organizeDatastructure() {
         }
       }
     }
-
     pcl::search::KdTree<pcl::PointXYZ>::Ptr cur_kd_tree(
         new pcl::search::KdTree<pcl::PointXYZ>());
     cur_kd_tree->setInputCloud(cur_cloud);
@@ -850,7 +877,7 @@ void ProposalSelection::removeConflictingElements() {
       }
     }
     double coverage = ((double)nr_matches / (double)cur_cloud->size());
-    if (coverage > 0.75) {
+    if (coverage > 0.4) {
       conflicting_elements.push_back(i);
     }
   }
@@ -880,6 +907,8 @@ void ProposalSelection::removeConflictingElements() {
     center_estimates_.erase(center_estimates_.begin() + idx - idx_corr);
     direction_estimates_.erase(direction_estimates_.begin() + idx - idx_corr);
     parameter_estimates_.erase(parameter_estimates_.begin() + idx - idx_corr);
+    parameter_probabilities_.erase(parameter_probabilities_.begin() + idx - idx_corr);
+    parameter_hierarchies_.erase(parameter_hierarchies_.begin() + idx - idx_corr);
     idx_corr++;
   }
 }

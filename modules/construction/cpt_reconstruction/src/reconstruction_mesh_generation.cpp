@@ -323,6 +323,7 @@ void MeshGeneration::getMessageData(
       }
     }
   }
+
   scan_octree_->setInputCloud(scan_points_);
   scan_octree_->addPointsFromInputCloud();
 }
@@ -529,13 +530,6 @@ void MeshGeneration::getElementProposalsPlanes(
         artificial_vertices_vector_.at(max_idx), center_estimates,
         direction_estimates, parameter_estimates, parameter_hierarchies);
 
-    // TODO Remove?
-    /*
-    pcl::PointCloud<pcl::PointXYZ>::Ptr new_strong_points(
-        new pcl::PointCloud<pcl::PointXYZ>());
-    pcl::fromPCLPointCloud2(mesh_all.cloud, *new_strong_points);
-    *strong_points += *new_strong_points;
-    */
     done_shapes.push_back(max_idx);
     max_idx = 0;
     max_value = 0;
@@ -1089,7 +1083,7 @@ void MeshGeneration::processElementCloud(
   pcl::copyPointCloud(*element_points, *corners);
 
   // Corners -> Corners top and bottom, Corners side
-  if (false && std::fabs(element_normal.z()) < 0.1) {
+  if (std::fabs(element_normal.z()) < 0.1) {
     double max_z = -10000;
     double min_z = 10000;
     double max_xy = -10000;
@@ -1156,7 +1150,7 @@ void MeshGeneration::selectMainCandidateFaces(
       candidate_d *= -1.0;
     }
 
-    if (element_normal.dot(candidate_normal) > 0.995) {
+    if (element_normal.dot(candidate_normal) > 0.99/*0.995*/) {
       std::vector<uint32_t> vertices = faces_model_.at(i).vertices;
 
       bool found_candidate = false;
@@ -1269,10 +1263,10 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
     Eigen::Vector3d candidate_normal = mesh_plane_normals_.at(i);
     double candidate_d = mesh_plane_d_.at(i);
 
-    if (std::fabs(element_normal.dot(candidate_normal)) < 0.05) {
+    if (std::fabs(element_normal.dot(candidate_normal)) < 0.08/*0.05*/) {
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
-      if (std::fabs(candidate_normal.z()) < 0.03) {
+      if (std::fabs(candidate_normal.z()) < 0.05 /*0.03*/) {
         for (int p_idx = 0; p_idx < corners_side->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_side)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1285,7 +1279,7 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
         if (min_distance <= 0.6) {
           candidate_faces_ortho_vertical_.push_back(i);
         }
-      } else if (std::fabs(candidate_normal.z()) > 0.995) {
+      } else if (std::fabs(candidate_normal.z()) > 0.99 /*0.995*/ ) {
         for (int p_idx = 0; p_idx < corners_top_bottom->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_top_bottom)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1328,8 +1322,9 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
   for (int i = 0; i < corners->size(); i++) {
     pcl::PointXYZ cur_p = (*corners)[i];
     Eigen::Vector3d cur_e(cur_p.x, cur_p.y, cur_p.z);
-    double cur_d1 = -cur_e.dot(major_vector);
-    double cur_d2 = -cur_e.dot(middle_vector);
+    double cur_d1 = cur_e.dot(major_vector);
+    double cur_d2 = cur_e.dot(middle_vector);
+
     if (cur_d1 > max_d1) {
       max_d1 = cur_d1;
     }
@@ -1344,20 +1339,20 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
     }
   }
   // set bounds
-  min_d1 *= 0.85;
-  max_d1 *= 0.85;
-  min_d2 *= 0.85;
-  max_d2 *= 0.85;
+  min_d1 += 0.25;
+  max_d1 -= 0.25;
+
+  min_d2 += 0.25;
+  max_d2 -= 0.25;
   pcl::PointCloud<pcl::PointXYZ>::Ptr red_corners(
       new pcl::PointCloud<pcl::PointXYZ>());
   for (int i = 0; i < corners->size(); i++) {
     pcl::PointXYZ cur_p = (*corners)[i];
     Eigen::Vector3d cur_e(cur_p.x, cur_p.y, cur_p.z);
-    double cur_d1 = -cur_e.dot(major_vector);
-    double cur_d2 = -cur_e.dot(middle_vector);
+    double cur_d1 = cur_e.dot(major_vector);
+    double cur_d2 = cur_e.dot(middle_vector);
 
-    if (cur_d1 > max_d1 || cur_d1 < min_d1 || cur_d2 > max_d2 ||
-        cur_d2 < min_d2) {
+    if ( cur_d1 > max_d1 || cur_d1 < min_d1 || cur_d2 > max_d2 || cur_d2 < min_d2) {
       red_corners->push_back(cur_p);
     }
   }
@@ -1372,13 +1367,13 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
     Eigen::Vector3d candidate_normal = mesh_plane_normals_.at(i);
     double candidate_d = mesh_plane_d_.at(i);
 
-    if (std::fabs(element_normal.dot(candidate_normal)) < 0.05 &&
-        std::fabs(candidate_normal.z()) < 0.03) {
+    if (std::fabs(element_normal.dot(candidate_normal)) < 0.08/*0.05*/ &&
+        std::fabs(candidate_normal.z()) < 0.05/*0.03*/) {
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
-      if (std::fabs(candidate_normal.dot(major_vector)) > 0.999) {
-        for (int p_idx = 0; p_idx < corners->size(); p_idx++) {
-          pcl::PointXYZ p = (*corners)[p_idx];
+      if (std::fabs(candidate_normal.dot(major_vector)) > 0.99 /*0.999*/) {
+        for (int p_idx = 0; p_idx < red_corners->size(); p_idx++) {
+          pcl::PointXYZ p = (*red_corners)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
                                    candidate_normal.y() * p.y +
                                    candidate_normal.z() * p.z + candidate_d);
@@ -1389,9 +1384,9 @@ void MeshGeneration::selectOrthoCandidateFacesFloorCeiling(
         if (min_distance <= 1.0) {
           candidate_faces_ortho_vertical_.push_back(i);
         }
-      } else if (std::fabs(candidate_normal.dot(middle_vector)) > 0.999) {
-        for (int p_idx = 0; p_idx < corners->size(); p_idx++) {
-          pcl::PointXYZ p = (*corners)[p_idx];
+      } else if (std::fabs(candidate_normal.dot(middle_vector)) > 0.99 /*0.999*/) {
+        for (int p_idx = 0; p_idx < red_corners->size(); p_idx++) {
+          pcl::PointXYZ p = (*red_corners)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
                                    candidate_normal.y() * p.y +
                                    candidate_normal.z() * p.z + candidate_d);
@@ -1426,7 +1421,7 @@ void MeshGeneration::computeArtificialVertices(
 
         double ortho_score = (normal_m1.cross(normal_v1)).dot(normal_h1);
         // TODO: Add paramter
-        if (std::fabs(ortho_score) > 0.9) {
+        if (std::fabs(ortho_score) > 0.9 /*0.9*/) {
           pcl::threePlanesIntersection(plane_m1, plane_v1, plane_h1, p1);
           artificial_vertices->push_back(pcl::PointXYZ(p1.x(), p1.y(), p1.z()));
         }
@@ -1719,44 +1714,37 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     if (a > 0) {
       if (this->is_not_included(a1, a)) {
         a1.push_back(a);
-        h_a1.push_back(5.);
+        h_a1.push_back(6.);
       }
     } else {
       if (this->is_not_included(a2, a)) {
         a2.push_back(a);
-        h_a2.push_back(5.);
+        h_a2.push_back(6.);
       }
     }
     if (b > 0) {
       if (this->is_not_included(b1, b)) {
         b1.push_back(b);
-        h_b1.push_back(5.);
+        h_b1.push_back(6.);
       }
     } else {
       if (this->is_not_included(b2, b)) {
         b2.push_back(b);
-        h_b2.push_back(5.);
+        h_b2.push_back(6.);
       }
     }
     if (c > 0) {
       if (this->is_not_included(c1, c)) {
         c1.push_back(c);
-        h_c1.push_back(5.);
+        h_c1.push_back(6.);
       }
     } else {
       if (this->is_not_included(c2, c)) {
         c2.push_back(c);
-        h_c2.push_back(5.);
+        h_c2.push_back(6.);
       }
     }
   }
-
-  bool a1_incomplete = true;  // a1.empty();
-  bool a2_incomplete = true;  // a2.empty();
-  bool b1_incomplete = true;  // b1.empty();
-  bool b2_incomplete = true;  // b2.empty();
-  bool c1_incomplete = true;  // c1.empty();
-  bool c2_incomplete = true;  // c2.empty();
 
   std::string save6 =
       OUTPUT_DIR_ + "filtered_points_cloud" + std::to_string(idx) + ".ply";
@@ -1879,40 +1867,45 @@ bool MeshGeneration::getReconstructionParametersPlanes(
       pcl::PointXYZ caught_point = (*scan_points_)[nn_indices[0]];
 
       Eigen::Vector3d voxel_e(caught_point.x, caught_point.y, caught_point.z);
-      catched_faces->push_back(caught_point);
       // Validate point
       Eigen::Vector3d center_vec = voxel_e - mass_center.cast<double>();
       double length = center_vec.dot(direction);
 
       if (i == 0) {
         if (length > 0. && length < a1_max * 1.3) {
+          catched_faces->push_back(caught_point);
           a1.push_back(length);
-          h_a1.push_back(3.);
+          h_a1.push_back(4.);
         }
       } else if (i == 1) {
         if (length < 0. && length > a2_min * 1.3) {
+          catched_faces->push_back(caught_point);
           a2.push_back(length);
-          h_a2.push_back(3.);
+          h_a2.push_back(4.);
         }
       } else if (i == 2) {
         if (length > 0. && length < b1_max * 1.3) {
+          catched_faces->push_back(caught_point);
           b1.push_back(length);
-          h_b1.push_back(3.);
+          h_b1.push_back(4.);
         }
       } else if (i == 3) {
         if (length < 0. && length > b2_min * 1.3) {
+          catched_faces->push_back(caught_point);
           b2.push_back(length);
-          h_b2.push_back(3.);
+          h_b2.push_back(4.);
         }
       } else if (i == 4) {
         if (length > 0. && length < c1_max * 1.3) {
+          catched_faces->push_back(caught_point);
           c1.push_back(length);
-          h_c1.push_back(3.);
+          h_c1.push_back(4.);
         }
       } else if (i == 5) {
         if (length < 0. && length > c2_min * 1.3) {
+          catched_faces->push_back(caught_point);
           c2.push_back(length);
-          h_c2.push_back(3.);
+          h_c2.push_back(4.);
         }
       }
     }
@@ -1921,12 +1914,6 @@ bool MeshGeneration::getReconstructionParametersPlanes(
       OUTPUT_DIR_ + "scan_catch" + std::to_string(idx) + ".ply";
   pcl::io::savePLYFile(save78, *catched_faces);
 
-  // a1_incomplete = a1.empty();
-  // a2_incomplete = a2.empty();
-  // b1_incomplete = b1.empty();
-  // b2_incomplete = b2.empty();
-  // c1_incomplete = c1.empty();
-  // c2_incomplete = c2.empty();
 
   for (int i = 0; i < filtered_cloud->size(); i++) {
     pcl::PointXYZ cur_point = (*filtered_cloud)[i];
@@ -1935,36 +1922,36 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     double a = center_point.dot(corrected_dir.col(0).cast<float>());
     double b = center_point.dot(corrected_dir.col(1).cast<float>());
     double c = center_point.dot(corrected_dir.col(2).cast<float>());
-    if (a > 0 && a1_incomplete) {
+    if (a > 0) {
       if (this->is_not_included(a1, a)) {
         a1.push_back(a);
         h_a1.push_back(2.);
       }
-    } else if (a < 0 && a2_incomplete) {
+    } else if (a < 0) {
       if (this->is_not_included(a2, a)) {
         a2.push_back(a);
         h_a2.push_back(2.);
       }
     }
 
-    if (b > 0 && b1_incomplete) {
+    if (b > 0) {
       if (this->is_not_included(b1, b)) {
         b1.push_back(b);
         h_b1.push_back(2.);
       }
-    } else if (b < 0 && b2_incomplete) {
+    } else if (b < 0) {
       if (this->is_not_included(b2, b)) {
         b2.push_back(b);
         h_b2.push_back(2.);
       }
     }
 
-    if (c > 0 && c1_incomplete) {
+    if (c > 0) {
       if (this->is_not_included(c1, c)) {
         c1.push_back(c);
         h_c1.push_back(2.);
       }
-    } else if (c < 0 && c2_incomplete) {
+    } else if (c < 0) {
       if (this->is_not_included(c2, c)) {
         c2.push_back(c);
         h_c2.push_back(2.);
@@ -1972,44 +1959,25 @@ bool MeshGeneration::getReconstructionParametersPlanes(
     }
   }
 
-  // a1_incomplete = a1.empty();
-  // a2_incomplete = a2.empty();
-  // b1_incomplete = b1.empty();
-  // b2_incomplete = b2.empty();
-  // c1_incomplete = c1.empty();
-  // c2_incomplete = c2.empty();
 
-  if (a1_incomplete) {
-    a1.push_back(0.05);
-    h_a1.push_back(1.0);
-  }
-  if (a2_incomplete) {
-    a2.push_back(-0.05);
-    h_a2.push_back(1.0);
-  }
-  if (b1_incomplete) {
-    b1.push_back(0.05);
-    h_b1.push_back(1.0);
-  }
-  if (b2_incomplete) {
-    b2.push_back(-0.05);
-    h_b2.push_back(1.0);
-  }
-  if (c1_incomplete) {
-    c1.push_back(0.05);
-    h_c1.push_back(1.0);
-  }
-  if (c2_incomplete) {
-    c2.push_back(-0.05);
-    h_c2.push_back(1.0);
-  }
+  a1.push_back(0.05);
+  h_a1.push_back(1.0);
 
-  // removeDuplicatedValues(a1, 0.005);
-  // removeDuplicatedValues(a2, 0.005);
-  // removeDuplicatedValues(b1, 0.005);
-  // removeDuplicatedValues(b2, 0.005);
-  // removeDuplicatedValues(c1, 0.005);
-  // removeDuplicatedValues(c2, 0.005);
+  a2.push_back(-0.05);
+  h_a2.push_back(1.0);
+
+  b1.push_back(0.05);
+  h_b1.push_back(1.0);
+
+  b2.push_back(-0.05);
+  h_b2.push_back(1.0);
+
+  c1.push_back(0.05);
+  h_c1.push_back(1.0);
+
+  c2.push_back(-0.05);
+  h_c2.push_back(1.0);
+
 
   Eigen::VectorXd a1_vec =
       Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(a1.data(), a1.size());

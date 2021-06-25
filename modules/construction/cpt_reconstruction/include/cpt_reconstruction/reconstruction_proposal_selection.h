@@ -74,6 +74,7 @@ class ProposalSelection {
   void removeConflictingElements();
   void removeInsufficientElements();
   void processModelPlanes();
+  void L1Normalizer(Eigen::VectorXd &vec);
 
   void getSelectedProposals(
       std::vector<Eigen::Vector3d> &center_estimates,
@@ -85,6 +86,7 @@ class ProposalSelection {
   std::vector<Eigen::Vector3d> center_estimates_;
   std::vector<Eigen::Matrix3d> direction_estimates_;
   std::vector<std::vector<Eigen::VectorXd>> parameter_estimates_;
+  std::vector<std::vector<Eigen::VectorXd>> parameter_probabilities_;
   std::vector<std::vector<Eigen::VectorXd>> parameter_hierarchies_;
   // Cylinders
   std::vector<Eigen::MatrixXd> bounded_axis_estimates_;

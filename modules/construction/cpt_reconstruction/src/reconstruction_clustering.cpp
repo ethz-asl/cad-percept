@@ -42,6 +42,8 @@ Clustering::Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
 // https://pointclouds.org/documentation/tutorials/greedy_projection.html
 // https://pointclouds.org/documentation/tutorials/resampling.html
 void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
+  int msg_size = msg.shapes.size();
+
   for (const auto &cur_shape : msg.shapes) {
     // Store points from msg to point cloud
     pcl::PointCloud<pcl::PointXYZ>::Ptr points_cloud(
@@ -119,7 +121,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
     }
   }
   if (SENSOR_TYPE_ == 0 && (counter_ >= INTERVAL_FUSING_CLUSTERS_ &&
-                            (counter_ % INTERVAL_FUSING_CLUSTERS_ == 0))) {
+                            (counter_ % INTERVAL_FUSING_CLUSTERS_ <= msg_size))) {
     ROS_INFO("Size before fuseing plane: %d \n", clouds_plane_.size());
     ROS_INFO("Size before fuseing cylinders: %d \n", clouds_cyl_.size());
     this->fusePlanes();
@@ -129,7 +131,7 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
   }
 
   if (SENSOR_TYPE_ == 0 && counter_ >= INTERVAL_CLEANING_CLUSTERS_ &&
-      (counter_ % INTERVAL_CLEANING_CLUSTERS_ == 0)) {
+      (counter_ % INTERVAL_CLEANING_CLUSTERS_ <= msg_size)) {
     ROS_INFO("Size before fuseing plane: %d \n", clouds_plane_.size());
     ROS_INFO("Size before fuseing cylinders: %d \n", clouds_cyl_.size());
     this->fusePlanes();
@@ -144,7 +146,17 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
   }
 
   if (SENSOR_TYPE_ == 1 || (counter_ >= INTERVAL_FORWARDING_CLUSTERS_ &&
-                            (counter_ % INTERVAL_FORWARDING_CLUSTERS_ == 0))) {
+                            (counter_ % INTERVAL_FORWARDING_CLUSTERS_ <= msg_size))) {
+
+    //Clean up before publishing!
+    if (SENSOR_TYPE_ == 0){
+      this->fusePlanes();
+      this->fuseCylinders();
+      this->removeSingleDetectionsPlanes();
+      this->removeConflictingClustersPlanes();
+      this->removeSingleDetectionsCylinders();
+    }
+
     std::vector<sensor_msgs::PointCloud2> clusters_vec;
     std::vector<geometry_msgs::Vector3> robot_positions_vec;
     std::vector<geometry_msgs::Vector3> ransac_normal_vec;
