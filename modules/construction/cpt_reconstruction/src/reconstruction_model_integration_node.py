@@ -154,6 +154,51 @@ class ManipulationPanel:
                                      textvariable=self.variable_h2)
         self.spinbox_h2.grid(row=14, column=4, padx='5', pady='20', sticky='ew')
 
+        # Translation
+        self.cyl_translation = tk.Label(master=self.root, text='Translation [m]: ')
+        self.cyl_translation.grid(row=15, column=1, padx='10', pady='5', sticky='ew')
+
+        self.cyl_label_translation = tk.Label(master=self.root, text='(dx, dy, dz)', anchor='e')
+        self.cyl_label_translation.grid(row=16, column=1, padx='20', pady='5', sticky='ew')
+
+        self.variable_cyl_dx = tk.DoubleVar(value=0)
+        self.spinbox_cyl_dx = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_cyl_dx)
+        self.spinbox_cyl_dx.grid(row=16, column=2, padx='5', pady='20', sticky='ew')
+
+        self.variable_cyl_dy = tk.DoubleVar(value=0)
+        self.spinbox_cyl_dy = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_cyl_dy)
+        self.spinbox_cyl_dy.grid(row=16, column=3, padx='5', pady='20', sticky='ew')
+
+        self.variable_cyl_dz = tk.DoubleVar(value=0)
+        self.spinbox_cyl_dz = tk.Spinbox(self.root, from_=-100, to=100, increment=0.05, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_cyl_dz)
+        self.spinbox_cyl_dz.grid(row=16, column=4, padx='5', pady='20', sticky='ew')
+
+        # Rotation
+        self.cyl_rotation = tk.Label(master=self.root, text='Rotation [deg]: ')
+        self.cyl_rotation.grid(row=17, column=1, padx='10', pady='5', sticky='ew')
+
+        self.label_cyl_rotation = tk.Label(master=self.root, text=(u"(d\u03b1, d\u03b2, d\u03b3)"), anchor='e')
+        self.label_cyl_rotation.grid(row=18, column=1, padx='20', pady='5', sticky='ew')
+
+        self.variable_cyl_rx = tk.DoubleVar(value=0)
+        self.spinbox_cyl_rx = tk.Spinbox(self.root, from_=-1000, to=1000, increment=1.0, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_cyl_rx)
+        self.spinbox_cyl_rx.grid(row=18, column=2, padx='5', pady='20', sticky='ew')
+
+        self.variable_cyl_ry = tk.DoubleVar(value=0)
+        self.spinbox_cyl_ry = tk.Spinbox(self.root, from_=-1000, to=1000, increment=1.0, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_cyl_ry)
+        self.spinbox_cyl_ry.grid(row=18, column=3, padx='5', pady='20', sticky='ew')
+
+        self.variable_cyl_rz = tk.DoubleVar(value=0)
+        self.spinbox_cyl_rz = tk.Spinbox(self.root, from_=-1000, to=1000, increment=1.0, width=15, justify=tk.LEFT,
+                                     textvariable=self.variable_cyl_rz)
+        self.spinbox_cyl_rz.grid(row=18, column=4, padx='5', pady='20', sticky='ew')
+
+
     def startMainloop(self):
         self.root.mainloop()
 
@@ -203,10 +248,26 @@ class ManipulationPanel:
         self.spinbox_h1["state"] = "normal"
         self.spinbox_h2["state"] = "normal"
 
+        self.spinbox_cyl_dx["state"] = "normal"
+        self.spinbox_cyl_dy["state"] = "normal"
+        self.spinbox_cyl_dz["state"] = "normal"
+
+        self.spinbox_cyl_rx["state"] = "normal"
+        self.spinbox_cyl_ry["state"] = "normal"
+        self.spinbox_cyl_rz["state"] = "normal"
+
     def deactivateCylinders(self):
         self.spinbox_radius["state"] = "disabled"
         self.spinbox_h1["state"] = "disabled"
         self.spinbox_h2["state"] = "disabled"
+
+        self.spinbox_cyl_dx["state"] = "disabled"
+        self.spinbox_cyl_dy["state"] = "disabled"
+        self.spinbox_cyl_dz["state"] = "disabled"
+
+        self.spinbox_cyl_rx["state"] = "disabled"
+        self.spinbox_cyl_ry["state"] = "disabled"
+        self.spinbox_cyl_rz["state"] = "disabled"
 
     def getA1Value(self):
         return float(self.variable_a1.get())
@@ -253,6 +314,26 @@ class ManipulationPanel:
     def getH2Value(self):
         return float(self.variable_h2.get())
 
+    def getCylDxValue(self):
+        return float(self.variable_cyl_dx.get())
+
+    def getCylDyValue(self):
+        return float(self.variable_cyl_dy.get())
+
+    def getCylDzValue(self):
+        return float(self.variable_cyl_dz.get())
+
+    def getCylRxValue(self):
+        return float(self.variable_cyl_rx.get())
+
+    def getCylRyValue(self):
+        return float(self.variable_cyl_ry.get())
+
+    def getCylRzValue(self):
+        return float(self.variable_cyl_rz.get())
+
+
+
     def setValueA1(self, value):
         self.variable_a1.set(value)
 
@@ -289,6 +370,8 @@ class ManipulationPanel:
     def setRzValue(self, value):
         self.variable_rz.set(value)
 
+
+
     def setRadiusValue(self, value):
         self.variable_radius.set(value)
 
@@ -298,6 +381,23 @@ class ManipulationPanel:
     def setH2Value(self, value):
         self.variable_h2.set(value)
 
+    def setCylDxValue(self, value):
+        self.variable_cyl_dx.set(value)
+
+    def setCylDyValue(self, value):
+        self.variable_cyl_dy.set(value)
+
+    def setCylDzValue(self, value):
+        self.variable_cyl_dz.set(value)
+
+    def setCylRxValue(self, value):
+        self.variable_cyl_rx.set(value)
+
+    def setCylRyValue(self, value):
+        self.variable_cyl_ry.set(value)
+
+    def setCylRzValue(self, value):
+        self.variable_cyl_rz.set(value)
 
 class UserInteraction:
     def __init__(self):
@@ -544,7 +644,7 @@ class UserInteraction:
             rospy.loginfo(info_1)
             rospy.loginfo(info_2)
             cyl_mesh = o3d.geometry.TriangleMesh()
-            cyl_mesh = cyl_mesh.create_cylinder(radius, height, 20, 4)
+            cyl_mesh = cyl_mesh.create_cylinder(radius, height, 20, 10)
             cyl_mesh.paint_uniform_color(np.array([1, 0, 0]))
 
             vec1 = np.array([0, 0, 1])
@@ -571,6 +671,13 @@ class UserInteraction:
             manipulationPanel.setRadiusValue(radius)
             manipulationPanel.setH1Value(height / 2.0)
             manipulationPanel.setH2Value(height / 2.0)
+            manipulationPanel.setCylDxValue(0.0)
+            manipulationPanel.setCylDyValue(0.0)
+            manipulationPanel.setCylDzValue(0.0)
+            manipulationPanel.setCylRxValue(0.0)
+            manipulationPanel.setCylRyValue(0.0)
+            manipulationPanel.setCylRzValue(0.0)
+
 
             o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
             vis = o3d.visualization.VisualizerWithKeyCallback()
@@ -593,6 +700,17 @@ class UserInteraction:
                 radius_user = manipulationPanel.getRadiusValue()
                 h1_user = manipulationPanel.getH1Value()
                 h2_user = manipulationPanel.getH2Value()
+                dx_user = manipulationPanel.getCylDxValue()
+                dy_user = manipulationPanel.getCylDyValue()
+                dz_user = manipulationPanel.getCylDzValue()
+                rx_user = manipulationPanel.getCylRxValue()
+                ry_user = manipulationPanel.getCylRyValue()
+                rz_user = manipulationPanel.getCylRzValue()
+
+                user_translation = np.array([dx_user, dy_user, dz_user])
+                user_rotation = element.get_rotation_matrix_from_xyz(np.array([rx_user * np.pi / 180.,
+                                                                               ry_user * np.pi / 180.,
+                                                                               rz_user * np.pi / 180.]))
 
                 height_user = h1_user + h2_user
                 #Update center
@@ -601,10 +719,13 @@ class UserInteraction:
                 center_user = np.array([(p1_user[0] + p2_user[0]) / 2.0, (p1_user[1] + p2_user[1]) / 2.0, (p1_user[2] + p2_user[2]) / 2.0])
 
                 cyl_user = o3d.geometry.TriangleMesh()
-                cyl_user = cyl_user.create_cylinder(radius_user, height_user, 20, 4)
+                cyl_user = cyl_user.create_cylinder(radius_user, height_user, 20, 10)
                 cyl_user.paint_uniform_color(np.array([1, 0, 0]))
                 cyl_user.transform(transformation_matrix)
                 cyl_user.translate(center_user)
+
+                cyl_user.translate(user_translation)
+                cyl_user.rotate(user_rotation)
 
                 cyl_mesh.vertices = cyl_user.vertices
                 cyl_mesh.triangles = cyl_user.triangles

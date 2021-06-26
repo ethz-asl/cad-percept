@@ -1150,7 +1150,7 @@ void MeshGeneration::selectMainCandidateFaces(
       candidate_d *= -1.0;
     }
 
-    if (element_normal.dot(candidate_normal) > 0.99/*0.995*/) {
+    if (element_normal.dot(candidate_normal) > 0.995/*0.99*/) {
       std::vector<uint32_t> vertices = faces_model_.at(i).vertices;
 
       bool found_candidate = false;
@@ -1263,10 +1263,10 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
     Eigen::Vector3d candidate_normal = mesh_plane_normals_.at(i);
     double candidate_d = mesh_plane_d_.at(i);
 
-    if (std::fabs(element_normal.dot(candidate_normal)) < 0.08/*0.05*/) {
+    if (std::fabs(element_normal.dot(candidate_normal)) < 0.05/*0.08*/) {
       std::vector<uint32_t> vertices = faces_model_[i].vertices;
       double min_distance = 1000;
-      if (std::fabs(candidate_normal.z()) < 0.05 /*0.03*/) {
+      if (std::fabs(candidate_normal.z()) <  0.03/*0.05*/) {
         for (int p_idx = 0; p_idx < corners_side->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_side)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1279,7 +1279,7 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
         if (min_distance <= 0.6) {
           candidate_faces_ortho_vertical_.push_back(i);
         }
-      } else if (std::fabs(candidate_normal.z()) > 0.99 /*0.995*/ ) {
+      } else if (std::fabs(candidate_normal.z()) > 0.995 /*0.99*/ ) {
         for (int p_idx = 0; p_idx < corners_top_bottom->size(); p_idx++) {
           pcl::PointXYZ p = (*corners_top_bottom)[p_idx];
           double error = std::fabs(candidate_normal.x() * p.x +
@@ -1289,7 +1289,7 @@ void MeshGeneration::selectOrthoCandidateFacesWall(
             min_distance = error;
           }
         }
-        if (min_distance <= 0.6) {
+        if (min_distance <= 1.2) {
           candidate_faces_ortho_horizontal_.push_back(i);
         }
       }
