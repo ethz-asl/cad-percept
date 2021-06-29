@@ -6,7 +6,7 @@
           args="0 0 0 0 0 0 1 world mesh"/>
 
     <node pkg="tf2_ros" type="static_transform_publisher" name="mesh2d_broadcaster"
-          args="-4 -2 0 0 0 0 1 world mesh2d"/>
+          args="0 0 0 0 0 0 1 world mesh2d"/>
 
     <node name="voliro_planner_node" pkg="cpt_planning_ros" type="voliro_planner_node"
           output="screen">
@@ -17,7 +17,7 @@
         <remap from="odometry" to="/voliro_tri/ground_truth/odometry"/>
         <remap from="cmd_trajectory" to="/voliro_tri/command/trajectory"/>
         <param name="off_path"
-               value="$(find manifold_simulations)/models/vicon_wall/vicon_wall.off"/>
+               value="$(find manifold_simulations)/models/smooth_mesh/meshes/smooth.off"/>
 
     </node>
 

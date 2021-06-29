@@ -196,10 +196,10 @@ class VoliroPlanner {
       std::cout << end_tmp << std::endl;
 
     } else {
-      end_tmp << joy->axes[0] * 0.1, -joy->axes[1] * 0.1, -joy->axes[4] * 0.1;
+      end_tmp << joy->axes[0] * 0.1, -joy->axes[1] * 0.1, joy->axes[2] * 2;
       end_tmp.x() += last_target_uv_.x();
       end_tmp.y() += last_target_uv_.y();
-      end_tmp.z() += last_target_uv_.z();
+      //end_tmp.z() += last_target_uv_.z();
     }
 
     end_tmp.topRows<2>() =
@@ -266,19 +266,14 @@ class VoliroPlanner {
 
       Eigen::Matrix3d R;
 
-      // Important: only use normal + one other axis
-      // otherwise transformation could be a non-rectangular frame and an invalid
-      // transform.
-      R.col(0) =   -j.col(1);                  // one axis becomes x
-      R.col(2) =  -j.col(2);                  // negative normal becomes z
-      R.col(1) = -R.col(0).cross(R.col(2));  // do the rest
+      R.col(0) = -j.col(1);
+      R.col(2) = j.col(2);
+      R.col(1) = -R.col(0).cross(R.col(2));
+      // Rotate around x
+      Eigen::Affine3d rotx(Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::UnitZ()));
+      // Eigen::Affine3d roty(Eigen::AngleAxisd(-M_PI / 2.0, Eigen::Vector3d::UnitZ()));
 
-
-      pt.orientation_W_B = Eigen::Quaterniond(alpha_rot * beta_rot);
-      //pt.orientation_W_B.x() = 0.0;
-      //pt.orientation_W_B.y() = 0.0;
-      //pt.orientation_W_B.z() = 0.0;
-      //pt.orientation_W_B.w() = 1.0;
+      pt.orientation_W_B = Eigen::Quaterniond(R);
 
       trajectory.push_back(pt);
 

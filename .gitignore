@@ -39,6 +39,7 @@
 **/cmake-build-debug/*
 **/.idea/*
 **/.vscode/
+**/venv/
 
 # ignore marker state
 cpt_selective_icp/state

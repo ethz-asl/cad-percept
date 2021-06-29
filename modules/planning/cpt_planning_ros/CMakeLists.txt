@@ -59,6 +59,11 @@ cs_add_executable(voliro_planner_node
         )
 
 
+cs_add_executable(csv_field_node
+        src/nodes/csv_field_node.cpp
+        )
+
+
 #cs_add_executable(param_test_node
 #        src/nodes/param_test_node.cc
 #        )
