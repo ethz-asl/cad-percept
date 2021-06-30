@@ -1,5 +1,5 @@
-#ifndef CPT_OMPL_PLANNING_PATH_KPI_CALCULATOR_H
-#define CPT_OMPL_PLANNING_PATH_KPI_CALCULATOR_H
+#ifndef CPT_PLANNING_EVAL_PATH_KPI_CALCULATOR_H
+#define CPT_PLANNING_EVAL_PATH_KPI_CALCULATOR_H
 #include <cgal_definitions/mesh_model.h>
 #include <cpt_planning/interface/surface_planner.h>
 #include <math.h>
@@ -162,4 +162,4 @@ class PathKPICalcuator {
   double quality_sampling_dist_{0.01};  // default 1 cm
 };
 
-#endif  // CPT_OMPL_PLANNING_PATH_KPI_CALCULATOR_H
+#endif  // CPT_PLANNING_EVAL_PATH_KPI_CALCULATOR_H

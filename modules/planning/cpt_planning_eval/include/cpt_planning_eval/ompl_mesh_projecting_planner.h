@@ -1,5 +1,5 @@
-#ifndef CPT_OMPL_PLANNING_OMPL_MESH_PROJECTING_PLANNER_H
-#define CPT_OMPL_PLANNING_OMPL_MESH_PROJECTING_PLANNER_H
+#ifndef CPT_PLANNING_EVAL_OMPL_MESH_PROJECTING_PLANNER_H
+#define CPT_PLANNING_EVAL_OMPL_MESH_PROJECTING_PLANNER_H
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cpt_planning/implementation/rmp_mesh_planner.h>
@@ -56,4 +56,4 @@ class OMPLMeshProjectingPlanner : public cad_percept::planning::SurfacePlanner {
   double solve_time_{1.0};
   cad_percept::cgal::MeshModel::Ptr model_;
 };
-#endif  // CPT_OMPL_PLANNING_OMPL_MESH_PROJECTING_PLANNER_H
+#endif  // CPT_PLANNING_EVAL_OMPL_MESH_PROJECTING_PLANNER_H

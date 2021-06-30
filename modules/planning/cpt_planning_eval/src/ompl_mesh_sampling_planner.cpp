@@ -1,4 +1,4 @@
-#include <cpt_ompl_planning/ompl_mesh_sampling_planner.h>
+#include <cpt_planning_eval/ompl_mesh_sampling_planner.h>
 #include <ompl/base/PlannerDataGraph.h>
 
 OMPLMeshSamplingPlanner::OMPLMeshSamplingPlanner(std::string meshpath, bool connect, double time)

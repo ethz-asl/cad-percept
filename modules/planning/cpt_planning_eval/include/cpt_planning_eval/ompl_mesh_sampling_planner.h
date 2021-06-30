@@ -1,6 +1,6 @@
 
-#ifndef CPT_OMPL_PLANNING_OMPL_MESH_SAMPLING_PLANNER_H
-#define CPT_OMPL_PLANNING_OMPL_MESH_SAMPLING_PLANNER_H
+#ifndef CPT_PLANNING_EVAL_OMPL_MESH_SAMPLING_PLANNER_H
+#define CPT_PLANNING_EVAL_OMPL_MESH_SAMPLING_PLANNER_H
 #include <CGAL/point_generators_3.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
@@ -86,4 +86,4 @@ class OMPLMeshSamplingPlanner : public cad_percept::planning::SurfacePlanner {
   cad_percept::cgal::MeshModel::Ptr model_;
 };
 
-#endif  // CPT_OMPL_PLANNING_OMPL_MESH_SAMPLING_PLANNER_H
+#endif  // CPT_PLANNING_EVAL_OMPL_MESH_SAMPLING_PLANNER_H

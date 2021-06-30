@@ -1,5 +1,5 @@
-#include <cpt_ompl_planning/evaluation_node.h>
-#include <cpt_ompl_planning/ompl_mesh_projecting_planner.h>
+#include <cpt_planning_eval/evaluation_node.h>
+#include <cpt_planning_eval/ompl_mesh_projecting_planner.h>
 
 #include <cpt_chomp_planning/chomp_mesh_planner.h>
 #include <chrono>

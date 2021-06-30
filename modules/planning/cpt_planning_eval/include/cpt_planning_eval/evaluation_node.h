@@ -1,8 +1,8 @@
-#ifndef CPT_OMPL_PLANNING_EVALUATION_NODE_H
-#define CPT_OMPL_PLANNING_EVALUATION_NODE_H
+#ifndef CPT_PLANNING_EVAL_EVALUATION_NODE_H
+#define CPT_PLANNING_EVAL_EVALUATION_NODE_H
 #include <CGAL/point_generators_3.h>
-#include <cpt_ompl_planning/ompl_mesh_sampling_planner.h>
-#include <cpt_ompl_planning/path_kpi_calculator.h>
+#include <cpt_planning_eval/ompl_mesh_sampling_planner.h>
+#include <cpt_planning_eval/path_kpi_calculator.h>
 #include <cpt_planning/implementation/geodesic_mesh_planner.h>
 #include <cpt_planning/implementation/rmp_mesh_planner.h>
 #include <cpt_planning/interface/surface_planner.h>
@@ -206,4 +206,4 @@ class EvaluationNode {
   boost::uuids::random_generator uuid_gen_;
 };
 
-#endif  // CPT_OMPL_PLANNING_EVALUATION_NODE_H
+#endif  // CPT_PLANNING_EVAL_EVALUATION_NODE_H

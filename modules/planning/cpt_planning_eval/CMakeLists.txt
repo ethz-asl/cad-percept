@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(cpt_ompl_planning)
+project(cpt_planning_eval)
 add_definitions(-DBOOST_MATH_NO_LONG_DOUBLE_MATH_FUNCTIONS)
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)

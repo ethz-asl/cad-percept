@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-    <name>cpt_ompl_planning</name>
+    <name>cpt_planning_eval</name>
     <version>0.0.1</version>
-    <description>cpt_utils</description>
+    <description>Comparison Planners and Tools</description>
 
     <author email="mpantic@ethz.ch">Michael Pantic</author>
     <maintainer email="mpantic@ethz.ch">Michael Pantic</maintainer>

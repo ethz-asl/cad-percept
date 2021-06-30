@@ -1,6 +1,6 @@
-#include <cpt_ompl_planning/PlannerTuningConfig.h>
-#include <cpt_ompl_planning/evaluation_node.h>
-#include <cpt_ompl_planning/ompl_mesh_projecting_planner.h>
+#include <cpt_planning_eval/PlannerTuningConfig.h>
+#include <cpt_planning_eval/evaluation_node.h>
+#include <cpt_planning_eval/ompl_mesh_projecting_planner.h>
 #include <dynamic_reconfigure/server.h>
 
 #include <chrono>
@@ -9,7 +9,7 @@
 std::vector<cad_percept::planning::RMPMeshPlanner *> planners;
 EvaluationNode *evaluationNode;
 
-void callback(cpt_ompl_planning::PlannerTuningConfig &config, uint32_t level) {
+void callback(cpt_planning_eval::PlannerTuningConfig &config, uint32_t level) {
   for (auto planner : planners) {
     planner->setTuning({config.a1, config.a2, config.a3}, {config.b1, config.b2, config.b3},
                        config.dt);
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   evaluationNode->plan(true);
 
 
-  //dynamic_reconfigure::Server<cpt_ompl_planning::PlannerTuningConfig> server;
+  //dynamic_reconfigure::Server<cpt_planning_eval::PlannerTuningConfig> server;
   //server.setCallback(boost::bind(&callback, _1, _2));
 
   //ros::spin();

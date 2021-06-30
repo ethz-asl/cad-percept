@@ -1,4 +1,4 @@
-#include <cpt_ompl_planning/ompl_mesh_projecting_planner.h>
+#include <cpt_planning_eval/ompl_mesh_projecting_planner.h>
 #include <ompl/base/ConstrainedSpaceInformation.h>
 #include <ompl/base/PlannerDataGraph.h>
 #include <ompl/base/spaces/constraint/ProjectedStateSpace.h>

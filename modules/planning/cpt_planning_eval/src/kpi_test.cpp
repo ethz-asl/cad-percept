@@ -1,5 +1,5 @@
 
-#include <cpt_ompl_planning/path_kpi_calculator.h>
+#include <cpt_planning_eval/path_kpi_calculator.h>
 
 #include <chrono>
 #include <iostream>
