@@ -28,7 +28,9 @@ class RMPMeshPlanner : public SurfacePlanner {
   const SurfacePlanner::Result plan(const Eigen::Vector3d start, const Eigen::Vector3d goal,
                                     std::vector<Eigen::Vector3d> *states_out);
 
-  inline const std::string getName() const { return "RMP" /*+ std::to_string(mapping_id_)*/; }
+  inline const std::string getName() const {
+    return "RMP-" + (mapping_ ? mapping_->getMappingName() : "N/A");
+  }
 
   void setTuning(Eigen::Vector3d tuning_1, Eigen::Vector3d tuning_2, double dt = 0.01) {
     tuning_1_ = tuning_1;

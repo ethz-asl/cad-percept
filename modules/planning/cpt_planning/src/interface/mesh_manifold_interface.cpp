@@ -1,10 +1,10 @@
 #include <cpt_planning/interface/mesh_manifold_interface.h>
+#include <glog/logging.h>
 
 namespace cad_percept {
 namespace planning {
 
 Eigen::Matrix3d MeshManifoldInterface::J(const Eigen::Vector3d x) const {
-
   // look up triangle
   Eigen::Vector2d x_uv = x.topRows<2>();
   auto faces = mapping_.nearestFace(x_uv);
@@ -21,14 +21,11 @@ MeshManifoldInterface::StateX MeshManifoldInterface::convertToX(const StateQ &st
 }
 
 MeshManifoldInterface::StateQ MeshManifoldInterface::convertToQ(const StateX &state_x) const {
-  std::cout << "WARNING: MeshManifoldInterface::convertToQ not implemented" << std::endl;
+  LOG(WARNING) << "MeshManifoldInterface::convertToQ not implemented";
   return StateQ();
 }
 
-
-Eigen::Matrix3d MeshManifoldInterface::J(const StateX &state) const {
-  return J(state.pos_);
-}
+Eigen::Matrix3d MeshManifoldInterface::J(const StateX &state) const { return J(state.pos_); }
 
 }  // namespace planning
 }  // namespace cad_percept

@@ -1,4 +1,5 @@
 #include <cpt_planning/implementation/rmp_mesh_planner.h>
+#include <glog/logging.h>
 
 namespace cad_percept {
 namespace planning {
@@ -50,32 +51,15 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
   integrator.resetTo(start_xyz);
   for (double t = 0; t < 500.0; t += dt_) {
     Eigen::Vector3d current_pos;
-    std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
 
     current_pos = integrator.forwardIntegrate(policies, manifold_, dt_);
-
-    std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
-    /* std::cout << "Integrate TIME = "
-               << std::chrono::duration_cast<std::chrono::microseconds>(
-                   (end_time - start_time))
-                   .count()
-               << std::endl;*/
     states_out->push_back(current_pos);
 
     if (integrator.isDone()) {
       reached_criteria = true;
-      std::cout << (current_pos - target_xyz).norm() << std::endl;
-
+      LOG(INFO) << "Residual position after integration: " << (current_pos - target_xyz).norm();
       break;
     }
-    /*if ((current_pos - target_xyz).norm() < 0.005) {
-      Eigen::Vector3d bli, bla, blub;
-      integrator.getState(&bli, &bla, &blub);
-      std::cout << bla << std::endl;
-      std::cout << blub << std::endl;
-      reached_criteria = true;
-      break;
-    }*/
   }
   std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
 
