@@ -7,7 +7,7 @@
 #include <iostream>
 
 std::vector<cad_percept::planning::RMPMeshPlanner *> planners;
-EvaluationNode *evaluationNode;
+cad_percept::planning::EvaluationNode *evaluationNode;
 
 void callback(cpt_planning_eval::PlannerTuningConfig &config, uint32_t level) {
   for (auto planner : planners) {
@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
   ros::NodeHandle node_handle;
   std::string mesh_path = argv[1];
 
-  evaluationNode = new EvaluationNode(node_handle, mesh_path);
+  evaluationNode = new cad_percept::planning::EvaluationNode(node_handle, mesh_path);
   double debug_factor = 3;
 
   cad_percept::planning::RMPMeshPlanner *rmp_planner =

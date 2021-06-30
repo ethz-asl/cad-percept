@@ -1,7 +1,7 @@
+#include <cpt_chomp_planning/chomp_mesh_planner.h>
 #include <cpt_planning_eval/evaluation_node.h>
 #include <cpt_planning_eval/ompl_mesh_projecting_planner.h>
 
-#include <cpt_chomp_planning/chomp_mesh_planner.h>
 #include <chrono>
 #include <iostream>
 
@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
   /*std::string mesh_path =
       "/home/mpantic/ws/rmp/src/manifold_simulations/models/hilo_roof/meshes/hilo_reconstructed.off";*/
 
-  EvaluationNode evaluationNode(node_handle, mesh_path);
+  cad_percept::planning::EvaluationNode evaluationNode(node_handle, mesh_path);
   double debug_factor = 1;
   cad_percept::planning::RMPMeshPlanner rmp_planner(mesh_path);
   // rmp_planner.setTuning({1.0, 11.0, 0.81}, {8.8, 20.0, 0.06}, 0.01);

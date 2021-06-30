@@ -1,11 +1,11 @@
 #ifndef CPT_PLANNING_EVAL_EVALUATION_NODE_H
 #define CPT_PLANNING_EVAL_EVALUATION_NODE_H
 #include <CGAL/point_generators_3.h>
-#include <cpt_planning_eval/ompl_mesh_sampling_planner.h>
-#include <cpt_planning_eval/path_kpi_calculator.h>
 #include <cpt_planning/implementation/geodesic_mesh_planner.h>
 #include <cpt_planning/implementation/rmp_mesh_planner.h>
 #include <cpt_planning/interface/surface_planner.h>
+#include <cpt_planning_eval/ompl_mesh_sampling_planner.h>
+#include <cpt_planning_eval/tools/path_kpi_calculator.h>
 #include <cpt_ros/mesh_model_publisher.h>
 
 #include <boost/uuid/uuid.hpp>
@@ -14,7 +14,9 @@
 #include <chrono>
 #include <fstream>
 #include <vector>
-using cad_percept::planning::SurfacePlanner;
+
+namespace cad_percept {
+namespace planning {
 
 class EvaluationNode {
   typedef struct {
@@ -152,12 +154,12 @@ class EvaluationNode {
     pos_out->z() = points[1].z();
   }
 
-  void plan(bool new_random = true, bool write= true, Eigen::Vector3d start = {0,0,0}, Eigen::Vector3d goal = {0,0,0}) {
+  void plan(bool new_random = true, bool write = true, Eigen::Vector3d start = {0, 0, 0},
+            Eigen::Vector3d goal = {0, 0, 0}) {
     if (new_random) {
       getRandomPos(&start_);
       getRandomPos(&goal_);
-    }
-    else{
+    } else {
       start_ = start;
       goal_ = goal;
     }
@@ -177,9 +179,9 @@ class EvaluationNode {
 
       if (result.success) {
         visualizePath(path, planner.color, planner.id);
-        if(write){
-        logPath(run_id, path);}
-
+        if (write) {
+          logPath(run_id, path);
+        }
       }
       auto edgelist = planner.instance->getEdges();
       if (edgelist.size() > 0) {
@@ -205,5 +207,6 @@ class EvaluationNode {
   PathKPICalcuator kpi_calculator_;
   boost::uuids::random_generator uuid_gen_;
 };
-
+}  // namespace planning
+}  // namespace cad_percept
 #endif  // CPT_PLANNING_EVAL_EVALUATION_NODE_H

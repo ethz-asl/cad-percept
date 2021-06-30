@@ -13,7 +13,8 @@ add_definitions(-std=c++17 -Wall -Wextra -Werror=return-type)
 #############
 cs_add_library(${PROJECT_NAME}
         src/ompl_mesh_sampling_planner.cpp
-        src/ompl_mesh_projecting_planner.cpp)
+        src/ompl_mesh_projecting_planner.cpp
+        src/tools/path_kpi_calculator.cc)
 
 target_link_libraries(${PROJECT_NAME} ${OMPL_LIBRARIES}
         cgal_definitions)
@@ -31,14 +32,6 @@ cs_add_executable(tuning_node
         src/tuning_node.cpp)
 
 target_link_libraries(tuning_node
-        ${PROJECT_NAME}
-        ${OMPL_LIBRARIES}
-        cgal_definitions)
-
-cs_add_executable(kpi_test_node
-        src/kpi_test.cpp)
-
-target_link_libraries(kpi_test_node
         ${PROJECT_NAME}
         ${OMPL_LIBRARIES}
         cgal_definitions)

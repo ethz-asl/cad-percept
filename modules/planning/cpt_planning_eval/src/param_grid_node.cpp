@@ -7,14 +7,14 @@
 #include <iostream>
 
 std::vector<cad_percept::planning::RMPMeshPlanner *> planners;
-EvaluationNode *evaluationNode;
+cad_percept::planning::EvaluationNode *evaluationNode;
 
 int main(int argc, char *argv[]) {
   ros::init(argc, argv, "ompl_test_node");
   ros::NodeHandle node_handle;
   std::string mesh_path = argv[1];
 
-  evaluationNode = new EvaluationNode(node_handle, mesh_path);
+  evaluationNode = new cad_percept::planning::EvaluationNode(node_handle, mesh_path);
 
   Eigen::Vector3d tuning_1(0.7, 13.6, 0.4);
   Eigen::Vector3d tuning_2(20.0, 30.0, 0.01);
