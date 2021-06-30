@@ -4,7 +4,7 @@
 #include <cpt_planning/implementation/geodesic_mesh_planner.h>
 #include <cpt_planning/implementation/rmp_mesh_planner.h>
 #include <cpt_planning/interface/surface_planner.h>
-#include <cpt_planning_eval/ompl_mesh_sampling_planner.h>
+#include <cpt_planning_eval/ompl/ompl_mesh_sampling_planner.h>
 #include <cpt_planning_eval/tools/path_kpi_calculator.h>
 #include <cpt_ros/mesh_model_publisher.h>
 

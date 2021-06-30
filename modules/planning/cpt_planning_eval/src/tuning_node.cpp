@@ -1,6 +1,6 @@
 #include <cpt_planning_eval/PlannerTuningConfig.h>
 #include <cpt_planning_eval/evaluation_node.h>
-#include <cpt_planning_eval/ompl_mesh_projecting_planner.h>
+#include <cpt_planning_eval/ompl/ompl_mesh_projecting_planner.h>
 #include <dynamic_reconfigure/server.h>
 
 #include <chrono>

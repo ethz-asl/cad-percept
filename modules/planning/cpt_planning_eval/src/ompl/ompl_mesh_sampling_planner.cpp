@@ -1,8 +1,15 @@
-#include <cpt_planning_eval/ompl_mesh_sampling_planner.h>
+#include <cpt_planning_eval/ompl/ompl_mesh_sampling_planner.h>
 #include <ompl/base/PlannerDataGraph.h>
+namespace cad_percept {
+namespace planning {
 
-OMPLMeshSamplingPlanner::OMPLMeshSamplingPlanner(std::string meshpath, bool connect, double time)
-    : solve_time_(time), rrt_connect_(connect) {
+OMPLMeshSamplingPlanner::OMPLMeshSamplingPlanner(std::string meshpath, bool connect, double time,
+                                                 double surface_tolerance,
+                                                 double checking_resolution)
+    : surface_tolerance_squared_(surface_tolerance * surface_tolerance),
+      checking_resolution_(checking_resolution),
+      solve_time_(time),
+      rrt_connect_(connect) {
   cad_percept::cgal::MeshModel::create(meshpath, &model_, true);
 }
 
@@ -17,19 +24,17 @@ const cad_percept::planning::SurfacePlanner::Result OMPLMeshSamplingPlanner::pla
   for (int i = 0; i < 3; i++) {
     bounds.setLow(i, bbox.min_coord(i));
     bounds.setHigh(i, bbox.max_coord(i));
-    std::cout << bbox.min_coord(i) << " "<<bbox.max_coord(i)<<std::endl;
   }
   space->as<ob::RealVectorStateSpace>()->setBounds(bounds);
-
-
   ob::SpaceInformationPtr si(new ob::SpaceInformation(space));
 
+  // Define validity checking (so edge validity can be checked)
   si->setStateValidityChecker(
       std::bind(&OMPLMeshSamplingPlanner::meshStateValidityChecker, this, std::placeholders::_1));
-  si->setStateValidityCheckingResolution(0.03);  // 3%
+  // check every x % along an edge (tuning variable!)
+  si->setStateValidityCheckingResolution(checking_resolution_);
 
   auto ss = std::make_shared<og::SimpleSetup>(si);
-
   space->setStateSamplerAllocator(
       std::bind(&OMPLMeshSamplingPlanner::allocMeshManifoldSampler, this, std::placeholders::_1));
 
@@ -78,6 +83,7 @@ const cad_percept::planning::SurfacePlanner::Result OMPLMeshSamplingPlanner::pla
 
   std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
 
+  // add all sampled edges to array.
   ob::PlannerData intermediate_states(si);
   optimizingPlanner->getPlannerData(intermediate_states);
   auto graph = intermediate_states.toBoostGraph();
@@ -105,3 +111,5 @@ const cad_percept::planning::SurfacePlanner::Result OMPLMeshSamplingPlanner::pla
   result.duration = end_time - start_time;
   return result;
 }
+}  // namespace planning
+}  // namespace cad_percept

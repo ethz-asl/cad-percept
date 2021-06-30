@@ -12,8 +12,8 @@ add_definitions(-std=c++17 -Wall -Wextra -Werror=return-type)
 # LIBRARIES #
 #############
 cs_add_library(${PROJECT_NAME}
-        src/ompl_mesh_sampling_planner.cpp
-        src/ompl_mesh_projecting_planner.cpp
+        src/ompl/ompl_mesh_sampling_planner.cpp
+        src/ompl/ompl_mesh_projecting_planner.cpp
         src/tools/path_kpi_calculator.cc)
 
 target_link_libraries(${PROJECT_NAME} ${OMPL_LIBRARIES}

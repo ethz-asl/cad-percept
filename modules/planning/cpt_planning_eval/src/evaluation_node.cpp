@@ -1,6 +1,6 @@
 #include <cpt_chomp_planning/chomp_mesh_planner.h>
 #include <cpt_planning_eval/evaluation_node.h>
-#include <cpt_planning_eval/ompl_mesh_projecting_planner.h>
+#include <cpt_planning_eval/ompl/ompl_mesh_projecting_planner.h>
 
 #include <chrono>
 #include <iostream>
@@ -34,13 +34,13 @@ int main(int argc, char *argv[]) {
 
 
   cad_percept::planning::GeodesicMeshPlanner dgeo_planner(mesh_path);
-  OMPLMeshSamplingPlanner ompl_planner(mesh_path, false, 1.0 * debug_factor);
-  OMPLMeshSamplingPlanner ompl_planner_fast(mesh_path, false, 0.25 * debug_factor);
+  cad_percept::planning::OMPLMeshSamplingPlanner ompl_planner(mesh_path, false, 1.0 * debug_factor);
+  cad_percept::planning::OMPLMeshSamplingPlanner ompl_planner_fast(mesh_path, false, 0.25 * debug_factor);
 
-  OMPLMeshSamplingPlanner ompl_connect_planner(mesh_path, true, 1.0 * debug_factor);
+  cad_percept::planning::OMPLMeshSamplingPlanner ompl_connect_planner(mesh_path, true, 1.0 * debug_factor);
 
-  OMPLMeshProjectingPlanner ompl_planner_projecting(mesh_path, 1.0 * debug_factor);
-  OMPLMeshProjectingPlanner ompl_planner_projecting_fast(mesh_path, 0.25 * debug_factor);
+  cad_percept::planning::OMPLMeshProjectingPlanner ompl_planner_projecting(mesh_path, 1.0 * debug_factor);
+  cad_percept::planning::OMPLMeshProjectingPlanner ompl_planner_projecting_fast(mesh_path, 0.25 * debug_factor);
   chomp::ChompParameters params;
   //params.lambda = 500;
   params.lambda = 1500;
