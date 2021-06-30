@@ -11,6 +11,7 @@
 
 #include <glog/logging.h>
 #include <ros/ros.h>
+
 #include <Eigen/Core>
 
 namespace chomp {

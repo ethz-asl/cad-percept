@@ -1,4 +1,4 @@
-#include <cpt_chomp_planning/chomp_mesh_planner.h>
+#include <cpt_planning_eval/chomp/chomp_mesh_planner.h>
 
 const cad_percept::planning::SurfacePlanner::Result ChompMeshPlanner::plan(
     const Eigen::Vector3d start, const Eigen::Vector3d goal,

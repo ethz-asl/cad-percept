@@ -6,7 +6,7 @@
 #include <iostream>
 #include <thread>
 
-#include "cpt_chomp_planning/chomp_optimizer.h"
+#include <cpt_planning_eval/chomp/chomp_optimizer.h>
 
 namespace chomp {
 void SmoothnessFunc::initFromTrajectory(const ChompTrajectory& traj) {

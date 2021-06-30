@@ -1,14 +1,10 @@
-//
-// Created by mpantic on 13.12.20.
-//
-
 #ifndef CPT_CHOMP_PLANNING_CHOMP_MESH_PLANNER_H
 #define CPT_CHOMP_PLANNING_CHOMP_MESH_PLANNER_H
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cpt_planning/implementation/rmp_mesh_planner.h>
 #include <cpt_planning/interface/surface_planner.h>
-#include <cpt_chomp_planning/chomp_optimizer.h>
+#include <cpt_planning_eval/chomp/chomp_optimizer.h>
 
 class ChompMeshPlanner : public cad_percept::planning::SurfacePlanner {
  public:

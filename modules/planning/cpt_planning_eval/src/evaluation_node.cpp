@@ -1,4 +1,4 @@
-#include <cpt_chomp_planning/chomp_mesh_planner.h>
+#include <cpt_planning_eval/chomp/chomp_mesh_planner.h>
 #include <cpt_planning_eval/evaluation_node.h>
 #include <cpt_planning_eval/ompl/ompl_mesh_projecting_planner.h>
 
