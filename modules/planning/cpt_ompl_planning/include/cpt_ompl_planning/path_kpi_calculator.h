@@ -56,6 +56,7 @@ class PathKPICalcuator {
          << q.smoothness.avg << std::endl;
       os << "std\t\t" << sqrt(q.segment_length.cov) << "\t\t" << sqrt(q.surface_dist.cov) << "\t\t"
          << sqrt(q.smoothness.cov) << std::endl;
+      return os;
     }
   };
 

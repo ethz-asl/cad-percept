@@ -4,12 +4,12 @@ namespace cad_percept {
 namespace planning {
 
 RMPMeshPlanner::RMPMeshPlanner(std::string mesh_path, Eigen::Vector3d tuning_1,
-                               Eigen::Vector3d tuning_2, int mapping)
-    : tuning_1_(tuning_1), tuning_2_(tuning_2), mapping_id_(mapping) {
+                               Eigen::Vector3d tuning_2)
+    : tuning_1_(tuning_1), tuning_2_(tuning_2) {
   cad_percept::cgal::MeshModel::create(mesh_path, &model_, true);
   Eigen::Vector3d zero(0.0, 0.0, 0.0);
   double zero_angle = 0;
-  mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle, mapping_id_);
+  mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle);
   manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero, zero_angle);
 }
 
@@ -55,14 +55,14 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
     current_pos = integrator.forwardIntegrate(policies, manifold_, dt_);
 
     std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
-   /* std::cout << "Integrate TIME = "
-              << std::chrono::duration_cast<std::chrono::microseconds>(
-                  (end_time - start_time))
-                  .count()
-              << std::endl;*/
+    /* std::cout << "Integrate TIME = "
+               << std::chrono::duration_cast<std::chrono::microseconds>(
+                   (end_time - start_time))
+                   .count()
+               << std::endl;*/
     states_out->push_back(current_pos);
 
-    if(integrator.isDone()) {
+    if (integrator.isDone()) {
       reached_criteria = true;
       std::cout << (current_pos - target_xyz).norm() << std::endl;
 

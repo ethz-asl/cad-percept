@@ -1,31 +1,31 @@
 #include <cpt_planning/coordinates/triangle_coords.h>
+
 #include <algorithm>
 
 namespace cad_percept {
 namespace planning {
 
-template<int N>
+template <int N>
 bool TriangleCoords<N>::isInside(cgal::VectorIn<N> point) const {
   Eigen::Vector3d barycentric = toBarycentric(point);
   return (barycentric.array() > 0.0 && barycentric.array() < 1.0).all();
 }
 
-template<int N>
+template <int N>
 cgal::VectorReturn<N> TriangleCoords<N>::toCartesian(cgal::Vector3In barycentric) const {
   Eigen::Vector3d coordinates = barycentric;
-  return static_cast<cgal::VectorReturn<N>>(coordinates.x() * a1_
-      + coordinates.y() * a2_ +
-      coordinates.z() * a3_);
+  return static_cast<cgal::VectorReturn<N>>(coordinates.x() * a1_ + coordinates.y() * a2_ +
+                                            coordinates.z() * a3_);
 }
 
-template<int N>
+template <int N>
 cgal::Vector3Return TriangleCoords<N>::toBarycentric(cgal::VectorIn<N> point_on_triangle) const {
   Eigen::Matrix<double, N, 1> v0, v1, v2;  // intermediate values
 
   // works for 2d and 3d cartesian coordinates (barycentric coordinates are always 3d.)
   v0 = a2_ - a1_;
   v1 = a3_ - a1_;
-  Eigen::Matrix<double,N,1> point_as_eigen = point_on_triangle;
+  Eigen::Matrix<double, N, 1> point_as_eigen = point_on_triangle;
   v2 = point_as_eigen - a1_;
 
   double d00 = v0.dot(v0);
@@ -42,34 +42,44 @@ cgal::Vector3Return TriangleCoords<N>::toBarycentric(cgal::VectorIn<N> point_on_
   return Eigen::Vector3d({u, v, w});
 }
 
-template<int N>
-template<int M>
+template <int N>
+template <int M>
 cgal::VectorReturn<M> TriangleCoords<N>::translateTo(const TriangleCoords<M> &other,
                                                      cgal::VectorIn<N> point_on_triangle) const {
   Eigen::Vector3d barycentric = this->toBarycentric(point_on_triangle);
   return other.toCartesian(barycentric);
 }
 
-template<int N>
+template <int N>
 Eigen::Matrix<double, N, 1> TriangleCoords<N>::getNormal() const {
   // Will cause a compilation errror for 2D triangle coords, as eigen's cross is not defined.
   static_assert(N != 2, "Cross product not implemented in 2D!");
   return (a2_ - a1_).cross(a3_ - a1_).normalized();
 }
 
-template<int N>
+template <int N>
 Eigen::Matrix<double, N, 1> TriangleCoords<N>::getVertex(uint id) const {
   switch (id % 3) {
-    case 0:return a1_;
-    case 1:return a2_;
-    case 2:return a3_;
+    case 0:
+      return a1_;
+    case 1:
+      return a2_;
+    case 2:
+      return a3_;
   }
+
+  // this should be impossible, but to keep the compiler happy
+  // (return-type error) and omit possible segfaults for not returning,
+  // we return a matrix full of nans.
+  Eigen::Matrix<double, N, 1> default_return;
+  default_return.setConstant(std::numeric_limits<double>::quiet_NaN());
+  return default_return;
 }
 
-template<int N>
-template<int M>
-Eigen::Matrix<double, N, N> TriangleCoords<N>::getJacobianWrt(const
-                                                              TriangleCoords<M> &other) const {
+template <int N>
+template <int M>
+Eigen::Matrix<double, N, N> TriangleCoords<N>::getJacobianWrt(
+    const TriangleCoords<M> &other) const {
   static_assert(N == 3 && M == 2, "Currently only implemented for N=3, M=2");
   Eigen::Vector3d A_xyz, B_xyz, C_xyz;  // triangle vertices in xyz
   Eigen::Vector3d A_uv, B_uv, C_uv;     // triangle vertices in uv
@@ -141,16 +151,11 @@ template cgal::VectorReturn<2> TriangleCoords<3>::translateTo(
 
 template Eigen::Matrix<double, 3, 1> TriangleCoords<3>::getNormal() const;
 
-template Eigen::Matrix<double,
-                       2,
-                       1> TriangleCoords<2>::getVertex(uint id) const;
-template Eigen::Matrix<double,
-                       3,
-                       1> TriangleCoords<3>::getVertex(uint id) const;
+template Eigen::Matrix<double, 2, 1> TriangleCoords<2>::getVertex(uint id) const;
+template Eigen::Matrix<double, 3, 1> TriangleCoords<3>::getVertex(uint id) const;
 
-template Eigen::Matrix<double, 3, 3> TriangleCoords<3>::getJacobianWrt(const
-                                                                       TriangleCoords<
-                                                                           2> &other) const;
+template Eigen::Matrix<double, 3, 3> TriangleCoords<3>::getJacobianWrt(
+    const TriangleCoords<2> &other) const;
 
 }  // namespace planning
 }  // namespace cad_percept

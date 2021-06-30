@@ -37,7 +37,7 @@ void UVMapping::CoordinateMeshBuilder::operator()(cgal::HalfedgeDS &hds) {
     cgal::Polyhedron::Halfedge_around_facet_circulator hit = fit->facet_begin();
     do {
       if (i > 2) {
-        std::cout << "Non-triangular mesh" << std::endl;
+        LOG(WARNING) << "Tried to parametrized non-triangular mesh, aborting.";
         break;
       }
       B.add_vertex_to_facet(id_translation[hit->vertex()->id()]);
@@ -47,6 +47,69 @@ void UVMapping::CoordinateMeshBuilder::operator()(cgal::HalfedgeDS &hds) {
     B.end_facet();
   }
   B.end_surface();
+}
+
+UVMapping::UVMapping(cgal::MeshModel::Ptr mesh3d, Eigen::Vector3d &zero_point, double zero_angle,
+                     CoordinateMapping mapping, BorderParametrization parametrization,
+                     BorderShape border)
+    : vertex_map_(),
+      uv_pmap_(vertex_map_),
+      mesh_3d_(mesh3d),
+      zero_point_(zero_point),
+      zero_angle_(zero_angle) {
+  // Following if/elses are a bit ugly, but does the job.
+  // not so straighforward due to template class determination
+
+  // Tutte mappings
+  if (mapping == CoordinateMapping::TutteBarycentric &&
+      parametrization == BorderParametrization::ArcLength && border == BorderShape::Circular) {
+    createUVParametrization<TutteCircularArc>();
+  } else if (mapping == CoordinateMapping::TutteBarycentric &&
+             parametrization == BorderParametrization::Uniform && border == BorderShape::Circular) {
+    createUVParametrization<TutteCircularUniform>();
+  } else if (mapping == CoordinateMapping::TutteBarycentric &&
+             parametrization == BorderParametrization::Uniform && border == BorderShape::Square) {
+    createUVParametrization<TutteSquareUniform>();
+  } else if (mapping == CoordinateMapping::TutteBarycentric &&
+             parametrization == BorderParametrization::ArcLength && border == BorderShape::Square) {
+    createUVParametrization<TutteSquareArc>();
+  }
+
+  // Authalic mapping
+  else if (mapping == CoordinateMapping::DiscreteAuthalic &&
+           parametrization == BorderParametrization::ArcLength && border == BorderShape::Circular) {
+    createUVParametrization<AuthalicCircularArc>();
+  } else if (mapping == CoordinateMapping::DiscreteAuthalic &&
+             parametrization == BorderParametrization::Uniform && border == BorderShape::Circular) {
+    createUVParametrization<AuthalicCircularUniform>();
+  } else if (mapping == CoordinateMapping::DiscreteAuthalic &&
+             parametrization == BorderParametrization::Uniform && border == BorderShape::Square) {
+    createUVParametrization<AuthalicSquareUniform>();
+  } else if (mapping == CoordinateMapping::DiscreteAuthalic &&
+             parametrization == BorderParametrization::ArcLength && border == BorderShape::Square) {
+    createUVParametrization<AuthalicSquareArc>();
+  }
+
+  // Floater mappings
+  else if (mapping == CoordinateMapping::FloaterMeanValue &&
+           parametrization == BorderParametrization::ArcLength && border == BorderShape::Circular) {
+    createUVParametrization<FloaterCircularArc>();
+  } else if (mapping == CoordinateMapping::FloaterMeanValue &&
+             parametrization == BorderParametrization::Uniform && border == BorderShape::Circular) {
+    createUVParametrization<FloaterCircularUniform>();
+  } else if (mapping == CoordinateMapping::FloaterMeanValue &&
+             parametrization == BorderParametrization::Uniform && border == BorderShape::Square) {
+    createUVParametrization<FloaterSquareUniform>();
+  } else if (mapping == CoordinateMapping::FloaterMeanValue &&
+             parametrization == BorderParametrization::ArcLength && border == BorderShape::Square) {
+    createUVParametrization<FloaterSquareArc>();
+  }
+
+  // move zero point to determined location
+  determineTransformation();
+
+  // Create all the forward/backward hash mappingsf
+  createMappings();
 }
 
 void UVMapping::determineTransformation() {
@@ -68,7 +131,7 @@ void UVMapping::determineTransformation() {
   uv_transform_.translation().topRows<2>() = -nominal_zero_uv;
   uv_transform_.translation() = uv_transform_.linear() * uv_transform_.translation();
 
-  std::cout << "Translation " << nominal_zero_uv << std::endl;
+  LOG(INFO) << "Translation of UV space: " << nominal_zero_uv;
 }
 
 void UVMapping::createMappings() {
@@ -89,6 +152,7 @@ void UVMapping::storeMapping() const {
   // store both meshes
   mesh_2d_->save("mesh2d.off");
   mesh_3d_->save("mesh3d.off");
+  LOG(INFO) << "Saved mesh2d.off and mesh3d.off";
 }
 
 std::pair<FaceCoords2d, FaceCoords3d> UVMapping::nearestFace(
@@ -116,8 +180,6 @@ cad_percept::cgal::Vector2Return UVMapping::clipToManifold(
   barycentric.z() = std::clamp(barycentric.z(), 0.0, 1.0);
   barycentric /= barycentric.sum();
 
-  std::cout << std::endl << barycentric << std::endl;
-  std::cout << barycentric.sum() << std::endl;
   return face_2d.toCartesian(barycentric);
 }
 
@@ -191,5 +253,40 @@ FaceCoords3d UVMapping::to3D(const cad_percept::planning::FaceCoords2d &coords2d
   return {map_2d_to_3d_[coords2d.getFaceDescriptor()], mesh_3d_->getMeshRef()};
 };
 
+std::string UVMapping::getMappingName() const {
+  // Somehow C++ can't convert enum to strings...
+
+  std::stringstream str;
+  switch (this->coord_mapping_) {
+    case CoordinateMapping::FloaterMeanValue:
+      str << "Floater/";
+      break;
+    case CoordinateMapping::DiscreteAuthalic:
+      str << "DiscreteAuthalic/";
+      break;
+    case CoordinateMapping::TutteBarycentric:
+      str << "TuteBarycentric/";
+      break;
+  }
+
+  switch (this->border_param_) {
+    case BorderParametrization::ArcLength:
+      str << "ArcLength/";
+      break;
+    case BorderParametrization::Uniform:
+      str << "Uniform/";
+      break;
+  }
+
+  switch (this->border_shape_) {
+    case BorderShape::Circular:
+      str << "Circular";
+      break;
+    case BorderShape::Square:
+      str << "Square";
+      break;
+  }
+  return str.str();
+}
 }  // namespace planning
 }  // namespace cad_percept

@@ -6,7 +6,7 @@ catkin_simple(ALL_DEPS_REQUIRED)
 find_package(CGAL QUIET COMPONENTS Core)
 include(${CGAL_USE_FILE})
 set (CMAKE_CXX_STANDARD 17)
-add_definitions(-Wall -Wextra)
+add_definitions(-Wall -Wextra -Werror=return-type)
 
 #############
 # LIBRARIES #

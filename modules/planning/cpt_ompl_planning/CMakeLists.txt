@@ -6,7 +6,7 @@ catkin_simple(ALL_DEPS_REQUIRED)
 
 find_package(CGAL QUIET COMPONENTS Core)
 include(${CGAL_USE_FILE})
-add_definitions(-std=c++17 -Wall -Wextra)
+add_definitions(-std=c++17 -Wall -Wextra -Werror=return-type)
 
 #############
 # LIBRARIES #
@@ -25,14 +25,6 @@ target_link_libraries(evaluation_node
         ${PROJECT_NAME}
         ${OMPL_LIBRARIES}
         cgal_definitions)
-
-cs_add_executable(mapping_eval_node
-        src/mapping_eval_node.cpp)
-target_link_libraries(mapping_eval_node
-        ${PROJECT_NAME}
-        ${OMPL_LIBRARIES}
-        cgal_definitions)
-
 
 
 cs_add_executable(tuning_node
