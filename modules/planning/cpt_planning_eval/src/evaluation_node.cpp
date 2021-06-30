@@ -7,6 +7,11 @@
 #include <chrono>
 #include <iostream>
 
+/***
+ * To be cleaned up later.
+ * Node that generates random problems on the given surface and evaluates
+ * all planners.
+ */
 int main(int argc, char *argv[]) {
   ros::init(argc, argv, "ompl_test_node");
   ros::NodeHandle node_handle;
@@ -24,10 +29,9 @@ int main(int argc, char *argv[]) {
   cad_percept::planning::EvaluationNode evaluationNode(node_handle, mesh_path);
   double debug_factor = 1;
   cad_percept::planning::RMPMeshPlanner rmp_planner(mesh_path);
-  // rmp_planner.setTuning({1.0, 11.0, 0.81}, {8.8, 20.0, 0.06}, 0.01);
-  // rmp_planner.setTuning({0.7, 11.6, 0.81}, {20.0, 30.0, 0.01}, 0.01);
+
   rmp_planner.setTuning({0.7, 13.6, 0.4}, {20.0, 30.0, 0.01}, 0.01);
-  // rmp_planner.storeMapping();
+
 
   cad_percept::planning::GeodesicMeshPlanner dgeo_planner(mesh_path);
   cad_percept::planning::OMPLMeshSamplingPlanner ompl_planner(mesh_path, false, 1.0 * debug_factor);

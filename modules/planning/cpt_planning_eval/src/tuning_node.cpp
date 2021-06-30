@@ -18,7 +18,11 @@ void callback(cpt_planning_eval::PlannerTuningConfig &config, uint32_t level) {
                        {9.37443, 2.55775, 3.22736});
 }
 
-int main(int argc, char *argv[]) {
+/***
+ * To be cleaned up later.
+ * Node that allows tuning based on dynamic reconfigure.
+ */
+ int main(int argc, char *argv[]) {
   ros::init(argc, argv, "ompl_test_node");
   ros::NodeHandle node_handle;
   std::string mesh_path = argv[1];

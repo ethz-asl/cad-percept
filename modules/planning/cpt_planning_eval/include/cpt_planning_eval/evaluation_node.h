@@ -35,10 +35,16 @@ class EvaluationNode {
     kpi_calculator_.setModel(model_);
   }
 
+  /***
+   * Adds a new SurfacePlanner to the list of comparisons
+   */
   void addPlanner(SurfacePlanner::Ptr planner, Eigen::Vector3d color) {
     planners_.push_back({last_id_++, planner, color});
   }
 
+  /***
+   * Visualizes the obtained path in RVIZ.
+   */
   void visualizePath(std::vector<Eigen::Vector3d> path, Eigen::Vector3d color, int id) {
     visualization_msgs::Marker marker;
     marker.header.frame_id = "world";
@@ -113,6 +119,10 @@ class EvaluationNode {
     pub_marker_.publish(marker);
   }
 
+  /***
+   * Logs the result of a planning run in a machine-readable way for further
+   * evaluation.
+   */
   void logResult(int id, SurfacePlanner::Result result, std::string name,
                  std::vector<Eigen::Vector3d> path, PathKPICalcuator::QualityIndicator quality,
                  std::string run_id) {
@@ -123,6 +133,10 @@ class EvaluationNode {
               << run_id << std::endl;
   }
 
+  /***
+   * Writes the path of a specific run (identified by GUID) so that it can be
+   * post processed e.g. for visualization purposes.
+   */
   void logPath(std::string run_id, std::vector<Eigen::Vector3d> path) {
     std::ofstream logfile;
     logfile.open("path_" + run_id + ".log");
@@ -132,6 +146,11 @@ class EvaluationNode {
     logfile.close();
   }
 
+  /***
+   * Writes the edge tree of a specific run (identified by GUID) so that it can be
+   * post processed e.g. for visualization purposes.
+   * Only makes sense on e.g. RRT based planners that actually have an edge tree.
+   */
   void logEdges(std::string run_id, SurfacePlanner::EdgeList list) {
     std::ofstream logfile;
     logfile.open("edges_" + run_id + ".log");
@@ -152,8 +171,12 @@ class EvaluationNode {
     pos_out->z() = points[1].z();
   }
 
+  /***
+   * Runs all planners for a given or random problem and logs the resulting data.
+   */
   void plan(bool new_random = true, bool write = true, Eigen::Vector3d start = {0, 0, 0},
             Eigen::Vector3d goal = {0, 0, 0}) {
+    // if needed, create new random position
     if (new_random) {
       getRandomPos(&start_);
       getRandomPos(&goal_);
@@ -161,8 +184,6 @@ class EvaluationNode {
       start_ = start;
       goal_ = goal;
     }
-    std::cout << start_ << std::endl;
-    std::cout << goal_ << std::endl;
 
     for (auto planner : planners_) {
       std::vector<Eigen::Vector3d> path;
@@ -171,16 +192,20 @@ class EvaluationNode {
       // create id for this run
       std::string run_id = boost::uuids::to_string(uuid_gen_());
 
+      // get result, calculate quality metrics and log.
       auto result = planner.instance->plan(start_, goal_, &path);
       auto kpis = kpi_calculator_.calculate(path);
       logResult(planner.id, result, planner.instance->getName(), path, kpis, run_id);
 
+      // If successfull, log and visualize
       if (result.success) {
         visualizePath(path, planner.color, planner.id);
         if (write) {
           logPath(run_id, path);
         }
       }
+
+      // if there are edges(eg from sampling), log and visualize them as well
       auto edgelist = planner.instance->getEdges();
       if (edgelist.size() > 0) {
         visualizeEdgeList(edgelist, planner.color, planner.instance->getName());

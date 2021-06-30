@@ -9,6 +9,10 @@
 std::vector<cad_percept::planning::RMPMeshPlanner *> planners;
 cad_percept::planning::EvaluationNode *evaluationNode;
 
+/***
+ * To be cleaned up later.
+ * Node that does grid search on tuning params.
+ */
 int main(int argc, char *argv[]) {
   ros::init(argc, argv, "ompl_test_node");
   ros::NodeHandle node_handle;
