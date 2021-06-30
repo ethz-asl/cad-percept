@@ -16,6 +16,7 @@ cs_add_library(${PROJECT_NAME}
         src/ompl/ompl_mesh_projecting_planner.cpp
         src/chomp/chomp_mesh_planner.cpp
         src/chomp/chomp.cpp
+        src/dgeo/geodesic_mesh_planner.cpp
         src/tools/path_kpi_calculator.cc)
 
 target_link_libraries(${PROJECT_NAME} ${OMPL_LIBRARIES}

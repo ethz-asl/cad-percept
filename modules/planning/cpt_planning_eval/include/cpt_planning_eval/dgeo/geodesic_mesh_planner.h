@@ -1,15 +1,11 @@
-//
-// Created by mpantic on 24.09.20.
-//
+#ifndef CPT_PLANNING_EVAL_GEODESIC_MESH_PLANNER_H
+#define CPT_PLANNING_EVAL_GEODESIC_MESH_PLANNER_H
 
-#ifndef CPT_PLANNING_GEODESIC_MESH_PLANNER_H
-#define CPT_PLANNING_GEODESIC_MESH_PLANNER_H
-
+#include <CGAL/Polygon_mesh_processing/locate.h>
+#include <CGAL/Surface_mesh_shortest_path.h>
 #include <cgal_definitions/cgal_typedefs.h>
 #include <cgal_definitions/mesh_model.h>
 #include <cpt_planning/interface/surface_planner.h>
-#include <CGAL/Polygon_mesh_processing/locate.h>
-#include <CGAL/Surface_mesh_shortest_path.h>
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel KernelExact;
 typedef CGAL::Polyhedron_3<KernelExact, CGAL::Polyhedron_items_with_id_3> PolyhedronExact;
@@ -67,6 +63,10 @@ class BuildExactPolyhdron : public CGAL::Modifier_base<HDS> {
   cgal::MeshModel::Ptr model_;
 };
 
+/***
+ * Implements a SurfacePlanner based on the
+ * Discrete Geodesic Algorithm as implemented in CGAL.
+ */
 class GeodesicMeshPlanner : public SurfacePlanner {
  public:
   GeodesicMeshPlanner(std::string mesh_path);
@@ -83,4 +83,4 @@ class GeodesicMeshPlanner : public SurfacePlanner {
 }  // namespace planning
 }  // namespace cad_percept
 
-#endif  // CPT_PLANNING_GEODESIC_MESH_PLANNER_H
+#endif  // CPT_PLANNING_EVAL_GEODESIC_MESH_PLANNER_H

@@ -1,12 +1,10 @@
 #ifndef CPT_PLANNING_EVAL_EVALUATION_NODE_H
 #define CPT_PLANNING_EVAL_EVALUATION_NODE_H
 #include <CGAL/point_generators_3.h>
-#include <cpt_planning/implementation/geodesic_mesh_planner.h>
-#include <cpt_planning/implementation/rmp_mesh_planner.h>
 #include <cpt_planning/interface/surface_planner.h>
-#include <cpt_planning_eval/ompl/ompl_mesh_sampling_planner.h>
 #include <cpt_planning_eval/tools/path_kpi_calculator.h>
 #include <cpt_ros/mesh_model_publisher.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>

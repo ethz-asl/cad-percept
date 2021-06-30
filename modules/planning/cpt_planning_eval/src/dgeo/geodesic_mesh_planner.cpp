@@ -1,12 +1,12 @@
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <cpt_planning/implementation/geodesic_mesh_planner.h>
+#include <cpt_planning_eval/dgeo/geodesic_mesh_planner.h>
 
 namespace cad_percept {
 namespace planning {
 GeodesicMeshPlanner::GeodesicMeshPlanner(std::string mesh_path) {
   cad_percept::cgal::MeshModel::create(mesh_path, &model_, true);
 
-  // Convert Model to exact reconstruction kernel
+  // Convert Model to exact reconstruction kernel (needed by geodesic planner)
   BuildExactPolyhdron<PolyhedronExact::HDS> exactBuilder(model_);
   exact_mesh_.delegate(exactBuilder);
   CGAL::set_halfedgeds_items_id(exact_mesh_);
