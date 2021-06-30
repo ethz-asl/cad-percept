@@ -1,3 +1,9 @@
+// Code taken over from helenol's implementation of IROS 18 paper.
+// original  here:
+// https://github.com/ethz-asl/mav_local_avoidance/blob/master/local_trajectory_opt/include/local_trajectory_opt/chomp/chomp_optimizer.h
+
+// Cost functions and jacobians are adjusted for surface following
+#include <cpt_planning_eval/chomp/chomp_optimizer.h>
 #include <mav_trajectory_generation/timing.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -5,8 +11,6 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
-
-#include <cpt_planning_eval/chomp/chomp_optimizer.h>
 
 namespace chomp {
 void SmoothnessFunc::initFromTrajectory(const ChompTrajectory& traj) {
@@ -57,14 +61,17 @@ double CollisionFunc::potentialFunction(double distance) const {
   double result = 0.0;
   double abs_dist = std::abs(distance);
 
+  // we use a cost function that is flat below 0.1 m distance to the surface
+  // as otherwise the optimizer has a lot of trouble converging exactly to the surface while
+  // adhering to smoothness constraints
+  // further away, we smoothly change the cost to be linear at some point.
+
   if (abs_dist <= params_.epsilon * 0.1) {
     result = 0.0;
 
   } else if (abs_dist <= params_.epsilon * 1.1) {
     double eps_dist = abs_dist - 0.1 * params_.epsilon;
     result = 1 / (2 * params_.epsilon) * eps_dist * eps_dist;
-    // result = 0.0;
-
   } else {
     result = abs_dist - 0.6 * params_.epsilon;
   }
@@ -335,9 +342,6 @@ bool ChompOptimizer::doGradientDescent(ChompTrajectory* traj) {
       visualization_msgs::MarkerArray marker_array;
       marker_array.markers.push_back(marker_pos);
       marker_array.markers.push_back(marker_grad);
-
-      // std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
       pub_marker_.publish(marker_array);
     }
 
@@ -363,9 +367,9 @@ bool ChompOptimizer::doGradientDescent(ChompTrajectory* traj) {
     }
   }
 
-  //if (params_.verbose) {
-    std::cout << "[GD][Finished][Iter] Final cost after " << i << " iterations: " << cost
-              << std::endl;
+  // if (params_.verbose) {
+  std::cout << "[GD][Finished][Iter] Final cost after " << i << " iterations: " << cost
+            << std::endl;
   //}
   timer_optimize.Stop();
   return i < params_.max_iter;
