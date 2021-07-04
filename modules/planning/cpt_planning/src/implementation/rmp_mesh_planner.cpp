@@ -50,14 +50,12 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
 
   integrator.resetTo(start_xyz);
   for (double t = 0; t < 500.0; t += dt_) {
-    Eigen::Vector3d current_pos;
+    auto integrator_state = integrator.integrateStep(policies, manifold_, dt_);
+    states_out->push_back(integrator_state.position);
 
-    current_pos = integrator.forwardIntegrate(policies, manifold_, dt_);
-    states_out->push_back(current_pos);
-
-    if (integrator.isDone()) {
+    if (integrator.atRest(0.01, 0.01)) {
       reached_criteria = true;
-      LOG(INFO) << "Residual position after integration: " << (current_pos - target_xyz).norm();
+      LOG(INFO) << "Residual position after integration: " << (integrator_state.position - target_xyz).norm();
       break;
     }
   }

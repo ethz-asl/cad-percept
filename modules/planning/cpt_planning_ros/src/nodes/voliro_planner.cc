@@ -172,7 +172,7 @@ class VoliroPlanner {
     using RMPG = cad_percept::planning::MeshManifoldInterface;
     using LinSpace = rmpcpp::Space<3>;
     using TargetPolicy = rmpcpp::SimpleTargetPolicy<LinSpace>;
-    using Integrator = rmpcpp::TrapezoidalIntegrator<TargetPolicy, RMPG>;
+        using Integrator = rmpcpp::TrapezoidalIntegrator<TargetPolicy, RMPG>;
     RMPG::VectorX x_target3, x_target2, x_vec, x_dot;
     Eigen::Vector3d end_tmp;
 
@@ -245,7 +245,7 @@ class VoliroPlanner {
     Eigen::Vector3d temppos;
     double dt = 0.01;
     for (double t = 0; t < 25.0; t += dt) {
-      temppos = integrator.forwardIntegrate(policies, manifold_, dt);
+      temppos = integrator.integrateStep(policies, manifold_, dt).position;
 
       if(!temppos.allFinite()){
         last_target_uv_ = cache_last_target;
@@ -277,7 +277,7 @@ class VoliroPlanner {
 
       trajectory.push_back(pt);
 
-      if (integrator.isDone()) {
+      if (integrator.atRest()) {
         ROS_INFO_STREAM("Integrator finished after " << t << " s with a distance of "
                                                      << integrator.totalDistance());
         break;
