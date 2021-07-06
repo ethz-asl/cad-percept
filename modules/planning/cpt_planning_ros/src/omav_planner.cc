@@ -1,7 +1,22 @@
 #include <cpt_planning_ros/omav_planner.h>
+#include <eigen_conversions/eigen_msg.h>
 
 namespace cad_percept {
 namespace planning {
+
+OMAVPlanner::OMAVPlanner(ros::NodeHandle nh) : nh_(nh) {
+  pub_mesh_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
+  pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
+  pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
+
+  readConfig();
+  loadMesh();
+
+  sub_joystick_ = nh.subscribe("/joy", 1, &OMAVPlanner::joystickCallback, this);
+  sub_odometry_ = nh.subscribe("odometry", 1, &OMAVPlanner::odometryCallback, this);
+  tf_update_timer_ = nh.createTimer(ros::Duration(1), &OMAVPlanner::tfUpdateCallback,
+                                    this);  // update TF's every second
+}
 
 void OMAVPlanner::runPlanner() {
   if (!allInitialized()) {
@@ -56,9 +71,28 @@ void OMAVPlanner::loadMesh() {
     ROS_FATAL_STREAM("Could not load mesh " << fixed_params_.mesh_path);
     exit(-100);
   }
+
+  // get transformation to ENU
+  while (!listener_.waitForTransform(fixed_params_.enu_frame, fixed_params_.mesh_frame,
+                                     ros::Time(0), ros::Duration(0.1)) &&
+         ros::ok()) {
+    ROS_WARN_STREAM("Waiting for transform " << fixed_params_.enu_frame << " - "
+                                             << fixed_params_.mesh_frame);
+  }
+  tf::StampedTransform tf_enu_mesh;
+  listener_.lookupTransform(fixed_params_.enu_frame, fixed_params_.mesh_frame, ros::Time(0),
+                            tf_enu_mesh);
+  tf::transformTFToEigen(tf_enu_mesh, T_enu_mesh_);
+
   // Transform mesh to ENU frame
   model_enu_->transform(
       cad_percept::cgal::eigenTransformationToCgalTransformation(T_enu_mesh_.matrix()));
+
+  // Creating mappings and manifold interface
+  mapping_ = new cad_percept::planning::UVMapping(model_enu_, fixed_params_.mesh_zero,
+                                                  fixed_params_.mesh_zero_angle);
+  manifold_ = std::make_shared<cad_percept::planning::MeshManifoldInterface>(
+      model_enu_, fixed_params_.mesh_zero, fixed_params_.mesh_zero_angle);
 
   // publish
   pub_mesh_.publish(model_enu_, fixed_params_.enu_frame);
@@ -227,9 +261,32 @@ void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
   runPlanner();
 }
 
-void OMAVPlanner::odometryCallback() { odom_received_ = true; }
+void OMAVPlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom) {
+  if (odom->header.frame_id != fixed_params_.odom_frame) {
+    ROS_WARN_STREAM("Odom frame name mismatch, msg: " << odom->header.frame_id
+                                                      << " / cfg: " << fixed_params_.odom_frame);
+    return;
+  }
 
-void OMAVPlanner::tfUpdateCallback() { frames_received_ = true; }
+  tf::poseMsgToEigen(odom->pose.pose, T_odom_body_);
+  tf::vectorMsgToEigen(odom->twist.twist.linear, v_odom_body_);
+  odom_received_ = true;
+}
+
+void OMAVPlanner::tfUpdateCallback(const ros::TimerEvent &event) {
+  if (!listener_.canTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0))) {
+    ROS_WARN_STREAM("Transform " << fixed_params_.enu_frame << " - " << fixed_params_.odom_frame
+                                 << " not available");
+    return;
+  }
+
+  // write transform
+  tf::StampedTransform tf_enu_odom;
+  listener_.lookupTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0),
+                            tf_enu_odom);
+  tf::transformTFToEigen(tf_enu_odom, T_enu_odom_);
+  frames_received_ = true;
+}
 
 }  // namespace planning
 }  // namespace cad_percept

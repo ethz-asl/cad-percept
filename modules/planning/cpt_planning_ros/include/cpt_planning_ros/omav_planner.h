@@ -100,9 +100,14 @@ class OMAVPlanner {
     std::string odom_frame;
     std::string body_frame;
     std::string mesh_path;
+
+    Eigen::Vector3d mesh_zero;
+    double mesh_zero_angle;
   };
 
  public:
+  OMAVPlanner(ros::NodeHandle nh);
+
  private:
   void runPlanner();
 
@@ -124,8 +129,8 @@ class OMAVPlanner {
 
   // callbacks to update stuff
   void joystickCallback(const sensor_msgs::JoyConstPtr &joy);
-  void odometryCallback();
-  void tfUpdateCallback();
+  void odometryCallback(const nav_msgs::OdometryConstPtr &odom);
+  void tfUpdateCallback(const ros::TimerEvent &event);
 
   // publishing method
   void publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom);
@@ -151,9 +156,13 @@ class OMAVPlanner {
   ros::Subscriber sub_joystick_;  // setpoint via joystick
   ros::Subscriber sub_odometry_;  // curent odom
 
+  ros::Timer tf_update_timer_;
   // UAV State
   Eigen::Affine3d T_odom_body_, T_enu_odom_, T_enu_mesh_;
   Eigen::Vector3d v_odom_body_;
+
+  tf::TransformListener listener_;
+
 
   // desired targets
   Eigen::Vector3d target_uvh_, target_xyz_;  // in ENU frame

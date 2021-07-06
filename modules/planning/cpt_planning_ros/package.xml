@@ -26,6 +26,7 @@
     <depend>cpt_planning</depend>
     <!--<depend>cpt_collision_manifolds</depend>-->
     <depend>eigen_catkin</depend>
+    <depend>eigen_conversions</depend>
     <depend>roscpp</depend>
     <depend>rmpcpp</depend>
     <depend>sensor_msgs</depend>
