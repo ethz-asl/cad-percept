@@ -4,12 +4,15 @@
 namespace cad_percept {
 namespace planning {
 
-OMAVPlanner::OMAVPlanner(ros::NodeHandle nh) : nh_(nh) {
+OMAVPlanner::OMAVPlanner(ros::NodeHandle nh, ros::NodeHandle nh_private)
+    : nh_(nh), nh_private_(nh_private) {
   pub_mesh_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
   pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
   pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
 
   readConfig();
+  server_.setCallback(boost::bind(&OMAVPlanner::configCallback, this, _1, _2));
+
   loadMesh();
 
   sub_joystick_ = nh.subscribe("/joy", 1, &OMAVPlanner::joystickCallback, this);
@@ -20,7 +23,7 @@ OMAVPlanner::OMAVPlanner(ros::NodeHandle nh) : nh_(nh) {
 
 void OMAVPlanner::runPlanner() {
   if (!allInitialized()) {
-    ROS_WARN_STREAM("Not planning, node not fully initalized");
+    ROS_WARN_STREAM("Not planning, node not fully initalized, is planner zeroed?");
     return;
   }
 
@@ -56,11 +59,18 @@ void OMAVPlanner::runPlanner() {
 }
 
 void OMAVPlanner::readConfig() {
-  nh_.param<std::string>("mesh_path", fixed_params_.mesh_path, "mesh.off");
-  nh_.param<std::string>("mesh_frame", fixed_params_.mesh_frame, "mesh");
-  nh_.param<std::string>("body_frame", fixed_params_.body_frame, "imu");
-  nh_.param<std::string>("enu_frame", fixed_params_.enu_frame, "enu");
-  nh_.param<std::string>("odom_frame", fixed_params_.odom_frame, "odom");
+  nh_private_.param<std::string>("mesh_path", fixed_params_.mesh_path, "mesh.off");
+  nh_private_.param<std::string>("mesh_frame", fixed_params_.mesh_frame, "mesh");
+  nh_private_.param<std::string>("body_frame", fixed_params_.body_frame, "imu");
+  nh_private_.param<std::string>("enu_frame", fixed_params_.enu_frame, "enu");
+  nh_private_.param<std::string>("odom_frame", fixed_params_.odom_frame, "odom");
+
+  nh_private_.param<double>("zero_angle", fixed_params_.mesh_zero_angle, 0.0);
+
+  double zero_x = nh_private_.param("zero_x", 0.0);
+  double zero_y = nh_private_.param("zero_y", 0.0);
+  double zero_z = nh_private_.param("zero_z", 0.0);
+  fixed_params_.mesh_zero = {zero_x, zero_y, zero_z};
 }
 
 void OMAVPlanner::loadMesh() {
@@ -204,6 +214,15 @@ void OMAVPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector
   }
 }
 
+void OMAVPlanner::configCallback(cpt_planning_ros::RMPConfigConfig &config, uint32_t level){
+  if(level != 0){
+    //avoid this global callback
+    return ;
+  }
+  dynamic_params_ = config;
+
+}
+
 void OMAVPlanner::publishMarkers() {
   visualization_msgs::Marker marker_mesh;
   marker_mesh.header.frame_id = fixed_params_.enu_frame;
@@ -241,6 +260,7 @@ void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
   if (joy->buttons[5]) {
     target_uvh_ = mapping_->point3DtoUVH((T_enu_odom_ * T_odom_body_).translation());
     ROS_INFO_STREAM("Reset setpoint to current position");
+    zeroed_ = true;
   }
 
   target_uvh_.x() += joy->axes[2] * dynamic_params_.joystick_xy_scaling;
