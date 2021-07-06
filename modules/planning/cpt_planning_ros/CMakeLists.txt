@@ -14,7 +14,7 @@ add_definitions(-std=c++17 -Wall -Wextra -fopenmp)
 
 cs_add_executable(voliro_planner_node
         src/omav_planner.cc
-        src/nodes/voliro_planner.cc
+        src/omav_planner_node.cc
         )
 
 

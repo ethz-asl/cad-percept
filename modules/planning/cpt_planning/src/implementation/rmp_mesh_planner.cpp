@@ -11,7 +11,8 @@ RMPMeshPlanner::RMPMeshPlanner(std::string mesh_path, Eigen::Vector3d tuning_1,
   Eigen::Vector3d zero(0.0, 0.0, 0.0);
   double zero_angle = 0;
   mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle);
-  manifold_ = new cad_percept::planning::MeshManifoldInterface(model_, zero, zero_angle);
+  manifold_ =
+      std::make_shared<cad_percept::planning::MeshManifoldInterface>(model_, zero, zero_angle);
 }
 
 const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
@@ -36,13 +37,14 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
   A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
   B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
 
-  TargetPolicy pol2(target_uv, A, tuning_1_[0], tuning_1_[1],
-                    tuning_1_[2]);  // goes to target
-  TargetPolicy pol3(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
-                    tuning_2_[2]);  // stays on surface
-  std::vector<TargetPolicy *> policies;
-  policies.push_back(&pol2);
-  policies.push_back(&pol3);
+  auto pol_2 = std::make_shared<TargetPolicy>(target_uv, A, tuning_1_[0], tuning_1_[1],
+                                              tuning_1_[2]);  // goes to target
+  auto pol_3 =
+      std::make_shared<TargetPolicy>(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
+                                     tuning_2_[2]);  // stays on surface
+  std::vector<std::shared_ptr<TargetPolicy>> policies;
+  policies.push_back(pol_2);
+  policies.push_back(pol_3);
 
   // start integrating path
   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
@@ -55,7 +57,8 @@ const SurfacePlanner::Result RMPMeshPlanner::plan(const Eigen::Vector3d start,
 
     if (integrator.atRest(0.01, 0.01)) {
       reached_criteria = true;
-      LOG(INFO) << "Residual position after integration: " << (integrator_state.position - target_xyz).norm();
+      LOG(INFO) << "Residual position after integration: "
+                << (integrator_state.position - target_xyz).norm();
       break;
     }
   }

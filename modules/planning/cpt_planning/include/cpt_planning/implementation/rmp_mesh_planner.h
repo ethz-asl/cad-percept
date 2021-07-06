@@ -45,7 +45,7 @@ class RMPMeshPlanner : public SurfacePlanner {
 
   cad_percept::cgal::MeshModel::Ptr model_;
   cad_percept::planning::UVMapping *mapping_;
-  cad_percept::planning::MeshManifoldInterface *manifold_;
+  std::shared_ptr<cad_percept::planning::MeshManifoldInterface> manifold_;
 };
 }  // namespace planning
 }  // namespace cad_percept
