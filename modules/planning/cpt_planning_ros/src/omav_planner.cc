@@ -4,8 +4,12 @@ namespace cad_percept {
 namespace planning {
 
 void OMAVPlanner::runPlanner() {
-  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+  if (!allInitialized()) {
+    ROS_WARN_STREAM("Not planning, node not fully initalized");
+    return;
+  }
 
+  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
   Policies policies;
 
   // Populate Policies
@@ -26,6 +30,7 @@ void OMAVPlanner::runPlanner() {
   if (output_mode_ == OutputMode::Trajectory) {
     mav_msgs::EigenTrajectoryPoint::Vector traject_odom;
     generateTrajectoryOdom(policies, &traject_odom);
+    publishMarkers();
     publishTrajectory(traject_odom);
   } else if (output_mode_ == OutputMode::Velocity) {
     ROS_WARN("Velocity mode not implemented");
@@ -149,7 +154,53 @@ void OMAVPlanner::generateTrajectoryOdom(const OMAVPlanner::Policies &policies,
 }
 
 void OMAVPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom) {
+  // publish marker message of trajectory
+  visualization_msgs::MarkerArray markers;
+  double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
+  mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom, distance,
+                                                      fixed_params_.odom_frame, &markers);
+  pub_marker_.publish(markers);
 
+  if (dynamic_params_.output_enable) {
+    trajectory_msgs::MultiDOFJointTrajectory msg;
+    mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_odom, &msg);
+    msg.header.frame_id = fixed_params_.odom_frame;
+    msg.header.stamp = ros::Time::now();
+    pub_trajectory_.publish(msg);
+  }
+}
+
+void OMAVPlanner::publishMarkers() {
+  visualization_msgs::Marker marker_mesh;
+  marker_mesh.header.frame_id = fixed_params_.enu_frame;
+  marker_mesh.header.stamp = ros::Time();
+  marker_mesh.ns = "meshmarker";
+  marker_mesh.id = 0;
+  marker_mesh.type = visualization_msgs::Marker::SPHERE_LIST;
+  marker_mesh.action = visualization_msgs::Marker::ADD;
+  marker_mesh.pose.position.x = 0.0;
+  marker_mesh.pose.position.y = 0.0;
+  marker_mesh.pose.position.z = 0.0;
+  marker_mesh.pose.orientation.x = 0.0;
+  marker_mesh.pose.orientation.y = 0.0;
+  marker_mesh.pose.orientation.z = 0.0;
+  marker_mesh.pose.orientation.w = 1.0;
+  marker_mesh.scale.x = 0.25;
+  marker_mesh.scale.y = 0.25;
+  marker_mesh.scale.z = 0.25;
+  marker_mesh.color.a = 1.0;  // Don't forget to set the alpha!
+  marker_mesh.color.r = 0.0;
+  marker_mesh.color.g = 1.0;
+  marker_mesh.color.b = 0.0;
+
+  geometry_msgs::Point pt3d;
+  pt3d.x = target_xyz_.x();
+  pt3d.y = target_xyz_.y();
+  pt3d.z = target_xyz_.z();
+
+  visualization_msgs::MarkerArray msg;
+  msg.markers.push_back(marker_mesh);
+  pub_marker_.publish(msg);
 }
 
 void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
@@ -164,12 +215,16 @@ void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
   target_uvh_.z() = std::clamp(target_uvh_.z(), dynamic_params_.terrain_min_dist,
                                dynamic_params_.terrain_max_dist);
 
-  // clamp to manifold
+  // clamp to manifold (avoid going out of the map)
   target_uvh_.topRows<2>() =
       (Eigen::Vector2d)mapping_->clipToManifold((Eigen::Vector2d)target_uvh_.topRows<2>());
 
   // convert to xyz target
   target_xyz_ = mapping_->pointUVHto3D(target_uvh_);
+
+  // for each input, run the planner
+  // this should probably be changed for velocity mode!
+  runPlanner();
 }
 
 void OMAVPlanner::odometryCallback() { odom_received_ = true; }

@@ -130,6 +130,8 @@ class OMAVPlanner {
   // publishing method
   void publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom);
 
+  void publishMarkers();
+
   FlightMode flight_mode_;
   OutputMode output_mode_;
 
@@ -141,8 +143,8 @@ class OMAVPlanner {
   // ROS subcribers & publishers
   cad_percept::MeshModelPublisher pub_mesh_;
   ros::NodeHandle nh_;
-  ros::Publisher pub_marker_;
 
+  ros::Publisher pub_marker_;
   ros::Publisher pub_trajectory_;  // commanded trajectory
   ros::Publisher pub_velocity_;    // commanded velocity
 
@@ -154,7 +156,7 @@ class OMAVPlanner {
   Eigen::Vector3d v_odom_body_;
 
   // desired targets
-  Eigen::Vector3d target_uvh_, target_xyz_;  // in enu frame
+  Eigen::Vector3d target_uvh_, target_xyz_;  // in ENU frame
 
   // Configuration
   ReconfigurableParams dynamic_params_;
