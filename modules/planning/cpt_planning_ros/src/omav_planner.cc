@@ -15,7 +15,7 @@ OMAVPlanner::OMAVPlanner(ros::NodeHandle nh, ros::NodeHandle nh_private)
 
   loadMesh();
 
-  sub_joystick_ = nh.subscribe("/joy", 1, &OMAVPlanner::joystickCallback, this);
+  sub_joystick_ = nh.subscribe("joy", 1, &OMAVPlanner::joystickCallback, this);
   sub_odometry_ = nh.subscribe("odometry", 1, &OMAVPlanner::odometryCallback, this);
   tf_update_timer_ = nh.createTimer(ros::Duration(1), &OMAVPlanner::tfUpdateCallback,
                                     this);  // update TF's every second
@@ -64,6 +64,8 @@ void OMAVPlanner::readConfig() {
   nh_private_.param<std::string>("body_frame", fixed_params_.body_frame, "imu");
   nh_private_.param<std::string>("enu_frame", fixed_params_.enu_frame, "enu");
   nh_private_.param<std::string>("odom_frame", fixed_params_.odom_frame, "odom");
+  nh_private_.param<std::string>("current_reference_frame", fixed_params_.current_reference_frame,
+                                 "current_reference");
 
   nh_private_.param<double>("zero_angle", fixed_params_.mesh_zero_angle, 0.0);
 
@@ -214,13 +216,12 @@ void OMAVPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector
   }
 }
 
-void OMAVPlanner::configCallback(cpt_planning_ros::RMPConfigConfig &config, uint32_t level){
-  if(level != 0){
-    //avoid this global callback
-    return ;
+void OMAVPlanner::configCallback(cpt_planning_ros::RMPConfigConfig &config, uint32_t level) {
+  if (level != 0) {
+    // avoid this global callback
+    return;
   }
   dynamic_params_ = config;
-
 }
 
 void OMAVPlanner::publishMarkers() {
@@ -252,6 +253,7 @@ void OMAVPlanner::publishMarkers() {
   pt3d.z = target_xyz_.z();
 
   visualization_msgs::MarkerArray msg;
+  marker_mesh.points.push_back(pt3d);
   msg.markers.push_back(marker_mesh);
   pub_marker_.publish(msg);
 }

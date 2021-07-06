@@ -12,7 +12,7 @@ add_definitions(-std=c++17 -Wall -Wextra -fopenmp)
 # Executables #
 #############
 
-cs_add_executable(voliro_planner_node
+cs_add_executable(omav_planner_node
         src/omav_planner.cc
         src/omav_planner_node.cc
         )
