@@ -71,6 +71,10 @@ class OMAVPlanner {
     double terrain_min_dist;
     double terrain_max_dist;
 
+
+    bool updateOdomFromCurrentRef;
+    bool updateOdomVel;
+
     bool terrain_mode;  // true if in terrain mode, false if in freeflight mode
 
     double terrain_alpha_normal;
@@ -99,6 +103,7 @@ class OMAVPlanner {
     std::string enu_frame;
     std::string odom_frame;
     std::string body_frame;
+    std::string current_reference_frame;
     std::string mesh_path;
 
     Eigen::Vector3d mesh_zero;
@@ -112,7 +117,7 @@ class OMAVPlanner {
   void runPlanner();
 
   // one liner helpers
-  inline bool allInitialized() const { return mesh_loaded_ && frames_received_ && odom_received_; }
+  inline bool allInitialized() const { return mesh_loaded_ && frames_received_ && odom_received_ && zeroed_; }
   inline Eigen::Vector3d getVelocityENU() { return T_enu_odom_.rotation() * v_odom_body_; }
   inline Eigen::Vector3d getPositionENU() { return (T_enu_odom_ * T_odom_body_).translation(); }
 
@@ -177,6 +182,7 @@ class OMAVPlanner {
   bool mesh_loaded_{false};
   bool frames_received_{false};
   bool odom_received_{false};
+  bool zeroed_{false};
 };
 
 }  // namespace planning

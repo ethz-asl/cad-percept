@@ -268,8 +268,36 @@ void OMAVPlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom) {
     return;
   }
 
-  tf::poseMsgToEigen(odom->pose.pose, T_odom_body_);
-  tf::vectorMsgToEigen(odom->twist.twist.linear, v_odom_body_);
+  /**
+   * For some systems we want to plan from current odom,
+   * for others from current reference.
+   * We still might want to get the current velocity,
+   * so we leave the user the choice to get that via odom (as tf, _i think_ doesnt have velocities)
+   * pain.
+   */
+  if (!dynamic_params_.updateOdomFromCurrentRef) {
+    // write transform from odom
+    tf::poseMsgToEigen(odom->pose.pose, T_odom_body_);
+  } else {
+    // lookup current reference
+    if (!listener_.canTransform(fixed_params_.odom_frame, fixed_params_.current_reference_frame,
+                                ros::Time(0))) {
+      ROS_WARN_STREAM("Transform " << fixed_params_.odom_frame << " - "
+                                   << fixed_params_.current_reference_frame << " not available");
+      return;
+    }
+    // write transform from current reference
+    tf::StampedTransform tf_enu_odom;
+    listener_.lookupTransform(fixed_params_.odom_frame, fixed_params_.current_reference_frame,
+                              ros::Time(0), tf_enu_odom);
+    tf::transformTFToEigen(tf_enu_odom, T_odom_body_);
+  }
+
+  if (dynamic_params_.updateOdomVel) {
+    tf::vectorMsgToEigen(odom->twist.twist.linear, v_odom_body_);
+  } else {
+    v_odom_body_ = Eigen::Vector3d::Zero();
+  }
   odom_received_ = true;
 }
 
@@ -285,6 +313,7 @@ void OMAVPlanner::tfUpdateCallback(const ros::TimerEvent &event) {
   listener_.lookupTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0),
                             tf_enu_odom);
   tf::transformTFToEigen(tf_enu_odom, T_enu_odom_);
+
   frames_received_ = true;
 }
 
