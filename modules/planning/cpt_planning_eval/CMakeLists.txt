@@ -46,6 +46,9 @@ target_link_libraries(param_grid_node
         ${PROJECT_NAME}
         ${OMPL_LIBRARIES}
         cgal_definitions)
+
+cs_add_executable(optimization_fabrics_test_node
+        src/optimization_fabrics_test_node.cpp)
 ##########
 # EXPORT #
 ##########

@@ -15,7 +15,9 @@ cs_add_library(${PROJECT_NAME}
         src/coordinates/triangle_coords.cc
         src/coordinates/uv_mapping.cc
         src/interface/mesh_manifold_interface.cpp
+        src/interface/linear_manifold_interface.cpp
         src/implementation/rmp_mesh_planner.cpp
+        src/implementation/rmp_linear_planner.cpp
         )
 
 ##########
