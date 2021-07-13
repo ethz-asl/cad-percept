@@ -20,6 +20,10 @@ class Realsense
     tf::TransformBroadcaster tf_broadcaster_;
     ros::Subscriber odom_sub_;
     ros::Publisher realsense_odom_pub_;
+    bool initialized;
+    double init_x;
+    double init_y;
+    double init_z;
 
     // Callback function for correcting, publishing and broadcasting the odometry message from Realsense
     void gotOdom(const nav_msgs::Odometry &odom_msg_in){
@@ -34,10 +38,18 @@ class Realsense
 
       nav_msgs::Odometry odom_msg_out = odom_msg_in;
 
+      // Initialize positions to zero
+      if (initialized == false){
+        init_x = -position.y;
+        init_y = position.x;
+        init_z = position.z;
+        initialized = true;
+      }
+
       // Rotate translation by 90 degrees yaw, orientation is not used anyway except for yaw, which is still correct
-      odom_msg_out.pose.pose.position.x = -position.y;
-      odom_msg_out.pose.pose.position.y = position.x;
-      odom_msg_out.pose.pose.position.z = position.z;
+      odom_msg_out.pose.pose.position.x = -position.y - init_x;
+      odom_msg_out.pose.pose.position.y = position.x - init_y;
+      odom_msg_out.pose.pose.position.z = position.z - init_z;
       odom_msg_out.twist.twist.linear.x = -twist.linear.y;
       odom_msg_out.twist.twist.linear.y = twist.linear.x;
       odom_msg_out.twist.twist.linear.z = twist.linear.z;
@@ -63,7 +75,7 @@ class Realsense
 
       // broadcast odom to pose to tf 
       tf::Transform transform;
-      transform.setOrigin( tf::Vector3(-position.y, position.x, position.z));
+      transform.setOrigin( tf::Vector3(-position.y - init_x, position.x - init_y, position.z - init_z));
       transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w));
       tf_broadcaster_.sendTransform(tf::StampedTransform(transform, odom_msg_in.header.stamp, camera_odom_frame, camera_pose_frame));
       ROS_DEBUG("Broadcasted and published Odom->Pose Transform"); 
@@ -74,7 +86,8 @@ class Realsense
     {
       odom_sub_ = nh_.subscribe(odom_topic, 1, &Realsense::gotOdom, this);
       realsense_odom_pub_ = nh_.advertise<nav_msgs::Odometry>(realsense_odom_topic, 50, true);
-    } ;
+      initialized = false;
+    };
 };
 
 

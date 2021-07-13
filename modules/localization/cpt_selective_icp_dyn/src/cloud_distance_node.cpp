@@ -105,17 +105,7 @@ class CloudDistance
         T_map_to_meshorigin_ = eigenTr.matrix().cast<float>();
 
         ref_mesh_ready = true;
-        /*
-        // first extract whole pointcloud
-        std::unordered_set<std::string> references;  // empty
-        PointCloud pointcloud;
-        sampleFromReferenceFacets(map_sampling_density, references, &pointcloud);
 
-        ref_dp = utils::pointCloudToDP(pointcloud);
-        processCloud(&ref_dp, ros::Time(0));
-
-        cad_trigger = false; 
-        */
         ROS_INFO("Ending gotCAD");
       }
     }

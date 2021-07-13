@@ -1,6 +1,6 @@
-# CPT Selective ICP
+# CPT Selective ICP Dyn: 
 
-Package replacing ethzasl_icp_mapper by a selective ICP algorithm taking a reference map (mesh) and a list of references as input for better alignment.
+Package replacing ethzasl_icp_mapper by a selective ICP algorithm taking a reference map (mesh) and a list of references as input for better alignment. Odometry from a Realsense Tracking Camera is used as a prior for ICP.
 
 ## About
 
@@ -16,6 +16,66 @@ If selective ICP fails with a convergence error, the package automatically uses 
 Real-time capability is important, because if ICP takes too long, the estimator can break. In that case the estimator already moved too far away from the model using the other informations (IMU, odometry) so that ICP can not correct it anymore.
 
 The node also offers a mapping thread based only on selective ICP references. The built reference map can further be used for selective ICP avoiding the low number of references when moving around.
+
+## Usage:
+`realsense_broadcast_node` takes the odometry from a topic and broadcasts it to the TF tree. This is required to the final mapper node. `cpt_selective_icp_dyn_node` does ICP of a pointcloud against a mesh and uses an odometry as a pose prior. Therefore, `scanTopic` and `odomTopic` need to be specified. It is possible to skip LiDAR scans by taking only every `skipScans` scan for ICP. Instead of directly using the odometry as a pose prior for ICP, an Extended Kalman Filter is used, if `ekfEnable` is set to true. The nodes can be used as follows  (taken from `background_foreground_segmentation/launch/realsense_experiments/pickelhaube2_rt.launch`):
+
+```xml
+    <node name="realsense_broadcast"
+          type="realsense_broadcast_node"
+          pkg="cpt_selective_icp_dyn"
+          output="screen" >
+          <param name="odomTopic" value="/camera/odom/sample" />
+          <param name="realsenseOdomTopic" value="/realsense_odom" />
+          <param name="inputQueueSize" value="5" />
+          <param name="tfMapFrame" value="map" />
+          <param name="cameraPoseFrame" value="camera_pose_frame" />
+          <param name="cameraOdomFrame" value="camera_odom_frame" />
+          <param name="realsenseCov" value="0.1" />
+    </node>
+
+    <node name="mapper"
+          type="cpt_selective_icp_dyn_node"
+          pkg="cpt_selective_icp_dyn"
+          output="screen" >
+          <!--launch-prefix="tmux split-window" -->
+    <rosparam command="load" file="$(find background_foreground_segmentation)/launch/realsense_experiments/mapper_parameters_dyn.yaml" />
+                <param name="scanTopic" value="/rslidar_points" />
+                <param name="odomTopic" value="/camera/odom/sample" />
+                <param name="skipScans" value="5" /> 
+                <param name="ekfEnable" value="false" />
+
+        <param name="cadTopic" value="mesh_publisher/mesh_out" />
+        <param name="icpConfig"
+               value="$(find background_foreground_segmentation)/launch/paper_experiments/full_icp.yaml" />
+        <param name="selectiveIcpConfig"
+               value="$(find background_foreground_segmentation)/launch/paper_experiments/selective_icp.yaml" />
+        <param name="inputFiltersConfig"
+               value="$(find background_foreground_segmentation)/launch/paper_experiments/input_filters.yaml" />
+        <param name="mapPostFiltersConfig"
+               value="$(find background_foreground_segmentation)/launch/paper_experiments/map_post_filter.yaml" />
+        <param name="mapPreFiltersConfig"
+               value="$(find background_foreground_segmentation)/launch/paper_experiments/map_pre_filter.yaml" />
+        <param name="path"
+                 value="$(find cpt_selective_icp_dyn)" />
+    </node>
+```
+`cloud_distance_node` takes a pointcloud and computes the distance to the mesh for each point. In `background_foreground_segmentation/launch/dense_labels_experiments/pickelhaube2_labelgen_dyn_dense_sparse_office.launch`, it is used to generate dense pseudo-labels from a depth pointcloud: 
+
+```xml
+       <node name="cloud_distance"
+          type="cloud_distance_node"
+          pkg="cpt_selective_icp_dyn"
+          output="screen" >
+          <param name="cadTopic" value="mesh_publisher/mesh_out" />
+          <param name="cloudInTopic" value="/points2" />
+          <param name="inputQueueSize" value="5" />
+          <param name="tfMapFrame" value="map" />
+          <param name="cloudOutTopic" value="/depth/distance_pc" />
+          <param name="cloudFrame" value="pickelhaubedepth_camera_link" />
+          <param name="mapSamplingDensity" value="100" />
+       </node>
+```
 
 ## Instructions
 
