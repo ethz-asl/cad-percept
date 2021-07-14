@@ -6,7 +6,6 @@ catkin_simple(ALL_DEPS_REQUIRED)
 
 add_definitions(-std=c++14 -Wall -Wextra)
 
-find_package(SCIP REQUIRED)
 find_package(CGAL REQUIRED)
 include(${CGAL_USE_FILE})
 #############
