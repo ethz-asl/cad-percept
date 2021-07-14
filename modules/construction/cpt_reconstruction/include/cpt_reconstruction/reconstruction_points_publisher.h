@@ -32,6 +32,10 @@ class ReconstructionPointsPublisher {
   ReconstructionPointsPublisher() = delete;
   ReconstructionPointsPublisher(ros::NodeHandle nodeHandle);
 
+  /**
+   * Reads a point cloud from a file and publishes it
+   * Only needed for a stationary total station
+   */
   void publishPoints();
 
  private:

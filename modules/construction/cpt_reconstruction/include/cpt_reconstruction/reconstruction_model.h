@@ -61,15 +61,41 @@ class Model {
   Model() = delete;
   Model(const ros::NodeHandle& nodeHandle);
 
+  /**
+   * Preprocesses a Kd-search-tree
+   */
   void preprocess();
+
+  /**
+   * Queries the minimum distance to a point
+   * using the preprocessed Kd-search-tree
+   */
   void queryTree(pcl::PointXYZ p);
+
+  /**
+   * Adds a point to the buffer
+   */
   void addOutlier(pcl::PointXYZ p);
+
+  /**
+   * Estimates the surface normals of a point cloud
+   */
   void addNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                   pcl::PointCloud<pcl::Normal>::Ptr normals, int k);
 
+  /**
+   * Applies a filter to the buffer
+   */
   void applyFilter();
+
+  /**
+   * Detects all shapes in the buffer
+   */
   void efficientRANSAC();
 
+  /**
+   * Getter ans Setter
+   */
   std::vector<Eigen::MatrixXd>* getPointShapes();
   std::vector<Eigen::Vector3d>* getRansacNormals();
   std::vector<Eigen::Vector3d>* getAxis();

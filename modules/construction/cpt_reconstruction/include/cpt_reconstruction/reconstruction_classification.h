@@ -101,9 +101,17 @@ class Classification {
 
  private:
   void messageCallback(const ::cpt_reconstruction::clusters &msg);
+
+  /**
+   * Computing a reconstructed mesh from points
+   */
   void computeReconstructedSurfaceMesh(
       std::vector<PointVectorPair_R> &points, Mesh_M &mesh,
       pcl::PointCloud<pcl::PointXYZ>::Ptr mesh_points);
+
+  /**
+   * Classify the faces of the reconstructed mesh
+   */
   void classifyMesh(int idx, const std::string config_path, Mesh_M &mesh,
                     std::vector<int> &label_indices);
 

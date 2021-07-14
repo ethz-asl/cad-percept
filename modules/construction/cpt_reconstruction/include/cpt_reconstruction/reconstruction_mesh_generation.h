@@ -83,6 +83,152 @@ class MeshGeneration {
   };
 
  private:
+  void messageCallback(const ::cpt_reconstruction::classified_shapes &msg);
+
+  /**
+   * Extracting data from the received message
+   */
+  void getMessageData(const ::cpt_reconstruction::classified_shapes &msg,
+                      pcl::PolygonMesh &mesh_detected);
+
+  /**
+   * Extracting all parameters from the detected mesh
+   */
+  void preprocessFusedMesh(pcl::PolygonMesh &mesh_detected, double min_area);
+
+  /**
+   * Computes all artificial vertices for planar elements
+   */
+  void getProposalVerticesPlanes(double min_area);
+
+  /**
+   * Computes parameters for all planar elements
+   */
+  void getElementProposalsPlanes(
+      std::vector<Eigen::Vector3d> &center_estimates,
+      std::vector<Eigen::Matrix3d> &direction_estimates,
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_hierarchies,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points);
+
+  /**
+   * Computes parameters for all cylinders
+   */
+  void getElementProposalsCylinders(
+      std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
+      std::vector<double> &radius_estimates);
+
+  /**
+   * Finds all artificial vertices which are close to a vertex
+   * from the incomplete building model
+   */
+  void getHierarchicalVertices(
+      pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr backup_points);
+
+  /**
+   * Removes invalid clusters based on some constraints
+   */
+  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal,
+                             double radius,
+                             pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud,
+                             int cur_id);
+
+  /**
+   * Combines to meshes to one mesh
+   */
+  void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
+
+  /**
+   * Shifts detected planar shapes, shifts them and computes a structured hull
+   */
+  void computePlanarConvexHull(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                               Eigen::Vector3d robot_position,
+                               pcl::PolygonMesh &mesh, bool include_offsets);
+
+  /**
+   * Computes all parameters for the planes in the mesh with candidate planes
+   */
+  void computeAllPlanes(bool do_normal_correction = true, double eps = 0.1);
+
+  /**
+   * Flags all planes in the mesh with candidate planes which are duplicated
+   */
+  void flagDuplicatedPlanes(double min_area = 0.0);
+
+  /**
+   * Splits cluster into three point clouds representing the boundary
+   */
+  void processElementCloud(
+      int idx, pcl::PointCloud<pcl::PointXYZ>::Ptr element_points,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr corners,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr corners_top_bottom,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr corners_side,
+      Eigen::Vector3d &element_normal, double &element_d);
+
+  /**
+   * Selects candidate planes for the set P1
+   */
+  void selectMainCandidateFaces(pcl::PointCloud<pcl::PointXYZ>::Ptr corners,
+                                Eigen::Vector3d &element_normal,
+                                double min_area = 0.0,
+                                bool plane_flipping = true);
+
+  /**
+   * Selects candidate planes for the set P2 and P3
+   */
+  void selectOrthoCandidateFacesWall(
+      pcl::PointCloud<pcl::PointXYZ>::Ptr corners_side,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr corners_top_bottom,
+      Eigen::Vector3d &element_normal, double min_area = 0.0);
+
+  void selectOrthoCandidateFacesFloorCeiling(
+      pcl::PointCloud<pcl::PointXYZ>::Ptr corners,
+      Eigen::Vector3d &element_normal, double min_area = 0.0);
+
+  /**
+   * Computes three planes intersections
+   */
+  void computeArtificialVertices(
+      pcl::PointCloud<pcl::PointXYZ>::Ptr artificial_vertices,
+      std::vector<Eigen::Matrix3d> &shape_directions);
+
+  /**
+   * Gets plane parameters from its index
+   */
+  void planeFromIdx(Eigen::Vector4f &result, int idx);
+
+  /**
+   * Removes duplicated points in a point cloud
+   */
+  void removeDuplicatedPoints(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                              double eps = 10e-3);
+
+  /**
+   * Removes duplicated values in a vector
+   */
+  void removeDuplicatedValues(std::vector<double> &vector, double eps = 10e-6);
+
+  /**
+   * Returns whether a value is already included in a given vector
+   */
+  bool is_not_included(const std::vector<double> &vec, double value,
+                       double tol = 0.005);
+
+  /**
+   * Computes magnitudes for the three hierarchies
+   */
+  bool getReconstructionParametersPlanes(
+      int idx,
+      const pcl::PointCloud<pcl::PointXYZ>::Ptr &strong_points_reconstruction,
+      const pcl::PointCloud<pcl::PointXYZ>::Ptr &weak_points,
+      std::vector<Eigen::Vector3d> &center_estimates,
+      std::vector<Eigen::Matrix3d> &direction_estimates,
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
+      std::vector<std::vector<Eigen::VectorXd>> &parameter_hierarchies);
+
   ros::NodeHandle nodeHandle1_;
   ros::NodeHandle nodeHandle2_;
   ros::Subscriber subscriber_;
@@ -150,91 +296,6 @@ class MeshGeneration {
 
   pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr model_octree_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr model_upsampled_kdtree_;
-
-  void messageCallback(const ::cpt_reconstruction::classified_shapes &msg);
-
-  void getMessageData(const ::cpt_reconstruction::classified_shapes &msg,
-                      pcl::PolygonMesh &mesh_detected);
-
-  void preprocessFusedMesh(pcl::PolygonMesh &mesh_detected, double min_area);
-
-  void getProposalVerticesPlanes(double min_area);
-
-  void getElementProposalsPlanes(
-      std::vector<Eigen::Vector3d> &center_estimates,
-      std::vector<Eigen::Matrix3d> &direction_estimates,
-      std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
-      std::vector<std::vector<Eigen::VectorXd>> &parameter_hierarchies,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points);
-
-  void getElementProposalsCylinders(
-      std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
-      std::vector<double> &radius_estimates);
-
-  void getHierarchicalVertices(
-      pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr backup_points);
-
-  bool checkShapeConstraints(int sem_class, Eigen::Vector3d &normal,
-                             double radius,
-                             pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud,
-                             int cur_id);
-
-  void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
-
-  void computePlanarConvexHull(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                               Eigen::Vector3d robot_position,
-                               pcl::PolygonMesh &mesh, bool include_offsets);
-
-  void computeAllPlanes(bool do_normal_correction = true, double eps = 0.1);
-
-  void flagDuplicatedPlanes(double min_area = 0.0);
-
-  void processElementCloud(
-      int idx, pcl::PointCloud<pcl::PointXYZ>::Ptr element_points,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr corners,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr corners_top_bottom,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr corners_side,
-      Eigen::Vector3d &element_normal, double &element_d);
-
-  void selectMainCandidateFaces(pcl::PointCloud<pcl::PointXYZ>::Ptr corners,
-                                Eigen::Vector3d &element_normal,
-                                double min_area = 0.0,
-                                bool plane_flipping = true);
-
-  void selectOrthoCandidateFacesWall(
-      pcl::PointCloud<pcl::PointXYZ>::Ptr corners_side,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr corners_top_bottom,
-      Eigen::Vector3d &element_normal, double min_area = 0.0);
-
-  void selectOrthoCandidateFacesFloorCeiling(
-      pcl::PointCloud<pcl::PointXYZ>::Ptr corners,
-      Eigen::Vector3d &element_normal, double min_area = 0.0);
-
-  void computeArtificialVertices(
-      pcl::PointCloud<pcl::PointXYZ>::Ptr artificial_vertices,
-      std::vector<Eigen::Matrix3d> &shape_directions);
-
-  void planeFromIdx(Eigen::Vector4f &result, int idx);
-
-  void removeDuplicatedPoints(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                              double eps = 10e-3);
-
-  void removeDuplicatedValues(std::vector<double> &vector, double eps = 10e-6);
-
-  bool is_not_included(const std::vector<double> &vec, double value,
-                       double tol = 0.005);
-
-  bool getReconstructionParametersPlanes(
-      int idx,
-      const pcl::PointCloud<pcl::PointXYZ>::Ptr &strong_points_reconstruction,
-      const pcl::PointCloud<pcl::PointXYZ>::Ptr &weak_points,
-      std::vector<Eigen::Vector3d> &center_estimates,
-      std::vector<Eigen::Matrix3d> &direction_estimates,
-      std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
-      std::vector<std::vector<Eigen::VectorXd>> &parameter_hierarchies);
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

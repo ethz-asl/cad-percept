@@ -61,17 +61,39 @@ class Clustering {
 
  private:
   void messageCallback(const ::cpt_reconstruction::shapes &msg);
+  /**
+   * Check to ensure certain constrains on the classes
+   */
   bool checkValidPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                        int valid_size, int min_size);
+
+  /**
+   * Fusing detections together
+   */
   void fusePlanes();
   void fuseCylinders();
+
+  /**
+   * Removes clusters which consists out of one single detection
+   */
   void removeSingleDetectionsPlanes();
   void removeSingleDetectionsCylinders();
+
+  /**
+   * Removes a cluster if it is conflicting with other clusters
+   */
   void removeConflictingClustersPlanes();
+
+  /**
+   * Splitting a cluster into splits representing faces of the element
+   */
   void splitUpElement(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                       Eigen::Vector3d &ransac_normal,
                       std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
 
+  /**
+   * Performing a particular split
+   */
   void performSplit(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
                     Eigen::Vector3d cut_dir,
                     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);

@@ -56,25 +56,77 @@ class ProposalSelection {
       std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
       std::vector<double> &radius_estimates);
 
+  /**
+   * Selects a unique representation for each element
+   */
   void selectProposals();
+
+  /**
+   * Computes a structured point cloud for each element using the
+   * magnitudes with the highest scores and stores the corresponding
+   * Kd-search-tree
+   */
   void organizeDatastructure();
+
+  /**
+   * Updates a given prior by a posterior
+   */
   Eigen::VectorXd computePosterior(const Eigen::VectorXd &prior,
                                    const Eigen::VectorXd &posterior);
+
+  /**
+   * Removes duplicated values from a vector
+   */
   void removeDuplicatedValues(std::vector<double> &vector, double eps);
+
+  /**
+   * Computes a structured point cloud from given parameters
+   * containing only the point on the surface
+   */
   void upsampledStructuredPointCloud(
       double a1, double a2, double b1, double b2, double c1, double c2,
       Eigen::Vector3d center, Eigen::Matrix3d directions,
       pcl::PointCloud<pcl::PointXYZ>::Ptr result_cloud, double tol,
       double step = 0.03);
+
+  /**
+   * Return the the magnitudes which corresponds to the kth-highest score
+   */
   double findParameterFromLikelihood(const Eigen::VectorXd &params,
                                      const Eigen::VectorXd &probabilities,
                                      int k);
+
+  /**
+   * Returns the index of the maximum value in a vector
+   */
   int findMaxIndexInEigenVector(const Eigen::VectorXd &vector);
+
+  /**
+   * Removes a element if there is a significant conflict with
+   * another element
+   */
   void removeConflictingElements();
+
+  /**
+   * Removes a element if for not more than two arrays only
+   * default magnitudes are availabe
+   */
   void removeInsufficientElements();
+
+  /**
+   * Computes the parameters from all planes in the
+   * incomplete building model
+   */
   void processModelPlanes();
+
+  /**
+   * Normalizes a vector by its L1-norm
+   */
   void L1Normalizer(Eigen::VectorXd &vec);
 
+  /**
+   * Getter for final result
+   */
   void getSelectedProposals(
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
