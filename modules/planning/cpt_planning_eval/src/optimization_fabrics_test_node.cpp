@@ -30,12 +30,28 @@ int main(int argc, char *argv[]) {
   rmp_planner.plan(start, goal, &states_out);
 
   //plot-----------------------------------------------------------------------------
+  std::vector<double> plot_x, plot_y, plot_z;
   for(Eigen::Vector3d i : states_out){
-    std::cout << i << std::endl;
+    // std::cout << i << std::endl;
+    plot_x.push_back(i(0));
+    plot_y.push_back(i(1));
+    plot_z.push_back(i(2));
     //plotty::plot(i,"rx");
   }
+  plotty::plot(plot_x,plot_y);
   // plotty::plot(result.f_);
-  //plotty::show();
+  plotty::show();
+  //---------------------------------------------------------------------------------
+  //ros visualization----------------------------------------------------------------
+  ros::init(argc, argv, "optimization_fabrics_test_node");
+  ros::NodeHandle nh;
+  // ros::NodeHandle nh_private("~");
+  rmp_planner.init_ros_interface(nh);
+  mav_msgs::EigenTrajectoryPoint::Vector trajectory_odom;
+  rmp_planner.generateTrajectoryOdom(start, goal, &trajectory_odom);
+  rmp_planner.publishTrajectory(trajectory_odom);
+  ros::spin();
 
+  //---------------------------------------------------------------------------------
   return 0;
 }
