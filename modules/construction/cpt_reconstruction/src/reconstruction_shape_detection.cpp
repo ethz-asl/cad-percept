@@ -20,8 +20,6 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
   nodeHandle1.getParam("UseBuffer", USE_BUFFER_);
   nodeHandle1.getParam("ClearBufferAfterIteration",
                        CLEAR_BUFFER_AFTER_ITERATION_);
-  nodeHandle1.getParam("OutputAllPointsFile", ALL_POINTS_PATH_);
-  nodeHandle1.getParam("OutputOutlierPointsFile", OUTLIER_POINTS_PATH_);
 
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
@@ -95,10 +93,7 @@ void ShapeDetection::messageCallback(
 
   ROS_INFO("[Subscriber] Received cloud with size: %d\n", pcl_cloud->size());
 
-  std::ofstream file1;
-  std::ofstream file2;
-  file1.open(ALL_POINTS_PATH_, std::ofstream::app);
-  file2.open(OUTLIER_POINTS_PATH_, std::ofstream::app);
+  // Save outliers to buffer
   for (int i = 0; i < pcl_cloud_transformed->size(); i++) {
     double x = (*pcl_cloud_transformed)[i].x;
     double y = (*pcl_cloud_transformed)[i].y;
@@ -107,19 +102,15 @@ void ShapeDetection::messageCallback(
     model_->queryTree(pcl_p);
     if (model_->getMinDistance() >= MODEL_TOLERANCE_) {
       model_->addOutlier(pcl_p);
-      file1 << x << " " << y << " " << z << "\n";
     }
-    file2 << x << " " << y << " " << z << "\n";
   }
-  file1.close();
-  file2.close();
 
   ROS_INFO("[Subscriber] Outlier count: %d\n", model_->getOutlierCount());
+  // Apply RANSAC to buffer
   if (model_->getOutlierCount() > OUTLIER_COUNT_ || SENSOR_TYPE_ == 1) {
     model_->clearRansacShapes();
     model_->applyFilter();
     model_->efficientRANSAC();
-    // model_->SACSegmentation();
 
     std::vector<Eigen::MatrixXd> *points_shape = model_->getPointShapes();
     std::vector<Eigen::Vector3d> *ransac_normal = model_->getRansacNormals();
@@ -178,5 +169,6 @@ void ShapeDetection::messageCallback(
     iteration_counter_++;
   }
 }
+
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

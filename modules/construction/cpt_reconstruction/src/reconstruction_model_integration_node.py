@@ -15,7 +15,7 @@ import Tkinter as tk
 
 manipulationPanel = None
 BUILDING_MODEL_PATH_ = ""
-
+RESULT_PATH_ = ""
 
 class ManipulationPanel:
     def __init__(self):
@@ -639,10 +639,6 @@ class UserInteraction:
             height = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2 + (p1[2] - p2[2]) ** 2)
             # global manipulationPanel
 
-            info_1 = "height is: " + str(height)
-            info_2 = "radius is: " + str(radius)
-            rospy.loginfo(info_1)
-            rospy.loginfo(info_2)
             cyl_mesh = o3d.geometry.TriangleMesh()
             cyl_mesh = cyl_mesh.create_cylinder(radius, height, 20, 10)
             cyl_mesh.paint_uniform_color(np.array([1, 0, 0]))
@@ -753,8 +749,11 @@ class UserInteraction:
 
         final_mesh.merge_close_vertices(0.02)
         final_mesh.remove_duplicated_vertices()
-        o3d.io.write_triangle_mesh("/home/philipp/Schreibtisch/final_reconstructed_mesh.ply", final_mesh)
-        o3d.io.write_triangle_mesh("/home/philipp/Schreibtisch/added_reconstructed_mesh.ply", added_mesh)
+
+        final_mesh_path = RESULT_PATH_ + "final_reconstructed_mesh.ply"
+        added_mesh_path = RESULT_PATH_ + "final_added_reconstructed_mesh.ply"
+        o3d.io.write_triangle_mesh(final_mesh_path, final_mesh)
+        o3d.io.write_triangle_mesh(added_mesh_path, added_mesh)
 
     def setModelDataForO3D(self):
         mesh = o3d.io.read_triangle_mesh(BUILDING_MODEL_PATH_)
@@ -830,6 +829,9 @@ def model_integration():
 
     global BUILDING_MODEL_PATH_
     BUILDING_MODEL_PATH_ = rospy.get_param("BuildingModelMeshFile")
+
+    global RESULT_PATH_
+    RESULT_PATH_ = rospy.get_param("ResultsPath")
 
     rospy.loginfo("Initialized Python_node")
     rospy.Subscriber("element_proposals", element_proposals, callback)

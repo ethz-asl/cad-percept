@@ -88,14 +88,14 @@ class MeshGeneration {
   ros::Subscriber subscriber_;
   ros::Publisher publisher_;
 
+  // Parameter values
   std::string UPSAMPLED_BUILDING_MODEL_PATH_;
   std::string BUILDING_MODEL_PATH_;
-  std::string OUTPUT_DIR_;
   float UPSAMPLED_MODEL_OCTREE_RESOLUTION_;
   double MIN_AREA_;
-  double DEFAULT_OFFSET_;
   double DUPLICATE_DOT_PRODUCT_;
   double DUPLICATE_DIFF_D_;
+  double ORTHO_SCORE_;
 
   // Data from msg
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds_;
@@ -172,12 +172,6 @@ class MeshGeneration {
       std::vector<Eigen::MatrixXd> &bounded_axis_estimates,
       std::vector<double> &radius_estimates);
 
-  void evaluateProposals(
-      pcl::PolygonMesh &resulting_mesh,
-      std::vector<Eigen::Vector3d> &center_estimates,
-      std::vector<Eigen::Matrix3d> &direction_estimates,
-      std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates);
-
   void getHierarchicalVertices(
       pcl::PointCloud<pcl::PointXYZ>::Ptr strong_points,
       pcl::PointCloud<pcl::PointXYZ>::Ptr weak_points,
@@ -237,7 +231,6 @@ class MeshGeneration {
       int idx,
       const pcl::PointCloud<pcl::PointXYZ>::Ptr &strong_points_reconstruction,
       const pcl::PointCloud<pcl::PointXYZ>::Ptr &weak_points,
-      const pcl::PointCloud<pcl::PointXYZ>::Ptr &backup_points,
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
       std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,

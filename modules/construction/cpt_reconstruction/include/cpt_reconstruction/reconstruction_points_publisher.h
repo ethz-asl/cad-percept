@@ -8,7 +8,6 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
-#include "cpt_reconstruction/coordinates.h"
 #include "cpt_reconstruction/shape.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
@@ -32,6 +31,7 @@ class ReconstructionPointsPublisher {
  public:
   ReconstructionPointsPublisher() = delete;
   ReconstructionPointsPublisher(ros::NodeHandle nodeHandle);
+
   void publishPoints();
 
  private:

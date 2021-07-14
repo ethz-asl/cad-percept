@@ -69,7 +69,6 @@ class Model {
 
   void applyFilter();
   void efficientRANSAC();
-  void SACSegmentation();
 
   std::vector<Eigen::MatrixXd>* getPointShapes();
   std::vector<Eigen::Vector3d>* getRansacNormals();
@@ -82,6 +81,7 @@ class Model {
   void clearBuffer();
 
  private:
+  // Parameter values
   std::string UPSAMPLED_BUILDING_MODEL_PATH_;
   bool USE_FILTER_;
   float OCTREE_FILTER_RESOLUTION_;
@@ -91,9 +91,13 @@ class Model {
   double RANSAC_CLUSTER_EPSILON_;
   double RANSAC_NORMAL_THRESHOLD_;
 
+  // Points from the upsampled incomplete building model
   pcl::PointCloud<pcl::PointXYZ>::Ptr model_points_;
+
+  // Points reflecting Model Deviations
   pcl::PointCloud<pcl::PointXYZ>::Ptr meshing_points_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree_;
+
   std::vector<int> nn_indices_{1};
   std::vector<float> nn_dists_{1};
   std::vector<Eigen::MatrixXd> points_shape_;

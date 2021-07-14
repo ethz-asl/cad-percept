@@ -3,16 +3,8 @@
 namespace cad_percept {
 namespace cpt_reconstruction {
 Clustering::Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
-    : nodeHandle1_(nodeHandle1),
-      nodeHandle2_(nodeHandle2),
-      counter_(0),
-      received_shapes_plane_(0) {
-  // preprocessBuildingModel();
-
+    : nodeHandle1_(nodeHandle1), nodeHandle2_(nodeHandle2), counter_(0) {
   nodeHandle1.getParam("SensorType", SENSOR_TYPE_);
-  nodeHandle1.getParam("OutputShapesPath", SHAPES_PATH_);
-  nodeHandle1.getParam("OutputMeshesPath", MESHES_PATH_);
-
   nodeHandle1.getParam("VoxelGridFilterResolution",
                        VOXEL_GRID_FILTER_RESOLUTION_);
   nodeHandle1.getParam("MinSizeValidPlane", MIN_SIZE_VALID_PLANE_);
@@ -30,6 +22,8 @@ Clustering::Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2)
   nodeHandle1.getParam("DistanceConflictingPoint", DISTANCE_CONFLICTING_POINT_);
   nodeHandle1.getParam("Overlap", OVERLAP_);
   nodeHandle1.getParam("DetectionCount", DETECTION_COUNT_);
+  nodeHandle1.getParam("PerformSplittingMobileRobot", SPLITTING_MOBILE_ROBOT_);
+  nodeHandle1.getParam("MinDensityImprovement", SPLITTING_THRESHOLD);
 
   subscriber_ = nodeHandle1_.subscribe("ransac_shape", 1000,
                                        &Clustering::messageCallback, this);
@@ -98,10 +92,6 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
 
       double radius = cur_shape.radius;
 
-      std::cout << "Radius: " << radius << std::endl;
-      std::cout << "Axis: " << axis.x() << " " << axis.y() << " " << axis.z()
-                << std::endl;
-
       // Add Cyl do datastructure
       clouds_cyl_.push_back(points_cloud);
       pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree(
@@ -112,28 +102,22 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
       axis_.push_back(axis);
       fusing_count_cyl_.push_back(1);
 
-      std::string result =
-          SHAPES_PATH_ + "valid_shape_" + std::to_string(counter_) + "_cyl.ply";
-      pcl::io::savePLYFile(result, *points_cloud);
-
       ROS_INFO("[Mesh Generation] Counter: %d", counter_);
       counter_++;
     }
   }
-  if (SENSOR_TYPE_ == 0 && (counter_ >= INTERVAL_FUSING_CLUSTERS_ &&
-                            (counter_ % INTERVAL_FUSING_CLUSTERS_ <= msg_size))) {
-    ROS_INFO("Size before fuseing plane: %d \n", clouds_plane_.size());
-    ROS_INFO("Size before fuseing cylinders: %d \n", clouds_cyl_.size());
+
+  // Fuse clusters
+  if (SENSOR_TYPE_ == 0 &&
+      (counter_ >= INTERVAL_FUSING_CLUSTERS_ &&
+       (counter_ % INTERVAL_FUSING_CLUSTERS_ <= msg_size))) {
     this->fusePlanes();
     this->fuseCylinders();
-    ROS_INFO("Size after fuseing plane: %d \n", clouds_plane_.size());
-    ROS_INFO("Size after fuseing cylinders: %d \n", clouds_cyl_.size());
   }
 
+  // Fuse and clean clusters
   if (SENSOR_TYPE_ == 0 && counter_ >= INTERVAL_CLEANING_CLUSTERS_ &&
       (counter_ % INTERVAL_CLEANING_CLUSTERS_ <= msg_size)) {
-    ROS_INFO("Size before fuseing plane: %d \n", clouds_plane_.size());
-    ROS_INFO("Size before fuseing cylinders: %d \n", clouds_cyl_.size());
     this->fusePlanes();
     this->fuseCylinders();
 
@@ -141,15 +125,14 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
     this->removeConflictingClustersPlanes();
 
     this->removeSingleDetectionsCylinders();
-    ROS_INFO("Size after fuseing plane: %d \n", clouds_plane_.size());
-    ROS_INFO("Size after fuseing cylinders: %d \n", clouds_cyl_.size());
   }
 
-  if (SENSOR_TYPE_ == 1 || (counter_ >= INTERVAL_FORWARDING_CLUSTERS_ &&
-                            (counter_ % INTERVAL_FORWARDING_CLUSTERS_ <= msg_size))) {
-
-    //Clean up before publishing!
-    if (SENSOR_TYPE_ == 0){
+  // Publish clusters
+  if (SENSOR_TYPE_ == 1 ||
+      (counter_ >= INTERVAL_FORWARDING_CLUSTERS_ &&
+       (counter_ % INTERVAL_FORWARDING_CLUSTERS_ <= msg_size))) {
+    // Clean up before publishing for the mobile robot
+    if (SENSOR_TYPE_ == 0) {
       this->fusePlanes();
       this->fuseCylinders();
       this->removeSingleDetectionsPlanes();
@@ -169,7 +152,10 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
         std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> publish_clouds_vec;
 
         std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> splitted_clouds;
-        if (SENSOR_TYPE_ == 1) {
+
+        // Split up clusters
+        if (SENSOR_TYPE_ == 1 ||
+            (SENSOR_TYPE_ == 0 && SPLITTING_MOBILE_ROBOT_)) {
           splitUpElement(clouds_plane_.at(i), ransac_normals_.at(i),
                          splitted_clouds);
           for (int s = 0; s < splitted_clouds.size(); s++) {
@@ -212,11 +198,6 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
           pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_to_publish =
               publish_clouds_vec.at(pub);
 
-          std::string result_cluster =
-              SHAPES_PATH_ + "cluster_" + std::to_string(i) + "_" +
-              std::to_string(pub) + "_" + std::to_string(pub) + "_plane.ply";
-          pcl::io::savePLYFile(result_cluster, *cloud_to_publish);
-
           pcl::PCLPointCloud2 temp_pcl;
           pcl::toPCLPointCloud2(*(cloud_to_publish), temp_pcl);
 
@@ -253,55 +234,6 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
         pcl::PCLPointCloud2 temp_pcl;
         pcl::toPCLPointCloud2(*(clouds_cyl_.at(i)), temp_pcl);
 
-        /*
-        //Upsample cloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr upsampled_cyl_cluster(new
-        pcl::PointCloud<pcl::PointXYZ>()); pcl::ModelCoefficients::Ptr
-        coefficients(new pcl::ModelCoefficients); pcl::PointIndices::Ptr
-        inliers(new pcl::PointIndices);
-        pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
-
-        // Estimate Normals
-        pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
-            new pcl::search::KdTree<pcl::PointXYZ>);
-        searchTree->setInputCloud(clouds_cyl_.at(i));
-        pcl::PointCloud<pcl::Normal>::Ptr normals(
-            new pcl::PointCloud<pcl::Normal>);
-        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
-        normalEstimator.setInputCloud(clouds_cyl_.at(i));
-        normalEstimator.setSearchMethod(searchTree);
-        normalEstimator.setKSearch(10);
-        normalEstimator.compute(*normals);
-
-        seg.setOptimizeCoefficients(true);
-        seg.setModelType(pcl::SACMODEL_CYLINDER);
-        seg.setMethodType(pcl::SAC_RANSAC);
-        seg.setDistanceThreshold(0.05);
-        seg.setMaxIterations(1000);
-        seg.setInputCloud(clouds_cyl_.at(i));
-        seg.setInputNormals(normals);
-        seg.segment(*inliers, *coefficients);
-
-        Eigen::Vector3d point_on_axis (coefficients->values[0],
-        coefficients->values[1], coefficients->values[2]); Eigen::Vector3d
-        cur_axis (coefficients->values[3], coefficients->values[4],
-        coefficients->values[5]); cur_axis.normalize(); double cur_radius =
-        coefficients->values[6];
-
-        for (const auto &p : *(clouds_cyl_.at(i))){
-          Eigen::Vector3d p_e(p.x, p.y, p.z);
-          double diff = (p_e - point_on_axis).dot(cur_axis);
-          Eigen::Vector3d cur_center = point_on_axis + diff * cur_axis;
-          Eigen::Vector3d normal_vec =  p_e - cur_center;
-          normal_vec.normalize();
-          Eigen::Vector3d mirrored_point = cur_center - normal_vec * cur_radius;
-
-          upsampled_cyl_cluster->push_back(p);
-          upsampled_cyl_cluster->push_back(pcl::PointXYZ(mirrored_point.x(),
-        mirrored_point.y(), mirrored_point.z()));
-        }
-        pcl::toPCLPointCloud2(*upsampled_cyl_cluster, temp_pcl);
-        */
         sensor_msgs::PointCloud2 temp_ros;
         pcl_conversions::moveFromPCL(temp_pcl, temp_ros);
         clusters_vec.push_back(temp_ros);
@@ -339,277 +271,6 @@ void Clustering::messageCallback(const ::cpt_reconstruction::shapes &msg) {
     ROS_INFO("Published Clusters");
     publisher_.publish(cluster_msg);
   }
-
-  /*
-  if (counter_ >= INTERVAL_FORWARDING_CLUSTERS_ &&
-      (counter_ % INTERVAL_FORWARDING_CLUSTERS_ == 0)) {
-    pcl::PolygonMesh mesh_all;
-    for (unsigned i = 0; i < clouds_plane_.size(); i++) {
-      if (fusing_count_plane_.at(i) > 0) {
-        pcl::PolygonMesh mesh;
-        this->fit3DPlane(clouds_plane_[i], mesh);
-        this->combineMeshes(mesh, mesh_all);
-
-        std::string result =
-            MESHES_PATH_ + "points_" + std::to_string(i) + ".ply";
-        pcl::io::savePLYFile(result, *clouds_plane_[i]);
-
-        std::string result2 =
-            MESHES_PATH_ + "/mesh_" + std::to_string(i) + ".ply";
-        pcl::io::savePLYFile(result2, mesh);
-      }
-    }
-    pcl::io::savePLYFile(MESHES_PATH_ + "mesh_all.ply", mesh_all);
-  }
-   */
-}
-
-void Clustering::tryHorizontalSplit(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d &ransac_normal,
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result) {
-  if (std::fabs(ransac_normal.z()) < 0.1) {
-    double min_z = 1000;
-    double max_z = -1000;
-
-    for (int k = 0; k < cloud->size(); k++) {
-      double z = (*cloud)[k].z;
-      if (z > max_z) {
-        max_z = z;
-      }
-      if (z < min_z) {
-        min_z = z;
-      }
-    }
-
-    double delta = (max_z - min_z) / 10.0;
-    std::vector<double> splitting_score;
-    // Eigen::Vector3d split_plane(0, 0, 1);
-    for (int l = 0; l <= 8; l++) {
-      double split_z = min_z + (l + 1) * delta;
-      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_1(
-          new pcl::PointCloud<pcl::PointXYZ>());
-      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2(
-          new pcl::PointCloud<pcl::PointXYZ>());
-      for (int m = 0; m < cloud->size(); m++) {
-        pcl::PointXYZ cur_p = (*cloud)[m];
-        if (cur_p.z < split_z) {
-          cloud_1->push_back(cur_p);
-        } else {
-          cloud_2->push_back(cur_p);
-        }
-      }
-
-      pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points_1(
-          new pcl::PointCloud<pcl::PointXYZ>());
-      pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points_2(
-          new pcl::PointCloud<pcl::PointXYZ>());
-      pcl::ConvexHull<pcl::PointXYZ> hull1;
-      hull1.setDimension(2);
-      hull1.setComputeAreaVolume(true);
-      hull1.setInputCloud(cloud_1);
-      hull1.reconstruct(*hull_points_1);
-
-      pcl::ConvexHull<pcl::PointXYZ> hull2;
-      hull2.setDimension(2);
-      hull2.setComputeAreaVolume(true);
-      hull2.setInputCloud(cloud_2);
-      hull2.reconstruct(*hull_points_2);
-
-      double area_1_2 = hull1.getTotalArea() + hull2.getTotalArea();
-      double cur_score = cloud->size() / area_1_2;
-      splitting_score.push_back(cur_score);
-      ROS_INFO("Splitting Score: %f", cur_score);
-    }
-
-    auto max_score_it =
-        std::max_element(splitting_score.begin(), splitting_score.end());
-    double max_score = *max_score_it;
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points_init(
-        new pcl::PointCloud<pcl::PointXYZ>());
-    pcl::ConvexHull<pcl::PointXYZ> hull_init;
-    hull_init.setDimension(2);
-    hull_init.setComputeAreaVolume(true);
-    hull_init.setInputCloud(cloud);
-    hull_init.reconstruct(*hull_points_init);
-
-    double init_score = cloud->size() / hull_init.getTotalArea();
-    ROS_INFO("Init Score: %f", init_score);
-    if (max_score > 1.1 * init_score) {
-      int max_idx = std::distance(std::begin(splitting_score), max_score_it);
-      double final_split = min_z + (max_idx + 1) * delta;
-
-      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_split_1(
-          new pcl::PointCloud<pcl::PointXYZ>());
-      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_split_2(
-          new pcl::PointCloud<pcl::PointXYZ>());
-      for (int m = 0; m < cloud->size(); m++) {
-        pcl::PointXYZ cur_p = (*cloud)[m];
-        if (cur_p.z < final_split) {
-          cloud_split_1->push_back(cur_p);
-        } else {
-          cloud_split_2->push_back(cur_p);
-        }
-      }
-      result.push_back(cloud_split_1);
-      result.push_back(cloud_split_2);
-    } else {
-      result.push_back(cloud);
-    }
-  } else {
-    result.push_back(cloud);
-  }
-}
-
-void Clustering::performSplit(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d cut_dir,
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result) {
-  // Compute grid
-  double min_dist = 1000;
-  double max_dist = -1000;
-
-  for (int i = 0; i < cloud->size(); i++) {
-    pcl::PointXYZ p = (*cloud)[i];
-    Eigen::Vector3d p_e(p.x, p.y, p.z);
-    double d = p_e.dot(cut_dir);
-    if (d < min_dist) {
-      min_dist = d;
-    }
-    if (d > max_dist) {
-      max_dist = d;
-    }
-  }
-
-  double delta = (max_dist - min_dist) / 10.0;
-  std::vector<double> splitting_scores;
-
-  std::vector<std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr,
-                        pcl::PointCloud<pcl::PointXYZ>::Ptr>>
-      splitted_clouds;
-  for (int l = 0; l <= 8; l++) {
-    double split_d = min_dist + (l + 1) * delta;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_1(
-        new pcl::PointCloud<pcl::PointXYZ>());
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2(
-        new pcl::PointCloud<pcl::PointXYZ>());
-
-    for (int m = 0; m < cloud->size(); m++) {
-      pcl::PointXYZ cur_p = (*cloud)[m];
-      Eigen::Vector3d cur_e(cur_p.x, cur_p.y, cur_p.z);
-      if (split_d < cur_e.dot(cut_dir)) {
-        cloud_1->push_back(cur_p);
-      } else {
-        cloud_2->push_back(cur_p);
-      }
-    }
-
-    if (cloud_1->size() > 3 && cloud_2->size() > 3) {
-      splitted_clouds.push_back(std::make_pair(cloud_1, cloud_2));
-
-      pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points_1(
-          new pcl::PointCloud<pcl::PointXYZ>());
-      pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points_2(
-          new pcl::PointCloud<pcl::PointXYZ>());
-      pcl::ConvexHull<pcl::PointXYZ> hull1;
-      hull1.setDimension(2);
-      hull1.setComputeAreaVolume(true);
-      hull1.setInputCloud(cloud_1);
-      hull1.reconstruct(*hull_points_1);
-
-      pcl::ConvexHull<pcl::PointXYZ> hull2;
-      hull2.setDimension(2);
-      hull2.setComputeAreaVolume(true);
-      hull2.setInputCloud(cloud_2);
-      hull2.reconstruct(*hull_points_2);
-
-      double area_1_2 = hull1.getTotalArea() + hull2.getTotalArea();
-      double cur_score = cloud->size() / area_1_2;
-      splitting_scores.push_back(cur_score);
-    }
-  }
-
-  if (splitting_scores.size() == 0) {
-    result.push_back(cloud);
-    return;
-  }
-
-  // Evaluate scores
-  auto max_score_it =
-      std::max_element(splitting_scores.begin(), splitting_scores.end());
-  double max_score = *max_score_it;
-
-  pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points_init(
-      new pcl::PointCloud<pcl::PointXYZ>());
-  pcl::ConvexHull<pcl::PointXYZ> hull_init;
-  hull_init.setDimension(2);
-  hull_init.setComputeAreaVolume(true);
-  hull_init.setInputCloud(cloud);
-  hull_init.reconstruct(*hull_points_init);
-
-  double init_score = cloud->size() / hull_init.getTotalArea();
-
-  if (max_score > 1.1 * init_score) {
-    int max_idx = std::distance(std::begin(splitting_scores), max_score_it);
-
-    if (splitted_clouds.at(max_idx).first->size() > 100) {
-      result.push_back(splitted_clouds.at(max_idx).first);
-    }
-    if (splitted_clouds.at(max_idx).second->size() > 100) {
-      result.push_back(splitted_clouds.at(max_idx).second);
-    }
-
-  } else {
-    result.push_back(cloud);
-  }
-}
-
-void Clustering::splitUpElement(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d &ransac_normal,
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result) {
-  // Decide Cutting Direction
-  Eigen::Vector3d cut_1;
-  Eigen::Vector3d cut_2;
-
-  Eigen::Vector3d unit_x(1, 0, 0);
-  Eigen::Vector3d unit_y(0, 1, 0);
-  Eigen::Vector3d unit_z(0, 0, 1);
-
-  // Vertical Element
-  if (std::fabs(ransac_normal.z()) < 0.3) {
-    cut_1 = unit_z;
-
-    double score_x = std::fabs(ransac_normal.dot(unit_x));
-    double score_y = std::fabs(ransac_normal.dot(unit_y));
-    if (score_x < score_y) {
-      cut_2 = unit_x;
-    } else {
-      cut_2 = unit_y;
-    }
-  } else {
-    cut_1 = unit_x;
-    cut_2 = unit_y;
-  }
-
-  // Perform Cut 1
-  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> level_1;
-  performSplit(cloud, cut_1, level_1);
-
-  // Perform Cut 2
-  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> level_2;
-  for (int i = 0; i < level_1.size(); i++) {
-    performSplit(level_1.at(i), cut_2, level_2);
-  }
-
-  // Perform Cut 3
-  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> level_3;
-  for (int i = 0; i < level_2.size(); i++) {
-    performSplit(level_2.at(i), cut_1, level_3);
-  }
-
-  // Perform Cut 4
-  for (int i = 0; i < level_3.size(); i++) {
-    performSplit(level_3.at(i), cut_2, result);
-  }
 }
 
 bool Clustering::checkValidPlane(
@@ -619,10 +280,6 @@ bool Clustering::checkValidPlane(
 
   if (cloud->size() >= valid_size) {
     is_valid = true;
-    std::string result =
-        SHAPES_PATH_ + "valid_shape_" + std::to_string(counter_) + "_plane.ply";
-    pcl::io::savePLYFile(result, *cloud);
-    ROS_INFO("Valid plane %d\n", received_shapes_plane_);
   } else if (cloud->size() >= min_size) {
     pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
     feature_extractor.setInputCloud(cloud);
@@ -633,22 +290,8 @@ bool Clustering::checkValidPlane(
     // assumption: w x .10 plane as minimum size
     if (middle_value > THRESHOLD_SECOND_EIGENVALUE_) {
       is_valid = true;
-      ROS_INFO("Valid plane %d with l2 = %f\n", received_shapes_plane_,
-               middle_value);
-      std::string result = SHAPES_PATH_ + "valid_shape_" +
-                           std::to_string(received_shapes_plane_) +
-                           "_plane.ply";
-      pcl::io::savePLYFile(result, *cloud);
-    } else {
-      ROS_INFO("Invalid plane %d with l2 = %f \n", received_shapes_plane_,
-               middle_value);
-      std::string result = SHAPES_PATH_ + "invalid_shape_" +
-                           std::to_string(received_shapes_plane_) +
-                           "_plane.ply";
-      pcl::io::savePLYFile(result, *cloud);
     }
   }
-  received_shapes_plane_++;
   return is_valid;
 }
 
@@ -706,7 +349,6 @@ void Clustering::fusePlanes() {
     for (int j = 0; j < fusing_vec.size(); j++) {
       (*fused_point_cloud) += (*(clouds_plane_[fusing_vec.at(j)]));
       count_fused_shapes += fusing_count_plane_.at(fusing_vec.at(j));
-      // TODO - Maybe compute weighted average?
       new_robot_position += robot_positions_.at(fusing_vec.at(j));
     }
     new_robot_position /= fusing_vec.size();
@@ -719,8 +361,6 @@ void Clustering::fusePlanes() {
                       VOXEL_GRID_FILTER_RESOLUTION_);
       sor.filter(*fused_point_cloud);
 
-      //
-      // Recompute ransac normal and project/filter(??) points
       pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
       pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
       pcl::SACSegmentation<pcl::PointXYZ> seg;
@@ -733,37 +373,6 @@ void Clustering::fusePlanes() {
       seg.setInputCloud(fused_point_cloud);
       seg.segment(*inliers, *coefficients);
 
-      /*
-      int num_points = fused_point_cloud->size();
-      Eigen::MatrixXd A(num_points, 4);
-      Eigen::VectorXd B(num_points);
-      for (int i = 0; i < num_points; i++){
-        pcl::PointXYZ p = (*fused_point_cloud)[i];
-        A.block<1, 4>(i, 0) = Eigen::Vector4d(p.x, p.y, p.z, 1.0);
-        B(i) = 0;
-      }
-      Eigen::Vector4d plane_coeff = A.bdcSvd(Eigen::ComputeThinU |
-      Eigen::ComputeThinV).solve(B); Eigen::Vector3d
-      plane_normal(plane_coeff(0),plane_coeff(1), plane_coeff(2));
-      plane_normal.normalize();
-      double mean_x = A.col(0).mean();
-      double mean_y = A.col(1).mean();
-      double mean_z = A.col(2).mean();
-      double plane_d = -(mean_x * plane_normal.x() + mean_y * plane_normal.y() +
-      mean_z * plane_normal.z()); pcl::ModelCoefficients::Ptr coefficients(new
-      pcl::ModelCoefficients); coefficients->values.push_back(plane_normal.x());
-      coefficients->values.push_back(plane_normal.y());
-      coefficients->values.push_back(plane_normal.z());
-      coefficients->values.push_back(plane_d);
-      */
-
-      /*
-      pcl::ExtractIndices<pcl::PointXYZ> extract;
-      extract.setInputCloud(fused_point_cloud);
-      extract.setIndices(inliers);
-      extract.setNegative(false);
-      extract.filter(*fused_point_cloud);
-      */
       Eigen::Vector3d plane_normal(coefficients->values[0],
                                    coefficients->values[1],
                                    coefficients->values[2]);
@@ -861,8 +470,6 @@ void Clustering::fuseCylinders() {
                       VOXEL_GRID_FILTER_RESOLUTION_);
       sor.filter(*fused_point_cloud);
 
-      //
-      // Recompute axis/randius and project/filter(??) points
       pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
       pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
       pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> seg;
@@ -888,54 +495,13 @@ void Clustering::fuseCylinders() {
       seg.setInputNormals(normals);
       seg.segment(*inliers, *coefficients);
 
-      /*
-      int num_points = fused_point_cloud->size();
-      Eigen::MatrixXd A(num_points, 4);
-      Eigen::VectorXd B(num_points);
-      for (int i = 0; i < num_points; i++){
-        pcl::PointXYZ p = (*fused_point_cloud)[i];
-        A.block<1, 4>(i, 0) = Eigen::Vector4d(p.x, p.y, p.z, 1.0);
-        B(i) = 0;
-      }
-      Eigen::Vector4d plane_coeff = A.bdcSvd(Eigen::ComputeThinU |
-      Eigen::ComputeThinV).solve(B); Eigen::Vector3d
-      plane_normal(plane_coeff(0),plane_coeff(1), plane_coeff(2));
-      plane_normal.normalize();
-      double mean_x = A.col(0).mean();
-      double mean_y = A.col(1).mean();
-      double mean_z = A.col(2).mean();
-      double plane_d = -(mean_x * plane_normal.x() + mean_y * plane_normal.y() +
-      mean_z * plane_normal.z()); pcl::ModelCoefficients::Ptr coefficients(new
-      pcl::ModelCoefficients); coefficients->values.push_back(plane_normal.x());
-      coefficients->values.push_back(plane_normal.y());
-      coefficients->values.push_back(plane_normal.z());
-      coefficients->values.push_back(plane_d);
-      */
-
-      /*
-      pcl::ExtractIndices<pcl::PointXYZ> extract;
-      extract.setInputCloud(fused_point_cloud);
-      extract.setIndices(inliers);
-      extract.setNegative(false);
-      extract.filter(*fused_point_cloud);
-      */
       Eigen::Vector3d new_axis(coefficients->values[3], coefficients->values[4],
                                coefficients->values[5]);
       double new_radius = coefficients->values[6];
       new_axis.normalize();
 
-      // pcl::ProjectInliers<pcl::PointXYZ> proj;
-      // proj.setModelType(pcl::SACMODEL_CYLINDER);
-      // proj.setInputCloud(fused_point_cloud);
-      // proj.setModelCoefficients(coefficients);
-      // proj.filter(*fused_point_cloud);
-
       pcl::search::KdTree<pcl::PointXYZ>::Ptr fused_kd_tree(
           new pcl::search::KdTree<pcl::PointXYZ>());
-
-      std::string result =
-          SHAPES_PATH_ + "fused_cylider_" + std::to_string(i) + ".ply";
-      pcl::io::savePLYFile(result, *fused_point_cloud);
 
       fused_kd_tree->setInputCloud(fused_point_cloud);
       fused_clouds.push_back(fused_point_cloud);
@@ -1039,94 +605,155 @@ void Clustering::removeConflictingClustersPlanes() {
   }
 }
 
-void Clustering::fit3DPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                            pcl::PolygonMesh &mesh) {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_copy(
-      new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::copyPointCloud(*cloud, *cloud_copy);
+void Clustering::splitUpElement(
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d &ransac_normal,
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result) {
+  // Decide Cutting Direction
+  Eigen::Vector3d cut_1;
+  Eigen::Vector3d cut_2;
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_new(
-      new pcl::PointCloud<pcl::PointXYZ>);
+  Eigen::Vector3d unit_x(1, 0, 0);
+  Eigen::Vector3d unit_y(0, 1, 0);
+  Eigen::Vector3d unit_z(0, 0, 1);
 
-  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-  pcl::SACSegmentation<pcl::PointXYZ> seg;
-  pcl::ExtractIndices<pcl::PointXYZ> extract;
-  seg.setOptimizeCoefficients(true);
-  seg.setModelType(pcl::SACMODEL_PLANE);
-  seg.setMethodType(pcl::SAC_RANSAC);
-  seg.setDistanceThreshold(0.03);
-  seg.setMaxIterations(1000);
-  seg.setInputCloud(cloud_copy);
-  seg.segment(*inliers, *coefficients);
+  // Vertical Element
+  if (std::fabs(ransac_normal.z()) < 0.3) {
+    cut_1 = unit_z;
 
-  extract.setInputCloud(cloud_copy);
-  extract.setIndices(inliers);
-  extract.setNegative(false);
-  extract.filter(*cloud_new);
+    double score_x = std::fabs(ransac_normal.dot(unit_x));
+    double score_y = std::fabs(ransac_normal.dot(unit_y));
+    if (score_x < score_y) {
+      cut_2 = unit_x;
+    } else {
+      cut_2 = unit_y;
+    }
+  } else {
+    cut_1 = unit_x;
+    cut_2 = unit_y;
+  }
 
-  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(
-      new pcl::search::KdTree<pcl::PointXYZ>);
-  searchTree->setInputCloud(cloud_new);
+  // Perform Cut 1
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> level_1;
+  performSplit(cloud, cut_1, level_1);
 
-  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimator;
-  normalEstimator.setInputCloud(cloud_new);
-  normalEstimator.setSearchMethod(searchTree);
-  normalEstimator.setKSearch(10);
-  normalEstimator.compute(*normals);
+  // Perform Cut 2
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> level_2;
+  for (int i = 0; i < level_1.size(); i++) {
+    performSplit(level_1.at(i), cut_2, level_2);
+  }
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr corners(
-      new pcl::PointCloud<pcl::PointXYZI>);
-  pcl::HarrisKeypoint3D<pcl::PointXYZ, pcl::PointXYZI, pcl::Normal> harris;
-  harris.setInputCloud(cloud_new);
-  harris.setNonMaxSupression(false);
-  harris.setRadius(0.2f);
-  harris.setThreshold(0.05f);
-  harris.setNormals(normals);
-  harris.compute(*corners);
+  // Perform Cut 3
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> level_3;
+  for (int i = 0; i < level_2.size(); i++) {
+    performSplit(level_2.at(i), cut_1, level_3);
+  }
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr corners_no_i(
-      new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::copyPointCloud(*corners, *corners_no_i);
-  detected_shapes_points_.push_back(corners_no_i);
-  Eigen::Vector3d plane_normal(coefficients->values[0], coefficients->values[1],
-                               coefficients->values[2]);
-  plane_normal.normalize();
-  detected_shapes_params_.push_back(
-      Eigen::Vector4d(plane_normal.x(), plane_normal.y(), plane_normal.z(),
-                      coefficients->values[3]));
-
-  // Compute Convex? or Concave Hull
-  pcl::ConvexHull<pcl::PointXYZI> chull;
-  chull.setInputCloud(corners);
-  // chull.setAlpha (0.1);
-  chull.reconstruct(mesh);
+  // Perform Cut 4
+  for (int i = 0; i < level_3.size(); i++) {
+    performSplit(level_3.at(i), cut_2, result);
+  }
 }
 
-void Clustering::combineMeshes(const pcl::PolygonMesh &mesh,
-                               pcl::PolygonMesh &mesh_all) {
-  // pcl::PolygonMesh::concatenate(mesh_all, mesh); ???
-  // Source:
-  // https://github.com/PointCloudLibrary/pcl/blob/master/common/include/pcl/PolygonMesh.h
-  mesh_all.header.stamp = std::max(mesh_all.header.stamp, mesh.header.stamp);
+void Clustering::performSplit(
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d cut_dir,
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result) {
+  // Compute grid
+  double min_dist = 1000;
+  double max_dist = -1000;
 
-  const auto point_offset = mesh_all.cloud.width * mesh_all.cloud.height;
+  for (int i = 0; i < cloud->size(); i++) {
+    pcl::PointXYZ p = (*cloud)[i];
+    Eigen::Vector3d p_e(p.x, p.y, p.z);
+    double d = p_e.dot(cut_dir);
+    if (d < min_dist) {
+      min_dist = d;
+    }
+    if (d > max_dist) {
+      max_dist = d;
+    }
+  }
 
-  pcl::PCLPointCloud2 new_cloud;
-  pcl::concatenatePointCloud(mesh_all.cloud, mesh.cloud, new_cloud);
-  mesh_all.cloud = new_cloud;
+  double delta = (max_dist - min_dist) / 10.0;
+  std::vector<double> splitting_scores;
 
-  std::transform(
-      mesh.polygons.begin(), mesh.polygons.end(),
-      std::back_inserter(mesh_all.polygons), [point_offset](auto polygon) {
-        std::transform(polygon.vertices.begin(), polygon.vertices.end(),
-                       polygon.vertices.begin(),
-                       [point_offset](auto &point_idx) {
-                         return point_idx + point_offset;
-                       });
-        return polygon;
-      });
+  std::vector<std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr,
+                        pcl::PointCloud<pcl::PointXYZ>::Ptr>>
+      splitted_clouds;
+  for (int l = 0; l <= 8; l++) {
+    double split_d = min_dist + (l + 1) * delta;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_1(
+        new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2(
+        new pcl::PointCloud<pcl::PointXYZ>());
+
+    for (int m = 0; m < cloud->size(); m++) {
+      pcl::PointXYZ cur_p = (*cloud)[m];
+      Eigen::Vector3d cur_e(cur_p.x, cur_p.y, cur_p.z);
+      if (split_d < cur_e.dot(cut_dir)) {
+        cloud_1->push_back(cur_p);
+      } else {
+        cloud_2->push_back(cur_p);
+      }
+    }
+
+    if (cloud_1->size() > 3 && cloud_2->size() > 3) {
+      splitted_clouds.push_back(std::make_pair(cloud_1, cloud_2));
+
+      pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points_1(
+          new pcl::PointCloud<pcl::PointXYZ>());
+      pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points_2(
+          new pcl::PointCloud<pcl::PointXYZ>());
+      pcl::ConvexHull<pcl::PointXYZ> hull1;
+      hull1.setDimension(2);
+      hull1.setComputeAreaVolume(true);
+      hull1.setInputCloud(cloud_1);
+      hull1.reconstruct(*hull_points_1);
+
+      pcl::ConvexHull<pcl::PointXYZ> hull2;
+      hull2.setDimension(2);
+      hull2.setComputeAreaVolume(true);
+      hull2.setInputCloud(cloud_2);
+      hull2.reconstruct(*hull_points_2);
+
+      double area_1_2 = hull1.getTotalArea() + hull2.getTotalArea();
+      double cur_score = cloud->size() / area_1_2;
+      splitting_scores.push_back(cur_score);
+    }
+  }
+
+  if (splitting_scores.size() == 0) {
+    result.push_back(cloud);
+    return;
+  }
+
+  // Evaluate scores
+  auto max_score_it =
+      std::max_element(splitting_scores.begin(), splitting_scores.end());
+  double max_score = *max_score_it;
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points_init(
+      new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::ConvexHull<pcl::PointXYZ> hull_init;
+  hull_init.setDimension(2);
+  hull_init.setComputeAreaVolume(true);
+  hull_init.setInputCloud(cloud);
+  hull_init.reconstruct(*hull_points_init);
+
+  double init_score = cloud->size() / hull_init.getTotalArea();
+
+  if (max_score > SPLITTING_THRESHOLD * init_score) {
+    int max_idx = std::distance(std::begin(splitting_scores), max_score_it);
+
+    if (splitted_clouds.at(max_idx).first->size() > 100) {
+      result.push_back(splitted_clouds.at(max_idx).first);
+    }
+    if (splitted_clouds.at(max_idx).second->size() > 100) {
+      result.push_back(splitted_clouds.at(max_idx).second);
+    }
+
+  } else {
+    result.push_back(cloud);
+  }
 }
 
 }  // namespace cpt_reconstruction

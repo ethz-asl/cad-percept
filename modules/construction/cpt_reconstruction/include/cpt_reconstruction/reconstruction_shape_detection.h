@@ -8,7 +8,6 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
-#include "cpt_reconstruction/coordinates.h"
 #include "cpt_reconstruction/shape.h"
 #include "cpt_reconstruction/shapes.h"
 #include "ros/ros.h"
@@ -46,10 +45,11 @@ class ShapeDetection {
   ShapeDetection() = delete;
   ShapeDetection(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2,
                  Model* model);
-  void startReceiving();
 
  private:
-  // Parameters
+  void messageCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
+
+  // Parameter values
   int SENSOR_TYPE_;
   std::vector<double> TRANSFORMATION_VEC_;
   std::vector<double> STATIONARY_POSITION_VEC_;
@@ -58,10 +58,7 @@ class ShapeDetection {
   int OUTLIER_COUNT_;
   bool USE_BUFFER_;
   int CLEAR_BUFFER_AFTER_ITERATION_;
-  std::string ALL_POINTS_PATH_;
-  std::string OUTLIER_POINTS_PATH_;
 
-  void messageCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
   ros::NodeHandle nodeHandle1_;
   ros::NodeHandle nodeHandle2_;
   ros::Subscriber subscriber1_;

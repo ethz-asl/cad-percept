@@ -60,8 +60,23 @@ class Clustering {
   Clustering(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2);
 
  private:
-  std::string SHAPES_PATH_;
-  std::string MESHES_PATH_;
+  void messageCallback(const ::cpt_reconstruction::shapes &msg);
+  bool checkValidPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                       int valid_size, int min_size);
+  void fusePlanes();
+  void fuseCylinders();
+  void removeSingleDetectionsPlanes();
+  void removeSingleDetectionsCylinders();
+  void removeConflictingClustersPlanes();
+  void splitUpElement(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                      Eigen::Vector3d &ransac_normal,
+                      std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
+
+  void performSplit(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                    Eigen::Vector3d cut_dir,
+                    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
+
+  // Parameter values
   int SENSOR_TYPE_;
   float VOXEL_GRID_FILTER_RESOLUTION_;
   int MIN_SIZE_VALID_PLANE_;
@@ -77,29 +92,8 @@ class Clustering {
   double DISTANCE_CONFLICTING_POINT_;
   double OVERLAP_;
   int DETECTION_COUNT_;
-
-  void messageCallback(const ::cpt_reconstruction::shapes &msg);
-  bool checkValidPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                       int valid_size, int min_size);
-  void fusePlanes();
-  void fuseCylinders();
-  void removeSingleDetectionsPlanes();
-  void removeSingleDetectionsCylinders();
-  void removeConflictingClustersPlanes();
-  void tryHorizontalSplit(
-      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, Eigen::Vector3d &ransac_normal,
-      std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
-  void splitUpElement(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                      Eigen::Vector3d &ransac_normal,
-                      std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
-
-  void performSplit(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                    Eigen::Vector3d cut_dir,
-                    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &result);
-
-  void fit3DPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                  pcl::PolygonMesh &mesh);
-  void combineMeshes(const pcl::PolygonMesh &mesh, pcl::PolygonMesh &mesh_all);
+  bool SPLITTING_MOBILE_ROBOT_;
+  double SPLITTING_THRESHOLD;
 
   ros::NodeHandle nodeHandle1_;
   ros::NodeHandle nodeHandle2_;
@@ -108,7 +102,6 @@ class Clustering {
   int counter_;
 
   // Planes
-  int received_shapes_plane_;
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_plane_;
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_plane_;
   std::vector<Eigen::Vector3d> ransac_normals_;
@@ -116,16 +109,11 @@ class Clustering {
   std::vector<Eigen::Vector3d> robot_positions_;
 
   // Cylinders
-  int received_shapes_cyl_;
   std::vector<pcl::search::KdTree<pcl::PointXYZ>::Ptr> kd_trees_cyl_;
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds_cyl_;
   std::vector<Eigen::Vector3d> axis_;
   std::vector<double> radius_;
   std::vector<int> fusing_count_cyl_;
-
-  // Fit plane
-  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> detected_shapes_points_;
-  std::vector<Eigen::Vector4d> detected_shapes_params_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

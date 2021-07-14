@@ -1,48 +1,62 @@
-# Setup
-# 0 -> SuperMegaBot, 1 -> Totalstation
-SensorType : 0
+########################################################################
+# Please adjust all path and set the correct Sensor Type
+# A Transformation Matrix can be specified different to the
+#   Identity Matrix in case the 3D Scan is not aligned to the model
+# For Stationary Total Stations, the position where the sensor was
+#   placed needs to be adapted as well
+########################################################################
 
-#For Totalstation only:
+### Setup
+# 0 -> Mobile Robot, 1 -> Stationary Total station
+SensorType : 1
+
+#For Stationary Total Station only:
 TransformationMatrix: [1.0, 0.0, 0.0, 0.0,
                        0.0, 1.0, 0.0, 0.0,
                        0.0, 0.0, 1.0, 0.0,
                        0.0, 0.0, 0.0, 1.0]
+
+# For Stationary Total Station only:
 StationaryPosition: [5.5, -1.9, 0.5]
 
-#ScanPointsFile: "/home/philipp/Schreibtisch/leica/new_scan1_aligned.ply"
-ScanPointsFile: "/home/philipp/Schreibtisch/Faro/CLA_C_red_aligned.ply"
+# For Stationary Total Station only:
+ScanPointsFile: "/home/philipp/Schreibtisch/leica/new_scan1_aligned.ply"
 
 ########################################################################
 ### Paths
-BuildingModelMeshFile: "/home/philipp/Schreibtisch/data/CLA_MissingParts_4.ply"
-UpsampledBuildingModelFile: "/home/philipp/Schreibtisch/data/CLA_MissingParts_4_8m.ply"
+BuildingModelMeshFile: "/home/philipp/Schreibtisch/Case_study_data/02/CLA_incomplete_2.ply"
+UpsampledBuildingModelFile: "/home/philipp/Schreibtisch/Case_study_data/02/CLA_upsampled_2.ply"
 
+## Paths to Random Forest Classifiers
 ClassificationConfigFile1: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area1.bin"
 ClassificationConfigFile2: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area2.bin"
 ClassificationConfigFile3: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area3.bin"
 ClassificationConfigFile4: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area4.bin"
 ClassificationConfigFile5: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area5.bin"
 
-
-OutputAllPointsFile: "/home/philipp/Schreibtisch/ros_dir/outliers_ros.xyz"
-OutputOutlierPointsFile: "/home/philipp/Schreibtisch/ros_dir/outliers_ros_full.xyz"
-OutputShapesPath: "/home/philipp/Schreibtisch/Shapes/"
-OutputMeshesPath: "/home/philipp/Schreibtisch/Meshes/"
-OutoutClassificationResultFile: "/home/philipp/Schreibtisch/ros_dir/mesh_classification_test.ply"
-OutputMeshingTempPath: "/home/philipp/Schreibtisch/ros_dir/"
+# Path where the reconstructed meshes should be stored
+ResultsPath: "/home/philipp/Schreibtisch/ros_dir/"
 
 
 ########################################################################
 ### Shape Detection
-ModelTolerance: 0.08
-OutlierCount: 50000 #Only for SMB
 
+# Deviation between Upsampled Points from the 3D Scan
+ModelTolerance: 0.08
+
+# Buffer Size
+OutlierCount: 50000 #Only Mobile Robot
+
+# Whether the buffer should be cleared after nth iteration
+# If true, buffer will be cleared after every iteration
 UseBuffer: false
 ClearBufferAfterIteration: 2
 
+# Whether a Octree filter should be applied on the buffer
 UseFilter: true
 OctreeFilterResolution: 0.02
 
+# Efficient RANSAC Parameters
 RANSACProbability: 0.0000001
 RANSACMinPoints: 200
 RANSACEpsilon: 0.03
@@ -50,26 +64,32 @@ RANSACClusterEpsilon: 0.2
 RANSACNormalThreshold: 0.80
 ########################################################################
 
-
 ### Clustering
 VoxelGridFilterResolution: 0.01
 MinSizeValidPlane: 50
 ValidSizeThresholdPlane: 1000
 ThresholdSecondEigenvalue: 0.00015
-IntervalFusingClusters: 50
-IntervalCleaningClusters: 50 #200
-IntervalForwardingClusters: 1600 #200
+IntervalFusingClusters: 50 # Only for Mobile Robot
+IntervalCleaningClusters: 50 # Only for Mobile Robot
+IntervalForwardingClusters: 600 # Only for Mobile Robot
 
-#Fusing Planes
+# Whether the splitting should be perform for the mobile robot
+# Splitting for the stationary total station is always performed
+PerformSplittingMobileRobot : false
+# Minimum Density improvement to perform the split
+MinDensityImprovement : 1.1
+
+# Fusing Planes
 DotProductNormals: 0.99
 DotProductAxis: 0.99
 DistanceMatchingPoint: 0.08
 Coverage: 0.005
 
-#Conflicting Clusters
+# Conflicting Clusters
 DistanceConflictingPoint: 0.03
 Overlap: 0.4
 
+# Min Detection Count for Reconstructing Cluster
 DetectionCount: 1
 
 ########################################################################
@@ -80,18 +100,17 @@ MaxFacetLength: 0.5
 NumberOfScales: 5
 NRingQuery: 2
 
-
 ########################################################################
 ### Mesh Generation
 UpsampledModelOctreeResolution: 0.05
+
+# Ignore Faces with smaller Area than MinArea
 MinArea: 0.0
-DefaultOffset: 0.2
 
 DuplicateDotProduct: 0.999
 DuplicateDiffD: 0.02
 
-
-########################################################################
-### Model Integration
+# Compute three plane intersection if |(v1 x v2).dot(v3)| > OrthoScore
+OrthoScore: 0.98
 
 

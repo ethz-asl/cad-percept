@@ -33,8 +33,6 @@ void ReconstructionPointsPublisher::publishPoints() {
     ROS_INFO("Waiting ...");
     sleep(10);
     ROS_INFO("Waiting Done ...");
-    // sensor_msgs::PointCloud2::Ptr message(new
-    // sensor_msgs::PointCloud2(message_data));
     publisher_.publish(message_data);
     ROS_INFO("Published_Message");
   }

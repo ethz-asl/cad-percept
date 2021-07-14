@@ -49,7 +49,6 @@ class ProposalSelection {
       std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> meshing_clouds,
       pcl::PolygonMesh mesh_model,
       pcl::PointCloud<pcl::PointXYZ>::Ptr model_upsampled_points,
-      pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr scan_octree,
       std::vector<Eigen::Vector3d> &center_estimates,
       std::vector<Eigen::Matrix3d> &direction_estimates,
       std::vector<std::vector<Eigen::VectorXd>> &parameter_estimates,
@@ -88,6 +87,7 @@ class ProposalSelection {
   std::vector<std::vector<Eigen::VectorXd>> parameter_estimates_;
   std::vector<std::vector<Eigen::VectorXd>> parameter_probabilities_;
   std::vector<std::vector<Eigen::VectorXd>> parameter_hierarchies_;
+
   // Cylinders
   std::vector<Eigen::MatrixXd> bounded_axis_estimates_;
   std::vector<double> radius_estimates_;
@@ -102,7 +102,7 @@ class ProposalSelection {
   pcl::search::KdTree<pcl::PointXYZ>::Ptr scan_kdtree_;
   pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>::Ptr scan_octree_;
 
-  //
+  // Incomplete Building Model
   pcl::PolygonMesh mesh_model_;
   pcl::PointCloud<pcl::PointXYZ>::Ptr model_upsampled_points_;
   std::vector<double> mesh_plane_d_;

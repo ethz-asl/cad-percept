@@ -100,19 +100,6 @@ class Classification {
   Classification(ros::NodeHandle nodeHandle1, ros::NodeHandle nodeHandle2);
 
  private:
-  std::string RF_CONFIG_1_PATH_;
-  std::string RF_CONFIG_2_PATH_;
-  std::string RF_CONFIG_3_PATH_;
-  std::string RF_CONFIG_4_PATH_;
-  std::string RF_CONFIG_5_PATH_;
-
-  std::string RF_RESULT_PATH_;
-  double CELL_SIZE_;
-  int SMOOTHING_ITERATIONS_;
-  double MAX_FACET_LENGTH_;
-  int NUMBER_OF_SCALES_;
-  int N_RING_QUERY_;
-
   void messageCallback(const ::cpt_reconstruction::clusters &msg);
   void computeReconstructedSurfaceMesh(
       std::vector<PointVectorPair_R> &points, Mesh_M &mesh,
@@ -120,12 +107,24 @@ class Classification {
   void classifyMesh(int idx, const std::string config_path, Mesh_M &mesh,
                     std::vector<int> &label_indices);
 
+  // Parameter values
+  std::string RF_CONFIG_1_PATH_;
+  std::string RF_CONFIG_2_PATH_;
+  std::string RF_CONFIG_3_PATH_;
+  std::string RF_CONFIG_4_PATH_;
+  std::string RF_CONFIG_5_PATH_;
+  double CELL_SIZE_;
+  int SMOOTHING_ITERATIONS_;
+  double MAX_FACET_LENGTH_;
+  int NUMBER_OF_SCALES_;
+  int N_RING_QUERY_;
+
+  std::vector<std::string> all_classifier_paths_;
+
   ros::NodeHandle nodeHandle1_;
   ros::NodeHandle nodeHandle2_;
   ros::Subscriber subscriber_;
   ros::Publisher publisher_;
-
-  std::vector<std::string> all_classifier_paths_;
 };
 }  // namespace cpt_reconstruction
 }  // namespace cad_percept

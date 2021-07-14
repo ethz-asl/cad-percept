@@ -1,10 +1,6 @@
 #include <cpt_reconstruction/reconstruction_model.h>
 #include <cpt_reconstruction/reconstruction_shape_detection.h>
 
-//#include <sstream>
-//#include <string>
-//#include "ros/ros.h"
-
 int main(int argc, char** argv) {
   ros::init(argc, argv, "reconstruction_shape_detection_node");
   ros::NodeHandle nodeHandle1;

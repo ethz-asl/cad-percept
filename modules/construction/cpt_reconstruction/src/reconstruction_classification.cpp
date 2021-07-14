@@ -5,19 +5,19 @@ namespace cpt_reconstruction {
 Classification::Classification(ros::NodeHandle nodeHandle1,
                                ros::NodeHandle nodeHandle2)
     : nodeHandle1_(nodeHandle1), nodeHandle2_(nodeHandle2) {
+  // Get Parameters
   nodeHandle1.getParam("ClassificationConfigFile1", RF_CONFIG_1_PATH_);
   nodeHandle1.getParam("ClassificationConfigFile2", RF_CONFIG_2_PATH_);
   nodeHandle1.getParam("ClassificationConfigFile3", RF_CONFIG_3_PATH_);
   nodeHandle1.getParam("ClassificationConfigFile4", RF_CONFIG_4_PATH_);
   nodeHandle1.getParam("ClassificationConfigFile5", RF_CONFIG_5_PATH_);
-
-  nodeHandle1.getParam("OutoutClassificationResultFile", RF_RESULT_PATH_);
   nodeHandle1.getParam("CellSize", CELL_SIZE_);
   nodeHandle1.getParam("SmoothingIterations", SMOOTHING_ITERATIONS_);
   nodeHandle1.getParam("MaxFacetLength", MAX_FACET_LENGTH_);
   nodeHandle1.getParam("NumberOfScales", NUMBER_OF_SCALES_);
   nodeHandle1.getParam("NRingQuery", N_RING_QUERY_);
 
+  // Store paths to RF classifiers
   all_classifier_paths_.push_back(RF_CONFIG_1_PATH_);
   all_classifier_paths_.push_back(RF_CONFIG_2_PATH_);
   all_classifier_paths_.push_back(RF_CONFIG_3_PATH_);
@@ -35,8 +35,8 @@ void Classification::messageCallback(
     const ::cpt_reconstruction::clusters &msg) {
   ROS_INFO("Received %d", msg.clouds.size());
 
+  // Convert message to PointCloud
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clouds;
-  pcl::PointCloud<pcl::PointXYZ> all_points;
   for (int i = 0; i < msg.clouds.size(); i++) {
     sensor_msgs::PointCloud2 msg_cloud = msg.clouds.at(i);
     pcl::PCLPointCloud2 pcl_cloud;
@@ -46,13 +46,9 @@ void Classification::messageCallback(
         new pcl::PointCloud<pcl::PointXYZ>());
     pcl::fromPCLPointCloud2(pcl_cloud, *cur_cloud);
     clouds.push_back(cur_cloud);
-    all_points += (*cur_cloud);
   }
 
-  // TODO REMOVE
-  pcl::io::savePLYFileBinary(
-      "/home/philipp/Schreibtisch/ros_dir/scale_space_points.ply", all_points);
-
+  // Prepare input for GCAL functionalities
   std::vector<PointVectorPair_R> points;
   for (int i = 0; i < clouds.size(); i++) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud = clouds.at(i);
@@ -64,6 +60,7 @@ void Classification::messageCallback(
     }
   }
 
+  // Compute Reconstructed Mesh
   Mesh_M mesh;
   pcl::PointCloud<pcl::PointXYZ>::Ptr face_centers(
       new pcl::PointCloud<pcl::PointXYZ>());
@@ -73,12 +70,7 @@ void Classification::messageCallback(
       new pcl::search::KdTree<pcl::PointXYZ>());
   centers_kd_tree->setInputCloud(face_centers);
 
-  // TODO Remove
-  std::string filename_mesh =
-      "/home/philipp/Schreibtisch/ros_dir/scale_space_mesh_scan.off";
-  std::ofstream out_mesh(filename_mesh.c_str());
-  CGAL::write_off(out_mesh, mesh);
-
+  // Perform predictions with all classifiers
   std::vector<std::vector<int>> combined_labels;
   int counter_c = 1;
   for (const auto &config_file : all_classifier_paths_) {
@@ -91,6 +83,7 @@ void Classification::messageCallback(
   int number_of_labels = combined_labels.at(0).size();
   std::vector<int> bagged_labels;
 
+  // Find majority vote
   for (int i = 0; i < number_of_labels; i++) {
     std::vector<int> class_votes(6, 0);
     for (const auto &cur_labels : combined_labels) {
@@ -102,6 +95,7 @@ void Classification::messageCallback(
     bagged_labels.push_back(max_idx);
   }
 
+  // Assign cluster to a class
   std::vector<int> nn_indices{1};
   std::vector<float> nn_dists{1};
   std::vector<int> final_votes;
@@ -139,11 +133,14 @@ void Classification::computeReconstructedSurfaceMesh(
     std::vector<PointVectorPair_R> &points, Mesh_M &mesh,
     pcl::PointCloud<pcl::PointXYZ>::Ptr face_centers) {
   const int nb_neighbors = 18;
+
+  // Compute average spacing
   double spacing = CGAL::compute_average_spacing<CGAL::Sequential_tag>(
       points, nb_neighbors,
       CGAL::parameters::point_map(
           CGAL::First_of_pair_property_map<PointVectorPair_R>()));
 
+  // Estimate surface normals
   CGAL::pca_estimate_normals<CGAL::Sequential_tag>(
       points, nb_neighbors,
       CGAL::parameters::point_map(
@@ -151,15 +148,7 @@ void Classification::computeReconstructedSurfaceMesh(
           .normal_map(CGAL::Second_of_pair_property_map<PointVectorPair_R>())
           .neighbor_radius(4. * spacing));
 
-  /*
-  std::vector<PointVectorPair_R>::iterator outlier_points_begin =
-      CGAL::remove_outliers(
-          points, 5,
-          CGAL::parameters::point_map(
-              CGAL::First_of_pair_property_map<PointVectorPair_R>()));
-  points.erase(outlier_points_begin, points.end());
-  */
-
+  // Simplify grid
   double cell_size = CELL_SIZE_;
   std::vector<PointVectorPair_R>::iterator unwanted_points_begin =
       CGAL::grid_simplify_point_set(
@@ -175,18 +164,16 @@ void Classification::computeReconstructedSurfaceMesh(
 
   CGAL::Scale_space_surface_reconstruction_3<Kernel_R> reconstruct(
       points_only.begin(), points_only.end());
-  // Smooth using 4 iterations of Jet Smoothing
 
+  // Smooth using 4 iterations of Jet Smoothing
   reconstruct.increase_scale(
       SMOOTHING_ITERATIONS_,
       CGAL::Scale_space_reconstruction_3::Jet_smoother<Kernel_R>());
 
-  // TODO - CHECK: Mesher Error undefined reference to mpfr_get_emin
+  // Compute reconstructed mesh
   reconstruct.reconstruct_surface(
       CGAL::Scale_space_reconstruction_3::Advancing_front_mesher<Kernel_R>(
           MAX_FACET_LENGTH_));
-
-  assert(reconstruct.number_of_points() == points_only.size());
 
   for (int i = 0; i < points_only.size(); i++) {
     Point_R p_r = points_only.at(i);
@@ -221,6 +208,8 @@ void Classification::classifyMesh(int idx, const std::string config_path,
                                   std::vector<int> &label_indices) {
   std::size_t number_of_scales = NUMBER_OF_SCALES_;
   Face_point_map face_point_map(&mesh);
+
+  // Compute point and mesh based features
   Feature_generator generator(mesh, face_point_map, number_of_scales);
 
   Feature_set features;
@@ -235,88 +224,23 @@ void Classification::classifyMesh(int idx, const std::string config_path,
   Label_handle floor = labels.add("floor");
   Label_handle clutter = labels.add("clutter");
 
-  ROS_INFO("Using ETHZ Random Forest Classifier");
+  ROS_INFO("Using Random Forest Classifier");
 
+  // Setup RF classifiers
   CGAL::Classification::ETHZ_random_forest_classifier classifier(labels,
                                                                  features);
+  // Load config file
   std::ifstream in_config(config_path.c_str(),
                           std::ios_base::in | std::ios_base::binary);
   classifier.load_configuration(in_config);
 
+  // Perform prediction
   CGAL::Classification::classify_with_graphcut<CGAL::Sequential_tag>(
       mesh.faces(), Face_with_bbox_map(&mesh), labels, classifier,
       generator.neighborhood().n_ring_neighbor_query(N_RING_QUERY_), 0.2f, 1,
       label_indices);
 
-  ROS_INFO("classification done");
-
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr result(
-      new pcl::PointCloud<pcl::PointXYZRGB>());
-  int face_idx = 0;
-  BOOST_FOREACH (Mesh_M::Face_index f, mesh.faces()) {
-    int j = 0;
-
-    int red = 0;
-    int green = 0;
-    int blue = 0;
-    Label_handle label = labels[label_indices[face_idx]];
-    if (label == beam) {
-      //#magenta -> beam color = np.array([255,255,0])
-      red = 255;
-      green = 255;
-      blue = 0;
-    } else if (label == ceiling) {
-      //# green -> ceiling color = np.array([0,255,00])
-      red = 0;
-      green = 255;
-      blue = 0;
-    } else if (label == clutter) {
-      //# black -> clutter color = np.array([50,50,50])
-      red = 50;
-      green = 50;
-      blue = 50;
-    } else if (label == column) {
-      //# pink -> column color = np.array([255,0,255])
-      red = 255;
-      green = 0;
-      blue = 255;
-    } else if (label == floor) {
-      //# blue -> floor color = np.array([0, 0, 255])
-      red = 0;
-      green = 0;
-      blue = 255;
-    } else if (label == wall) {
-      //# red -> wall color = np.array([0, 255, 255])
-      red = 255;
-      green = 0;
-      blue = 0;
-    } else {
-      ROS_INFO("lable not found");
-    }
-
-    CGAL::Vertex_around_face_iterator<Mesh_M> vbegin, vend;
-    for (boost::tie(vbegin, vend) =
-             vertices_around_face(mesh.halfedge(f), mesh);
-         vbegin != vend; ++vbegin) {
-      Point_M p1 = mesh.point(*vbegin);
-      pcl::PointXYZRGB p_rgb;
-      p_rgb.x = (float)p1.x();
-      p_rgb.y = (float)p1.y();
-      p_rgb.z = (float)p1.z();
-      p_rgb.r = (std::uint8_t)red;
-      p_rgb.g = (std::uint8_t)green;
-      p_rgb.b = (std::uint8_t)blue;
-      result->push_back(p_rgb);
-    }
-    face_idx++;
-  }
-
-  // Write result
-  std::string output_classified_points =
-      "/home/philipp/Schreibtisch/ros_dir/classification_" +
-      std::to_string(idx) + ".ply";
-  pcl::io::savePLYFileBinary(output_classified_points, *result);
-  // ROS_INFO("All done");
+  ROS_INFO("Prediction Done");
 }
 
 }  // namespace cpt_reconstruction
