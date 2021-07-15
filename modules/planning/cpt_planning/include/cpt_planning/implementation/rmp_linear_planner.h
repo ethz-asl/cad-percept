@@ -11,6 +11,7 @@
 #include <rmpcpp/core/state.h>
 #include <rmpcpp/eval/trapezoidal_integrator.h>
 #include <rmpcpp/policies/simple_target_policy.h>
+#include <rmpcpp/policies/end_effector_attraction.h>
 
 #include <mav_msgs/conversions.h>
 #include <mav_trajectory_generation_ros/ros_visualization.h>
@@ -42,6 +43,9 @@ class RMPLinearPlanner : public SurfacePlanner {
   }
 
   void generateTrajectoryOdom(const Eigen::Vector3d start,
+                              const Eigen::Vector3d goal,
+                              mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
+  void generateTrajectoryOdom_2(const Eigen::Vector3d start,
                               const Eigen::Vector3d goal,
                               mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
 
