@@ -11,7 +11,8 @@
 #include <rmpcpp/core/state.h>
 #include <rmpcpp/eval/trapezoidal_integrator.h>
 #include <rmpcpp/policies/simple_target_policy.h>
-#include <rmpcpp/policies/end_effector_attraction.h>
+// #include <rmpcpp/policies/end_effector_attraction.h>
+#include <rmpcpp/policies/acc_based_potential.h>
 
 #include <mav_msgs/conversions.h>
 #include <mav_trajectory_generation_ros/ros_visualization.h>

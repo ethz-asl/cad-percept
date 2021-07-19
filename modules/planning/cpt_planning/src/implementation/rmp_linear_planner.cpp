@@ -72,6 +72,8 @@ const SurfacePlanner::Result RMPLinearPlanner::plan(const Eigen::Vector3d start,
   return result;
 }
 
+
+//generate trajectory using RMP Simple TargetPolicy
 void RMPLinearPlanner::generateTrajectoryOdom(const Eigen::Vector3d start,
                                               const Eigen::Vector3d goal,
                                          mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
@@ -141,13 +143,14 @@ void RMPLinearPlanner::generateTrajectoryOdom(const Eigen::Vector3d start,
 }
 
 
+//generate trajectory using Optimization Fabrics: acceleration based potentials
 void RMPLinearPlanner::generateTrajectoryOdom_2(const Eigen::Vector3d start,
                                               const Eigen::Vector3d goal,
                                          mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
    // Set up solver
   using RMPG = cad_percept::planning::LinearManifoldInterface;
   using LinSpace = rmpcpp::Space<3>;
-  using TargetPolicy = rmpcpp::EndEffectorAttraction<LinSpace>;
+  using TargetPolicy = rmpcpp::AccBasedPotential<LinSpace>;
   using Integrator = rmpcpp::TrapezoidalIntegrator<TargetPolicy, RMPG>;
 
   RMPG::VectorQ target_xyz = goal;
@@ -163,8 +166,8 @@ void RMPLinearPlanner::generateTrajectoryOdom_2(const Eigen::Vector3d start,
 //   A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
 //   B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
 
-  auto pol_2 = std::make_shared<TargetPolicy>(target_uv, A, tuning_1_[0], tuning_1_[1],
-                                              tuning_1_[2]);  // goes to target
+  auto pol_2 = std::make_shared<TargetPolicy>(target_uv, A);  // goes to target
+
 //   auto pol_3 =
 //       std::make_shared<TargetPolicy>(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
 //                                      tuning_2_[2]);  // stays on surface
