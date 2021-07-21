@@ -11,8 +11,9 @@
 #include <rmpcpp/core/state.h>
 #include <rmpcpp/eval/trapezoidal_integrator.h>
 #include <rmpcpp/policies/simple_target_policy.h>
-// #include <rmpcpp/policies/end_effector_attraction.h>
+#include <rmpcpp/policies/end_effector_attraction.h>
 #include <rmpcpp/policies/acc_based_potential.h>
+#include <rmpcpp/policies/acc_potential_dist_balance.h>
 
 #include <mav_msgs/conversions.h>
 #include <mav_trajectory_generation_ros/ros_visualization.h>
@@ -49,6 +50,10 @@ class RMPLinearPlanner : public SurfacePlanner {
   void generateTrajectoryOdom_2(const Eigen::Vector3d start,
                               const Eigen::Vector3d goal,
                               mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
+  void generateTrajectoryOdom_3(const Eigen::Vector3d start,
+                              const Eigen::Vector3d goal_1,
+                              const Eigen::Vector3d goal_2,
+                              mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
 
   // publishing method
   void publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom);
@@ -57,7 +62,7 @@ class RMPLinearPlanner : public SurfacePlanner {
   inline const std::string getName() const {
     return "NA";
   }
-
+  
   void setTuning(Eigen::Vector3d tuning_1, Eigen::Vector3d tuning_2, double dt = 0.01) {
     tuning_1_ = tuning_1;
     tuning_2_ = tuning_2;
