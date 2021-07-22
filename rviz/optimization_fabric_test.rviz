@@ -7,13 +7,11 @@ Panels:
         - /Global Options1
         - /Status1
         - /MarkerArray1
-        - /TriangleMeshDisplay1/Status1
         - /TF1/Frames1
         - /PointStamped1
         - /Path1
         - /Path1/Status1
         - /MarkerArray2
-        - /MarkerArray2/Status1
       Splitter Ratio: 0.5065693259239197
     Tree Height: 684
   - Class: rviz/Selection
@@ -129,13 +127,13 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /obs_vis
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
-      Value: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -179,10 +177,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: -0.005202981643378735
+      Pitch: -0.005202986299991608
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.971796989440918
+      Yaw: 3.191798210144043
     Saved: ~
 Window Geometry:
   Displays:
