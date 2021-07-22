@@ -14,6 +14,7 @@
 #include <rmpcpp/policies/end_effector_attraction.h>
 #include <rmpcpp/policies/acc_based_potential.h>
 #include <rmpcpp/policies/acc_potential_dist_balance.h>
+#include <rmpcpp/policies/collision_avoid.h>
 
 #include <mav_msgs/conversions.h>
 #include <mav_trajectory_generation_ros/ros_visualization.h>
@@ -55,6 +56,14 @@ class RMPLinearPlanner : public SurfacePlanner {
                               const Eigen::Vector3d goal_2,
                               mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
 
+  void generateTrajectoryOdom_4(const Eigen::Vector3d start,
+                              const Eigen::Vector3d goal_1,
+                              const Eigen::Vector3d goal_2,
+                              const std::vector<Eigen::Vector3d> &obs_list,
+                              mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
+
+  std::ostream& display(std::ostream& os, std::chrono::nanoseconds ns);
+  
   // publishing method
   void publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom);
 

@@ -19,17 +19,62 @@
 #include <tf/tf.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 
 
 Eigen::Vector3d start{0.0, 0.0, 0.0};
 Eigen::Vector3d goal_a{-0.1, -0.1, -0.1};
-Eigen::Vector3d goal{10.0, -10.0, -2.0};
+Eigen::Vector3d goal{0.0, 10.0, 2.0};
 Eigen::Vector3d current_drone_pos{0.0, 0.0, 0.0};
 nav_msgs::Path hose_path;
-std::vector<Eigen::Vector3d> hose_key_points;
+// std::vector<Eigen::Vector3d> hose_key_points;
+std::vector<Eigen::Vector3d> simple_obs_wall;
 
 ros::Publisher drone_leader_pub;
 ros::Publisher hose_path_pub;
+ros::Publisher obs_vis_pub;
+
+
+void init_obs_wall(std::vector<Eigen::Vector3d> &simple_obs_wall){
+  double y=5.0;
+  for(double x = -1.5; x<1.5; x=x+0.5){
+    for(double z = 0.; z<1.5; z=z+0.5){
+      Eigen::Vector3d point{x,y,z};
+      simple_obs_wall.push_back(point);
+    }
+  }
+}
+
+void publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_wall) {
+    visualization_msgs::MarkerArray obsArray;
+    auto obs_frame = std::string("enu");
+    auto obs_time = ros::Time::now();
+
+    int id = 0;
+    for (auto obs_point : simple_obs_wall) {
+        visualization_msgs::Marker p;
+        p.type = visualization_msgs::Marker::SPHERE;
+        p.id = id;
+        p.header.frame_id = obs_frame;
+        p.header.stamp = obs_time;
+        p.scale.x = 0.1;
+        p.scale.y = 0.1;
+        p.scale.z = 0.1;
+        p.pose.orientation.w = 1.0;
+        p.pose.position.x=obs_point(0);
+        p.pose.position.y=obs_point(1);
+        p.pose.position.z=obs_point(2);
+        p.color.a = 1.0;
+        p.color.r = 1.0;
+        p.color.g = 1.0;
+        p.color.b = 0.0;
+
+        obsArray.markers.push_back(p);
+        id++;
+    }
+    obs_vis_pub.publish(obsArray);
+}
 
 nav_msgs::Path build_hose_model(std::vector<Eigen::Vector3d> &hose_key_points){
     // Circle parameters
@@ -41,7 +86,6 @@ nav_msgs::Path build_hose_model(std::vector<Eigen::Vector3d> &hose_key_points){
     pt.pose.orientation = tf::createQuaternionMsgFromYaw(0.0);
     // pt.header.frame_id = std::string("enu");
     // pt.header.stamp = ros::Time::now();
-
     for(auto keypoint : hose_key_points){
       pt.pose.position.x =  keypoint(0);
       pt.pose.position.y =  keypoint(1);
@@ -64,6 +108,9 @@ void timerCallback(const ros::TimerEvent&){
   drone_leader_pub.publish(pt);
 
   hose_path_pub.publish(hose_path);
+
+  //visualize the simple obs wall:
+  publish_obs_vis(simple_obs_wall);
 }
 
 int main(int argc, char *argv[]) {
@@ -93,9 +140,11 @@ int main(int argc, char *argv[]) {
   //ros visualization----------------------------------------------------------------
   ros::init(argc, argv, "optimization_fabrics_test_node");
   ros::NodeHandle nh;
-  ros::Timer timer = nh.createTimer(ros::Duration(1.0), timerCallback);
+  ros::Timer timer = nh.createTimer(ros::Duration(3.0), timerCallback);
   drone_leader_pub = nh.advertise<geometry_msgs::PointStamped>("drone_leader", 1000);
   hose_path_pub = nh.advertise<nav_msgs::Path>("hose_path", 1000);
+  obs_vis_pub = nh.advertise<visualization_msgs::MarkerArray>("obs_vis", 10);
+
 
   // ros::NodeHandle nh_private("~");
   rmp_planner.init_ros_interface(nh);
@@ -103,7 +152,13 @@ int main(int argc, char *argv[]) {
   // test acc based potential
   // rmp_planner.generateTrajectoryOdom_2(start, goal, &trajectory_odom);
   //test balance policy:
-  rmp_planner.generateTrajectoryOdom_3(start, goal_a, goal, &trajectory_odom);
+  // rmp_planner.generateTrajectoryOdom_3(start, goal_a, goal, &trajectory_odom);
+  //test obs avoid policy:
+  init_obs_wall(simple_obs_wall);
+  // std::cout << " simple_obs_wall: " << simple_obs_wall.back() << std::endl;    
+
+  rmp_planner.generateTrajectoryOdom_4(start, goal_a, goal, 
+                                      simple_obs_wall, &trajectory_odom);
 
   rmp_planner.publishTrajectory(trajectory_odom);
 

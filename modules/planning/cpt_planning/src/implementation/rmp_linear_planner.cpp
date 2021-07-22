@@ -280,7 +280,97 @@ void RMPLinearPlanner::generateTrajectoryOdom_3(const Eigen::Vector3d start,
     }
   }
 }
+ 
+void RMPLinearPlanner::generateTrajectoryOdom_4(const Eigen::Vector3d start,
+                            const Eigen::Vector3d goal_1,
+                            const Eigen::Vector3d goal_2,
+                            const std::vector<Eigen::Vector3d> &obs_list,
+                            mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
+   // Set up solver
+  using RMPG = cad_percept::planning::LinearManifoldInterface;
+  using LinSpace = rmpcpp::Space<3>;
+  using BalancePotential = rmpcpp::AccPotentialDistBalance<LinSpace>;
+  using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
+  using CollisionAvoidGeometric = rmpcpp::CollisionAvoid<LinSpace>;
+  using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
 
+  RMPG::VectorQ target_xyz_1 = goal_1;
+  RMPG::VectorX target_uv_1 = target_xyz_1;
+
+  RMPG::VectorQ target_xyz_2 = goal_2;
+  RMPG::VectorX target_uv_2 = target_xyz_2;
+
+  RMPG::VectorQ start_xyz = start;
+  RMPG::VectorX start_uv = start_xyz;
+
+  RMPG::VectorX obs_point_X;
+
+  Integrator integrator;
+
+  // set up policies
+  Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
+
+  auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
+  auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
+
+
+  std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
+  policies.push_back(pol_2);
+  policies.push_back(geo_fabric_1);
+  // add collision avoid policies:
+  for(auto obs_point : obs_list){
+    //add one collision avoid geometric fabric for each sensed obs_point
+    obs_point_X = obs_point;
+    auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_point_X, A);  
+    policies.push_back(geo_fabric_obs);
+  }
+
+
+  // start integrating path
+  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+  bool reached_criteria = false;
+
+  integrator.resetTo(start_xyz);
+    // integrate over trajectory
+  double max_traject_duration_= 60.0;
+  for (double t = 0; t < max_traject_duration_; t += dt_) {
+    auto step_result = integrator.integrateStep(policies, manifold_, dt_);
+
+    if (!step_result.allFinite()) {
+      ROS_WARN("Error, nonfinite integration data, stopping integration");
+      trajectory_odom->clear();
+      return;
+    }
+
+    // get 3D trajectory point in ENU
+    mav_msgs::EigenTrajectoryPoint pt_test;
+    pt_test.time_from_start_ns = t * 1e9;
+    integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
+
+    // convert point to odom with current transform
+    // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
+    // keep current orientation
+    // pt_odom.orientation_W_B = T_odom_body_.rotation();
+
+    trajectory_odom->push_back(pt_test);
+
+    if (integrator.atRest()) {
+      std::cout <<"Integrator finished after " << t << " s with a distance of "
+                                                    << integrator.totalDistance()
+                                                    << std::endl;
+      break;
+    }
+  }
+  std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+
+  SurfacePlanner::Result result;
+  result.success = reached_criteria;
+  result.duration = end_time - start_time;
+  std::cout << "Operation took ";
+  display(std::cout, end_time - start_time);
+  std::cout << '\n';
+  std::cout <<"Trajectory Distance:"<<integrator.totalDistance()<<std::endl;
+}
 
 
 void RMPLinearPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom) {
@@ -300,6 +390,32 @@ void RMPLinearPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::V
   //   pub_trajectory_.publish(msg);
   // }
 }
+
+
+std::ostream& RMPLinearPlanner::display(std::ostream& os, std::chrono::nanoseconds ns)
+{
+    using namespace std;
+    using namespace std::chrono;
+    typedef duration<int, ratio<86400>> days;
+    char fill = os.fill();
+    os.fill('0');
+    auto d = duration_cast<days>(ns);
+    ns -= d;
+    auto h = duration_cast<hours>(ns);
+    ns -= h;
+    auto m = duration_cast<minutes>(ns);
+    ns -= m;
+    auto s = duration_cast<seconds>(ns);
+    ns -= s;
+    auto ms = duration_cast<milliseconds>(ns);
+    os << setw(2) << d.count() << "d:"
+       << setw(2) << h.count() << "h:"
+       << setw(2) << m.count() << "m:"
+       << setw(2) << s.count() << "s:"
+       << setw(2) << ms.count() << "ms";
+    os.fill(fill);
+    return os;
+};
 
 
 
