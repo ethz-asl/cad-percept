@@ -14,7 +14,7 @@ ShapeDetection::ShapeDetection(ros::NodeHandle nodeHandle1,
       iteration_counter_(0) {
   nodeHandle1.getParam("SensorType", SENSOR_TYPE_);
   nodeHandle1.getParam("TransformationMatrix", TRANSFORMATION_VEC_);
-  nodeHandle1.getParam("TransformationMatrix", STATIONARY_POSITION_VEC_);
+  nodeHandle1.getParam("StationaryPosition", STATIONARY_POSITION_VEC_);
   nodeHandle1.getParam("ModelTolerance", MODEL_TOLERANCE_);
   nodeHandle1.getParam("OutlierCount", OUTLIER_COUNT_);
   nodeHandle1.getParam("UseBuffer", USE_BUFFER_);

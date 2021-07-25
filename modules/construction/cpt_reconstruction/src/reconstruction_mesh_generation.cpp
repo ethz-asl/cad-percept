@@ -1059,7 +1059,7 @@ void MeshGeneration::selectMainCandidateFaces(
         pcl::PointXYZ p = (*corners)[p_idx];
         double error = candidate_normal.x() * p.x + candidate_normal.y() * p.y +
                        candidate_normal.z() * p.z + candidate_d;
-        if (error >= -0.4 && error <= 0.05) {
+        if (error >= -0.5 && error <= 0.05) {
           found_candidate = true;
           break;
         }
