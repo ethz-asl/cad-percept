@@ -126,6 +126,7 @@ class Classification {
   double MAX_FACET_LENGTH_;
   int NUMBER_OF_SCALES_;
   int N_RING_QUERY_;
+  int PREDICTION_METHOD_;
 
   std::vector<std::string> all_classifier_paths_;
 

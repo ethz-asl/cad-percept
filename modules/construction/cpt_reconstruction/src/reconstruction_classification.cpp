@@ -16,6 +16,7 @@ Classification::Classification(ros::NodeHandle nodeHandle1,
   nodeHandle1.getParam("MaxFacetLength", MAX_FACET_LENGTH_);
   nodeHandle1.getParam("NumberOfScales", NUMBER_OF_SCALES_);
   nodeHandle1.getParam("NRingQuery", N_RING_QUERY_);
+  nodeHandle1.getParam("PredictionMethod", PREDICTION_METHOD_);
 
   // Store paths to RF classifiers
   all_classifier_paths_.push_back(RF_CONFIG_1_PATH_);
@@ -235,11 +236,16 @@ void Classification::classifyMesh(int idx, const std::string config_path,
   classifier.load_configuration(in_config);
 
   // Perform prediction
-  CGAL::Classification::classify_with_graphcut<CGAL::Sequential_tag>(
-      mesh.faces(), Face_with_bbox_map(&mesh), labels, classifier,
-      generator.neighborhood().n_ring_neighbor_query(N_RING_QUERY_), 0.2f, 1,
-      label_indices);
-
+  if (PREDICTION_METHOD_ == 1){
+    CGAL::Classification::classify_with_graphcut<CGAL::Sequential_tag>(
+        mesh.faces(), Face_with_bbox_map(&mesh), labels, classifier,
+        generator.neighborhood().n_ring_neighbor_query(N_RING_QUERY_), 0.2f, 1,
+        label_indices);
+  } else {
+    CGAL::Classification::classify_with_local_smoothing<CGAL::Sequential_tag>(
+        mesh.faces(), Face_with_bbox_map(&mesh), labels, classifier,
+        generator.neighborhood().n_ring_neighbor_query(N_RING_QUERY_), label_indices);
+  }
   ROS_INFO("Prediction Done");
 }
 
