@@ -28,6 +28,7 @@
     <depend>eigen_catkin</depend>
     <depend>eigen_conversions</depend>
     <depend>roscpp</depend>
+    <depend>rospy</depend>
     <depend>rmpcpp</depend>
     <depend>sensor_msgs</depend>
     <depend>pcl_ros</depend>

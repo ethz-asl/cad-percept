@@ -373,12 +373,102 @@ void RMPLinearPlanner::generateTrajectoryOdom_4(const Eigen::Vector3d start,
 }
 
 
+void RMPLinearPlanner::generateTrajectoryOdom_5(){
+   // Set up solver
+  using RMPG = cad_percept::planning::LinearManifoldInterface;
+  using LinSpace = rmpcpp::Space<3>;
+  using BalancePotential = rmpcpp::AccPotentialDistBalance<LinSpace>;
+  using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
+  using CollisionAvoidGeometric = rmpcpp::CollisionAvoid<LinSpace>;
+  using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
+
+  RMPG::VectorQ target_xyz_1 = goal_a_;
+  RMPG::VectorX target_uv_1 = target_xyz_1;
+
+  RMPG::VectorQ target_xyz_2 = goal_b_;
+  RMPG::VectorX target_uv_2 = target_xyz_2;
+
+  RMPG::VectorQ start_xyz = start_;
+  RMPG::VectorX start_uv = start_xyz;
+
+  RMPG::VectorX obs_point_X;
+
+  Integrator integrator;
+
+  // set up policies
+  Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
+
+  auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
+  auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
+
+
+  std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
+  policies.push_back(pol_2);
+  policies.push_back(geo_fabric_1);
+  // add collision avoid policies:
+  for(auto obs_point : obs_list_){
+    //add one collision avoid geometric fabric for each sensed obs_point
+    obs_point_X = obs_point;
+    auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_point_X, A);  
+    policies.push_back(geo_fabric_obs);
+  }
+
+
+  // start integrating path
+  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+  bool reached_criteria = false;
+
+  integrator.resetTo(start_xyz);
+    // integrate over trajectory
+  double max_traject_duration_= 60.0;
+  for (double t = 0; t < max_traject_duration_; t += dt_) {
+    auto step_result = integrator.integrateStep(policies, manifold_, dt_);
+
+    if (!step_result.allFinite()) {
+      ROS_WARN("Error, nonfinite integration data, stopping integration");
+      trajectory_odom_.clear();
+      return;
+    }
+
+    // get 3D trajectory point in ENU
+    mav_msgs::EigenTrajectoryPoint pt_test;
+    pt_test.time_from_start_ns = t * 1e9;
+    integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
+
+    // convert point to odom with current transform
+    // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
+    // keep current orientation
+    // pt_odom.orientation_W_B = T_odom_body_.rotation();
+
+    trajectory_odom_.push_back(pt_test);
+
+    if (integrator.atRest()) {
+      std::cout <<"Integrator finished after " << t << " s with a distance of "
+                                                    << integrator.totalDistance()
+                                                    << std::endl;
+      break;
+    }
+  }
+  std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+
+  SurfacePlanner::Result result;
+  result.success = reached_criteria;
+  result.duration = end_time - start_time;
+  std::cout << "Operation took ";
+  display(std::cout, end_time - start_time);
+  std::cout << '\n';
+  std::cout <<"Trajectory Distance:"<<integrator.totalDistance()<<std::endl;
+}
+
+
+
+
 void RMPLinearPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom) {
   // publish marker message of trajectory
   visualization_msgs::MarkerArray markers;
   double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
   std::string fram_id = "enu";
-  mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom, distance,
+  mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom_, distance,
                                                       fram_id, &markers);
   pub_marker_.publish(markers);
 
@@ -389,6 +479,16 @@ void RMPLinearPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::V
   //   msg.header.stamp = ros::Time::now();
   //   pub_trajectory_.publish(msg);
   // }
+}
+
+void RMPLinearPlanner::publishTrajectory_2() {
+  // publish marker message of trajectory
+  visualization_msgs::MarkerArray markers;
+  double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
+  std::string fram_id = "enu";
+  mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom_, distance,
+                                                      fram_id, &markers);
+  pub_marker_.publish(markers);
 }
 
 
@@ -417,6 +517,98 @@ std::ostream& RMPLinearPlanner::display(std::ostream& os, std::chrono::nanosecon
     return os;
 };
 
+nav_msgs::Path RMPLinearPlanner::build_hose_model(std::vector<Eigen::Vector3d> &hose_key_points){
+    // Circle parameters
+    nav_msgs::Path waypoints;
+    geometry_msgs::PoseStamped pt;
+
+    waypoints.header.frame_id = std::string("enu");
+    waypoints.header.stamp = ros::Time::now();
+    pt.pose.orientation = tf::createQuaternionMsgFromYaw(0.0);
+    // pt.header.frame_id = std::string("enu");
+    // pt.header.stamp = ros::Time::now();
+    for(auto keypoint : hose_key_points){
+      pt.pose.position.x =  keypoint(0);
+      pt.pose.position.y =  keypoint(1);
+      pt.pose.position.z =  keypoint(2);
+      waypoints.poses.push_back(pt);    
+    } 
+    // Return
+    return waypoints;
+}
+
+//read new goal and calculate the trajectory
+void RMPLinearPlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+  // read pos of the new end-effector
+  goal_b_(0) = msg->pose.position.x;
+  goal_b_(1) = msg->pose.position.y;
+  goal_b_(2) = msg->pose.position.z;
+  std::cout <<"goal_b_ updated:"<<goal_b_<<std::endl;
+
+  //update the start pos of the trajectory
+
+  //calculate a new trajectory
+  generateTrajectoryOdom_5();
+
+  //visualize the new trajectory
+  publishTrajectory_2();
+
+  //visualize the hose:
+  nav_msgs::Path hose_path;
+  current_pos_ = trajectory_odom_.back().position_W;
+  start_ = current_pos_;
+  std::vector<Eigen::Vector3d> hose_key_points;
+  hose_key_points.push_back(goal_a_);
+  hose_key_points.push_back(current_pos_);
+  hose_key_points.push_back(goal_b_);
+  hose_path = build_hose_model(hose_key_points);
+  hose_path_pub.publish(hose_path);
+
+  //visualize the obs:
+  publish_obs_vis(obs_list_);
+}
+
+void RMPLinearPlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_wall) {
+    visualization_msgs::MarkerArray obsArray;
+    auto obs_frame = std::string("enu");
+    auto obs_time = ros::Time::now();
+
+    int id = 0;
+    for (auto obs_point : simple_obs_wall) {
+        visualization_msgs::Marker p;
+        p.type = visualization_msgs::Marker::SPHERE;
+        p.id = id;
+        p.header.frame_id = obs_frame;
+        p.header.stamp = obs_time;
+        p.scale.x = 0.1;
+        p.scale.y = 0.1;
+        p.scale.z = 0.1;
+        p.pose.orientation.w = 1.0;
+        p.pose.position.x=obs_point(0);
+        p.pose.position.y=obs_point(1);
+        p.pose.position.z=obs_point(2);
+        p.color.a = 1.0;
+        p.color.r = 1.0;
+        p.color.g = 1.0;
+        p.color.b = 0.0;
+
+        obsArray.markers.push_back(p);
+        id++;
+    }
+    obs_vis_pub.publish(obsArray);
+}
+
+
+
+void RMPLinearPlanner::init_obs_wall(){
+  double y=5.0;
+  for(double x = -1.5; x<1.5; x=x+0.5){
+    for(double z = 0.; z<1.5; z=z+0.5){
+      Eigen::Vector3d point{x,y,z};
+      obs_list_.push_back(point);
+    }
+  }
+}
 
 
 }  // namespace planning

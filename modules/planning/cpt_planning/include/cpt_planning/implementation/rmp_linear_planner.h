@@ -20,6 +20,8 @@
 #include <mav_trajectory_generation_ros/ros_visualization.h>
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <nav_msgs/Path.h>
+#include <tf/tf.h>
 
 
 #include <iostream>
@@ -43,6 +45,10 @@ class RMPLinearPlanner : public SurfacePlanner {
 
   void init_ros_interface(ros::NodeHandle nh){
       pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
+      hose_path_pub = nh.advertise<nav_msgs::Path>("hose_path", 1000);
+      obs_vis_pub = nh.advertise<visualization_msgs::MarkerArray>("obs_vis", 10);
+
+
   }
 
   void generateTrajectoryOdom(const Eigen::Vector3d start,
@@ -62,10 +68,24 @@ class RMPLinearPlanner : public SurfacePlanner {
                               const std::vector<Eigen::Vector3d> &obs_list,
                               mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
 
+  void generateTrajectoryOdom_5();
+
+  void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
+
+  void init_obs_wall();
+
+  void publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_wall);
+  
+
+  nav_msgs::Path build_hose_model(std::vector<Eigen::Vector3d> &hose_key_points);
+
+
+
   std::ostream& display(std::ostream& os, std::chrono::nanoseconds ns);
   
   // publishing method
   void publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom);
+  void publishTrajectory_2();
 
 
   inline const std::string getName() const {
@@ -89,6 +109,17 @@ class RMPLinearPlanner : public SurfacePlanner {
   std::shared_ptr<cad_percept::planning::LinearManifoldInterface> manifold_;
   
   ros::Publisher pub_marker_;
+  ros::Publisher hose_path_pub;
+  ros::Publisher obs_vis_pub;
+
+
+
+  Eigen::Vector3d start_{0.0, 0.0, 0.0};
+  Eigen::Vector3d goal_a_{-0.1, -0.1, -0.1};
+  Eigen::Vector3d goal_b_{0.0, 10.0, 2.0};
+  Eigen::Vector3d current_pos_{0.0, 0.0, 0.0};
+  std::vector<Eigen::Vector3d> obs_list_;
+  mav_msgs::EigenTrajectoryPoint::Vector trajectory_odom_;
 
 
 };

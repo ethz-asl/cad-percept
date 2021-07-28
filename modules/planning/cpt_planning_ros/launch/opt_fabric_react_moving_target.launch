@@ -1,0 +1,19 @@
+<launch>
+  <!-- Motion planner based on opt fabric  -->
+  <node pkg="cpt_planning_eval" name="opt_fabric_planner" type="optimization_fabrics_test_node" output="screen">
+  </node>
+
+  <!-- moving target generator  -->
+  <arg name="odom_topic" default="/mavros/local_position/odom" />
+
+  <node pkg="waypoint_generator" name="waypoint_generator" type="waypoint_generator" output="screen">
+    <remap from="~odom" to="$(arg odom_topic)"/>        
+    <remap from="~goal" to="/move_base_simple/goal"/>
+    <remap from="~traj_start_trigger" to="/traj_start_trigger" />
+    <param name="waypoint_type" value="manual-lonely-waypoint"/>    
+  </node>
+
+  <!-- open visualization -->
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_planning_ros)/rviz/optimization_fabric_test.rviz" />
+
+</launch>
