@@ -1,6 +1,7 @@
 <launch>
   <!-- Motion planner based on opt fabric  -->
   <node pkg="cpt_planning_eval" name="opt_fabric_planner" type="optimization_fabrics_test_node" output="screen">
+    <param name="waypoint_topic" value="/waypoint_generator/moving_target"/>
   </node>
 
   <!-- moving target generator  -->
@@ -10,7 +11,8 @@
     <remap from="~odom" to="$(arg odom_topic)"/>        
     <remap from="~goal" to="/move_base_simple/goal"/>
     <remap from="~traj_start_trigger" to="/traj_start_trigger" />
-    <param name="waypoint_type" value="manual-lonely-waypoint"/>    
+    <!-- <param name="waypoint_type" value="manual-lonely-waypoint"/> -->
+    <param name="waypoint_type" value="moving_path"/>
   </node>
 
   <!-- open visualization -->

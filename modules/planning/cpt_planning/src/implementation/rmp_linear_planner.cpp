@@ -377,6 +377,10 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
    // Set up solver
   using RMPG = cad_percept::planning::LinearManifoldInterface;
   using LinSpace = rmpcpp::Space<3>;
+
+  using AttractionPotential = rmpcpp::AccBasedPotential<LinSpace>;
+
+
   using BalancePotential = rmpcpp::AccPotentialDistBalance<LinSpace>;
   using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
   using CollisionAvoidGeometric = rmpcpp::CollisionAvoid<LinSpace>;
@@ -401,18 +405,10 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
   auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
   auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
 
+  auto att_1 = std::make_shared<AttractionPotential>(
+                (target_uv_1+target_uv_2)/2.0, A);  // 
 
   std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
-  policies.push_back(pol_2);
-  policies.push_back(geo_fabric_1);
-  // add collision avoid policies:
-  for(auto obs_point : obs_list_){
-    //add one collision avoid geometric fabric for each sensed obs_point
-    obs_point_X = obs_point;
-    auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_point_X, A);  
-    policies.push_back(geo_fabric_obs);
-  }
-
 
   // start integrating path
   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
@@ -420,8 +416,39 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
 
   integrator.resetTo(start_xyz);
     // integrate over trajectory
-  double max_traject_duration_= 60.0;
+  double max_traject_duration_= 5.0;
   for (double t = 0; t < max_traject_duration_; t += dt_) {
+    Eigen::Vector3d drone_pos, drone_vel, drone_acc;
+    integrator.getState(&drone_pos, &drone_vel, &drone_acc);
+    std::cout << " root_vel: " << drone_vel(0) <<"; "
+              << drone_vel(1) <<"; "
+              << drone_vel(2) 
+              << std::endl;
+
+    // add collision avoid policies when needed:
+    // obs point sorted by distance (shortest distance first)
+    std::sort( obs_list_.begin( ), obs_list_.end( ), 
+      [drone_pos]( const auto& obs_1, const auto& obs_2 )
+      {
+        return (obs_1-drone_pos).norm() < (obs_2-drone_pos).norm();
+      });
+
+    policies.clear();
+    policies.push_back(att_1);
+    // policies.push_back(pol_2);
+    // policies.push_back(geo_fabric_1);
+    if(obs_list_.at(0).norm()<10.0){
+      auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(0), A);  
+      policies.push_back(geo_fabric_obs);
+      auto geo_fabric_obs_2 = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(2), A);  
+      policies.push_back(geo_fabric_obs_2);
+    }
+    // for(int i=0; i<1;i++){
+    //   auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(i), A);  
+    //   policies.push_back(geo_fabric_obs);
+    // }
+
+    //get next step
     auto step_result = integrator.integrateStep(policies, manifold_, dt_);
 
     if (!step_result.allFinite()) {
@@ -539,6 +566,8 @@ nav_msgs::Path RMPLinearPlanner::build_hose_model(std::vector<Eigen::Vector3d> &
 
 //read new goal and calculate the trajectory
 void RMPLinearPlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+  ROS_INFO("RMPLinearPlanner::goalCallback");
+
   // read pos of the new end-effector
   goal_b_(0) = msg->pose.position.x;
   goal_b_(1) = msg->pose.position.y;
@@ -603,7 +632,7 @@ void RMPLinearPlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_
 void RMPLinearPlanner::init_obs_wall(){
   double y=5.0;
   for(double x = -1.5; x<1.5; x=x+0.5){
-    for(double z = 0.; z<1.5; z=z+0.5){
+    for(double z = 0.; z<2.5; z=z+0.5){
       Eigen::Vector3d point{x,y,z};
       obs_list_.push_back(point);
     }
