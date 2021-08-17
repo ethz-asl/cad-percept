@@ -8,7 +8,7 @@
 
 ### Setup
 # 0 -> Mobile Robot, 1 -> Stationary Total station
-SensorType : 1
+SensorType : 0
 
 #For Stationary Total Station only:
 TransformationMatrix: [1.0, 0.0, 0.0, 0.0,
@@ -18,14 +18,15 @@ TransformationMatrix: [1.0, 0.0, 0.0, 0.0,
 
 # For Stationary Total Station only:
 StationaryPosition: [16.46, -1.0, 1.0]
+#StationaryPosition: [1.0, 0.0, 1.0]
 
 # For Stationary Total Station only:
-ScanPointsFile: "/home/philipp/Schreibtisch/Rümlang/Leica/leica_simulated.ply"
+ScanPointsFile: "/home/philipp/Schreibtisch/CLA/leica/new_scan1_aligned.ply"
 
 ########################################################################
 ### Paths
-BuildingModelMeshFile: "/home/philipp/Schreibtisch/Case_study2_data/01/Ruemlang_incomplete_1.ply"
-UpsampledBuildingModelFile: "/home/philipp/Schreibtisch/Case_study2_data/01/Ruemlang_upsampled_1.ply"
+BuildingModelMeshFile: "/home/philipp/Schreibtisch/Case_study_data/06/CLA_incomplete_6.ply"
+UpsampledBuildingModelFile: "/home/philipp/Schreibtisch/Case_study_data/06/CLA_upsampled_6.ply"
 
 ## Paths to Random Forest Classifiers
 ClassificationConfigFile1: "/home/philipp/reconstruction_ws/src/cad-percept/modules/construction/cpt_reconstruction/resources/mesh_ethz_random_forest_random_area1.bin"
@@ -71,13 +72,13 @@ ValidSizeThresholdPlane: 1000
 ThresholdSecondEigenvalue: 0.00015
 IntervalFusingClusters: 50 # Only for Mobile Robot
 IntervalCleaningClusters: 50 # Only for Mobile Robot
-IntervalForwardingClusters: 600 # Only for Mobile Robot
+IntervalForwardingClusters: 1000 # Only for Mobile Robot
 
 # Whether the splitting should be perform for the mobile robot
 # Splitting for the stationary total station is always performed
 PerformSplittingMobileRobot : false
 # Minimum Density improvement to perform the split
-MinDensityImprovement : 1.3
+MinDensityImprovement : 1.1
 
 # Fusing Planes
 DotProductNormals: 0.99
