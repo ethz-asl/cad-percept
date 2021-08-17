@@ -100,10 +100,6 @@ void Classification::messageCallback(
   std::vector<int> nn_indices{1};
   std::vector<float> nn_dists{1};
   std::vector<int> final_votes;
-
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr result(
-      new pcl::PointCloud<pcl::PointXYZRGB>());
-
   for (int i = 0; i < clouds.size(); i++) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cur_cloud = clouds.at(i);
     std::vector<double> class_vote(6, 0);
@@ -121,60 +117,7 @@ void Classification::messageCallback(
     int best_vote = std::max_element(class_vote.begin(), class_vote.end()) -
                     class_vote.begin();
     final_votes.push_back(best_vote);
-
-    int red = 0;
-    int green = 0;
-    int blue = 0;
-
-    if (best_vote == 2) {
-      //#magenta -> beam color = np.array([255,255,0])
-      red = 255;
-      green = 255;
-      blue = 0;
-    } else if (best_vote == 1) {
-      //# green -> ceiling color = np.array([0,255,00])
-      red = 0;
-      green = 255;
-      blue = 0;
-    } else if (best_vote == 5) {
-      //# black -> clutter color = np.array([50,50,50])
-      red = 50;
-      green = 50;
-      blue = 50;
-    } else if (best_vote == 3) {
-      //# pink -> column color = np.array([255,0,255])
-      red = 255;
-      green = 0;
-      blue = 255;
-    } else if (best_vote == 4) {
-      //# blue -> floor color = np.array([0, 0, 255])
-      red = 0;
-      green = 0;
-      blue = 255;
-    } else if (best_vote == 0) {
-      //# red -> wall color = np.array([0, 255, 255])
-      red = 255;
-      green = 0;
-      blue = 0;
-    } else {
-      ROS_INFO("lable not found");
-    }
-    for (int i_p = 0; i_p < cur_cloud->size(); i_p++){
-      pcl::PointXYZRGB p_rgb;
-      p_rgb.x = (float)cur_cloud->at(i_p).x;
-      p_rgb.y = (float)cur_cloud->at(i_p).y;
-      p_rgb.z = (float)cur_cloud->at(i_p).z;
-      p_rgb.r = (std::uint8_t)red;
-      p_rgb.g = (std::uint8_t)green;
-      p_rgb.b = (std::uint8_t)blue;
-      result->push_back(p_rgb);
-    }
   }
-  // Write result
-  std::string output_classified_points =
-      "/home/philipp/Schreibtisch/ros_dir/classification_final.ply";
-  pcl::io::savePLYFileBinary(output_classified_points, *result);
-
   ::cpt_reconstruction::classified_shapes class_msg;
   class_msg.robot_positions = msg.robot_positions;
   class_msg.clouds = msg.clouds;
@@ -293,7 +236,7 @@ void Classification::classifyMesh(int idx, const std::string config_path,
   classifier.load_configuration(in_config);
 
   // Perform prediction
-  if (PREDICTION_METHOD_ == 1){
+  if (PREDICTION_METHOD_ == 1) {
     CGAL::Classification::classify_with_graphcut<CGAL::Sequential_tag>(
         mesh.faces(), Face_with_bbox_map(&mesh), labels, classifier,
         generator.neighborhood().n_ring_neighbor_query(N_RING_QUERY_), 0.2f, 1,
@@ -301,78 +244,10 @@ void Classification::classifyMesh(int idx, const std::string config_path,
   } else {
     CGAL::Classification::classify_with_local_smoothing<CGAL::Sequential_tag>(
         mesh.faces(), Face_with_bbox_map(&mesh), labels, classifier,
-        generator.neighborhood().n_ring_neighbor_query(N_RING_QUERY_), label_indices);
+        generator.neighborhood().n_ring_neighbor_query(N_RING_QUERY_),
+        label_indices);
   }
   ROS_INFO("Prediction Done");
-
-
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr result(
-      new pcl::PointCloud<pcl::PointXYZRGB>());
-  int face_idx = 0;
-  BOOST_FOREACH (Mesh_M::Face_index f, mesh.faces()) {
-          int j = 0;
-
-          int red = 0;
-          int green = 0;
-          int blue = 0;
-          Label_handle label = labels[label_indices[face_idx]];
-          if (label == beam) {
-            //#magenta -> beam color = np.array([255,255,0])
-            red = 255;
-            green = 255;
-            blue = 0;
-          } else if (label == ceiling) {
-            //# green -> ceiling color = np.array([0,255,00])
-            red = 0;
-            green = 255;
-            blue = 0;
-          } else if (label == clutter) {
-            //# black -> clutter color = np.array([50,50,50])
-            red = 50;
-            green = 50;
-            blue = 50;
-          } else if (label == column) {
-            //# pink -> column color = np.array([255,0,255])
-            red = 255;
-            green = 0;
-            blue = 255;
-          } else if (label == floor) {
-            //# blue -> floor color = np.array([0, 0, 255])
-            red = 0;
-            green = 0;
-            blue = 255;
-          } else if (label == wall) {
-            //# red -> wall color = np.array([0, 255, 255])
-            red = 255;
-            green = 0;
-            blue = 0;
-          } else {
-            ROS_INFO("lable not found");
-          }
-
-          CGAL::Vertex_around_face_iterator<Mesh_M> vbegin, vend;
-          for (boost::tie(vbegin, vend) =
-                   vertices_around_face(mesh.halfedge(f), mesh);
-               vbegin != vend; ++vbegin) {
-            Point_M p1 = mesh.point(*vbegin);
-            pcl::PointXYZRGB p_rgb;
-            p_rgb.x = (float)p1.x();
-            p_rgb.y = (float)p1.y();
-            p_rgb.z = (float)p1.z();
-            p_rgb.r = (std::uint8_t)red;
-            p_rgb.g = (std::uint8_t)green;
-            p_rgb.b = (std::uint8_t)blue;
-            result->push_back(p_rgb);
-          }
-          face_idx++;
-        }
-
-  // Write result
-  std::string output_classified_points =
-      "/home/philipp/Schreibtisch/ros_dir/classification_" +
-          std::to_string(idx) + ".ply";
-  pcl::io::savePLYFileBinary(output_classified_points, *result);
-
 }
 
 }  // namespace cpt_reconstruction
