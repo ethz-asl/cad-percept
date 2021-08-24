@@ -15,6 +15,8 @@
 #include <rmpcpp/policies/acc_based_potential.h>
 #include <rmpcpp/policies/acc_potential_dist_balance.h>
 #include <rmpcpp/policies/collision_avoid.h>
+#include <rmpcpp/policies/link_collision_avoid.h>
+
 
 #include <mav_msgs/conversions.h>
 #include <mav_trajectory_generation_ros/ros_visualization.h>
@@ -76,6 +78,7 @@ class RMPLinearPlanner : public SurfacePlanner {
 
   void publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_wall);
   
+  void resetIntegrator(Eigen::Vector3d start_pos, Eigen::Vector3d start_vel);
 
   nav_msgs::Path build_hose_model(std::vector<Eigen::Vector3d> &hose_key_points);
 
@@ -120,6 +123,20 @@ class RMPLinearPlanner : public SurfacePlanner {
   Eigen::Vector3d current_pos_{0.0, 0.0, 0.0};
   std::vector<Eigen::Vector3d> obs_list_;
   mav_msgs::EigenTrajectoryPoint::Vector trajectory_odom_;
+
+
+    // Set up solver
+  using RMPG = cad_percept::planning::LinearManifoldInterface;
+  using LinSpace = rmpcpp::Space<3>;
+  using AttractionPotential = rmpcpp::AccBasedPotential<LinSpace>;
+  using BalancePotential = rmpcpp::AccPotentialDistBalance<LinSpace>;
+  using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
+  using CollisionAvoidGeometric = rmpcpp::CollisionAvoid<LinSpace>;
+  using LinkCollisionAvoidGeometric = rmpcpp::LinkCollisionAvoid<LinSpace>;
+  using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
+  Integrator integrator;
+
+  bool integrator_init_{false};
 
 
 };

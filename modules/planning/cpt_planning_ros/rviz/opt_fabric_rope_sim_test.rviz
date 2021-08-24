@@ -4,13 +4,11 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /MarkerArray1
         - /MarkerArray1/Namespaces1
         - /TF1/Frames1
-        - /PointStamped1
-        - /Path1
-        - /MarkerArray2
-        - /Pose2
+        - /Marker1
+        - /Marker2
+        - /Pose1
       Splitter Ratio: 0.5065693259239197
     Tree Height: 873
   - Class: rviz/Selection
@@ -63,10 +61,7 @@ Visualization Manager:
       Marker Topic: /opt_fabric_planner/visualization_marker
       Name: MarkerArray
       Namespaces:
-        acceleration: false
-        path: true
-        pose: true
-        velocity: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/TF
@@ -121,6 +116,22 @@ Visualization Manager:
       Marker Topic: /opt_fabric_planner/obs_vis
       Name: MarkerArray
       Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /rope_vis
+      Name: Marker
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /obj_vis
+      Name: Marker
+      Namespaces:
         "": true
       Queue Size: 100
       Value: true
@@ -128,30 +139,15 @@ Visualization Manager:
       Axes Length: 1
       Axes Radius: 0.10000000149011612
       Class: rviz/Pose
-      Color: 193; 125; 17
-      Enabled: false
-      Head Length: 0.30000001192092896
-      Head Radius: 0.10000000149011612
-      Name: Pose
-      Shaft Length: 0.30000001192092896
-      Shaft Radius: 0.05000000074505806
-      Shape: Arrow
-      Topic: /move_base_simple/goal
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/Pose
-      Color: 255; 25; 0
+      Color: 143; 89; 2
       Enabled: true
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
       Name: Pose
       Shaft Length: 0.30000001192092896
-      Shaft Radius: 0.05000000074505806
+      Shaft Radius: 0.10000000149011612
       Shape: Arrow
-      Topic: /waypoint_generator/moving_target
+      Topic: /moving_target
       Unreliable: false
       Value: true
   Enabled: true
@@ -199,10 +195,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.1197965145111084
+      Pitch: 0.5197977423667908
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.61179256439209
+      Yaw: 3.8418097496032715
     Saved: ~
 Window Geometry:
   Displays:

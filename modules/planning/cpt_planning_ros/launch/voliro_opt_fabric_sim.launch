@@ -1,10 +1,11 @@
 <launch>
   <arg name="mav_name" default="voliro_tri"/>
   <arg name="namespace" default="voliro_tri"/>
-  <arg name="model" default="$(find voliro_description)/urdf/voliro_tri_depth_camera_base.xacro"/>
+  <arg name="model" default="$(find voliro_description)/urdf/voliro_tri_base.xacro"/>
   <arg name="tf_prefix" default="$(optenv ROS_NAMESPACE)"/>
 
-  <arg name="world" default="$(find omav_gazebo_wada)/worlds/wada.world" />
+  <!-- <arg name="world" default="$(find omav_gazebo_wada)/worlds/wada.world" /> -->
+  <arg name="world" default="$(find omav_demos_simulator)/worlds/basic.world" />
   <arg name="show_gazebo" default="true"/>
   <arg name="pause_gazebo" default="false" />
 
@@ -17,6 +18,10 @@
   <arg name="start_x" default="0.0" />
   <arg name="start_y" default="0.0" />
   <arg name="start_z" default="0.1" />
+
+  <arg name="show_rviz" default="true" />
+  <arg name="rviz_config" default="arche_demo" />
+
 
   <!-- ========== Simulation ========== -->
   <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find rotors_gazebo)/models:$(find omav_gazebo_wada)/models"/>
@@ -67,10 +72,10 @@
     <param name="odom_frame" type="string" value="world" />
     <param name="current_reference_frame" value="current_reference" />
 
-    <param name="zero_angle" type="double" value="-1.57" />
-    <param name="zero_x" type="double" value="-17.785" />
-    <param name="zero_y" type="double" value="2.111" />
-    <param name="zero_z" type="double" value="-0.4248" />
+    <param name="zero_angle" type="double" value="0.0" />
+    <param name="zero_x" type="double" value="0.0" />
+    <param name="zero_y" type="double" value="0.0" />
+    <param name="zero_z" type="double" value="0.1" />
 	  
     <remap from="cmd_trajectory" to="/$(arg mav_name)/command/trajectory" />
 	  
@@ -78,61 +83,12 @@
     <remap from="joy" to="/joy" />
   </node>
 
-
-
-<!-- TF Synchronization -->
-<!-- world frame = map frame -->
-    <!-- Camera pose (use the depth frame, which z-axis points forward) publisher -->
-    <!-- This node publishes tf from parent_frame to child_frame-->
-    <node pkg="cpt_planning_ros" name="camera_pose_publisher" type="camera_pose_publisher.py" output="screen">
-        <param name="parent_frame" value="world" />
-        <param name="child_frame" value="voliro_tri/depth_camera_link" />
-        <param name="pose_topic" value="camera/pose" />
-    </node>
-
-   <node pkg="tf" type="static_transform_publisher" name="tf_enu_world"
-    args="0 0 0 0 0 0 enu world 1000"/> 
-
-    <node pkg="tf" type="static_transform_publisher" name="tf_world_map"
-    args="0 0 0 0 0 0 world map 1000"/> 
-
-<!-- Planner configs -->
-    <arg name="map_size_x" default="40.0"/>
-    <arg name="map_size_y" default="40.0"/>
-    <arg name="map_size_z" default=" 20.0"/>
-
-    <!-- use depth image and camera pose as input -->
-    <arg name="odom_topic" default="/$(arg mav_name)/ground_truth/odometry" />
-    <!-- TODO change to camera coordinate: e.g. camera_depth_optical_frame -->
-    <arg name="camera_pose_topic" default="/camera/pose"/>
-    <arg name="depth_topic" default="/voliro_tri/pico_flexx/depth/image_raw"/>
-    <!-- <arg name="cloud_topic" default="/camera/depth/color/points"/> -->
-
-    <arg name="max_vel" default="0.5" />
-    <arg name="max_acc" default="0.5" />
-
-<!-- Fast planner -->
-    <include file="$(find omav_gazebo_wada)/launch/fp_topo_replan.launch" >
-        <arg name="map_size_x" default="$(arg map_size_x)"/>
-        <arg name="map_size_y" default="$(arg map_size_y)"/>
-        <arg name="map_size_z" default="$(arg map_size_z)"/>
-
-        <arg name="odom_topic" default="$(arg odom_topic)" />
-        <arg name="depth_topic" default="$(arg depth_topic)"/>
-        <arg name="camera_pose_topic" default="$(arg camera_pose_topic)"/>
-        <!-- <arg name="cloud_topic" default="$(arg cloud_topic)"/> -->
-
-        <!-- maximum velocity and acceleration the drone will reach -->
-        <arg name="max_vel" value="$(arg max_vel)" />
-        <arg name="max_acc" value="$(arg max_acc)" />
-
-    </include>
-
-
-
-
-
-
   <node name="joy_node" pkg="joy" type="joy_node" respawn="false" output="screen"/>
+
+  <!-- ========== Sensor reading visualization in RViz ========== -->
+  <group if="$(arg show_rviz)">
+    <node pkg="rviz" type="rviz" name="$(anon rviz)" respawn="false" output="screen" args="-d $(find omav_demo_arche2021)/cfg/$(arg rviz_config).rviz"/>
+  </group>
+
 
 </launch>

@@ -1,0 +1,46 @@
+<launch>
+  <!-- parameters for the rope -->
+  <arg name="rope_start_x" default="1.0"/>
+  <arg name="rope_start_y" default="0.75"/>
+  <arg name="rope_start_z" default="0.0"/>
+
+  <arg name="rope_end_x" default="-4.0"/>
+  <arg name="rope_end_y" default="0.75"/>
+  <arg name="rope_end_z" default="0.0"/>
+
+  <!-- parameters for the pulley init pose -->
+  <arg name="pulley_init_x" default="-1.0"/>
+  <arg name="pulley_init_y" default="0.75"/>
+  <arg name="pulley_init_z" default="-1.0"/>
+
+  <!-- Motion planner based on opt fabric  -->
+  <node pkg="cpt_planning_eval" name="opt_fabric_planner" type="optimization_fabrics_test_node" output="screen">
+    <param name="waypoint_topic" value="/moving_target"/>
+  </node>
+
+  <!-- joystick to control the behaviour of the end point  -->
+  <node pkg="joy" name="joystick_interface" type="joy_node" output="screen">
+     <rosparam>
+       joy_node/dev: "/dev/input/js0"
+     </rosparam>
+  </node>
+
+  <!-- rope simulator -->
+  <node pkg="rope_sim_ros" name="rope_sim_ros" type="rope_sim_ros_example" output="screen">
+    <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>
+    <param name="rope_start_y" value="$(arg rope_start_y)" type="double"/>
+    <param name="rope_start_z" value="$(arg rope_start_z)" type="double"/>
+
+    <param name="rope_end_x" value="$(arg rope_end_x)" type="double"/>
+    <param name="rope_end_y" value="$(arg rope_end_y)" type="double"/>
+    <param name="rope_end_z" value="$(arg rope_end_z)" type="double"/>
+
+    <param name="pulley_init_x" value="$(arg pulley_init_x)" type="double"/>
+    <param name="pulley_init_y" value="$(arg pulley_init_y)" type="double"/>
+    <param name="pulley_init_z" value="$(arg pulley_init_z)" type="double"/>
+  </node>
+
+  <!-- open visualization -->
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_planning_ros)/rviz/opt_fabric_rope_sim_test.rviz" />
+
+</launch>

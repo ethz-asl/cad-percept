@@ -372,39 +372,29 @@ void RMPLinearPlanner::generateTrajectoryOdom_4(const Eigen::Vector3d start,
   std::cout <<"Trajectory Distance:"<<integrator.totalDistance()<<std::endl;
 }
 
+void RMPLinearPlanner::resetIntegrator(Eigen::Vector3d start_pos, 
+                                        Eigen::Vector3d start_vel){
+  integrator.resetTo(start_pos, start_vel);
+}
 
 void RMPLinearPlanner::generateTrajectoryOdom_5(){
-   // Set up solver
-  using RMPG = cad_percept::planning::LinearManifoldInterface;
-  using LinSpace = rmpcpp::Space<3>;
-
-  using AttractionPotential = rmpcpp::AccBasedPotential<LinSpace>;
-
-
-  using BalancePotential = rmpcpp::AccPotentialDistBalance<LinSpace>;
-  using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
-  using CollisionAvoidGeometric = rmpcpp::CollisionAvoid<LinSpace>;
-  using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
-
+ 
   RMPG::VectorQ target_xyz_1 = goal_a_;
   RMPG::VectorX target_uv_1 = target_xyz_1;
 
   RMPG::VectorQ target_xyz_2 = goal_b_;
   RMPG::VectorX target_uv_2 = target_xyz_2;
 
-  RMPG::VectorQ start_xyz = start_;
-  RMPG::VectorX start_uv = start_xyz;
+  // RMPG::VectorQ start_xyz = start_;
+  // RMPG::VectorX start_uv = start_xyz;
 
   RMPG::VectorX obs_point_X;
-
-  Integrator integrator;
 
   // set up policies
   Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
 
   auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
   auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
-
   auto att_1 = std::make_shared<AttractionPotential>(
                 (target_uv_1+target_uv_2)/2.0, A);  // 
 
@@ -414,9 +404,9 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
   bool reached_criteria = false;
 
-  integrator.resetTo(start_xyz);
+  // integrator.resetTo(start_xyz);
     // integrate over trajectory
-  double max_traject_duration_= 5.0;
+  double max_traject_duration_= 1.0;
   for (double t = 0; t < max_traject_duration_; t += dt_) {
     Eigen::Vector3d drone_pos, drone_vel, drone_acc;
     integrator.getState(&drone_pos, &drone_vel, &drone_acc);
@@ -426,7 +416,7 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
               << std::endl;
 
     // add collision avoid policies when needed:
-    // obs point sorted by distance (shortest distance first)
+    // obs point sorted by distance to the drone (shortest distance first)
     std::sort( obs_list_.begin( ), obs_list_.end( ), 
       [drone_pos]( const auto& obs_1, const auto& obs_2 )
       {
@@ -437,6 +427,7 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
     policies.push_back(att_1);
     // policies.push_back(pol_2);
     // policies.push_back(geo_fabric_1);
+
     if(obs_list_.at(0).norm()<10.0){
       auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(0), A);  
       policies.push_back(geo_fabric_obs);
@@ -447,6 +438,63 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
     //   auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(i), A);  
     //   policies.push_back(geo_fabric_obs);
     // }
+
+    // obs point sorted by distance to the link
+    auto link_obs_list = obs_list_;
+    auto another_node_pos = target_uv_2;
+    double end_drone_dist = (another_node_pos-drone_pos).norm();
+    std::sort( link_obs_list.begin( ), link_obs_list.end( ), 
+      [end_drone_dist, another_node_pos, drone_pos]( const auto& obs_1, const auto& obs_2 )
+      {
+        double dist_1 = ((another_node_pos-drone_pos).cross(drone_pos-obs_1)).norm()/
+                        end_drone_dist;
+        double dist_2 = ((another_node_pos-drone_pos).cross(drone_pos-obs_2)).norm()/
+                        end_drone_dist;
+        return dist_1 < dist_2;
+      });
+
+    for(auto link_obs : link_obs_list){
+      double obs_drone_dist = (link_obs-drone_pos).norm(); 
+      double cos_theta = (another_node_pos-drone_pos).dot(link_obs-drone_pos)/
+                          (obs_drone_dist*end_drone_dist);
+      if(obs_drone_dist<end_drone_dist && cos_theta>0.7){
+        auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(
+                            link_obs_list.at(0), target_uv_2, A);  
+        policies.push_back(geo_fabric_link);
+        break;
+      }
+    }
+
+
+    // obs point sorted by distance to the link
+    link_obs_list = obs_list_;
+    another_node_pos = target_uv_1;
+    end_drone_dist = (another_node_pos-drone_pos).norm();
+    std::sort( link_obs_list.begin( ), link_obs_list.end( ), 
+      [end_drone_dist, another_node_pos, drone_pos]( const auto& obs_1, const auto& obs_2 )
+      {
+        double dist_1 = ((another_node_pos-drone_pos).cross(drone_pos-obs_1)).norm()/
+                        end_drone_dist;
+        double dist_2 = ((another_node_pos-drone_pos).cross(drone_pos-obs_2)).norm()/
+                        end_drone_dist;
+        return dist_1 < dist_2;
+      });
+
+    for(auto link_obs : link_obs_list){
+      double obs_drone_dist = (link_obs-drone_pos).norm(); 
+      double cos_theta = (another_node_pos-drone_pos).dot(link_obs-drone_pos)/
+                          (obs_drone_dist*end_drone_dist);
+      if(obs_drone_dist<end_drone_dist && cos_theta>0.7){
+        auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(
+                            link_obs_list.at(0), target_uv_1, A);  
+        policies.push_back(geo_fabric_link);
+        break;
+      }
+    }
+  
+
+
+
 
     //get next step
     auto step_result = integrator.integrateStep(policies, manifold_, dt_);
@@ -572,9 +620,27 @@ void RMPLinearPlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& 
   goal_b_(0) = msg->pose.position.x;
   goal_b_(1) = msg->pose.position.y;
   goal_b_(2) = msg->pose.position.z;
+  std::cout <<"----------------"<<std::endl;
   std::cout <<"goal_b_ updated:"<<goal_b_<<std::endl;
 
   //update the start pos of the trajectory
+  ///use the integrator current state to simulate the start pos,
+  ///in practice, replace it to the real state of the drone.
+  if(integrator_init_){
+    Eigen::Vector3d drone_pos, drone_vel, drone_acc;
+    integrator.getState(&drone_pos, &drone_vel, &drone_acc);
+    integrator.resetTo(drone_pos, drone_vel);
+    std::cout <<"Integreator Reset: pos:"<<std::endl;
+    std::cout << drone_pos<<std::endl;
+    std::cout << "vel: "<<std::endl;
+    std::cout << drone_vel <<std::endl;
+
+  }else{
+    //put the drone at the start position
+    //vel = 0
+    integrator.resetTo(start_);
+    integrator_init_ = true;
+  }
 
   //calculate a new trajectory
   generateTrajectoryOdom_5();
