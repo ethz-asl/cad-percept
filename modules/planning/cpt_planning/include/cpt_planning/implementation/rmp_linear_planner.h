@@ -63,6 +63,8 @@ class RMPLinearPlanner : public SurfacePlanner {
       obs_vis_pub = nh.advertise<visualization_msgs::MarkerArray>("obs_vis", 10);
       pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
       readConfig();
+      //only for simulation
+      fake_odom_pub_ = nh.advertise<nav_msgs::Odometry>("obj_odom", 10);
   }
 
   // void generateTrajectoryOdom(const Eigen::Vector3d start,
@@ -134,6 +136,7 @@ class RMPLinearPlanner : public SurfacePlanner {
   ros::Publisher hose_path_pub;
   ros::Publisher obs_vis_pub;
   ros::Publisher pub_trajectory_;  // commanded trajectory
+  ros::Publisher fake_odom_pub_;
 
   Eigen::Vector3d start_{0.0, 0.0, 0.0};
   Eigen::Vector3d goal_a_{-0.1, -0.1, -0.1};
