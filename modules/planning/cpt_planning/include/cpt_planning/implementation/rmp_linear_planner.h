@@ -36,6 +36,17 @@ namespace planning {
  * automated comparison
  */
 class RMPLinearPlanner : public SurfacePlanner {
+  struct FixedParams {
+    std::string mesh_frame;
+    std::string enu_frame;
+    std::string odom_frame;
+    std::string body_frame;
+    std::string current_reference_frame;
+    std::string mesh_path;
+
+    Eigen::Vector3d mesh_zero;
+    double mesh_zero_angle;
+  };
  public:
   RMPLinearPlanner(Eigen::Vector3d tuning_1 = {0.6, 5.8, 0.56}, 
                     Eigen::Vector3d tuning_2 = {6.0, 8.0, 0.14});
@@ -46,29 +57,30 @@ class RMPLinearPlanner : public SurfacePlanner {
                                     std::vector<Eigen::Vector3d> *states_out);
 
   void init_ros_interface(ros::NodeHandle nh){
+      nh_private_ = nh;
       pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
       hose_path_pub = nh.advertise<nav_msgs::Path>("hose_path", 1000);
       obs_vis_pub = nh.advertise<visualization_msgs::MarkerArray>("obs_vis", 10);
-
-
+      pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
+      readConfig();
   }
 
-  void generateTrajectoryOdom(const Eigen::Vector3d start,
-                              const Eigen::Vector3d goal,
-                              mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
-  void generateTrajectoryOdom_2(const Eigen::Vector3d start,
-                              const Eigen::Vector3d goal,
-                              mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
-  void generateTrajectoryOdom_3(const Eigen::Vector3d start,
-                              const Eigen::Vector3d goal_1,
-                              const Eigen::Vector3d goal_2,
-                              mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
+  // void generateTrajectoryOdom(const Eigen::Vector3d start,
+  //                             const Eigen::Vector3d goal,
+  //                             mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
+  // void generateTrajectoryOdom_2(const Eigen::Vector3d start,
+  //                             const Eigen::Vector3d goal,
+  //                             mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
+  // void generateTrajectoryOdom_3(const Eigen::Vector3d start,
+  //                             const Eigen::Vector3d goal_1,
+  //                             const Eigen::Vector3d goal_2,
+  //                             mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
 
-  void generateTrajectoryOdom_4(const Eigen::Vector3d start,
-                              const Eigen::Vector3d goal_1,
-                              const Eigen::Vector3d goal_2,
-                              const std::vector<Eigen::Vector3d> &obs_list,
-                              mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
+  // void generateTrajectoryOdom_4(const Eigen::Vector3d start,
+  //                             const Eigen::Vector3d goal_1,
+  //                             const Eigen::Vector3d goal_2,
+  //                             const std::vector<Eigen::Vector3d> &obs_list,
+  //                             mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom);
 
   void generateTrajectoryOdom_5();
 
@@ -95,27 +107,33 @@ class RMPLinearPlanner : public SurfacePlanner {
     return "NA";
   }
   
-  void setTuning(Eigen::Vector3d tuning_1, Eigen::Vector3d tuning_2, double dt = 0.01) {
-    tuning_1_ = tuning_1;
-    tuning_2_ = tuning_2;
-    dt_ = dt;
+  void setTuning(Eigen::Vector3d tuning_1, Eigen::Vector3d tuning_2,
+    Eigen::Vector3d goal_a, Eigen::Vector3d goal_b, double dt = 0.01) {
+      tuning_1_ = tuning_1;
+      tuning_2_ = tuning_2;
+      dt_ = dt;
+      goal_a_ = goal_a;
+      goal_b_ = goal_b;
   }
 
  private:
-//   void storeMapping() const;
+
+  // config & startup stuff
+  void readConfig();
+
+
+  //-------------------------------------------------------
+  ros::NodeHandle nh_private_;
 
   Eigen::Vector3d tuning_1_, tuning_2_;
   double dt_{0.01};
 
-//   cad_percept::cgal::MeshModel::Ptr model_;
-//   cad_percept::planning::UVMapping *mapping_;
   std::shared_ptr<cad_percept::planning::LinearManifoldInterface> manifold_;
   
   ros::Publisher pub_marker_;
   ros::Publisher hose_path_pub;
   ros::Publisher obs_vis_pub;
-
-
+  ros::Publisher pub_trajectory_;  // commanded trajectory
 
   Eigen::Vector3d start_{0.0, 0.0, 0.0};
   Eigen::Vector3d goal_a_{-0.1, -0.1, -0.1};
@@ -123,7 +141,6 @@ class RMPLinearPlanner : public SurfacePlanner {
   Eigen::Vector3d current_pos_{0.0, 0.0, 0.0};
   std::vector<Eigen::Vector3d> obs_list_;
   mav_msgs::EigenTrajectoryPoint::Vector trajectory_odom_;
-
 
     // Set up solver
   using RMPG = cad_percept::planning::LinearManifoldInterface;
@@ -136,8 +153,9 @@ class RMPLinearPlanner : public SurfacePlanner {
   using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
   Integrator integrator;
 
-  bool integrator_init_{false};
-
+  // Configuration
+  // cpt_planning_ros::RMPConfigConfig dynamic_params_;
+  FixedParams fixed_params_;
 
 };
 }  // namespace planning

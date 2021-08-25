@@ -4,11 +4,12 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /MarkerArray1/Namespaces1
+        - /Trajectory_vis1/Namespaces1
         - /TF1/Frames1
-        - /Marker1
-        - /Marker2
-        - /Pose1
+        - /Obstacles1
+        - /Rope1
+        - /Pulley1
+        - /End-effector1
       Splitter Ratio: 0.5065693259239197
     Tree Height: 873
   - Class: rviz/Selection
@@ -59,9 +60,12 @@ Visualization Manager:
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /opt_fabric_planner/visualization_marker
-      Name: MarkerArray
+      Name: Trajectory_vis
       Namespaces:
-        {}
+        acceleration: true
+        path: true
+        pose: true
+        velocity: true
       Queue Size: 100
       Value: true
     - Class: rviz/TF
@@ -79,16 +83,6 @@ Visualization Manager:
       Update Interval: 0
       Value: false
     - Alpha: 1
-      Class: rviz/PointStamped
-      Color: 204; 41; 204
-      Enabled: true
-      History Length: 1
-      Name: PointStamped
-      Radius: 0.30000001192092896
-      Topic: /drone_leader
-      Unreliable: false
-      Value: true
-    - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
       Color: 25; 255; 0
@@ -98,7 +92,7 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: Path
+      Name: Rope_straight_model
       Offset:
         X: 0
         Y: 0
@@ -114,15 +108,15 @@ Visualization Manager:
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /opt_fabric_planner/obs_vis
-      Name: MarkerArray
+      Name: Obstacles
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /rope_vis
-      Name: Marker
+      Name: Rope
       Namespaces:
         "": true
       Queue Size: 100
@@ -130,7 +124,7 @@ Visualization Manager:
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /obj_vis
-      Name: Marker
+      Name: Pulley
       Namespaces:
         "": true
       Queue Size: 100
@@ -143,12 +137,19 @@ Visualization Manager:
       Enabled: true
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
-      Name: Pose
+      Name: End-effector
       Shaft Length: 0.30000001192092896
       Shaft Radius: 0.10000000149011612
       Shape: Arrow
       Topic: /moving_target
       Unreliable: false
+      Value: true
+    - Class: rviz/Axes
+      Enabled: true
+      Length: 1
+      Name: ENU
+      Radius: 0.10000000149011612
+      Reference Frame: <Fixed Frame>
       Value: true
   Enabled: true
   Global Options:
@@ -180,7 +181,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 24.411033630371094
+      Distance: 17.078760147094727
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -195,10 +196,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5197977423667908
+      Pitch: 0.43979793787002563
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.8418097496032715
+      Yaw: 4.301831245422363
     Saved: ~
 Window Geometry:
   Displays:

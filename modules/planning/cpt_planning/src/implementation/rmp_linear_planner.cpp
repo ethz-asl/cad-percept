@@ -73,304 +73,304 @@ const SurfacePlanner::Result RMPLinearPlanner::plan(const Eigen::Vector3d start,
 }
 
 
-//generate trajectory using RMP Simple TargetPolicy:
-void RMPLinearPlanner::generateTrajectoryOdom(const Eigen::Vector3d start,
-                                              const Eigen::Vector3d goal,
-                                         mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
-   // Set up solver
-  using RMPG = cad_percept::planning::LinearManifoldInterface;
-  using LinSpace = rmpcpp::Space<3>;
-  using TargetPolicy = rmpcpp::SimpleTargetPolicy<LinSpace>;
-  using Integrator = rmpcpp::TrapezoidalIntegrator<TargetPolicy, RMPG>;
+// //generate trajectory using RMP Simple TargetPolicy:
+// void RMPLinearPlanner::generateTrajectoryOdom(const Eigen::Vector3d start,
+//                                               const Eigen::Vector3d goal,
+//                                          mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
+//    // Set up solver
+//   using RMPG = cad_percept::planning::LinearManifoldInterface;
+//   using LinSpace = rmpcpp::Space<3>;
+//   using TargetPolicy = rmpcpp::SimpleTargetPolicy<LinSpace>;
+//   using Integrator = rmpcpp::TrapezoidalIntegrator<TargetPolicy, RMPG>;
 
-  RMPG::VectorQ target_xyz = goal;
-  RMPG::VectorX target_uv = target_xyz;
+//   RMPG::VectorQ target_xyz = goal;
+//   RMPG::VectorX target_uv = target_xyz;
 
-  RMPG::VectorQ start_xyz = start;
-  RMPG::VectorX start_uv = start_xyz;
-  Integrator integrator;
+//   RMPG::VectorQ start_xyz = start;
+//   RMPG::VectorX start_uv = start_xyz;
+//   Integrator integrator;
 
-  // set up policies
-  Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
-//   Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
-//   A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
-//   B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
+//   // set up policies
+//   Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
+// //   Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
+// //   A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
+// //   B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
 
-  auto pol_2 = std::make_shared<TargetPolicy>(target_uv, A, tuning_1_[0], tuning_1_[1],
-                                              tuning_1_[2]);  // goes to target
-//   auto pol_3 =
-//       std::make_shared<TargetPolicy>(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
-//                                      tuning_2_[2]);  // stays on surface
+//   auto pol_2 = std::make_shared<TargetPolicy>(target_uv, A, tuning_1_[0], tuning_1_[1],
+//                                               tuning_1_[2]);  // goes to target
+// //   auto pol_3 =
+// //       std::make_shared<TargetPolicy>(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
+// //                                      tuning_2_[2]);  // stays on surface
 
-  std::vector<std::shared_ptr<TargetPolicy>> policies;
-  policies.push_back(pol_2);
-//   policies.push_back(pol_3);
+//   std::vector<std::shared_ptr<TargetPolicy>> policies;
+//   policies.push_back(pol_2);
+// //   policies.push_back(pol_3);
 
-  // start integrating path
-  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
-  bool reached_criteria = false;
+//   // start integrating path
+//   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+//   bool reached_criteria = false;
 
-  integrator.resetTo(start_xyz);
-    // integrate over trajectory
-  double max_traject_duration_= 500.0;
-  for (double t = 0; t < max_traject_duration_; t += dt_) {
-    auto step_result = integrator.integrateStep(policies, manifold_, dt_);
+//   integrator.resetTo(start_xyz);
+//     // integrate over trajectory
+//   double max_traject_duration_= 500.0;
+//   for (double t = 0; t < max_traject_duration_; t += dt_) {
+//     auto step_result = integrator.integrateStep(policies, manifold_, dt_);
 
-    if (!step_result.allFinite()) {
-      ROS_WARN("Error, nonfinite integration data, stopping integration");
-      trajectory_odom->clear();
-      return;
-    }
+//     if (!step_result.allFinite()) {
+//       ROS_WARN("Error, nonfinite integration data, stopping integration");
+//       trajectory_odom->clear();
+//       return;
+//     }
 
-    // get 3D trajectory point in ENU
-    mav_msgs::EigenTrajectoryPoint pt_test;
-    pt_test.time_from_start_ns = t * 1e9;
-    integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
+//     // get 3D trajectory point in ENU
+//     mav_msgs::EigenTrajectoryPoint pt_test;
+//     pt_test.time_from_start_ns = t * 1e9;
+//     integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
 
-    // convert point to odom with current transform
-    // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
-    // keep current orientation
-    // pt_odom.orientation_W_B = T_odom_body_.rotation();
+//     // convert point to odom with current transform
+//     // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
+//     // keep current orientation
+//     // pt_odom.orientation_W_B = T_odom_body_.rotation();
 
-    trajectory_odom->push_back(pt_test);
+//     trajectory_odom->push_back(pt_test);
 
-    if (integrator.atRest()) {
-      ROS_DEBUG_STREAM("Integrator finished after " << t << " s with a distance of "
-                                                    << integrator.totalDistance());
-      break;
-    }
-  }
-}
-
-
-//generate trajectory using Optimization Fabrics: acceleration based potentials:
-void RMPLinearPlanner::generateTrajectoryOdom_2(const Eigen::Vector3d start,
-                                              const Eigen::Vector3d goal,
-                                         mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
-   // Set up solver
-  using RMPG = cad_percept::planning::LinearManifoldInterface;
-  using LinSpace = rmpcpp::Space<3>;
-  using TargetPolicy = rmpcpp::AccBasedPotential<LinSpace>;
-  using Integrator = rmpcpp::TrapezoidalIntegrator<TargetPolicy, RMPG>;
-
-  RMPG::VectorQ target_xyz = goal;
-  RMPG::VectorX target_uv = target_xyz;
-
-  RMPG::VectorQ start_xyz = start;
-  RMPG::VectorX start_uv = start_xyz;
-  Integrator integrator;
-
-  // set up policies
-  Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
-//   Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
-//   A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
-//   B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
-
-  auto pol_2 = std::make_shared<TargetPolicy>(target_uv, A);  // goes to target
-
-//   auto pol_3 =
-//       std::make_shared<TargetPolicy>(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
-//                                      tuning_2_[2]);  // stays on surface
-
-  std::vector<std::shared_ptr<TargetPolicy>> policies;
-  policies.push_back(pol_2);
-//   policies.push_back(pol_3);
-
-  // start integrating path
-  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
-  bool reached_criteria = false;
-
-  integrator.resetTo(start_xyz);
-    // integrate over trajectory
-  double max_traject_duration_= 500.0;
-  for (double t = 0; t < max_traject_duration_; t += dt_) {
-    auto step_result = integrator.integrateStep(policies, manifold_, dt_);
-
-    if (!step_result.allFinite()) {
-      ROS_WARN("Error, nonfinite integration data, stopping integration");
-      trajectory_odom->clear();
-      return;
-    }
-
-    // get 3D trajectory point in ENU
-    mav_msgs::EigenTrajectoryPoint pt_test;
-    pt_test.time_from_start_ns = t * 1e9;
-    integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
-
-    // convert point to odom with current transform
-    // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
-    // keep current orientation
-    // pt_odom.orientation_W_B = T_odom_body_.rotation();
-
-    trajectory_odom->push_back(pt_test);
-
-    if (integrator.atRest()) {
-      ROS_DEBUG_STREAM("Integrator finished after " << t << " s with a distance of "
-                                                    << integrator.totalDistance());
-      break;
-    }
-  }
-}
+//     if (integrator.atRest()) {
+//       ROS_DEBUG_STREAM("Integrator finished after " << t << " s with a distance of "
+//                                                     << integrator.totalDistance());
+//       break;
+//     }
+//   }
+// }
 
 
-void RMPLinearPlanner::generateTrajectoryOdom_3(const Eigen::Vector3d start,
-                                              const Eigen::Vector3d goal_1,
-                                              const Eigen::Vector3d goal_2,
-                                         mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
-   // Set up solver
-  using RMPG = cad_percept::planning::LinearManifoldInterface;
-  using LinSpace = rmpcpp::Space<3>;
-  using BalancePotential = rmpcpp::AccPotentialDistBalance<LinSpace>;
-  using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
-  using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
+// //generate trajectory using Optimization Fabrics: acceleration based potentials:
+// void RMPLinearPlanner::generateTrajectoryOdom_2(const Eigen::Vector3d start,
+//                                               const Eigen::Vector3d goal,
+//                                          mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
+//    // Set up solver
+//   using RMPG = cad_percept::planning::LinearManifoldInterface;
+//   using LinSpace = rmpcpp::Space<3>;
+//   using TargetPolicy = rmpcpp::AccBasedPotential<LinSpace>;
+//   using Integrator = rmpcpp::TrapezoidalIntegrator<TargetPolicy, RMPG>;
 
-  RMPG::VectorQ target_xyz_1 = goal_1;
-  RMPG::VectorX target_uv_1 = target_xyz_1;
+//   RMPG::VectorQ target_xyz = goal;
+//   RMPG::VectorX target_uv = target_xyz;
 
-  RMPG::VectorQ target_xyz_2 = goal_2;
-  RMPG::VectorX target_uv_2 = target_xyz_2;
+//   RMPG::VectorQ start_xyz = start;
+//   RMPG::VectorX start_uv = start_xyz;
+//   Integrator integrator;
 
-  RMPG::VectorQ start_xyz = start;
-  RMPG::VectorX start_uv = start_xyz;
-  Integrator integrator;
+//   // set up policies
+//   Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
+// //   Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
+// //   A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
+// //   B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
 
-  // set up policies
-  Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
+//   auto pol_2 = std::make_shared<TargetPolicy>(target_uv, A);  // goes to target
 
-  auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
-  auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
+// //   auto pol_3 =
+// //       std::make_shared<TargetPolicy>(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
+// //                                      tuning_2_[2]);  // stays on surface
+
+//   std::vector<std::shared_ptr<TargetPolicy>> policies;
+//   policies.push_back(pol_2);
+// //   policies.push_back(pol_3);
+
+//   // start integrating path
+//   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+//   bool reached_criteria = false;
+
+//   integrator.resetTo(start_xyz);
+//     // integrate over trajectory
+//   double max_traject_duration_= 500.0;
+//   for (double t = 0; t < max_traject_duration_; t += dt_) {
+//     auto step_result = integrator.integrateStep(policies, manifold_, dt_);
+
+//     if (!step_result.allFinite()) {
+//       ROS_WARN("Error, nonfinite integration data, stopping integration");
+//       trajectory_odom->clear();
+//       return;
+//     }
+
+//     // get 3D trajectory point in ENU
+//     mav_msgs::EigenTrajectoryPoint pt_test;
+//     pt_test.time_from_start_ns = t * 1e9;
+//     integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
+
+//     // convert point to odom with current transform
+//     // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
+//     // keep current orientation
+//     // pt_odom.orientation_W_B = T_odom_body_.rotation();
+
+//     trajectory_odom->push_back(pt_test);
+
+//     if (integrator.atRest()) {
+//       ROS_DEBUG_STREAM("Integrator finished after " << t << " s with a distance of "
+//                                                     << integrator.totalDistance());
+//       break;
+//     }
+//   }
+// }
 
 
-  std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
-  policies.push_back(pol_2);
-  policies.push_back(geo_fabric_1);
+// void RMPLinearPlanner::generateTrajectoryOdom_3(const Eigen::Vector3d start,
+//                                               const Eigen::Vector3d goal_1,
+//                                               const Eigen::Vector3d goal_2,
+//                                          mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
+//    // Set up solver
+//   using RMPG = cad_percept::planning::LinearManifoldInterface;
+//   using LinSpace = rmpcpp::Space<3>;
+//   using BalancePotential = rmpcpp::AccPotentialDistBalance<LinSpace>;
+//   using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
+//   using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
 
-  // start integrating path
-  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
-  bool reached_criteria = false;
+//   RMPG::VectorQ target_xyz_1 = goal_1;
+//   RMPG::VectorX target_uv_1 = target_xyz_1;
 
-  integrator.resetTo(start_xyz);
-    // integrate over trajectory
-  double max_traject_duration_= 500.0;
-  for (double t = 0; t < max_traject_duration_; t += dt_) {
-    auto step_result = integrator.integrateStep(policies, manifold_, dt_);
+//   RMPG::VectorQ target_xyz_2 = goal_2;
+//   RMPG::VectorX target_uv_2 = target_xyz_2;
 
-    if (!step_result.allFinite()) {
-      ROS_WARN("Error, nonfinite integration data, stopping integration");
-      trajectory_odom->clear();
-      return;
-    }
+//   RMPG::VectorQ start_xyz = start;
+//   RMPG::VectorX start_uv = start_xyz;
+//   Integrator integrator;
 
-    // get 3D trajectory point in ENU
-    mav_msgs::EigenTrajectoryPoint pt_test;
-    pt_test.time_from_start_ns = t * 1e9;
-    integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
+//   // set up policies
+//   Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
 
-    // convert point to odom with current transform
-    // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
-    // keep current orientation
-    // pt_odom.orientation_W_B = T_odom_body_.rotation();
+//   auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
+//   auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
 
-    trajectory_odom->push_back(pt_test);
 
-    if (integrator.atRest()) {
-      ROS_DEBUG_STREAM("Integrator finished after " << t << " s with a distance of "
-                                                    << integrator.totalDistance());
-      break;
-    }
-  }
-}
+//   std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
+//   policies.push_back(pol_2);
+//   policies.push_back(geo_fabric_1);
+
+//   // start integrating path
+//   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+//   bool reached_criteria = false;
+
+//   integrator.resetTo(start_xyz);
+//     // integrate over trajectory
+//   double max_traject_duration_= 500.0;
+//   for (double t = 0; t < max_traject_duration_; t += dt_) {
+//     auto step_result = integrator.integrateStep(policies, manifold_, dt_);
+
+//     if (!step_result.allFinite()) {
+//       ROS_WARN("Error, nonfinite integration data, stopping integration");
+//       trajectory_odom->clear();
+//       return;
+//     }
+
+//     // get 3D trajectory point in ENU
+//     mav_msgs::EigenTrajectoryPoint pt_test;
+//     pt_test.time_from_start_ns = t * 1e9;
+//     integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
+
+//     // convert point to odom with current transform
+//     // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
+//     // keep current orientation
+//     // pt_odom.orientation_W_B = T_odom_body_.rotation();
+
+//     trajectory_odom->push_back(pt_test);
+
+//     if (integrator.atRest()) {
+//       ROS_DEBUG_STREAM("Integrator finished after " << t << " s with a distance of "
+//                                                     << integrator.totalDistance());
+//       break;
+//     }
+//   }
+// }
  
-void RMPLinearPlanner::generateTrajectoryOdom_4(const Eigen::Vector3d start,
-                            const Eigen::Vector3d goal_1,
-                            const Eigen::Vector3d goal_2,
-                            const std::vector<Eigen::Vector3d> &obs_list,
-                            mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
-   // Set up solver
-  using RMPG = cad_percept::planning::LinearManifoldInterface;
-  using LinSpace = rmpcpp::Space<3>;
-  using BalancePotential = rmpcpp::AccPotentialDistBalance<LinSpace>;
-  using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
-  using CollisionAvoidGeometric = rmpcpp::CollisionAvoid<LinSpace>;
-  using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
+// void RMPLinearPlanner::generateTrajectoryOdom_4(const Eigen::Vector3d start,
+//                             const Eigen::Vector3d goal_1,
+//                             const Eigen::Vector3d goal_2,
+//                             const std::vector<Eigen::Vector3d> &obs_list,
+//                             mav_msgs::EigenTrajectoryPoint::Vector *trajectory_odom){
+//    // Set up solver
+//   using RMPG = cad_percept::planning::LinearManifoldInterface;
+//   using LinSpace = rmpcpp::Space<3>;
+//   using BalancePotential = rmpcpp::AccPotentialDistBalance<LinSpace>;
+//   using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
+//   using CollisionAvoidGeometric = rmpcpp::CollisionAvoid<LinSpace>;
+//   using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
 
-  RMPG::VectorQ target_xyz_1 = goal_1;
-  RMPG::VectorX target_uv_1 = target_xyz_1;
+//   RMPG::VectorQ target_xyz_1 = goal_1;
+//   RMPG::VectorX target_uv_1 = target_xyz_1;
 
-  RMPG::VectorQ target_xyz_2 = goal_2;
-  RMPG::VectorX target_uv_2 = target_xyz_2;
+//   RMPG::VectorQ target_xyz_2 = goal_2;
+//   RMPG::VectorX target_uv_2 = target_xyz_2;
 
-  RMPG::VectorQ start_xyz = start;
-  RMPG::VectorX start_uv = start_xyz;
+//   RMPG::VectorQ start_xyz = start;
+//   RMPG::VectorX start_uv = start_xyz;
 
-  RMPG::VectorX obs_point_X;
+//   RMPG::VectorX obs_point_X;
 
-  Integrator integrator;
+//   Integrator integrator;
 
-  // set up policies
-  Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
+//   // set up policies
+//   Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
 
-  auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
-  auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
-
-
-  std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
-  policies.push_back(pol_2);
-  policies.push_back(geo_fabric_1);
-  // add collision avoid policies:
-  for(auto obs_point : obs_list){
-    //add one collision avoid geometric fabric for each sensed obs_point
-    obs_point_X = obs_point;
-    auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_point_X, A);  
-    policies.push_back(geo_fabric_obs);
-  }
+//   auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
+//   auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
 
 
-  // start integrating path
-  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
-  bool reached_criteria = false;
+//   std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
+//   policies.push_back(pol_2);
+//   policies.push_back(geo_fabric_1);
+//   // add collision avoid policies:
+//   for(auto obs_point : obs_list){
+//     //add one collision avoid geometric fabric for each sensed obs_point
+//     obs_point_X = obs_point;
+//     auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_point_X, A);  
+//     policies.push_back(geo_fabric_obs);
+//   }
 
-  integrator.resetTo(start_xyz);
-    // integrate over trajectory
-  double max_traject_duration_= 60.0;
-  for (double t = 0; t < max_traject_duration_; t += dt_) {
-    auto step_result = integrator.integrateStep(policies, manifold_, dt_);
 
-    if (!step_result.allFinite()) {
-      ROS_WARN("Error, nonfinite integration data, stopping integration");
-      trajectory_odom->clear();
-      return;
-    }
+//   // start integrating path
+//   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+//   bool reached_criteria = false;
 
-    // get 3D trajectory point in ENU
-    mav_msgs::EigenTrajectoryPoint pt_test;
-    pt_test.time_from_start_ns = t * 1e9;
-    integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
+//   integrator.resetTo(start_xyz);
+//     // integrate over trajectory
+//   double max_traject_duration_= 60.0;
+//   for (double t = 0; t < max_traject_duration_; t += dt_) {
+//     auto step_result = integrator.integrateStep(policies, manifold_, dt_);
 
-    // convert point to odom with current transform
-    // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
-    // keep current orientation
-    // pt_odom.orientation_W_B = T_odom_body_.rotation();
+//     if (!step_result.allFinite()) {
+//       ROS_WARN("Error, nonfinite integration data, stopping integration");
+//       trajectory_odom->clear();
+//       return;
+//     }
 
-    trajectory_odom->push_back(pt_test);
+//     // get 3D trajectory point in ENU
+//     mav_msgs::EigenTrajectoryPoint pt_test;
+//     pt_test.time_from_start_ns = t * 1e9;
+//     integrator.getState(&pt_test.position_W, &pt_test.velocity_W, &pt_test.acceleration_W);
 
-    if (integrator.atRest()) {
-      std::cout <<"Integrator finished after " << t << " s with a distance of "
-                                                    << integrator.totalDistance()
-                                                    << std::endl;
-      break;
-    }
-  }
-  std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+//     // convert point to odom with current transform
+//     // mav_msgs::EigenTrajectoryPoint pt_odom = pt_enu;
+//     // keep current orientation
+//     // pt_odom.orientation_W_B = T_odom_body_.rotation();
 
-  SurfacePlanner::Result result;
-  result.success = reached_criteria;
-  result.duration = end_time - start_time;
-  std::cout << "Operation took ";
-  display(std::cout, end_time - start_time);
-  std::cout << '\n';
-  std::cout <<"Trajectory Distance:"<<integrator.totalDistance()<<std::endl;
-}
+//     trajectory_odom->push_back(pt_test);
+
+//     if (integrator.atRest()) {
+//       std::cout <<"Integrator finished after " << t << " s with a distance of "
+//                                                     << integrator.totalDistance()
+//                                                     << std::endl;
+//       break;
+//     }
+//   }
+//   std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+
+//   SurfacePlanner::Result result;
+//   result.success = reached_criteria;
+//   result.duration = end_time - start_time;
+//   std::cout << "Operation took ";
+//   display(std::cout, end_time - start_time);
+//   std::cout << '\n';
+//   std::cout <<"Trajectory Distance:"<<integrator.totalDistance()<<std::endl;
+// }
 
 void RMPLinearPlanner::resetIntegrator(Eigen::Vector3d start_pos, 
                                         Eigen::Vector3d start_vel){
@@ -393,10 +393,10 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
   // set up policies
   Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
 
-  auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
-  auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
-  auto att_1 = std::make_shared<AttractionPotential>(
-                (target_uv_1+target_uv_2)/2.0, A);  // 
+  // auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
+  // auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
+  // auto att_1 = std::make_shared<AttractionPotential>(
+  //               (target_uv_1+target_uv_2)*0.5, A);  // 
 
   std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
 
@@ -410,10 +410,10 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
   for (double t = 0; t < max_traject_duration_; t += dt_) {
     Eigen::Vector3d drone_pos, drone_vel, drone_acc;
     integrator.getState(&drone_pos, &drone_vel, &drone_acc);
-    std::cout << " root_vel: " << drone_vel(0) <<"; "
-              << drone_vel(1) <<"; "
-              << drone_vel(2) 
-              << std::endl;
+    // std::cout << " root_vel: " << drone_vel(0) <<"; "
+    //           << drone_vel(1) <<"; "
+    //           << drone_vel(2) 
+    //           << std::endl;
 
     // add collision avoid policies when needed:
     // obs point sorted by distance to the drone (shortest distance first)
@@ -424,9 +424,13 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
       });
 
     policies.clear();
-    policies.push_back(att_1);
-    // policies.push_back(pol_2);
-    // policies.push_back(geo_fabric_1);
+    
+    //attraction police is triggered under condition to avoid nonefinite integration
+    if((drone_pos-(target_uv_1+target_uv_2)*0.5).norm()>0.01){
+      auto att_1 = std::make_shared<AttractionPotential>(
+                (target_uv_1+target_uv_2)*0.5, A);  
+      policies.push_back(att_1);
+    }
 
     if(obs_list_.at(0).norm()<10.0){
       auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(0), A);  
@@ -492,10 +496,6 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
       }
     }
   
-
-
-
-
     //get next step
     auto step_result = integrator.integrateStep(policies, manifold_, dt_);
 
@@ -543,7 +543,7 @@ void RMPLinearPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::V
   visualization_msgs::MarkerArray markers;
   double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
   std::string fram_id = "enu";
-  mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom_, distance,
+  mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom, distance,
                                                       fram_id, &markers);
   pub_marker_.publish(markers);
 
@@ -564,6 +564,15 @@ void RMPLinearPlanner::publishTrajectory_2() {
   mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom_, distance,
                                                       fram_id, &markers);
   pub_marker_.publish(markers);
+  // if (dynamic_params_.output_enable) {
+  trajectory_msgs::MultiDOFJointTrajectory msg;
+  mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_odom_, &msg);
+  // msg.header.frame_id = fixed_params_.odom_frame;  ///TODO!!!
+  msg.header.frame_id = fram_id;
+
+  msg.header.stamp = ros::Time::now();
+  pub_trajectory_.publish(msg);
+  // }
 }
 
 
@@ -626,21 +635,21 @@ void RMPLinearPlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& 
   //update the start pos of the trajectory
   ///use the integrator current state to simulate the start pos,
   ///in practice, replace it to the real state of the drone.
-  if(integrator_init_){
-    Eigen::Vector3d drone_pos, drone_vel, drone_acc;
-    integrator.getState(&drone_pos, &drone_vel, &drone_acc);
-    integrator.resetTo(drone_pos, drone_vel);
-    std::cout <<"Integreator Reset: pos:"<<std::endl;
-    std::cout << drone_pos<<std::endl;
-    std::cout << "vel: "<<std::endl;
-    std::cout << drone_vel <<std::endl;
+  // if(integrator_init_){
+  Eigen::Vector3d drone_pos, drone_vel, drone_acc;
+  integrator.getState(&drone_pos, &drone_vel, &drone_acc);
+  integrator.resetTo(drone_pos, drone_vel);
+  std::cout <<"Integreator Reset: pos:"<<std::endl;
+  std::cout << drone_pos<<std::endl;
+  std::cout << "vel: "<<std::endl;
+  std::cout << drone_vel <<std::endl;
 
-  }else{
-    //put the drone at the start position
-    //vel = 0
-    integrator.resetTo(start_);
-    integrator_init_ = true;
-  }
+  // }else{
+  //   //put the drone at the start position
+  //   //vel = 0
+  //   integrator.resetTo(start_);
+  //   integrator_init_ = true;
+  // }
 
   //calculate a new trajectory
   generateTrajectoryOdom_5();
@@ -704,6 +713,25 @@ void RMPLinearPlanner::init_obs_wall(){
     }
   }
 }
+
+
+void RMPLinearPlanner::readConfig() {
+  nh_private_.param<std::string>("mesh_path", fixed_params_.mesh_path, "mesh.off");
+  nh_private_.param<std::string>("mesh_frame", fixed_params_.mesh_frame, "mesh");
+  nh_private_.param<std::string>("body_frame", fixed_params_.body_frame, "imu");
+  nh_private_.param<std::string>("enu_frame", fixed_params_.enu_frame, "enu");
+  nh_private_.param<std::string>("odom_frame", fixed_params_.odom_frame, "odom");
+  nh_private_.param<std::string>("current_reference_frame", fixed_params_.current_reference_frame,
+                                 "current_reference");
+
+  nh_private_.param<double>("zero_angle", fixed_params_.mesh_zero_angle, 0.0);
+
+  double zero_x = nh_private_.param("zero_x", 0.0);
+  double zero_y = nh_private_.param("zero_y", 0.0);
+  double zero_z = nh_private_.param("zero_z", 0.0);
+  fixed_params_.mesh_zero = {zero_x, zero_y, zero_z};
+}
+
 
 
 }  // namespace planning

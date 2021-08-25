@@ -1,12 +1,12 @@
 <launch>
   <!-- parameters for the rope -->
-  <arg name="rope_start_x" default="1.0"/>
-  <arg name="rope_start_y" default="0.75"/>
-  <arg name="rope_start_z" default="0.0"/>
-
-  <arg name="rope_end_x" default="-4.0"/>
+  <arg name="rope_end_x" default="1.0"/>
   <arg name="rope_end_y" default="0.75"/>
   <arg name="rope_end_z" default="0.0"/>
+
+  <arg name="rope_start_x" default="-4.0"/>
+  <arg name="rope_start_y" default="0.75"/>
+  <arg name="rope_start_z" default="0.0"/>
 
   <!-- parameters for the pulley init pose -->
   <arg name="pulley_init_x" default="-1.0"/>
@@ -16,6 +16,14 @@
   <!-- Motion planner based on opt fabric  -->
   <node pkg="cpt_planning_eval" name="opt_fabric_planner" type="optimization_fabrics_test_node" output="screen">
     <param name="waypoint_topic" value="/moving_target"/>
+
+    <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>
+    <param name="rope_start_y" value="$(arg rope_start_y)" type="double"/>
+    <param name="rope_start_z" value="$(arg rope_start_z)" type="double"/>
+
+    <param name="rope_end_x" value="$(arg rope_end_x)" type="double"/>
+    <param name="rope_end_y" value="$(arg rope_end_y)" type="double"/>
+    <param name="rope_end_z" value="$(arg rope_end_z)" type="double"/>
   </node>
 
   <!-- joystick to control the behaviour of the end point  -->
