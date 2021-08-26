@@ -405,8 +405,8 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
   bool reached_criteria = false;
 
   // integrator.resetTo(start_xyz);
-    // integrate over trajectory
-  double max_traject_duration_= 1.0;
+  // integrate over trajectory
+  // double max_traject_duration_= 1.0;
   for (double t = 0; t < max_traject_duration_; t += dt_) {
     Eigen::Vector3d drone_pos, drone_vel, drone_acc;
     integrator.getState(&drone_pos, &drone_vel, &drone_acc);
@@ -726,6 +726,10 @@ void RMPLinearPlanner::readConfig() {
   nh_private_.param<std::string>("odom_frame", fixed_params_.odom_frame, "odom");
   nh_private_.param<std::string>("current_reference_frame", fixed_params_.current_reference_frame,
                                  "current_reference");
+  
+  nh_private_.param("traject_dt", dt_, 0.01);
+  nh_private_.param("max_traject_duration", max_traject_duration_, 1.0);
+                      
 
   nh_private_.param<double>("zero_angle", fixed_params_.mesh_zero_angle, 0.0);
 

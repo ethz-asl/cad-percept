@@ -143,7 +143,6 @@ class RMPLinearPlanner : public SurfacePlanner {
   ros::NodeHandle nh_private_;
 
   Eigen::Vector3d tuning_1_, tuning_2_;
-  double dt_{0.01};
 
   std::shared_ptr<cad_percept::planning::LinearManifoldInterface> manifold_;
   
@@ -188,7 +187,8 @@ class RMPLinearPlanner : public SurfacePlanner {
   bool odom_received_{false};
   bool frames_received_{false};
 
-
+  double dt_{0.01};                    // [s] temporal resolutions for trajectories
+  double max_traject_duration_{1.0};  // [s] amount of lookahead for integration
   
 
 };

@@ -121,6 +121,9 @@
     <param name="odom_frame" type="string" value="world" />
     <param name="current_reference_frame" value="current_reference" />
 
+    <param name="traject_dt" value="0.01" type="double"/>
+    <param name="max_traject_duration" value="0.1" type="double"/>
+
   </node>
 
   <!-- joystick to control the behaviour of the end point  -->
@@ -131,10 +134,17 @@
   </node>
 
   <!-- rope simulator -->
-  <node pkg="rope_sim_ros" name="rope_sim_ros" type="rope_sim_ros_example" output="screen">
-    <remap from="rope_sim_ros/obj_odometry" to="/$(arg mav_name)/ground_truth/odometry" />
-    <remap from="rope_sim_ros/joy" to="/joy" />
+  <arg name="pulley_free_yaw" default="true"/>
+  <arg name="rope_node_num" default="50"/>
+  <arg name="rope_node_mass" default="1.0"/>
+  <arg name="spring_ks" default="100.0"/>
+  <arg name="spring_rest_len" default="0.2"/>
+  <arg name="pulley_friction" default="0.8"/> <!-- friction between pulley and rope  -->
+  <arg name="pulley_radius" default="0.5"/>
+  <arg name="update_interval" default="0.1"/>
 
+
+  <node pkg="rope_sim_ros" name="rope_sim_ros" type="rope_sim_ros_example" output="screen">
     <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>
     <param name="rope_start_y" value="$(arg rope_start_y)" type="double"/>
     <param name="rope_start_z" value="$(arg rope_start_z)" type="double"/>
@@ -146,6 +156,18 @@
     <param name="pulley_init_x" value="$(arg pulley_init_x)" type="double"/>
     <param name="pulley_init_y" value="$(arg pulley_init_y)" type="double"/>
     <param name="pulley_init_z" value="$(arg pulley_init_z)" type="double"/>
+
+    <param name="pulley_free_yaw" value="$(arg pulley_free_yaw)" type="bool"/>
+    <param name="rope_node_num" value="$(arg rope_node_num)" type="int"/>
+    <param name="rope_node_mass" value="$(arg rope_node_mass)" type="double"/>
+    <param name="spring_ks" value="$(arg spring_ks)" type="double"/>
+    <param name="spring_rest_len" value="$(arg spring_rest_len)" type="double"/>
+    <param name="pulley_friction" value="$(arg pulley_friction)" type="double"/>
+    <param name="pulley_radius" value="$(arg pulley_radius)" type="double"/>
+    <param name="update_interval" value="$(arg update_interval)" type="double"/>
+
+    <remap from="rope_sim_ros/obj_odometry" to="/$(arg mav_name)/ground_truth/odometry" />
+    <remap from="rope_sim_ros/joy" to="/joy" />
   </node>
 
   <!-- ========== Sensor reading visualization in RViz ========== -->
