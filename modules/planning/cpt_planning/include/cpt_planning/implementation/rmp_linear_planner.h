@@ -7,6 +7,8 @@
 // #include <cpt_planning/interface/mesh_manifold_interface.h>
 #include <cpt_planning/interface/linear_manifold_interface.h>
 #include <cpt_planning/interface/surface_planner.h>
+#include <cpt_planning_ros/RMPConfigConfig.h>
+
 #include <rmpcpp/core/space.h>
 #include <rmpcpp/core/state.h>
 #include <rmpcpp/eval/trapezoidal_integrator.h>
@@ -24,7 +26,9 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <nav_msgs/Path.h>
 #include <tf/tf.h>
-
+#include <tf/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
+#include <eigen_conversions/eigen_msg.h>
 
 #include <iostream>
 namespace cad_percept {
@@ -63,8 +67,15 @@ class RMPLinearPlanner : public SurfacePlanner {
       obs_vis_pub = nh.advertise<visualization_msgs::MarkerArray>("obs_vis", 10);
       pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
       readConfig();
+      sub_odometry_ = nh.subscribe("odometry", 1, &RMPLinearPlanner::odometryCallback, this);
+
+      tf_update_timer_ = nh.createTimer(ros::Duration(1), &RMPLinearPlanner::tfUpdateCallback,
+                                    this);  // update TF's every second
+
       //only for simulation
       fake_odom_pub_ = nh.advertise<nav_msgs::Odometry>("obj_odom", 10);
+      
+      
   }
 
   // void generateTrajectoryOdom(const Eigen::Vector3d start,
@@ -123,6 +134,10 @@ class RMPLinearPlanner : public SurfacePlanner {
   // config & startup stuff
   void readConfig();
 
+  // callbacks to update stuff
+  void odometryCallback(const nav_msgs::OdometryConstPtr &odom);
+  void tfUpdateCallback(const ros::TimerEvent &event);
+
 
   //-------------------------------------------------------
   ros::NodeHandle nh_private_;
@@ -137,6 +152,9 @@ class RMPLinearPlanner : public SurfacePlanner {
   ros::Publisher obs_vis_pub;
   ros::Publisher pub_trajectory_;  // commanded trajectory
   ros::Publisher fake_odom_pub_;
+  ros::Subscriber sub_odometry_;  // curent odom
+  ros::Timer tf_update_timer_;
+
 
   Eigen::Vector3d start_{0.0, 0.0, 0.0};
   Eigen::Vector3d goal_a_{-0.1, -0.1, -0.1};
@@ -157,8 +175,21 @@ class RMPLinearPlanner : public SurfacePlanner {
   Integrator integrator;
 
   // Configuration
-  // cpt_planning_ros::RMPConfigConfig dynamic_params_;
+  cpt_planning_ros::RMPConfigConfig dynamic_params_;
   FixedParams fixed_params_;
+
+  // UAV State
+  Eigen::Affine3d T_odom_body_, T_enu_odom_, T_enu_mesh_;
+  Eigen::Vector3d v_odom_body_;
+
+  tf::TransformListener listener_;
+
+  // Configuration
+  bool odom_received_{false};
+  bool frames_received_{false};
+
+
+  
 
 };
 }  // namespace planning

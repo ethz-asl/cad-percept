@@ -435,8 +435,8 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
     if(obs_list_.at(0).norm()<10.0){
       auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(0), A);  
       policies.push_back(geo_fabric_obs);
-      auto geo_fabric_obs_2 = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(2), A);  
-      policies.push_back(geo_fabric_obs_2);
+      // auto geo_fabric_obs_2 = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(2), A);  
+      // policies.push_back(geo_fabric_obs_2);
     }
     // for(int i=0; i<1;i++){
     //   auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(i), A);  
@@ -562,13 +562,13 @@ void RMPLinearPlanner::publishTrajectory_2() {
   double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
   std::string fram_id = "enu";
   mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom_, distance,
-                                                      fram_id, &markers);
+                                                      fixed_params_.odom_frame, &markers);
   pub_marker_.publish(markers);
   // if (dynamic_params_.output_enable) {
   trajectory_msgs::MultiDOFJointTrajectory msg;
   mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_odom_, &msg);
-  // msg.header.frame_id = fixed_params_.odom_frame;  ///TODO!!!
-  msg.header.frame_id = fram_id;
+  msg.header.frame_id = fixed_params_.odom_frame;  ///TODO!!!
+  // msg.header.frame_id = fram_id;
 
   msg.header.stamp = ros::Time::now();
   pub_trajectory_.publish(msg);
@@ -652,6 +652,7 @@ void RMPLinearPlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& 
   // }
 
   //calculate a new trajectory
+  trajectory_odom_.clear(); 
   generateTrajectoryOdom_5();
 
   //visualize the new trajectory
@@ -684,9 +685,9 @@ void RMPLinearPlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_
         p.id = id;
         p.header.frame_id = obs_frame;
         p.header.stamp = obs_time;
-        p.scale.x = 0.1;
-        p.scale.y = 0.1;
-        p.scale.z = 0.1;
+        p.scale.x = 1.1;
+        p.scale.y = 1.1;
+        p.scale.z = 1.1;
         p.pose.orientation.w = 1.0;
         p.pose.position.x=obs_point(0);
         p.pose.position.y=obs_point(1);
@@ -705,13 +706,15 @@ void RMPLinearPlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_
 
 
 void RMPLinearPlanner::init_obs_wall(){
-  double y=5.0;
-  for(double x = -1.5; x<1.5; x=x+0.5){
-    for(double z = 0.; z<2.5; z=z+0.5){
-      Eigen::Vector3d point{x,y,z};
-      obs_list_.push_back(point);
-    }
-  }
+  // double y=5.0;
+  // for(double x = -1.5; x<1.5; x=x+0.5){
+  //   for(double z = 0.; z<2.5; z=z+0.5){
+  //     Eigen::Vector3d point{x,y,z};
+  //     obs_list_.push_back(point);
+  //   }
+  // }
+  obs_list_.push_back({0.0,5.0,1.0});
+  // obs_list_.push_back({0.0,5.0,1.5});
 }
 
 
@@ -733,6 +736,61 @@ void RMPLinearPlanner::readConfig() {
 }
 
 
+void RMPLinearPlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom) {
+  if (odom->header.frame_id != fixed_params_.odom_frame) {
+    ROS_WARN_STREAM("Odom frame name mismatch, msg: " << odom->header.frame_id
+                                                      << " / cfg: " << fixed_params_.odom_frame);
+    return;
+  }
+
+  /**
+   * For some systems we want to plan from current odom,
+   * for others from current reference.
+   * We still might want to get the current velocity,
+   * so we leave the user the choice to get that via odom (as tf, _i think_ doesnt have velocities)
+   * pain.
+   */
+  // if (!dynamic_params_.updateOdomFromCurrentRef) {
+    // write transform from odom
+    tf::poseMsgToEigen(odom->pose.pose, T_odom_body_);
+  // } else {
+    // lookup current reference
+    // if (!listener_.canTransform(fixed_params_.odom_frame, fixed_params_.current_reference_frame,
+    //                             ros::Time(0))) {
+    //   ROS_WARN_STREAM("Transform " << fixed_params_.odom_frame << " - "
+    //                                << fixed_params_.current_reference_frame << " not available");
+    //   return;
+    // }
+    // // write transform from current reference
+    // tf::StampedTransform tf_enu_odom;
+    // listener_.lookupTransform(fixed_params_.odom_frame, fixed_params_.current_reference_frame,
+    //                           ros::Time(0), tf_enu_odom);
+    // tf::transformTFToEigen(tf_enu_odom, T_odom_body_);
+  // }
+
+  // if (dynamic_params_.updateOdomVel) {
+    // tf::vectorMsgToEigen(odom->twist.twist.linear, v_odom_body_);
+  // } else {
+    v_odom_body_ = Eigen::Vector3d::Zero();
+  // }
+  odom_received_ = true;
+}
+
+void RMPLinearPlanner::tfUpdateCallback(const ros::TimerEvent &event) {
+  if (!listener_.canTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0))) {
+    ROS_WARN_STREAM("Transform " << fixed_params_.enu_frame << " - " << fixed_params_.odom_frame
+                                 << " not available");
+    return;
+  }
+
+  // write transform
+  tf::StampedTransform tf_enu_odom;
+  listener_.lookupTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0),
+                            tf_enu_odom);
+  tf::transformTFToEigen(tf_enu_odom, T_enu_odom_);
+
+  frames_received_ = true;
+}
 
 }  // namespace planning
 }  // namespace cad_percept
