@@ -68,6 +68,7 @@ class RMPLinearPlanner : public SurfacePlanner {
       pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
       readConfig();
       sub_odometry_ = nh.subscribe("odometry", 1, &RMPLinearPlanner::odometryCallback, this);
+      rope_nodes_sub = nh.subscribe("rope_vis", 1, &RMPLinearPlanner::ropeUpdateCallback, this);
 
       tf_update_timer_ = nh.createTimer(ros::Duration(1), &RMPLinearPlanner::tfUpdateCallback,
                                     this);  // update TF's every second
@@ -136,6 +137,7 @@ class RMPLinearPlanner : public SurfacePlanner {
 
   // callbacks to update stuff
   void odometryCallback(const nav_msgs::OdometryConstPtr &odom);
+  void ropeUpdateCallback(const visualization_msgs::MarkerConstPtr &rope);
   void tfUpdateCallback(const ros::TimerEvent &event);
 
 
@@ -152,7 +154,10 @@ class RMPLinearPlanner : public SurfacePlanner {
   ros::Publisher pub_trajectory_;  // commanded trajectory
   ros::Publisher fake_odom_pub_;
   ros::Subscriber sub_odometry_;  // curent odom
+  ros::Subscriber rope_nodes_sub;  // curent rope nodes positions
+
   ros::Timer tf_update_timer_;
+
 
 
   Eigen::Vector3d start_{0.0, 0.0, 0.0};
@@ -182,6 +187,11 @@ class RMPLinearPlanner : public SurfacePlanner {
   Eigen::Vector3d v_odom_body_;
 
   tf::TransformListener listener_;
+  // rope state
+  std::vector<Eigen::Vector3d> rope_nodes_vec_;
+  int hooked_node_idx_{0};
+  Eigen::Vector3d push_rope_dir_{99.,99.,99.};
+
 
   // Configuration
   bool odom_received_{false};

@@ -115,6 +115,8 @@
     <param name="rope_end_z" value="$(arg rope_end_z)" type="double"/>
     <remap from="opt_fabric_planner/cmd_trajectory" to="/$(arg mav_name)/command/trajectory" />
     <remap from="opt_fabric_planner/odometry" to="/$(arg mav_name)/ground_truth/odometry" />
+    <remap from="opt_fabric_planner/rope_vis" to="rope_sim_ros/rope_vis" />
+
 
     <param name="body_frame" type="string" value="voliro_tri/base_link" />
     <param name="enu_frame" type="string" value="enu" />
@@ -139,7 +141,7 @@
   <arg name="rope_node_mass" default="1.0"/>
   <arg name="spring_ks" default="100.0"/>
   <arg name="spring_rest_len" default="0.2"/>
-  <arg name="pulley_friction" default="0.8"/> <!-- friction between pulley and rope  -->
+  <arg name="pulley_friction" default="0.1"/> <!-- friction between pulley and rope  -->
   <arg name="pulley_radius" default="0.5"/>
   <arg name="update_interval" default="0.1"/>
 
@@ -174,7 +176,6 @@
   <group if="$(arg show_rviz)">
     <!-- <node pkg="rviz" type="rviz" name="$(anon rviz)" respawn="false" output="screen" args="-d $(find omav_demo_arche2021)/cfg/$(arg rviz_config).rviz"/> -->
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_planning_ros)/rviz/voliro_opt_fabric_rope_sim.rviz" />
-
   </group>
 
 
