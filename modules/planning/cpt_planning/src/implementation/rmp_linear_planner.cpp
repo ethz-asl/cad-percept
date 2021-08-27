@@ -703,7 +703,7 @@ void RMPLinearPlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_
         p.pose.position.z=obs_point(2);
         p.color.a = 1.0;
         p.color.r = 1.0;
-        p.color.g = 1.0;
+        p.color.g = 0.3;
         p.color.b = 0.0;
 
         obsArray.markers.push_back(p);
@@ -739,8 +739,10 @@ void RMPLinearPlanner::readConfig() {
   nh_private_.param("traject_dt", dt_, 0.01);
   nh_private_.param("max_traject_duration", max_traject_duration_, 1.0);
                       
-
   nh_private_.param<double>("zero_angle", fixed_params_.mesh_zero_angle, 0.0);
+
+  nh_private_.param("rope_safe_dist", rope_safe_dist_, 1.5);
+
 
   double zero_x = nh_private_.param("zero_x", 0.0);
   double zero_y = nh_private_.param("zero_y", 0.0);
@@ -818,8 +820,10 @@ void RMPLinearPlanner::ropeUpdateCallback(const visualization_msgs::MarkerConstP
   int idx = 0;
   double min_dist = 9999.0;
   double min_obs_dist = 9999.0;
+  int start_idx = 0;
   //update rope state from the rope_sim
   rope_nodes_vec_.clear();
+  double end_obs_dist = 9999.0;
   for (auto node : rope->points) {
     Eigen::Vector3d node_vec;
     node_vec(0) = node.x;
@@ -834,14 +838,22 @@ void RMPLinearPlanner::ropeUpdateCallback(const visualization_msgs::MarkerConstP
       min_dist_idx = idx;
     }
 
-    //find the node closest to the external obs
+    //Find the node closest to the external obs
     //To enable surface operation of the end-effector,
     //ignore some connected rope nodes for collision check
-    double node_obs_dist = (node_vec-obs_list_.at(0)).norm();
-    if(node_obs_dist<min_obs_dist){
-      min_obs_dist = node_obs_dist;
-      min_obs_dist_dix = idx;
+    if(idx == 1){
+      end_obs_dist = (rope_nodes_vec_.at(0)- obs_list_.at(0)).norm();
+      double interval = (rope_nodes_vec_.at(0)-rope_nodes_vec_.at(1)).norm();
+      start_idx = 1+(rope_safe_dist_-end_obs_dist)/interval;
     }
+    if(idx > start_idx){
+      double node_obs_dist = (node_vec-obs_list_.at(0)).norm();
+      if(node_obs_dist<min_obs_dist){
+        min_obs_dist = node_obs_dist;
+        min_obs_dist_dix = idx;
+      }
+    }
+
     idx++;
   }
   std::cout<< "hooked_node_idx: "

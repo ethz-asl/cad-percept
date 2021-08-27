@@ -199,6 +199,7 @@ class RMPLinearPlanner : public SurfacePlanner {
 
   double dt_{0.01};                    // [s] temporal resolutions for trajectories
   double max_traject_duration_{1.0};  // [s] amount of lookahead for integration
+  double rope_safe_dist_{1.5};
   
 
 };
