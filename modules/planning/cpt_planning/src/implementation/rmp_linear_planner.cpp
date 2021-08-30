@@ -860,11 +860,17 @@ void RMPLinearPlanner::ropeUpdateCallback(const visualization_msgs::MarkerConstP
             << min_dist_idx << std::endl;
   std::cout<< "obs_avoid_node_idx: "
             << min_obs_dist_dix << std::endl;
-  push_rope_dir_ = rope_nodes_vec_.at(min_obs_dist_dix) -
-                                  obs_list_.at(0);
+
+  //calculate push rope direction on the controlable node
+  push_rope_dir_ = rope_nodes_vec_.at(min_obs_dist_dix) - obs_list_.at(0);
   std::cout<< "push_rope_dir: "<< std::endl;
   std::cout<< push_rope_dir_ << std::endl;
 }
+
+void RMPLinearPlanner::obsUpdateCallback(const ros::TimerEvent &event) {
+
+}
+
 
 
 }  // namespace planning

@@ -73,6 +73,9 @@ class RMPLinearPlanner : public SurfacePlanner {
       tf_update_timer_ = nh.createTimer(ros::Duration(1), &RMPLinearPlanner::tfUpdateCallback,
                                     this);  // update TF's every second
 
+      obs_update_timer_ = nh.createTimer(ros::Duration(0.05), &RMPLinearPlanner::obsUpdateCallback,
+                              this);  // update TF's every second
+
       //only for simulation
       fake_odom_pub_ = nh.advertise<nav_msgs::Odometry>("obj_odom", 10);
       
@@ -139,6 +142,7 @@ class RMPLinearPlanner : public SurfacePlanner {
   void odometryCallback(const nav_msgs::OdometryConstPtr &odom);
   void ropeUpdateCallback(const visualization_msgs::MarkerConstPtr &rope);
   void tfUpdateCallback(const ros::TimerEvent &event);
+  void obsUpdateCallback(const ros::TimerEvent &event);
 
 
   //-------------------------------------------------------
@@ -157,6 +161,7 @@ class RMPLinearPlanner : public SurfacePlanner {
   ros::Subscriber rope_nodes_sub;  // curent rope nodes positions
 
   ros::Timer tf_update_timer_;
+  ros::Timer obs_update_timer_;
 
 
 
