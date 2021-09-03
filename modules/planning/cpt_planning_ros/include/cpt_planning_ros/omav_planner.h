@@ -139,6 +139,7 @@ class OMAVPlanner {
   dynamic_reconfigure::Server<cpt_planning_ros::RMPConfigConfig> server_;
 
   // desired targets
+  Eigen::Vector3d target_temp_uvh_, target_temp_xyz_;
   Eigen::Vector3d target_uvh_, target_xyz_;  // in ENU frame
 
   // Configuration

@@ -187,11 +187,29 @@ void OMAVPlanner::generateTrajectoryOdom(const OMAVPlanner::Policies &policies,
     mav_msgs::EigenTrajectoryPoint pt_odom = T_enu_odom_.inverse() * pt_enu;
 
     // keep current orientation
-    pt_odom.orientation_W_B = T_odom_body_.rotation();
+    if (dynamic_params_.orientation_enable) {
+      Eigen::Vector3d posuv = mapping_->point3DtoUVH(pt_enu.position_W);
+      Eigen::Matrix3d j = manifold_->J(posuv).inverse();
+      j.col(0).normalize();
+      j.col(1).normalize();
+      j.col(2).normalize();
 
+      Eigen::Matrix3d R;
+
+      R.col(0) = -j.col(2);                  // negative normal becomes x
+      R.col(2) = -j.col(1);                  // one axis becomes z
+      R.col(1) = -R.col(0).cross(R.col(2));  // do the rest
+
+      // convert to odom frame
+      ROS_WARN_ONCE("DANGER, ASSUMING ENU = ODOM= MESH here");
+      pt_odom.orientation_W_B = Eigen::Quaterniond( R );
+
+    } else {
+      pt_odom.orientation_W_B = T_odom_body_.rotation();
+    }
     trajectory_odom->push_back(pt_odom);
 
-    if (integrator_enu.atRest()) {
+    if (integrator_enu.atRest(0.02, 0.02)) {
       ROS_DEBUG_STREAM("Integrator finished after " << t << " s with a distance of "
                                                     << integrator_enu.totalDistance());
       break;
@@ -239,22 +257,51 @@ void OMAVPlanner::publishMarkers() {
   marker_mesh.pose.orientation.y = 0.0;
   marker_mesh.pose.orientation.z = 0.0;
   marker_mesh.pose.orientation.w = 1.0;
-  marker_mesh.scale.x = 0.25;
-  marker_mesh.scale.y = 0.25;
-  marker_mesh.scale.z = 0.25;
-  marker_mesh.color.a = 1.0;  // Don't forget to set the alpha!
-  marker_mesh.color.r = 0.0;
-  marker_mesh.color.g = 1.0;
+  marker_mesh.scale.x = 0.15;
+  marker_mesh.scale.y = 0.15;
+  marker_mesh.scale.z = 0.15;
+  marker_mesh.color.a = 0.75;  // Don't forget to set the alpha!
+  marker_mesh.color.r = 1.0;
+  marker_mesh.color.g = 0.0;
   marker_mesh.color.b = 0.0;
 
   geometry_msgs::Point pt3d;
   pt3d.x = target_xyz_.x();
   pt3d.y = target_xyz_.y();
   pt3d.z = target_xyz_.z();
+  marker_mesh.points.push_back(pt3d);
+
+  visualization_msgs::Marker marker_mesh_temp;
+  marker_mesh_temp.header.frame_id = fixed_params_.enu_frame;
+  marker_mesh_temp.header.stamp = ros::Time();
+  marker_mesh_temp.ns = "meshmarker";
+  marker_mesh_temp.id = 1;
+  marker_mesh_temp.type = visualization_msgs::Marker::SPHERE_LIST;
+  marker_mesh_temp.action = visualization_msgs::Marker::ADD;
+  marker_mesh_temp.pose.position.x = 0.0;
+  marker_mesh_temp.pose.position.y = 0.0;
+  marker_mesh_temp.pose.position.z = 0.0;
+  marker_mesh_temp.pose.orientation.x = 0.0;
+  marker_mesh_temp.pose.orientation.y = 0.0;
+  marker_mesh_temp.pose.orientation.z = 0.0;
+  marker_mesh_temp.pose.orientation.w = 1.0;
+  marker_mesh_temp.scale.x = 0.1;
+  marker_mesh_temp.scale.y = 0.1;
+  marker_mesh_temp.scale.z = 0.1;
+  marker_mesh_temp.color.a = 0.5;  // Don't forget to set the alpha!
+  marker_mesh_temp.color.r = 0.0;
+  marker_mesh_temp.color.g = 1.0;
+  marker_mesh_temp.color.b = 0.0;
+
+  geometry_msgs::Point pt3d_temp;
+  pt3d_temp.x = target_temp_xyz_.x();
+  pt3d_temp.y = target_temp_xyz_.y();
+  pt3d_temp.z = target_temp_xyz_.z();
+  marker_mesh_temp.points.push_back(pt3d_temp);
 
   visualization_msgs::MarkerArray msg;
-  marker_mesh.points.push_back(pt3d);
   msg.markers.push_back(marker_mesh);
+  msg.markers.push_back(marker_mesh_temp);
   pub_marker_.publish(msg);
 }
 
@@ -265,30 +312,40 @@ void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
     zeroed_ = true;
   }
 
-  target_uvh_.x() += joy->axes[2] * dynamic_params_.joystick_xy_scaling;
-  target_uvh_.y() += -joy->axes[3] * dynamic_params_.joystick_xy_scaling;
-  target_uvh_.z() += joy->axes[5] * dynamic_params_.joystick_z_scaling;
-  target_uvh_.z() = std::clamp(target_uvh_.z(), dynamic_params_.terrain_min_dist,
-                               dynamic_params_.terrain_max_dist);
+  //
+  Eigen::Vector3d current_uvh_ = mapping_->point3DtoUVH((T_enu_odom_ * T_odom_body_).translation());
+
+  // sidewinder config
+  target_temp_uvh_.x() += joy->axes[0] * dynamic_params_.joystick_xy_scaling;
+  target_temp_uvh_.y() += -joy->axes[1] * dynamic_params_.joystick_xy_scaling;
+  target_temp_uvh_.z() += joy->axes[2] * dynamic_params_.joystick_z_scaling;
+  target_temp_uvh_.z() = std::clamp(target_temp_uvh_.z(), dynamic_params_.terrain_min_dist,
+                                    dynamic_params_.terrain_max_dist);
 
   // clamp to manifold (avoid going out of the map)
-  target_uvh_.topRows<2>() =
-      (Eigen::Vector2d)mapping_->clipToManifold((Eigen::Vector2d)target_uvh_.topRows<2>());
+  target_temp_uvh_.topRows<2>() =
+      (Eigen::Vector2d)mapping_->clipToManifold((Eigen::Vector2d)target_temp_uvh_.topRows<2>());
 
   // convert to xyz target
-  target_xyz_ = mapping_->pointUVHto3D(target_uvh_);
+  target_temp_xyz_ = mapping_->pointUVHto3D(target_temp_uvh_);
 
-  // for each input, run the planner
-  // this should probably be changed for velocity mode!
-  runPlanner();
+  if (joy->buttons[0]) {
+    target_xyz_ = target_temp_xyz_;
+    target_uvh_ = target_temp_uvh_;
+
+    // for each input, run the planner
+    // this should probably be changed for velocity mode!
+    runPlanner();
+  }
+  publishMarkers();
 }
 
 void OMAVPlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom) {
-  if (odom->header.frame_id != fixed_params_.odom_frame) {
+  /*if (odom->header.frame_id != fixed_params_.odom_frame) {
     ROS_WARN_STREAM("Odom frame name mismatch, msg: " << odom->header.frame_id
                                                       << " / cfg: " << fixed_params_.odom_frame);
     return;
-  }
+  }*/
 
   /**
    * For some systems we want to plan from current odom,
