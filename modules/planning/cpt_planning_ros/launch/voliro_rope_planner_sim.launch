@@ -23,8 +23,7 @@
   <arg name="start_z" default="0.1" />
 
   <arg name="show_rviz" default="true" />
-  <arg name="rviz_config" default="arche_demo" />
-
+  <arg name="rviz_config" default="voliro_rope_planner" />
 
   <!-- ========== Simulation ========== -->
   <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find rotors_gazebo)/models:$(find omav_gazebo_wada)/models"/>
@@ -38,7 +37,10 @@
   <!-- ========== MAV ========== -->
   <!-- Send the robot XML to param server. -->
   <param name="robot_description" command="
-    $(find xacro)/xacro $(arg model) enable_logging:=$(arg enable_logging) enable_ground_truth:=$(arg enable_ground_truth) enable_mavlink_interface:=$(arg enable_mavlink_interface) log_file:=$(arg log_file) wait_to_record_bag:=$(arg wait_to_record_bag) mav_name:=$(arg mav_name) namespace:=$(arg namespace)
+    $(find xacro)/xacro $(arg model) enable_logging:=$(arg enable_logging) 
+    enable_ground_truth:=$(arg enable_ground_truth) enable_mavlink_interface:=$(arg enable_mavlink_interface) 
+    log_file:=$(arg log_file) wait_to_record_bag:=$(arg wait_to_record_bag) mav_name:=$(arg mav_name) 
+    namespace:=$(arg namespace)
     " />
   <param name="tf_prefix" type="string" value="$(arg tf_prefix)" />
 
@@ -63,31 +65,10 @@
 
   <!-- ========== TF Broadcaster ========== -->
   <node pkg="tf2_ros" type="static_transform_publisher" name="enu_broadcaster" args="0 0 0 0 0 0 1 enu world" />
-  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="0 0 0 0 0 0 1 enu mesh" />
+  <!-- mesh transformation according to enu  -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="15 -5 0 0 0 0 1 enu mesh" />
 
   <!-- ========== Planner ========== -->
-  <!-- <node name="rmp_planner" pkg="cpt_planning_ros" type="omav_planner_node" respawn="false" output="screen">
-    <param name="mesh_path" type="string" value="$(find omav_gazebo_wada)/models/wada_mesh/meshes/ache2019_nav_mesh_halfpipe.off" />
-    <param name="mesh_frame" type="string" value="mesh" />
-
-    <param name="body_frame" type="string" value="voliro_tri/base_link" />
-    <param name="enu_frame" type="string" value="enu" />
-    <param name="odom_frame" type="string" value="world" />
-    <param name="current_reference_frame" value="current_reference" />
-
-    <param name="zero_angle" type="double" value="0.0" />
-    <param name="zero_x" type="double" value="0.0" />
-    <param name="zero_y" type="double" value="0.0" />
-    <param name="zero_z" type="double" value="0.1" />
-	  
-    <remap from="cmd_trajectory" to="/$(arg mav_name)/command/trajectory" />
-	  
-    <remap from="odometry" to="/$(arg mav_name)/ground_truth/odometry" />
-    <remap from="joy" to="/joy" />
-  </node> -->
-
-  <!-- <node name="joy_node" pkg="joy" type="joy_node" respawn="false" output="screen"/> -->
-
     <!-- parameters for the rope -->
   <arg name="rope_end_x" default="1.0"/>
   <arg name="rope_end_y" default="0.75"/>
@@ -103,8 +84,7 @@
   <arg name="pulley_init_z" default="-0.7"/>
 
   <!-- Motion planner based on opt fabric  -->
-  <node pkg="cpt_planning_eval" name="opt_fabric_planner" type="optimization_fabrics_test_node" output="screen">
-    <param name="waypoint_topic" value="/rope_sim_ros/moving_target"/>
+  <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen">
 
     <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>
     <param name="rope_start_y" value="$(arg rope_start_y)" type="double"/>
@@ -113,10 +93,6 @@
     <param name="rope_end_x" value="$(arg rope_end_x)" type="double"/>
     <param name="rope_end_y" value="$(arg rope_end_y)" type="double"/>
     <param name="rope_end_z" value="$(arg rope_end_z)" type="double"/>
-    <remap from="opt_fabric_planner/cmd_trajectory" to="/$(arg mav_name)/command/trajectory" />
-    <remap from="opt_fabric_planner/odometry" to="/$(arg mav_name)/ground_truth/odometry" />
-    <remap from="opt_fabric_planner/rope_vis" to="rope_sim_ros/rope_vis" />
-
 
     <param name="body_frame" type="string" value="voliro_tri/base_link" />
     <param name="enu_frame" type="string" value="enu" />
@@ -126,6 +102,19 @@
     <param name="traject_dt" value="0.01" type="double"/>
     <param name="max_traject_duration" value="0.1" type="double"/>
     <param name="rope_safe_dist" value="1.5" type="double"/>
+
+    <!-- <param name="zero_angle" type="double" value="0.0" />
+    <param name="zero_x" type="double" value="0.0" />
+    <param name="zero_y" type="double" value="0.0" />
+    <param name="zero_z" type="double" value="0.0" /> -->
+
+    <param name="mesh_frame" type="string" value="mesh" />
+    <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" />
+
+    <remap from="opt_fabric_planner/cmd_trajectory" to="/$(arg mav_name)/command/trajectory" />
+    <remap from="opt_fabric_planner/odometry" to="/$(arg mav_name)/ground_truth/odometry" />
+    <remap from="opt_fabric_planner/rope_vis" to="/rope_sim_ros/rope_vis" />
+    <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
 
   </node>
 
@@ -137,23 +126,15 @@
   </node>
 
   <!-- rope simulator -->
-  <!-- <arg name="pulley_free_yaw" default="true"/>
-  <arg name="rope_node_num" default="50"/>
-  <arg name="rope_node_mass" default="1.0"/>
-  <arg name="spring_ks" default="100.0"/>
-  <arg name="spring_rest_len" default="0.2"/>
-  <arg name="pulley_friction" default="0.1"/> 
-  <arg name="pulley_radius" default="0.5"/>
-  <arg name="update_interval" default="0.1"/> -->
 
-    <arg name="pulley_free_yaw" default="true"/>
-    <arg name="rope_node_num" default="50"/>
-    <arg name="rope_node_mass" default="0.02"/>
-    <arg name="spring_ks" default="100.0"/>
-    <arg name="spring_rest_len" default="0.3"/>
-    <arg name="pulley_friction" default="0.9"/> <!-- friction between pulley and rope  -->
-    <arg name="pulley_radius" default="0.5"/>
-    <arg name="update_interval" default="0.1"/>
+  <arg name="pulley_free_yaw" default="true"/>
+  <arg name="rope_node_num" default="50"/>
+  <arg name="rope_node_mass" default="0.02"/>
+  <arg name="spring_ks" default="100.0"/>
+  <arg name="spring_rest_len" default="0.15"/>
+  <arg name="pulley_friction" default="0.5"/> <!-- friction between pulley and rope  -->
+  <arg name="pulley_radius" default="0.5"/>
+  <arg name="update_interval" default="0.1"/>
 
 
   <node pkg="rope_sim_ros" name="rope_sim_ros" type="rope_sim_ros_example" output="screen">
@@ -183,10 +164,8 @@
   </node>
 
   <!-- ========== Sensor reading visualization in RViz ========== -->
-  <group if="$(arg show_rviz)">
-    <!-- <node pkg="rviz" type="rviz" name="$(anon rviz)" respawn="false" output="screen" args="-d $(find omav_demo_arche2021)/cfg/$(arg rviz_config).rviz"/> -->
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_planning_ros)/rviz/voliro_opt_fabric_rope_sim.rviz" />
-  </group>
-
+<group if="$(arg show_rviz)">
+<node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_planning_ros)/rviz/$(arg rviz_config).rviz" />
+</group>
 
 </launch>

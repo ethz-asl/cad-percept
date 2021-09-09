@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
   //init the rope model 
   rmp_planner.setTuning({0.7, 13.6, 0.4}, {20.0, 30.0, 0.01}, 
     start_node_pos, end_node_pos, 0.01);
+    
   ros::Subscriber moving_target_sub = nh.subscribe(waypoint_topic, 10, 
     &cad_percept::planning::RMPLinearPlanner::goalCallback, &rmp_planner);
 

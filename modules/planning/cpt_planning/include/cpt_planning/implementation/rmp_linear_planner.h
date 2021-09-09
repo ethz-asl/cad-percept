@@ -4,7 +4,10 @@
 // #include <cgal_definitions/mesh_model.h>
 // #include <cpt_planning/coordinates/face_coords.h>
 // #include <cpt_planning/coordinates/uv_mapping.h>
+// #include <cpt_ros/mesh_model_publisher.h>
+
 // #include <cpt_planning/interface/mesh_manifold_interface.h>
+
 #include <cpt_planning/interface/linear_manifold_interface.h>
 #include <cpt_planning/interface/surface_planner.h>
 #include <cpt_planning_ros/RMPConfigConfig.h>
@@ -61,25 +64,21 @@ class RMPLinearPlanner : public SurfacePlanner {
                                     std::vector<Eigen::Vector3d> *states_out);
 
   void init_ros_interface(ros::NodeHandle nh){
-      nh_private_ = nh;
-      pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
-      hose_path_pub = nh.advertise<nav_msgs::Path>("hose_path", 1000);
-      obs_vis_pub = nh.advertise<visualization_msgs::MarkerArray>("obs_vis", 10);
-      pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
-      readConfig();
-      sub_odometry_ = nh.subscribe("odometry", 1, &RMPLinearPlanner::odometryCallback, this);
-      rope_nodes_sub = nh.subscribe("rope_vis", 1, &RMPLinearPlanner::ropeUpdateCallback, this);
+    nh_private_ = nh;
+    pub_marker_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
+    hose_path_pub = nh.advertise<nav_msgs::Path>("hose_path", 1000);
+    obs_vis_pub = nh.advertise<visualization_msgs::MarkerArray>("obs_vis", 10);
+    pub_trajectory_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
+    readConfig();
+    sub_odometry_ = nh.subscribe("odometry", 1, &RMPLinearPlanner::odometryCallback, this);
+    rope_nodes_sub = nh.subscribe("rope_vis", 1, &RMPLinearPlanner::ropeUpdateCallback, this);
 
-      tf_update_timer_ = nh.createTimer(ros::Duration(1), &RMPLinearPlanner::tfUpdateCallback,
-                                    this);  // update TF's every second
+    tf_update_timer_ = nh.createTimer(ros::Duration(1), &RMPLinearPlanner::tfUpdateCallback,
+                                  this);  // update TF's every second
 
-      obs_update_timer_ = nh.createTimer(ros::Duration(0.05), &RMPLinearPlanner::obsUpdateCallback,
-                              this);  // update TF's every second
-
-      //only for simulation
-      fake_odom_pub_ = nh.advertise<nav_msgs::Odometry>("obj_odom", 10);
-      
-      
+    //only for simulation
+    fake_odom_pub_ = nh.advertise<nav_msgs::Odometry>("obj_odom", 10);
+    // pub_mesh_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
   }
 
   // void generateTrajectoryOdom(const Eigen::Vector3d start,
@@ -137,12 +136,12 @@ class RMPLinearPlanner : public SurfacePlanner {
 
   // config & startup stuff
   void readConfig();
+  void loadMesh();
 
   // callbacks to update stuff
   void odometryCallback(const nav_msgs::OdometryConstPtr &odom);
   void ropeUpdateCallback(const visualization_msgs::MarkerConstPtr &rope);
   void tfUpdateCallback(const ros::TimerEvent &event);
-  void obsUpdateCallback(const ros::TimerEvent &event);
 
 
   //-------------------------------------------------------
@@ -150,8 +149,15 @@ class RMPLinearPlanner : public SurfacePlanner {
 
   Eigen::Vector3d tuning_1_, tuning_2_;
 
+  // RMP & Mesh objects
+  // cad_percept::cgal::MeshModel::Ptr model_enu_;
+  // cad_percept::planning::UVMapping *mapping_;
+  // std::shared_ptr<cad_percept::planning::MeshManifoldInterface> manifold_;
+
   std::shared_ptr<cad_percept::planning::LinearManifoldInterface> manifold_;
-  
+  // ROS subcribers & publishers
+  // cad_percept::MeshModelPublisher pub_mesh_;
+
   ros::Publisher pub_marker_;
   ros::Publisher hose_path_pub;
   ros::Publisher obs_vis_pub;
@@ -206,6 +212,8 @@ class RMPLinearPlanner : public SurfacePlanner {
   double max_traject_duration_{1.0};  // [s] amount of lookahead for integration
   double rope_safe_dist_{1.5};
   
+  bool mesh_loaded_{false};
+
 
 };
 }  // namespace planning

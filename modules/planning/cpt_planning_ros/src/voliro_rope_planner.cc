@@ -1,84 +1,44 @@
-#include <cpt_planning/implementation/rmp_linear_planner.h>
+#include <cpt_planning_ros/voliro_rope_planner.h>
 #include <glog/logging.h>
 
 namespace cad_percept {
 namespace planning {
 
-RMPLinearPlanner::RMPLinearPlanner(Eigen::Vector3d tuning_1,
-                               Eigen::Vector3d tuning_2)
-    : tuning_1_(tuning_1), tuning_2_(tuning_2) {
-//   cad_percept::cgal::MeshModel::create(mesh_path, &model_, true);
-//   Eigen::Vector3d zero(0.0, 0.0, 0.0);
-//   double zero_angle = 0;
-//   mapping_ = new cad_percept::planning::UVMapping(model_, zero, zero_angle);
-  manifold_ =
-      std::make_shared<cad_percept::planning::LinearManifoldInterface>();
+VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_private)
+  :nh_(nh), nh_private_(nh_private){
+  manifold_ = std::make_shared<cad_percept::planning::LinearManifoldInterface>();
 
+  //initi ros interface
+  // nh_private_ = nh;
+  //pub
+  pub_marker_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
+  hose_path_pub = nh_.advertise<nav_msgs::Path>("hose_path", 1000);
+  obs_vis_pub = nh_.advertise<visualization_msgs::MarkerArray>("obs_vis", 10);
+  pub_trajectory_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
+  pub_mesh_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
+  attraction_pub_ =  nh.advertise<visualization_msgs::Marker>("attraction_vis", 1);
+  repulsion_pub_ =  nh.advertise<visualization_msgs::Marker>("repulsion_vis", 1);
+  //sub
+  sub_odometry_ = nh_.subscribe("odometry", 1, &VoliroRopePlanner::odometryCallback, this);
+  rope_nodes_sub = nh_.subscribe("rope_vis", 1, &VoliroRopePlanner::ropeUpdateCallback, this);
+  moving_target_sub = nh_.subscribe("moving_target", 10, &VoliroRopePlanner::goalCallback, 
+                                this);
+  //timer
+  tf_update_timer_ = nh_.createTimer(ros::Duration(1), &VoliroRopePlanner::tfUpdateCallback,
+                                this);  // update TF's every second
+
+  //read params
+  readConfig();
+  //read mesh model
+  loadMesh();
 }
 
-const SurfacePlanner::Result RMPLinearPlanner::plan(const Eigen::Vector3d start,
-                                                  const Eigen::Vector3d goal,
-                                                  std::vector<Eigen::Vector3d> *states_out) {
-  // Set up solver
-  using RMPG = cad_percept::planning::LinearManifoldInterface;
-  using LinSpace = rmpcpp::Space<3>;
-  using TargetPolicy = rmpcpp::SimpleTargetPolicy<LinSpace>;
-  using Integrator = rmpcpp::TrapezoidalIntegrator<TargetPolicy, RMPG>;
-
-  RMPG::VectorQ target_xyz = goal;
-  RMPG::VectorX target_uv = target_xyz;
-
-  RMPG::VectorQ start_xyz = start;
-  RMPG::VectorX start_uv = start_xyz;
-  Integrator integrator;
-
-  // set up policies
-  Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
-//   Eigen::Matrix3d B{Eigen::Matrix3d::Identity()};
-//   A.diagonal() = Eigen::Vector3d({1.0, 1.0, 0.0});
-//   B.diagonal() = Eigen::Vector3d({0.0, 0.0, 1.0});
-
-  auto pol_2 = std::make_shared<TargetPolicy>(target_uv, A, tuning_1_[0], tuning_1_[1],
-                                              tuning_1_[2]);  // goes to target
-//   auto pol_3 =
-//       std::make_shared<TargetPolicy>(Eigen::Vector3d::Zero(), B, tuning_2_[0], tuning_2_[1],
-//                                      tuning_2_[2]);  // stays on surface
-
-  std::vector<std::shared_ptr<TargetPolicy>> policies;
-  policies.push_back(pol_2);
-//   policies.push_back(pol_3);
-
-  // start integrating path
-  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
-  bool reached_criteria = false;
-
-  integrator.resetTo(start_xyz);
-  for (double t = 0; t < 500.0; t += dt_) {
-    auto integrator_state = integrator.integrateStep(policies, manifold_, dt_);
-    states_out->push_back(integrator_state.position);
-
-    if (integrator.atRest(0.01, 0.01)) {
-      reached_criteria = true;
-      LOG(INFO) << "Residual position after integration: "
-                << (integrator_state.position - target_xyz).norm();
-      break;
-    }
-  }
-  std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
-
-  SurfacePlanner::Result result;
-  result.success = reached_criteria;
-  result.duration = end_time - start_time;
-  return result;
-}
-
-
-void RMPLinearPlanner::resetIntegrator(Eigen::Vector3d start_pos, 
+void VoliroRopePlanner::resetIntegrator(Eigen::Vector3d start_pos, 
                                         Eigen::Vector3d start_vel){
   integrator.resetTo(start_pos, start_vel);
 }
 
-void RMPLinearPlanner::generateTrajectoryOdom_5(){
+void VoliroRopePlanner::generateTrajectoryOdom_5(){
  
   RMPG::VectorQ target_xyz_1 = goal_a_;
   RMPG::VectorX target_uv_1 = target_xyz_1;
@@ -127,12 +87,15 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
     policies.clear();
     
     //attraction police is triggered under condition to avoid nonefinite integration
-    if((drone_pos-(target_uv_1+target_uv_2)*0.5).norm()>0.01
+    Eigen::Vector3d att_pos = (target_uv_1+target_uv_2)*0.5;
+    if((drone_pos-att_pos).norm()>0.01
       && push_rope_dir_.norm()>0.5
       ){
-      auto att_1 = std::make_shared<AttractionPotential>(
-                (target_uv_1+target_uv_2)*0.5, A);  
+      auto att_1 = std::make_shared<AttractionPotential>(att_pos, A);  
       policies.push_back(att_1);
+
+      //vis attraction
+      publish_attraction_vis(drone_pos, att_pos);
     }
 
     if(obs_list_.at(0).norm()<10.0){
@@ -236,19 +199,19 @@ void RMPLinearPlanner::generateTrajectoryOdom_5(){
   }
   std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
 
-  SurfacePlanner::Result result;
-  result.success = reached_criteria;
-  result.duration = end_time - start_time;
-  std::cout << "Operation took ";
-  display(std::cout, end_time - start_time);
-  std::cout << '\n';
-  std::cout <<"Trajectory Distance:"<<integrator.totalDistance()<<std::endl;
+  // SurfacePlanner::Result result;
+  // result.success = reached_criteria;
+  // result.duration = end_time - start_time;
+  // std::cout << "Operation took ";
+  // display(std::cout, end_time - start_time);
+  // std::cout << '\n';
+  // std::cout <<"Trajectory Distance:"<<integrator.totalDistance()<<std::endl;
 }
 
 
 
 
-void RMPLinearPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom) {
+void VoliroRopePlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom) {
   // publish marker message of trajectory
   visualization_msgs::MarkerArray markers;
   double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
@@ -266,7 +229,7 @@ void RMPLinearPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::V
   // }
 }
 
-void RMPLinearPlanner::publishTrajectory_2() {
+void VoliroRopePlanner::publishTrajectory_2() {
   // publish marker message of trajectory
   visualization_msgs::MarkerArray markers;
   double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
@@ -286,7 +249,7 @@ void RMPLinearPlanner::publishTrajectory_2() {
 }
 
 
-std::ostream& RMPLinearPlanner::display(std::ostream& os, std::chrono::nanoseconds ns)
+std::ostream& VoliroRopePlanner::display(std::ostream& os, std::chrono::nanoseconds ns)
 {
     using namespace std;
     using namespace std::chrono;
@@ -311,7 +274,7 @@ std::ostream& RMPLinearPlanner::display(std::ostream& os, std::chrono::nanosecon
     return os;
 };
 
-nav_msgs::Path RMPLinearPlanner::build_hose_model(std::vector<Eigen::Vector3d> &hose_key_points){
+nav_msgs::Path VoliroRopePlanner::build_hose_model(std::vector<Eigen::Vector3d> &hose_key_points){
     // Circle parameters
     nav_msgs::Path waypoints;
     geometry_msgs::PoseStamped pt;
@@ -332,8 +295,8 @@ nav_msgs::Path RMPLinearPlanner::build_hose_model(std::vector<Eigen::Vector3d> &
 }
 
 //read new goal and calculate the trajectory
-void RMPLinearPlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
-  ROS_INFO("RMPLinearPlanner::goalCallback");
+void VoliroRopePlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+  ROS_INFO("VoliroRopePlanner::goalCallback");
 
   // read pos of the new end-effector
   goal_b_(0) = msg->pose.position.x;
@@ -383,7 +346,7 @@ void RMPLinearPlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& 
   publish_obs_vis(obs_list_);
 }
 
-void RMPLinearPlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_wall) {
+void VoliroRopePlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_wall) {
     visualization_msgs::MarkerArray obsArray;
     auto obs_frame = std::string("enu");
     auto obs_time = ros::Time::now();
@@ -413,9 +376,94 @@ void RMPLinearPlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_
     obs_vis_pub.publish(obsArray);
 }
 
+void VoliroRopePlanner::publish_attraction_vis(Eigen::Vector3d start, Eigen::Vector3d end){
+  //vis push rope arrow----------------------------
+   visualization_msgs::Marker marker;
+  auto rope_frame = std::string("enu");
+  auto rope_time = ros::Time::now();
+
+  marker.type = visualization_msgs::Marker::ARROW;
+  marker.id = 0;
+  marker.header.frame_id = rope_frame;
+  marker.header.stamp = rope_time;
+
+  marker.points.clear();
+  geometry_msgs::Point p;
+  p.x = start(0);
+  p.y = start(1);
+  p.z = start(2);
+
+  marker.points.push_back(p);
+  p.x = end(0);
+  p.y = end(1);
+  p.z = end(2);
+
+  marker.points.push_back(p);
+
+  marker.scale.x = 0.03;
+  marker.scale.y = 0.1;
+  marker.scale.z = 0.1;
+  marker.pose.orientation.w = 1.0;
+
+  marker.color.a = 1.0;
+  marker.color.r = 0.9;
+  marker.color.g = 0.3;
+  marker.color.b = 0.3;
+  marker.lifetime = ros::Duration(0.5);
+
+  attraction_pub_.publish(marker);
+  // id++;
+  // std::cout
+  // <<"end force:"
+  // <<(end-start).norm()
+  // <<std::endl;
+}
+
+void VoliroRopePlanner::publish_repulsion_vis(Eigen::Vector3d start, Eigen::Vector3d end){
+  //vis push rope arrow----------------------------
+   visualization_msgs::Marker marker;
+  auto rope_frame = std::string("enu");
+  auto rope_time = ros::Time::now();
+
+  marker.type = visualization_msgs::Marker::ARROW;
+  marker.id = 0;
+  marker.header.frame_id = rope_frame;
+  marker.header.stamp = rope_time;
+
+  marker.points.clear();
+  geometry_msgs::Point p;
+  p.x = start(0);
+  p.y = start(1);
+  p.z = start(2);
+
+  marker.points.push_back(p);
+  p.x = end(0);
+  p.y = end(1);
+  p.z = end(2);
+
+  marker.points.push_back(p);
+
+  marker.scale.x = 0.03;
+  marker.scale.y = 0.1;
+  marker.scale.z = 0.1;
+  marker.pose.orientation.w = 1.0;
+
+  marker.color.a = 1.0;
+  marker.color.r = 0.9;
+  marker.color.g = 0.3;
+  marker.color.b = 0.3;
+  marker.lifetime = ros::Duration(0.5);
+
+  repulsion_pub_.publish(marker);
+  // id++;
+  // std::cout
+  // <<"end force:"
+  // <<(end-start).norm()
+  // <<std::endl;
+}
 
 
-void RMPLinearPlanner::init_obs_wall(){
+void VoliroRopePlanner::init_obs_wall(){
   // double y=5.0;
   // for(double x = -1.5; x<1.5; x=x+0.5){
   //   for(double z = 0.; z<2.5; z=z+0.5){
@@ -428,7 +476,7 @@ void RMPLinearPlanner::init_obs_wall(){
 }
 
 
-void RMPLinearPlanner::readConfig() {
+void VoliroRopePlanner::readConfig() {
   nh_private_.param<std::string>("mesh_path", fixed_params_.mesh_path, "mesh.off");
   nh_private_.param<std::string>("mesh_frame", fixed_params_.mesh_frame, "mesh");
   nh_private_.param<std::string>("body_frame", fixed_params_.body_frame, "imu");
@@ -439,20 +487,35 @@ void RMPLinearPlanner::readConfig() {
   
   nh_private_.param("traject_dt", dt_, 0.01);
   nh_private_.param("max_traject_duration", max_traject_duration_, 1.0);
-                      
   nh_private_.param<double>("zero_angle", fixed_params_.mesh_zero_angle, 0.0);
-
   nh_private_.param("rope_safe_dist", rope_safe_dist_, 1.5);
-
 
   double zero_x = nh_private_.param("zero_x", 0.0);
   double zero_y = nh_private_.param("zero_y", 0.0);
   double zero_z = nh_private_.param("zero_z", 0.0);
   fixed_params_.mesh_zero = {zero_x, zero_y, zero_z};
+
+
+  Eigen::Vector3d start_node_pos(-4., 0.75 , 0.);
+  Eigen::Vector3d end_node_pos(1., 0.75, 0.);
+  //the start node is fixed
+  nh_private_.param("rope_start_x", start_node_pos(0), -4.0);
+  nh_private_.param("rope_start_y", start_node_pos(1), 0.75);
+  nh_private_.param("rope_start_z", start_node_pos(2), 0.0);
+  // the end is able to move 
+  nh_private_.param("rope_end_x", end_node_pos(0), 1.0);
+  nh_private_.param("rope_end_y", end_node_pos(1), 0.75);
+  nh_private_.param("rope_end_z", end_node_pos(2), 0.0);
+  //init the middel drone
+  Eigen::Vector3d init_drone_pos;
+  init_drone_pos = 0.5*(start_node_pos + end_node_pos);
+  resetIntegrator(init_drone_pos, {0.,0.,0.});
+  //init the rope model 
+  setTuning({0.7, 13.6, 0.4}, {20.0, 30.0, 0.01}, start_node_pos, end_node_pos, 0.01);
 }
 
 
-void RMPLinearPlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom) {
+void VoliroRopePlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom) {
   if (odom->header.frame_id != fixed_params_.odom_frame) {
     ROS_WARN_STREAM("Odom frame name mismatch, msg: " << odom->header.frame_id
                                                       << " / cfg: " << fixed_params_.odom_frame);
@@ -492,7 +555,7 @@ void RMPLinearPlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom) 
   odom_received_ = true;
 }
 
-void RMPLinearPlanner::tfUpdateCallback(const ros::TimerEvent &event) {
+void VoliroRopePlanner::tfUpdateCallback(const ros::TimerEvent &event) {
   if (!listener_.canTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0))) {
     ROS_WARN_STREAM("Transform " << fixed_params_.enu_frame << " - " << fixed_params_.odom_frame
                                  << " not available");
@@ -506,9 +569,11 @@ void RMPLinearPlanner::tfUpdateCallback(const ros::TimerEvent &event) {
   tf::transformTFToEigen(tf_enu_odom, T_enu_odom_);
 
   frames_received_ = true;
+
+  publishMarkers();
 }
 
-void RMPLinearPlanner::ropeUpdateCallback(const visualization_msgs::MarkerConstPtr &rope) {
+void VoliroRopePlanner::ropeUpdateCallback(const visualization_msgs::MarkerConstPtr &rope) {
   //find the node hooked by the drone
   auto drone_transformation = T_odom_body_.matrix();
   Eigen::Vector3d drone_pos;
@@ -554,13 +619,19 @@ void RMPLinearPlanner::ropeUpdateCallback(const visualization_msgs::MarkerConstP
         min_obs_dist_dix = idx;
       }
     }
-
     idx++;
   }
   std::cout<< "hooked_node_idx: "
             << min_dist_idx << std::endl;
-  std::cout<< "obs_avoid_node_idx: "
-            << min_obs_dist_dix << std::endl;
+  // std::cout<< "obs_avoid_node_idx: "
+  //           << min_obs_dist_dix << std::endl;
+
+  //check rope collision 
+  int min_id;
+  Eigen::Vector3d min_vec;
+  std::tie(min_id, min_vec) = path_search_->meshToRopeVec(rope_nodes_vec_);
+  publish_repulsion_vis(rope_nodes_vec_.at(min_id) - min_vec, 
+                        rope_nodes_vec_.at(min_id));
 
   //calculate push rope direction on the controlable node
   push_rope_dir_ = rope_nodes_vec_.at(min_obs_dist_dix) - obs_list_.at(0);
@@ -568,42 +639,77 @@ void RMPLinearPlanner::ropeUpdateCallback(const visualization_msgs::MarkerConstP
   std::cout<< push_rope_dir_ << std::endl;
 }
 
-// void RMPLinearPlanner::loadMesh() {
-//   mesh_loaded_ = cad_percept::cgal::MeshModel::create(fixed_params_.mesh_path, &model_enu_, true);
+void VoliroRopePlanner::loadMesh() {
+  mesh_loaded_ = cad_percept::cgal::MeshModel::create(fixed_params_.mesh_path, &model_enu_, true);
 
-//   if (!mesh_loaded_) {
-//     // Kill if mesh couldn't be loaded.
-//     ROS_FATAL_STREAM("Could not load mesh " << fixed_params_.mesh_path);
-//     exit(-100);
-//   }
+  if (!mesh_loaded_) {
+    // Kill if mesh couldn't be loaded.
+    ROS_FATAL_STREAM("Could not load mesh " << fixed_params_.mesh_path);
+    exit(-100);
+  }
 
-//   // get transformation to ENU
-//   while (!listener_.waitForTransform(fixed_params_.enu_frame, fixed_params_.mesh_frame,
-//                                      ros::Time(0), ros::Duration(0.1)) &&
-//          ros::ok()) {
-//     ROS_WARN_STREAM("Waiting for transform " << fixed_params_.enu_frame << " - "
-//                                              << fixed_params_.mesh_frame);
-//   }
-//   tf::StampedTransform tf_enu_mesh;
-//   listener_.lookupTransform(fixed_params_.enu_frame, fixed_params_.mesh_frame, ros::Time(0),
-//                             tf_enu_mesh);
-//   tf::transformTFToEigen(tf_enu_mesh, T_enu_mesh_);
+  // get transformation to ENU
+  while (!listener_.waitForTransform(fixed_params_.enu_frame, fixed_params_.mesh_frame,
+                                     ros::Time(0), ros::Duration(0.1)) &&
+         ros::ok()) {
+    ROS_WARN_STREAM("Waiting for transform " << fixed_params_.enu_frame << " - "
+                                             << fixed_params_.mesh_frame);
+  }
+  tf::StampedTransform tf_enu_mesh;
+  listener_.lookupTransform(fixed_params_.enu_frame, fixed_params_.mesh_frame, ros::Time(0),
+                            tf_enu_mesh);
+  tf::transformTFToEigen(tf_enu_mesh, T_enu_mesh_);
 
-//   // Transform mesh to ENU frame
-//   model_enu_->transform(
-//       cad_percept::cgal::eigenTransformationToCgalTransformation(T_enu_mesh_.matrix()));
+  // Transform mesh to ENU frame
+  model_enu_->transform(
+      cad_percept::cgal::eigenTransformationToCgalTransformation(T_enu_mesh_.matrix()));
 
-//   // Creating mappings and manifold interface
-//   // mapping_ = new cad_percept::planning::UVMapping(model_enu_, fixed_params_.mesh_zero,
-//   //                                                 fixed_params_.mesh_zero_angle);
-//   // manifold_ = std::make_shared<cad_percept::planning::MeshManifoldInterface>(
-//   //     model_enu_, fixed_params_.mesh_zero, fixed_params_.mesh_zero_angle);
+  // Creating mappings and manifold interface
+  // mapping_ = new cad_percept::planning::UVMapping(model_enu_, fixed_params_.mesh_zero,
+  //                                                 fixed_params_.mesh_zero_angle);
+  // manifold_ = std::make_shared<cad_percept::planning::MeshManifoldInterface>(
+  //     model_enu_, fixed_params_.mesh_zero, fixed_params_.mesh_zero_angle);
 
-//   // publish
-//   pub_mesh_.publish(model_enu_, fixed_params_.enu_frame);
-// }
+  // publish
+  pub_mesh_.publish(model_enu_, fixed_params_.enu_frame);
 
+  // init path search
+  path_search_ = new cad_percept::MeshPathSearch(model_enu_);
+}
 
+void VoliroRopePlanner::publishMarkers() {
+  visualization_msgs::Marker marker_mesh;
+  marker_mesh.header.frame_id = fixed_params_.enu_frame;
+  marker_mesh.header.stamp = ros::Time();
+  marker_mesh.ns = "meshmarker";
+  marker_mesh.id = 0;
+  marker_mesh.type = visualization_msgs::Marker::SPHERE_LIST;
+  marker_mesh.action = visualization_msgs::Marker::ADD;
+  marker_mesh.pose.position.x = 0.0;
+  marker_mesh.pose.position.y = 0.0;
+  marker_mesh.pose.position.z = 0.0;
+  marker_mesh.pose.orientation.x = 0.0;
+  marker_mesh.pose.orientation.y = 0.0;
+  marker_mesh.pose.orientation.z = 0.0;
+  marker_mesh.pose.orientation.w = 1.0;
+  marker_mesh.scale.x = 0.25;
+  marker_mesh.scale.y = 0.25;
+  marker_mesh.scale.z = 0.25;
+  marker_mesh.color.a = 1.0;  // Don't forget to set the alpha!
+  marker_mesh.color.r = 0.0;
+  marker_mesh.color.g = 1.0;
+  marker_mesh.color.b = 0.0;
+
+  // geometry_msgs::Point pt3d;
+  // pt3d.x = target_xyz_.x();
+  // pt3d.y = target_xyz_.y();
+  // pt3d.z = target_xyz_.z();
+
+  visualization_msgs::MarkerArray msg;
+  // marker_mesh.points.push_back(pt3d);
+  msg.markers.push_back(marker_mesh);
+  pub_marker_.publish(msg);
+}
 
 
 }  // namespace planning

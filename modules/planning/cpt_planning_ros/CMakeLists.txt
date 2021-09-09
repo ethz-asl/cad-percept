@@ -22,6 +22,10 @@ cs_add_executable(omav_planner_node
         src/omav_planner_node.cc
         )
 
+cs_add_executable(voliro_rope_planner_node
+        src/voliro_rope_planner_node.cc
+        src/voliro_rope_planner.cc
+        )
 
 ############
 #  TESTS   #

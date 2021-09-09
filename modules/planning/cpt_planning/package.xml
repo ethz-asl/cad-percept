@@ -22,4 +22,5 @@
     <depend>rmpcpp</depend>
     <depend>mav_msgs</depend>
     <depend>mav_trajectory_generation_ros</depend>
+
 </package>

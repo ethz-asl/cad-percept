@@ -14,6 +14,9 @@ Panels:
         - /acc_push_rope1
         - /drone_control_acc1
         - /End-Force (N)1
+        - /TriangleMeshDisplay1
+        - /Marker1
+        - /Marker2
       Splitter Ratio: 0.6658228039741516
     Tree Height: 873
   - Class: rviz/Selection
@@ -219,7 +222,7 @@ Visualization Manager:
       Marker Topic: /rope_sim_ros/acc_vis
       Name: acc_push_rope
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -234,6 +237,32 @@ Visualization Manager:
       Enabled: true
       Marker Topic: /rope_sim_ros/end_force_vis
       Name: End-Force (N)
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Alpha: 0.20000000298023224
+      Backface Culling: false
+      Class: cgal_visualizations/TriangleMeshDisplay
+      Edge Color: 0; 0; 0
+      Enabled: true
+      Name: TriangleMeshDisplay
+      Surface Color: 0; 0; 255
+      Topic: /opt_fabric_planner/mesh_3d
+      Unreliable: false
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /opt_fabric_planner/attraction_vis
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /opt_fabric_planner/repulsion_vis
+      Name: Marker
       Namespaces:
         "": true
       Queue Size: 100
@@ -268,25 +297,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 11.649882316589355
+      Distance: 22.276899337768555
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 3.9388089179992676
-        Y: 1.3353750705718994
-        Z: 2.369950771331787
+        X: 0.09106844663619995
+        Y: 1.1112475395202637
+        Z: 1.6997957229614258
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.33979690074920654
+      Pitch: 0.6947966814041138
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.3468403816223145
+      Yaw: 3.15683913230896
     Saved: ~
 Window Geometry:
   Displays:
