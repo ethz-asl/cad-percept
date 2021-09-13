@@ -18,8 +18,8 @@
   <arg name="wait_to_record_bag" default="false"/>
   <arg name="enable_mavlink_interface" default="false"/>
 
-  <arg name="start_x" default="-1.0" />
-  <arg name="start_y" default="0.75" />
+  <arg name="start_x" default="1.0" />
+  <arg name="start_y" default="0.0" />
   <arg name="start_z" default="0.1" />
 
   <arg name="show_rviz" default="true" />
@@ -66,22 +66,22 @@
   <!-- ========== TF Broadcaster ========== -->
   <node pkg="tf2_ros" type="static_transform_publisher" name="enu_broadcaster" args="0 0 0 0 0 0 1 enu world" />
   <!-- mesh transformation according to enu  -->
-  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="15 -5 0 0 0 0 1 enu mesh" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="14 15 0 0 0 -0.7071068 -0.7071068 enu mesh" />
 
   <!-- ========== Planner ========== -->
     <!-- parameters for the rope -->
-  <arg name="rope_end_x" default="1.0"/>
-  <arg name="rope_end_y" default="0.75"/>
-  <arg name="rope_end_z" default="0.5"/>
+  <arg name="rope_end_x" default="2.0"/>
+  <arg name="rope_end_y" default="0.0"/>
+  <arg name="rope_end_z" default="0.1"/>
 
-  <arg name="rope_start_x" default="-4.0"/>
-  <arg name="rope_start_y" default="0.75"/>
-  <arg name="rope_start_z" default="0.5"/>
+  <arg name="rope_start_x" default="0.0"/>
+  <arg name="rope_start_y" default="0.0"/>
+  <arg name="rope_start_z" default="0.1"/>
 
   <!-- parameters for the pulley init pose -->
-  <arg name="pulley_init_x" default="-1.0"/>
-  <arg name="pulley_init_y" default="0.75"/>
-  <arg name="pulley_init_z" default="-0.7"/>
+  <arg name="pulley_init_x" default="1.0"/>
+  <arg name="pulley_init_y" default="0.0"/>
+  <arg name="pulley_init_z" default="0.2"/>
 
   <!-- Motion planner based on opt fabric  -->
   <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen">
@@ -128,13 +128,14 @@
   <!-- rope simulator -->
 
   <arg name="pulley_free_yaw" default="true"/>
-  <arg name="rope_node_num" default="50"/>
+  <arg name="rope_node_num" default="70"/>
   <arg name="rope_node_mass" default="0.02"/>
   <arg name="spring_ks" default="100.0"/>
   <arg name="spring_rest_len" default="0.15"/>
-  <arg name="pulley_friction" default="0.5"/> <!-- friction between pulley and rope  -->
+  <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
   <arg name="pulley_radius" default="0.5"/>
   <arg name="update_interval" default="0.1"/>
+  <arg name="hooked_node_idx" default="30"/>
 
 
   <node pkg="rope_sim_ros" name="rope_sim_ros" type="rope_sim_ros_example" output="screen">
@@ -158,6 +159,8 @@
     <param name="pulley_friction" value="$(arg pulley_friction)" type="double"/>
     <param name="pulley_radius" value="$(arg pulley_radius)" type="double"/>
     <param name="update_interval" value="$(arg update_interval)" type="double"/>
+    <param name="hooked_node_idx" value="$(arg hooked_node_idx)" type="int"/>
+
 
     <remap from="rope_sim_ros/obj_odometry" to="/$(arg mav_name)/ground_truth/odometry" />
     <remap from="rope_sim_ros/joy" to="/joy" />

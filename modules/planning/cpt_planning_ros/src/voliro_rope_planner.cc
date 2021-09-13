@@ -78,42 +78,65 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
 
     // add collision avoid policies when needed:
     // obs point sorted by distance to the drone (shortest distance first)
-    std::sort( obs_list_.begin( ), obs_list_.end( ), 
-      [drone_pos]( const auto& obs_1, const auto& obs_2 )
-      {
-        return (obs_1-drone_pos).norm() < (obs_2-drone_pos).norm();
-      });
+    // std::sort( obs_list_.begin( ), obs_list_.end( ), 
+    //   [drone_pos]( const auto& obs_1, const auto& obs_2 )
+    //   {
+    //     return (obs_1-drone_pos).norm() < (obs_2-drone_pos).norm();
+    //   });
 
     policies.clear();
-    
-    //attraction police is triggered under condition to avoid nonefinite integration
-    Eigen::Vector3d att_pos = (target_uv_1+target_uv_2)*0.5;
-    if((drone_pos-att_pos).norm()>0.01
-      && push_rope_dir_.norm()>0.5
-      ){
+
+    Eigen::Vector3d att_pos = target_uv_2+4.0*(drone_pos-target_uv_2).normalized();
+    if((drone_pos-att_pos).norm()>0.01){
       auto att_1 = std::make_shared<AttractionPotential>(att_pos, A);  
       policies.push_back(att_1);
-
       //vis attraction
       publish_attraction_vis(drone_pos, att_pos);
     }
+    
+    //attraction police is triggered under condition to avoid nonefinite integration
+    // Eigen::Vector3d att_pos = (target_uv_1+target_uv_2)*0.5;
+    // if((drone_pos-att_pos).norm()>0.01){
+    //   auto att_1 = std::make_shared<AttractionPotential>(att_pos, A);  
+    //   policies.push_back(att_1);
+    //   //vis attraction
+    //   publish_attraction_vis(drone_pos, att_pos);
+    // }
 
-    if(obs_list_.at(0).norm()<10.0){
-      auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(0), A);  
-      policies.push_back(geo_fabric_obs);
-      // auto geo_fabric_obs_2 = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(2), A);  
-      // policies.push_back(geo_fabric_obs_2);
-    }
+    // if(obs_list_.at(0).norm()<10.0){
+    //   auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(0), A);  
+    //   policies.push_back(geo_fabric_obs);
+    //   // auto geo_fabric_obs_2 = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(2), A);  
+    //   // policies.push_back(geo_fabric_obs_2);
+    // }
     // for(int i=0; i<1;i++){
     //   auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(i), A);  
     //   policies.push_back(geo_fabric_obs);
     // }
 
     // obs avoid based on rope_sim
-    if(push_rope_dir_.norm()<10.0){
-      auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, A);  
-      policies.push_back(geo_fabric_link);
+    Eigen::Vector3d M_obs_link;
+    auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, A);  
+    policies.push_back(geo_fabric_link);
+
+    // rope len limit
+    Eigen::Vector3d M_len_lim;
+    Eigen::Vector3d rope_seg_1 = target_uv_1-drone_pos;
+    if(rope_seg_1.norm()>5.0){
+      rope_seg_1 = (rope_seg_1.norm()-5.0)*rope_seg_1.normalized();
+      auto geo_fabric_lim = std::make_shared<LinkCollisionAvoidGeometric>(rope_seg_1, A);  
+      policies.push_back(geo_fabric_lim);
+      // std::cout <<"retraction requested"<< std::endl;
     }
+
+    //safe dist to the ground
+    Eigen::Vector3d ground_point;
+    ground_point << drone_pos.x(), drone_pos.y(), -0.5;
+    auto safe_dist_ground = std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
+    policies.push_back(safe_dist_ground);
+
+
+
 
     // obs avoid based on straint rope model-------------------------------------------------
     // // obs point sorted by distance to the link
@@ -342,8 +365,8 @@ void VoliroRopePlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr&
   hose_path = build_hose_model(hose_key_points);
   hose_path_pub.publish(hose_path);
 
-  //visualize the obs:
-  publish_obs_vis(obs_list_);
+  //visualize the sphere obs:
+  // publish_obs_vis(obs_list_);
 }
 
 void VoliroRopePlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_wall) {
@@ -451,7 +474,7 @@ void VoliroRopePlanner::publish_repulsion_vis(Eigen::Vector3d start, Eigen::Vect
   marker.color.a = 1.0;
   marker.color.r = 0.9;
   marker.color.g = 0.3;
-  marker.color.b = 0.3;
+  marker.color.b = 0.9;
   marker.lifetime = ros::Duration(0.5);
 
   repulsion_pub_.publish(marker);
@@ -597,29 +620,29 @@ void VoliroRopePlanner::ropeUpdateCallback(const visualization_msgs::MarkerConst
     node_vec(2) = node.z;
     rope_nodes_vec_.push_back(node_vec);
 
-    //find the node closest to the drone
-    double node_drone_dist = (node_vec-drone_pos).norm();
-    if(node_drone_dist<min_dist){
-      min_dist = node_drone_dist;
-      min_dist_idx = idx;
-    }
+    // //find the node closest to the drone
+    // double node_drone_dist = (node_vec-drone_pos).norm();
+    // if(node_drone_dist<min_dist){
+    //   min_dist = node_drone_dist;
+    //   min_dist_idx = idx;
+    // }
 
-    //Find the node closest to the external obs
-    //To enable surface operation of the end-effector,
-    //ignore some connected rope nodes for collision check
-    if(idx == 1){
-      end_obs_dist = (rope_nodes_vec_.at(0)- obs_list_.at(0)).norm();
-      double interval = (rope_nodes_vec_.at(0)-rope_nodes_vec_.at(1)).norm();
-      start_idx = 1+(rope_safe_dist_-end_obs_dist)/interval;
-    }
-    if(idx > start_idx){
-      double node_obs_dist = (node_vec-obs_list_.at(0)).norm();
-      if(node_obs_dist<min_obs_dist){
-        min_obs_dist = node_obs_dist;
-        min_obs_dist_dix = idx;
-      }
-    }
-    idx++;
+    // //Find the node closest to the external obs
+    // //To enable surface operation of the end-effector,
+    // //ignore some connected rope nodes for collision check
+    // if(idx == 1){
+    //   end_obs_dist = (rope_nodes_vec_.at(0)- obs_list_.at(0)).norm();
+    //   double interval = (rope_nodes_vec_.at(0)-rope_nodes_vec_.at(1)).norm();
+    //   start_idx = 1+(rope_safe_dist_-end_obs_dist)/interval;
+    // }
+    // if(idx > start_idx){
+    //   double node_obs_dist = (node_vec-obs_list_.at(0)).norm();
+    //   if(node_obs_dist<min_obs_dist){
+    //     min_obs_dist = node_obs_dist;
+    //     min_obs_dist_dix = idx;
+    //   }
+    // }
+    // idx++;
   }
   std::cout<< "hooked_node_idx: "
             << min_dist_idx << std::endl;
@@ -628,15 +651,17 @@ void VoliroRopePlanner::ropeUpdateCallback(const visualization_msgs::MarkerConst
 
   //check rope collision 
   int min_id;
-  Eigen::Vector3d min_vec;
-  std::tie(min_id, min_vec) = path_search_->meshToRopeVec(rope_nodes_vec_);
-  publish_repulsion_vis(rope_nodes_vec_.at(min_id) - min_vec, 
-                        rope_nodes_vec_.at(min_id));
+  Eigen::Vector3d repulsion_cost;
+  double node_interval = (rope_nodes_vec_.at(0)-rope_nodes_vec_.at(1)).norm();
+  repulsion_cost = path_search_->meshToRopeVec(rope_nodes_vec_, 0, rope_nodes_vec_.size(), node_interval, 1.0);
+  publish_repulsion_vis(drone_pos, drone_pos+repulsion_cost);
 
   //calculate push rope direction on the controlable node
-  push_rope_dir_ = rope_nodes_vec_.at(min_obs_dist_dix) - obs_list_.at(0);
-  std::cout<< "push_rope_dir: "<< std::endl;
-  std::cout<< push_rope_dir_ << std::endl;
+  // push_rope_dir_ = rope_nodes_vec_.at(min_obs_dist_dix) - obs_list_.at(0);
+  push_rope_dir_ = repulsion_cost;
+  
+  // std::cout<< "push_rope_dir: "<< std::endl;
+  // std::cout<< push_rope_dir_ << std::endl;
 }
 
 void VoliroRopePlanner::loadMesh() {
