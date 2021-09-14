@@ -54,7 +54,6 @@ int main(int argc, char *argv[]) {
 
     rmp_planner->setTuning(tuning_1, newtuning_2);
     evaluationNode->plan(false, true, {9.63312, 5.56065, 7}, {9.37443, 2.55775, 3.22736});
-
   }
 
   return 0;

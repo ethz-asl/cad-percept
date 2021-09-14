@@ -131,11 +131,11 @@
   <arg name="rope_node_num" default="70"/>
   <arg name="rope_node_mass" default="0.02"/>
   <arg name="spring_ks" default="100.0"/>
-  <arg name="spring_rest_len" default="0.15"/>
+  <arg name="spring_rest_len" default="0.2"/>
   <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
   <arg name="pulley_radius" default="0.5"/>
   <arg name="update_interval" default="0.1"/>
-  <arg name="hooked_node_idx" default="30"/>
+  <arg name="hooked_node_idx" default="20"/>
 
 
   <node pkg="rope_sim_ros" name="rope_sim_ros" type="rope_sim_ros_example" output="screen">

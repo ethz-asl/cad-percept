@@ -119,15 +119,15 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
     auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, A);  
     policies.push_back(geo_fabric_link);
 
-    // rope len limit
-    Eigen::Vector3d M_len_lim;
-    Eigen::Vector3d rope_seg_1 = target_uv_1-drone_pos;
-    if(rope_seg_1.norm()>5.0){
-      rope_seg_1 = (rope_seg_1.norm()-5.0)*rope_seg_1.normalized();
-      auto geo_fabric_lim = std::make_shared<LinkCollisionAvoidGeometric>(rope_seg_1, A);  
-      policies.push_back(geo_fabric_lim);
-      // std::cout <<"retraction requested"<< std::endl;
-    }
+    // // rope len limit
+    // Eigen::Vector3d M_len_lim;
+    // Eigen::Vector3d rope_seg_1 = target_uv_1-drone_pos;
+    // if(rope_seg_1.norm()>5.0){
+    //   rope_seg_1 = (rope_seg_1.norm()-5.0)*rope_seg_1.normalized();
+    //   auto geo_fabric_lim = std::make_shared<LinkCollisionAvoidGeometric>(rope_seg_1, A);  
+    //   policies.push_back(geo_fabric_lim);
+    //   // std::cout <<"retraction requested"<< std::endl;
+    // }
 
     //safe dist to the ground
     Eigen::Vector3d ground_point;

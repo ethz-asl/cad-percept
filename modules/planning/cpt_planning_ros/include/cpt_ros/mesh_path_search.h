@@ -50,17 +50,15 @@ class MeshPathSearch {
     return num;
   }
 
-  Point rayGenerate(Point init_p, Point target_p, double angle, Eigen::Vector3d axis){
+  Point rayGenAngleAxis(Point init_p, Point target_p, double angle, Eigen::Vector3d axis){
     Eigen::AngleAxisd angleAxis(angle, axis);
-    Eigen::Vector3d vec = {target_p.x()-init_p.x(),
+    Eigen::Vector3d vec(target_p.x()-init_p.x(),
                         target_p.y()-init_p.y(),
-                        target_p.z()-init_p.z(),
-                        };
+                        target_p.z()-init_p.z());
     Eigen::Vector3d rot_vec = angleAxis.matrix()*vec;
     Point p(init_p.x()+rot_vec.x(),
                   init_p.y()+rot_vec.y(),
-                  init_p.z()+rot_vec.z()
-                  );
+                  init_p.z()+rot_vec.z());
     return p;
   }
 
@@ -68,10 +66,11 @@ class MeshPathSearch {
     Point new_target = target_p;
     for(double angle=0; angle<=2*M_PI; angle += interval_angle){
       rayMeshIntersection(init_p, new_target);
-      new_target = rayGenerate(init_p, target_p, angle, axis);
+      new_target = rayGenAngleAxis(init_p, target_p, angle, axis);
     }
   }
 
+//weighted metrics
   Eigen::Vector3d meshToRopeVec(
     std::vector<Eigen::Vector3d> rope, int start_idx, int end_idx,
     double node_dist, double safe_dist){
@@ -88,7 +87,7 @@ class MeshPathSearch {
         repulsion_vec.norm()+(node_id-start_idx)*node_dist < safe_dist){
         continue;
       }
-      repulsion_cost = repulsion_cost + repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),8));
+      repulsion_cost = repulsion_cost + repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),3));
     }
     repulsion_cost = repulsion_cost.normalized()*repulsion_cost.norm()/rope.size();
     return repulsion_cost;
