@@ -116,7 +116,7 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
 
     // obs avoid based on rope_sim
     Eigen::Vector3d M_obs_link;
-    auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, A);  
+    auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, last_push_rope_dir_, A);  
     policies.push_back(geo_fabric_link);
 
     // // rope len limit
@@ -658,6 +658,7 @@ void VoliroRopePlanner::ropeUpdateCallback(const visualization_msgs::MarkerConst
 
   //calculate push rope direction on the controlable node
   // push_rope_dir_ = rope_nodes_vec_.at(min_obs_dist_dix) - obs_list_.at(0);
+  last_push_rope_dir_ = push_rope_dir_;
   push_rope_dir_ = repulsion_cost;
   
   // std::cout<< "push_rope_dir: "<< std::endl;

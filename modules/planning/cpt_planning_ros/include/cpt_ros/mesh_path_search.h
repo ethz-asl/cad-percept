@@ -87,7 +87,7 @@ class MeshPathSearch {
         repulsion_vec.norm()+(node_id-start_idx)*node_dist < safe_dist){
         continue;
       }
-      repulsion_cost = repulsion_cost + repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),3));
+      repulsion_cost = repulsion_cost + repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),8));
     }
     repulsion_cost = repulsion_cost.normalized()*repulsion_cost.norm()/rope.size();
     return repulsion_cost;

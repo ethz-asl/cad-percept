@@ -175,6 +175,8 @@ class VoliroRopePlanner{
   std::vector<Eigen::Vector3d> rope_nodes_vec_;
   int hooked_node_idx_{0};
   Eigen::Vector3d push_rope_dir_{99.,99.,99.};
+  Eigen::Vector3d last_push_rope_dir_{99.,99.,99.};
+
 
 
   // Configuration
