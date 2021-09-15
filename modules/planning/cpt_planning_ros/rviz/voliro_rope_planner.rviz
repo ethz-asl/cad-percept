@@ -241,7 +241,7 @@ Visualization Manager:
         "": true
       Queue Size: 100
       Value: true
-    - Alpha: 0.20000000298023224
+    - Alpha: 0.800000011920929
       Backface Culling: false
       Class: cgal_visualizations/TriangleMeshDisplay
       Edge Color: 0; 0; 0
@@ -312,10 +312,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: -0.015203861519694328
+      Pitch: 0.2697962522506714
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.3568373918533325
+      Yaw: 1.376836895942688
     Saved: ~
 Window Geometry:
   Displays:

@@ -319,7 +319,7 @@ nav_msgs::Path VoliroRopePlanner::build_hose_model(std::vector<Eigen::Vector3d> 
 
 //read new goal and calculate the trajectory
 void VoliroRopePlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
-  ROS_INFO("VoliroRopePlanner::goalCallback");
+  // ROS_INFO("VoliroRopePlanner::goalCallback");
 
   // read pos of the new end-effector
   goal_b_(0) = msg->pose.position.x;
@@ -644,8 +644,8 @@ void VoliroRopePlanner::ropeUpdateCallback(const visualization_msgs::MarkerConst
     // }
     // idx++;
   }
-  std::cout<< "hooked_node_idx: "
-            << min_dist_idx << std::endl;
+  // std::cout<< "hooked_node_idx: "
+  //           << min_dist_idx << std::endl;
   // std::cout<< "obs_avoid_node_idx: "
   //           << min_obs_dist_dix << std::endl;
 

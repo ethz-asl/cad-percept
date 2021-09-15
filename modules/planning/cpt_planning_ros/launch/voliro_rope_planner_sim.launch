@@ -164,6 +164,14 @@
 
     <remap from="rope_sim_ros/obj_odometry" to="/$(arg mav_name)/ground_truth/odometry" />
     <remap from="rope_sim_ros/joy" to="/joy" />
+
+    <param name="mesh_frame" type="string" value="mesh" />
+    <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" />
+
+    <param name="body_frame" type="string" value="voliro_tri/base_link" />
+    <param name="enu_frame" type="string" value="enu" />
+    <param name="odom_frame" type="string" value="world" />
+    <param name="current_reference_frame" value="current_reference" />
   </node>
 
   <!-- ========== Sensor reading visualization in RViz ========== -->
