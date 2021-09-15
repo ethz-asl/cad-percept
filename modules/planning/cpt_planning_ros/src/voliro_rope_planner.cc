@@ -26,9 +26,11 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
   //timer
   tf_update_timer_ = nh_.createTimer(ros::Duration(1), &VoliroRopePlanner::tfUpdateCallback,
                                 this);  // update TF's every second
-
   //read params
   readConfig();
+  rope_update_timer_ = nh.createTimer(ros::Duration(update_interval_), 
+                                      &VoliroRopePlanner::ropeUpdateCallback, this);
+
   //read mesh model
   loadMesh();
 }
@@ -518,23 +520,36 @@ void VoliroRopePlanner::readConfig() {
   double zero_z = nh_private_.param("zero_z", 0.0);
   fixed_params_.mesh_zero = {zero_x, zero_y, zero_z};
 
-
-  Eigen::Vector3d start_node_pos(-4., 0.75 , 0.);
-  Eigen::Vector3d end_node_pos(1., 0.75, 0.);
   //the start node is fixed
-  nh_private_.param("rope_start_x", start_node_pos(0), -4.0);
-  nh_private_.param("rope_start_y", start_node_pos(1), 0.75);
-  nh_private_.param("rope_start_z", start_node_pos(2), 0.0);
+  nh_private_.param("rope_start_x", start_node_pos_(0), -4.0);
+  nh_private_.param("rope_start_y", start_node_pos_(1), 0.75);
+  nh_private_.param("rope_start_z", start_node_pos_(2), 0.0);
   // the end is able to move 
-  nh_private_.param("rope_end_x", end_node_pos(0), 1.0);
-  nh_private_.param("rope_end_y", end_node_pos(1), 0.75);
-  nh_private_.param("rope_end_z", end_node_pos(2), 0.0);
+  nh_private_.param("rope_end_x", end_node_pos_(0), 1.0);
+  nh_private_.param("rope_end_y", end_node_pos_(1), 0.75);
+  nh_private_.param("rope_end_z", end_node_pos_(2), 0.0);
+
+  //read rope related parameters
+  nh_private_.param("pulley_init_x", obj_pos_0_(0), -1.0);
+  nh_private_.param("pulley_init_y", obj_pos_0_(1), 0.5);
+  nh_private_.param("pulley_init_z", obj_pos_0_(2), -1.0);
+  nh_private_.param("pulley_free_yaw", pulley_free_yaw_, true);
+  nh_private_.param("rope_node_num", rope_node_num_, 50);
+  nh_private_.param("rope_node_mass", rope_node_mass_, float(1.0));
+  nh_private_.param("spring_ks", spring_ks_, float(100.0));
+  nh_private_.param("spring_rest_len", spring_rest_len_, 0.2);
+  nh_private_.param("pulley_friction", pulley_friction_, 0.02);
+  nh_private_.param("pulley_radius", pulley_radius_, 0.5);
+  nh_private_.param("update_interval", update_interval_, 0.1);
+  nh_private_.param("hooked_node_idx", hooked_node_idx_, 30);
+  obj_poses_.push_back(obj_pos_0_);
+
   //init the middel drone
   Eigen::Vector3d init_drone_pos;
-  init_drone_pos = 0.5*(start_node_pos + end_node_pos);
+  init_drone_pos = 0.5*(start_node_pos_ + end_node_pos_);
   resetIntegrator(init_drone_pos, {0.,0.,0.});
   //init the rope model 
-  setTuning({0.7, 13.6, 0.4}, {20.0, 30.0, 0.01}, start_node_pos, end_node_pos, 0.01);
+  setTuning({0.7, 13.6, 0.4}, {20.0, 30.0, 0.01}, start_node_pos_, end_node_pos_, 0.01);
 }
 
 
@@ -594,6 +609,19 @@ void VoliroRopePlanner::tfUpdateCallback(const ros::TimerEvent &event) {
   frames_received_ = true;
 
   publishMarkers();
+}
+
+void VoliroRopePlanner::ropeUpdateCallback(const ros::TimerEvent &event){
+  float steps_per_frame = 64.0;
+  Eigen::Vector3d gravity(0., 0., -9.8);
+  for (int i = 0; i < steps_per_frame; i++) {
+    ropeVerlet->simVerletMovEnd(update_interval_/steps_per_frame, gravity);
+    //update pulley free yaw
+    // if(pulley_free_yaw){
+    //   pulley_yaw_vec = start_node_pos - ropeVerlet->masses.at(0)->position;
+    // }
+  }
+  ropeVerlet->mesh_collision_update();
 }
 
 void VoliroRopePlanner::ropeUpdateCallback(const visualization_msgs::MarkerConstPtr &rope) {
@@ -701,6 +729,12 @@ void VoliroRopePlanner::loadMesh() {
 
   // init path search
   path_search_ = new cad_percept::MeshPathSearch(model_enu_);
+  // init rope mand mesh collision model
+  ropeVerlet = new ropesim::Rope(end_node_pos_, start_node_pos_, rope_node_num_, rope_node_mass_,
+                    spring_ks_, spring_rest_len_, {0,hooked_node_idx_,rope_node_num_-1}, obj_poses_,
+                    pulley_friction_, pulley_radius_, model_enu_);
+
+
 }
 
 void VoliroRopePlanner::publishMarkers() {

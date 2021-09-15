@@ -34,6 +34,10 @@
 // add path search
 #include <cpt_ros/mesh_path_search.h>
 
+//rope model
+#include <rope.h>
+
+
 #include <iostream>
 #include <tuple>
 
@@ -118,7 +122,7 @@ class VoliroRopePlanner{
   void odometryCallback(const nav_msgs::OdometryConstPtr &odom);
   void ropeUpdateCallback(const visualization_msgs::MarkerConstPtr &rope);
   void tfUpdateCallback(const ros::TimerEvent &event);
-
+  void ropeUpdateCallback(const ros::TimerEvent &event);
 
   //-------------------------------------------------------
   ros::NodeHandle nh_private_, nh_;
@@ -150,6 +154,7 @@ class VoliroRopePlanner{
   // timer
   ros::Timer tf_update_timer_;
   ros::Timer obs_update_timer_;
+  ros::Timer rope_update_timer_;
 
 
 
@@ -189,6 +194,21 @@ class VoliroRopePlanner{
   
   bool mesh_loaded_{false};
 
+  //rope
+  ropesim::Rope *ropeVerlet;
+  Eigen::Vector3d start_node_pos_{1., 0.75 , 4.};
+  Eigen::Vector3d end_node_pos_{-4., 0.75, 4.};
+  Eigen::Vector3d obj_pos_0_{-1.5, 0.5, 3.};
+  Eigen::Vector3d pulley_yaw_vec_;
+  bool pulley_free_yaw_;
+  float rope_node_mass_;
+  float spring_ks_;
+  int rope_node_num_;
+  double spring_rest_len_;
+  double pulley_friction_;
+  double pulley_radius_;
+  double update_interval_;//sec
+  vector<Eigen::Vector3d> obj_poses_;
 
 };
 }  // namespace planning
