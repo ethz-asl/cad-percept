@@ -77,19 +77,19 @@ class MeshPathSearch {
     //find the closest rope to mesh face vector
     Eigen::Vector3d min_repulsion_vec;
     Eigen::Vector3d repulsion_cost = Eigen::Vector3d::Zero();
-    int min_node_id;
-    for(int node_id = start_idx; node_id<end_idx; node_id++){
-      Eigen::Vector3d node = rope.at(node_id);
-      cgal::PointAndPrimitiveId ppid = mesh_model_->getClosestTriangle(node.x(),node.y(),node.z());
-      Eigen::Vector3d p_on_mesh(ppid.first.x(),ppid.first.y(),ppid.first.z());
-      Eigen::Vector3d repulsion_vec = node-p_on_mesh;
-      if(start_idx == 0 && 
-        repulsion_vec.norm()+(node_id-start_idx)*node_dist < safe_dist){
-        continue;
-      }
-      repulsion_cost = repulsion_cost + repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),8));
-    }
-    repulsion_cost = repulsion_cost.normalized()*repulsion_cost.norm()/rope.size();
+    // int min_node_id;
+    // for(int node_id = start_idx; node_id<end_idx; node_id++){
+    //   Eigen::Vector3d node = rope.at(node_id);
+    //   cgal::PointAndPrimitiveId ppid = mesh_model_->getClosestTriangle(node.x(),node.y(),node.z());
+    //   Eigen::Vector3d p_on_mesh(ppid.first.x(),ppid.first.y(),ppid.first.z());
+    //   Eigen::Vector3d repulsion_vec = node-p_on_mesh;
+    //   if(start_idx == 0 && 
+    //     repulsion_vec.norm()+(node_id-start_idx)*node_dist < safe_dist){
+    //     continue;
+    //   }
+    //   repulsion_cost = repulsion_cost + repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),8));
+    // }
+    // repulsion_cost = repulsion_cost.normalized()*repulsion_cost.norm()/rope.size();
     return repulsion_cost;
   }
 

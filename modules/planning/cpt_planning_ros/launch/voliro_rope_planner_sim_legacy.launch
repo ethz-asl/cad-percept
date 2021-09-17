@@ -83,19 +83,6 @@
   <arg name="pulley_init_y" default="0.0"/>
   <arg name="pulley_init_z" default="0.2"/>
 
-
-  <!-- rope  -->
-  <arg name="pulley_free_yaw" default="true"/>
-  <arg name="rope_node_num" default="70"/>
-  <arg name="rope_node_mass" default="0.02"/>
-  <arg name="spring_ks" default="100.0"/>
-  <arg name="spring_rest_len" default="0.2"/>
-  <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
-  <arg name="pulley_radius" default="0.5"/>
-  <arg name="update_interval" default="0.1"/>
-  <arg name="hooked_node_idx" default="20"/>
-
-
   <!-- Motion planner based on opt fabric  -->
   <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen">
 
@@ -124,6 +111,42 @@
     <param name="mesh_frame" type="string" value="mesh" />
     <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" />
 
+    <remap from="opt_fabric_planner/cmd_trajectory" to="/$(arg mav_name)/command/trajectory" />
+    <remap from="opt_fabric_planner/odometry" to="/$(arg mav_name)/ground_truth/odometry" />
+    <remap from="opt_fabric_planner/rope_vis" to="/rope_sim_ros/rope_vis" />
+    <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
+
+  </node>
+
+  <!-- joystick to control the behaviour of the end point  -->
+  <node pkg="joy" name="joystick_interface" type="joy_node" output="screen">
+     <rosparam>
+       joy_node/dev: "/dev/input/js0"
+     </rosparam>
+  </node>
+
+  <!-- rope simulator -->
+
+  <arg name="pulley_free_yaw" default="true"/>
+  <arg name="rope_node_num" default="70"/>
+  <arg name="rope_node_mass" default="0.02"/>
+  <arg name="spring_ks" default="100.0"/>
+  <arg name="spring_rest_len" default="0.2"/>
+  <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
+  <arg name="pulley_radius" default="0.5"/>
+  <arg name="update_interval" default="0.1"/>
+  <arg name="hooked_node_idx" default="20"/>
+
+
+  <node pkg="rope_sim_ros" name="rope_sim_ros" type="rope_sim_ros_example" output="screen">
+    <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>
+    <param name="rope_start_y" value="$(arg rope_start_y)" type="double"/>
+    <param name="rope_start_z" value="$(arg rope_start_z)" type="double"/>
+
+    <param name="rope_end_x" value="$(arg rope_end_x)" type="double"/>
+    <param name="rope_end_y" value="$(arg rope_end_y)" type="double"/>
+    <param name="rope_end_z" value="$(arg rope_end_z)" type="double"/>
+
     <param name="pulley_init_x" value="$(arg pulley_init_x)" type="double"/>
     <param name="pulley_init_y" value="$(arg pulley_init_y)" type="double"/>
     <param name="pulley_init_z" value="$(arg pulley_init_z)" type="double"/>
@@ -138,20 +161,17 @@
     <param name="update_interval" value="$(arg update_interval)" type="double"/>
     <param name="hooked_node_idx" value="$(arg hooked_node_idx)" type="int"/>
 
-    <remap from="opt_fabric_planner/cmd_trajectory" to="/$(arg mav_name)/command/trajectory" />
-    <remap from="opt_fabric_planner/odometry" to="/$(arg mav_name)/ground_truth/odometry" />
-    <remap from="opt_fabric_planner/rope_vis" to="/rope_sim_ros/rope_vis" />
-    <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
-    <remap from="opt_fabric_planner/joy" to="/joy" />
 
+    <remap from="rope_sim_ros/obj_odometry" to="/$(arg mav_name)/ground_truth/odometry" />
+    <remap from="rope_sim_ros/joy" to="/joy" />
 
-  </node>
+    <param name="mesh_frame" type="string" value="mesh" />
+    <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" />
 
-  <!-- joystick to control the behaviour of the end point  -->
-  <node pkg="joy" name="joystick_interface" type="joy_node" output="screen">
-     <rosparam>
-       joy_node/dev: "/dev/input/js0"
-     </rosparam>
+    <param name="body_frame" type="string" value="voliro_tri/base_link" />
+    <param name="enu_frame" type="string" value="enu" />
+    <param name="odom_frame" type="string" value="world" />
+    <param name="current_reference_frame" value="current_reference" />
   </node>
 
   <!-- ========== Sensor reading visualization in RViz ========== -->

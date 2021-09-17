@@ -18,6 +18,7 @@
 
 #include <mav_msgs/conversions.h>
 #include <mav_trajectory_generation_ros/ros_visualization.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <nav_msgs/Path.h>
@@ -25,6 +26,8 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <sensor_msgs/Joy.h>
+
 
 // add mesh
 #include <cgal_definitions/mesh_model.h>
@@ -98,6 +101,7 @@ class VoliroRopePlanner{
   void publishMarkers();
   void publish_attraction_vis(Eigen::Vector3d start, Eigen::Vector3d end);
   void publish_repulsion_vis(Eigen::Vector3d start, Eigen::Vector3d end);
+  void publish_rope_vis(std::vector<ropesim::Mass *> &rope_masses);
 
   inline const std::string getName() const {
     return "NA";
@@ -123,6 +127,7 @@ class VoliroRopePlanner{
   void ropeUpdateCallback(const visualization_msgs::MarkerConstPtr &rope);
   void tfUpdateCallback(const ros::TimerEvent &event);
   void ropeUpdateCallback(const ros::TimerEvent &event);
+  void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
 
   //-------------------------------------------------------
   ros::NodeHandle nh_private_, nh_;
@@ -146,11 +151,15 @@ class VoliroRopePlanner{
   ros::Publisher pub_trajectory_;  // commanded trajectory
   ros::Publisher attraction_pub_;
   ros::Publisher repulsion_pub_;
+  ros::Publisher rope_vis_pub_;
+  ros::Publisher moving_target_pub_;
   
   // sub
   ros::Subscriber sub_odometry_;  // curent odom
   ros::Subscriber rope_nodes_sub;  // curent rope nodes positions
   ros::Subscriber moving_target_sub;
+  ros::Subscriber joy_sub_;
+
   // timer
   ros::Timer tf_update_timer_;
   ros::Timer obs_update_timer_;
