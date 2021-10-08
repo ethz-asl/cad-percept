@@ -61,10 +61,10 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
   // set up policies
   Eigen::Matrix3d A{Eigen::Matrix3d::Identity()};
 
-  // auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
-  // auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
-  // auto att_1 = std::make_shared<AttractionPotential>(
-  //               (target_uv_1+target_uv_2)*0.5, A);  // 
+                    // auto pol_2 = std::make_shared<BalancePotential>(target_uv_1, target_uv_2, A);  // 
+                    // auto geo_fabric_1 = std::make_shared<AttractionGeometric>(target_uv_1, A);  // 
+                    // auto att_1 = std::make_shared<AttractionPotential>(
+                    //               (target_uv_1+target_uv_2)*0.5, A);  // 
 
   std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
 
@@ -78,129 +78,168 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
   for (double t = 0; t < max_traject_duration_; t += dt_) {
     Eigen::Vector3d drone_pos, drone_vel, drone_acc;
     integrator.getState(&drone_pos, &drone_vel, &drone_acc);
-    // std::cout << " root_vel: " << drone_vel(0) <<"; "
-    //           << drone_vel(1) <<"; "
-    //           << drone_vel(2) 
-    //           << std::endl;
+                    // std::cout << " root_vel: " << drone_vel(0) <<"; "
+                    //           << drone_vel(1) <<"; "
+                    //           << drone_vel(2) 
+                    //           << std::endl;
 
-    // add collision avoid policies when needed:
-    // obs point sorted by distance to the drone (shortest distance first)
-    // std::sort( obs_list_.begin( ), obs_list_.end( ), 
-    //   [drone_pos]( const auto& obs_1, const auto& obs_2 )
-    //   {
-    //     return (obs_1-drone_pos).norm() < (obs_2-drone_pos).norm();
-    //   });
+                    // add collision avoid policies when needed:
+                    // obs point sorted by distance to the drone (shortest distance first)
+                    // std::sort( obs_list_.begin( ), obs_list_.end( ), 
+                    //   [drone_pos]( const auto& obs_1, const auto& obs_2 )
+                    //   {
+                    //     return (obs_1-drone_pos).norm() < (obs_2-drone_pos).norm();
+                    //   });
 
     policies.clear();
 
+
+    //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> forcing_policies;
+    forcing_policies.clear();
+    //speed control test
     Eigen::Vector3d att_pos = target_uv_2+4.0*(drone_pos-target_uv_2).normalized();
-    if((drone_pos-att_pos).norm()>0.01){
-      auto att_1 = std::make_shared<AttractionPotential>(att_pos, A);  
-      policies.push_back(att_1);
-      //vis attraction
-      publish_attraction_vis(drone_pos, att_pos);
+    auto force_policy_spec_1 = std::make_shared<OptimizationPotential>(att_pos, A);  
+    forcing_policies.push_back(force_policy_spec_1);
+
+    // get current configuration space position and convert to
+    //  task space.
+    RMPG::StateQ current_stateQ{drone_pos, drone_vel};
+    RMPG::StateX current_stateX = manifold_->convertToX(current_stateQ);
+    // evaluate forcing policy and get new accelerations
+    std::vector<rmpcpp::PolicyBase<LinSpace>::PValue> evaluated_forc_policies;
+    evaluated_forc_policies.resize(forcing_policies.size());
+    auto geometry_at_position = manifold_->at(current_stateX);
+
+    for (int i=0; i< forcing_policies.size(); i++){
+      geometry_at_position.pull(*forcing_policies[i],&evaluated_forc_policies[i]);
     }
-    
-    //attraction police is triggered under condition to avoid nonefinite integration
-    // Eigen::Vector3d att_pos = (target_uv_1+target_uv_2)*0.5;
+
+    RMPG::MatrixQ  pulled_M_forc;
+    RMPG::VectorQ  pulled_acc_forc;
+    RMPG::VectorX  x_to_opt;
+
+    RMPG::MatrixQ sum_ai = RMPG::MatrixQ::Zero();
+    RMPG::VectorQ sum_ai_fi = RMPG::VectorQ::Zero();
+
+    for (const auto &RMPBase : evaluated_forc_policies) {
+      sum_ai += RMPBase.A_;
+      sum_ai_fi += RMPBase.A_ * RMPBase.f_;
+    }
+    pulled_acc_forc = pinv(sum_ai) * sum_ai_fi;  //weighted average
+    pulled_M_forc = sum_ai;
+    x_to_opt = drone_pos - att_pos;
+    //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+    // Eigen::Vector3d att_pos = target_uv_2+4.0*(drone_pos-target_uv_2).normalized();
     // if((drone_pos-att_pos).norm()>0.01){
     //   auto att_1 = std::make_shared<AttractionPotential>(att_pos, A);  
     //   policies.push_back(att_1);
     //   //vis attraction
     //   publish_attraction_vis(drone_pos, att_pos);
     // }
+    
+                    //attraction police is triggered under condition to avoid nonefinite integration
+                    // Eigen::Vector3d att_pos = (target_uv_1+target_uv_2)*0.5;
+                    // if((drone_pos-att_pos).norm()>0.01){
+                    //   auto att_1 = std::make_shared<AttractionPotential>(att_pos, A);  
+                    //   policies.push_back(att_1);
+                    //   //vis attraction
+                    //   publish_attraction_vis(drone_pos, att_pos);
+                    // }
 
-    // if(obs_list_.at(0).norm()<10.0){
-    //   auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(0), A);  
-    //   policies.push_back(geo_fabric_obs);
-    //   // auto geo_fabric_obs_2 = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(2), A);  
-    //   // policies.push_back(geo_fabric_obs_2);
-    // }
-    // for(int i=0; i<1;i++){
-    //   auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(i), A);  
-    //   policies.push_back(geo_fabric_obs);
-    // }
+                    // if(obs_list_.at(0).norm()<10.0){
+                    //   auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(0), A);  
+                    //   policies.push_back(geo_fabric_obs);
+                    //   // auto geo_fabric_obs_2 = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(2), A);  
+                    //   // policies.push_back(geo_fabric_obs_2);
+                    // }
+                    // for(int i=0; i<1;i++){
+                    //   auto geo_fabric_obs = std::make_shared<CollisionAvoidGeometric>(obs_list_.at(i), A);  
+                    //   policies.push_back(geo_fabric_obs);
+                    // }
 
-    // obs avoid based on rope_sim
-    Eigen::Vector3d M_obs_link;
-    auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, last_push_rope_dir_, A);  
-    policies.push_back(geo_fabric_link);
+    // // obs avoid based on rope_sim
+    // Eigen::Vector3d M_obs_link;
+    // auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, last_push_rope_dir_, A);  
+    // policies.push_back(geo_fabric_link);
 
-    // // rope len limit
-    // Eigen::Vector3d M_len_lim;
-    // Eigen::Vector3d rope_seg_1 = target_uv_1-drone_pos;
-    // if(rope_seg_1.norm()>5.0){
-    //   rope_seg_1 = (rope_seg_1.norm()-5.0)*rope_seg_1.normalized();
-    //   auto geo_fabric_lim = std::make_shared<LinkCollisionAvoidGeometric>(rope_seg_1, A);  
-    //   policies.push_back(geo_fabric_lim);
-    //   // std::cout <<"retraction requested"<< std::endl;
-    // }
+                  // // rope len limit
+                  // Eigen::Vector3d M_len_lim;
+                  // Eigen::Vector3d rope_seg_1 = target_uv_1-drone_pos;
+                  // if(rope_seg_1.norm()>5.0){
+                  //   rope_seg_1 = (rope_seg_1.norm()-5.0)*rope_seg_1.normalized();
+                  //   auto geo_fabric_lim = std::make_shared<LinkCollisionAvoidGeometric>(rope_seg_1, A);  
+                  //   policies.push_back(geo_fabric_lim);
+                  //   // std::cout <<"retraction requested"<< std::endl;
+                  // }
 
-    //safe dist to the ground
-    Eigen::Vector3d ground_point;
-    ground_point << drone_pos.x(), drone_pos.y(), -0.5;
-    auto safe_dist_ground = std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
-    policies.push_back(safe_dist_ground);
+    // //safe dist to the ground
+    // Eigen::Vector3d ground_point;
+    // ground_point << drone_pos.x(), drone_pos.y(), -0.5;
+    // auto safe_dist_ground = std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
+    // policies.push_back(safe_dist_ground);
 
+                  // obs avoid based on straint rope model-------------------------------------------------
+                  // // obs point sorted by distance to the link
+                  // auto link_obs_list = obs_list_;
+                  // auto another_node_pos = target_uv_2;
+                  // double end_drone_dist = (another_node_pos-drone_pos).norm();
+                  // std::sort( link_obs_list.begin( ), link_obs_list.end( ), 
+                  //   [end_drone_dist, another_node_pos, drone_pos]( const auto& obs_1, const auto& obs_2 )
+                  //   {
+                  //     double dist_1 = ((another_node_pos-drone_pos).cross(drone_pos-obs_1)).norm()/
+                  //                     end_drone_dist;
+                  //     double dist_2 = ((another_node_pos-drone_pos).cross(drone_pos-obs_2)).norm()/
+                  //                     end_drone_dist;
+                  //     return dist_1 < dist_2;
+                  //   });
 
+                  // for(auto link_obs : link_obs_list){
+                  //   double obs_drone_dist = (link_obs-drone_pos).norm(); 
+                  //   double cos_theta = (another_node_pos-drone_pos).dot(link_obs-drone_pos)/
+                  //                       (obs_drone_dist*end_drone_dist);
+                  //   if(obs_drone_dist<end_drone_dist && cos_theta>0.7){
+                  //     auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(
+                  //                         link_obs_list.at(0), target_uv_2, A);  
+                  //     policies.push_back(geo_fabric_link);
+                  //     break;
+                  //   }
+                  // }
 
+                  // // obs point sorted by distance to the link
+                  // link_obs_list = obs_list_;
+                  // another_node_pos = target_uv_1;
+                  // end_drone_dist = (another_node_pos-drone_pos).norm();
+                  // std::sort( link_obs_list.begin( ), link_obs_list.end( ), 
+                  //   [end_drone_dist, another_node_pos, drone_pos]( const auto& obs_1, const auto& obs_2 )
+                  //   {
+                  //     double dist_1 = ((another_node_pos-drone_pos).cross(drone_pos-obs_1)).norm()/
+                  //                     end_drone_dist;
+                  //     double dist_2 = ((another_node_pos-drone_pos).cross(drone_pos-obs_2)).norm()/
+                  //                     end_drone_dist;
+                  //     return dist_1 < dist_2;
+                  //   });
 
-    // obs avoid based on straint rope model-------------------------------------------------
-    // // obs point sorted by distance to the link
-    // auto link_obs_list = obs_list_;
-    // auto another_node_pos = target_uv_2;
-    // double end_drone_dist = (another_node_pos-drone_pos).norm();
-    // std::sort( link_obs_list.begin( ), link_obs_list.end( ), 
-    //   [end_drone_dist, another_node_pos, drone_pos]( const auto& obs_1, const auto& obs_2 )
-    //   {
-    //     double dist_1 = ((another_node_pos-drone_pos).cross(drone_pos-obs_1)).norm()/
-    //                     end_drone_dist;
-    //     double dist_2 = ((another_node_pos-drone_pos).cross(drone_pos-obs_2)).norm()/
-    //                     end_drone_dist;
-    //     return dist_1 < dist_2;
-    //   });
-
-    // for(auto link_obs : link_obs_list){
-    //   double obs_drone_dist = (link_obs-drone_pos).norm(); 
-    //   double cos_theta = (another_node_pos-drone_pos).dot(link_obs-drone_pos)/
-    //                       (obs_drone_dist*end_drone_dist);
-    //   if(obs_drone_dist<end_drone_dist && cos_theta>0.7){
-    //     auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(
-    //                         link_obs_list.at(0), target_uv_2, A);  
-    //     policies.push_back(geo_fabric_link);
-    //     break;
-    //   }
-    // }
-
-    // // obs point sorted by distance to the link
-    // link_obs_list = obs_list_;
-    // another_node_pos = target_uv_1;
-    // end_drone_dist = (another_node_pos-drone_pos).norm();
-    // std::sort( link_obs_list.begin( ), link_obs_list.end( ), 
-    //   [end_drone_dist, another_node_pos, drone_pos]( const auto& obs_1, const auto& obs_2 )
-    //   {
-    //     double dist_1 = ((another_node_pos-drone_pos).cross(drone_pos-obs_1)).norm()/
-    //                     end_drone_dist;
-    //     double dist_2 = ((another_node_pos-drone_pos).cross(drone_pos-obs_2)).norm()/
-    //                     end_drone_dist;
-    //     return dist_1 < dist_2;
-    //   });
-
-    // for(auto link_obs : link_obs_list){
-    //   double obs_drone_dist = (link_obs-drone_pos).norm(); 
-    //   double cos_theta = (another_node_pos-drone_pos).dot(link_obs-drone_pos)/
-    //                       (obs_drone_dist*end_drone_dist);
-    //   if(obs_drone_dist<end_drone_dist && cos_theta>0.7){
-    //     auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(
-    //                         link_obs_list.at(0), target_uv_1, A);  
-    //     policies.push_back(geo_fabric_link);
-    //     break;
-    //   }
-    // }
-    //-------------------------------------------------------------------------------------------
-  
+                  // for(auto link_obs : link_obs_list){
+                  //   double obs_drone_dist = (link_obs-drone_pos).norm(); 
+                  //   double cos_theta = (another_node_pos-drone_pos).dot(link_obs-drone_pos)/
+                  //                       (obs_drone_dist*end_drone_dist);
+                  //   if(obs_drone_dist<end_drone_dist && cos_theta>0.7){
+                  //     auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(
+                  //                         link_obs_list.at(0), target_uv_1, A);  
+                  //     policies.push_back(geo_fabric_link);
+                  //     break;
+                  //   }
+                  // }
+                  //-------------------------------------------------------------------------------------------
+                
     //get next step
-    auto step_result = integrator.integrateStep(policies, manifold_, dt_);
+    double vel_desir = 1.0;
+    auto step_result = integrator.integrateStep(policies, 
+                                                pulled_M_forc, pulled_acc_forc, x_to_opt, 
+                                                manifold_, dt_, vel_desir);
 
     if (!step_result.allFinite()) {
       ROS_WARN("Error, nonfinite integration data, stopping integration");

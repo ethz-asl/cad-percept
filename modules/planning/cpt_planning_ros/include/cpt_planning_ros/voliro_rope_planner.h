@@ -7,13 +7,16 @@
 
 #include <rmpcpp/core/space.h>
 #include <rmpcpp/core/state.h>
-#include <rmpcpp/eval/trapezoidal_integrator.h>
+// #include <rmpcpp/eval/trapezoidal_integrator.h>
+#include <rmpcpp/eval/integrator_with_speed_control.h>
+
 #include <rmpcpp/policies/simple_target_policy.h>
 #include <rmpcpp/policies/end_effector_attraction.h>
 #include <rmpcpp/policies/acc_based_potential.h>
 #include <rmpcpp/policies/acc_potential_dist_balance.h>
 #include <rmpcpp/policies/collision_avoid.h>
 #include <rmpcpp/policies/link_collision_avoid.h>
+#include <rmpcpp/policies/optimization_potential.h>
 
 
 #include <mav_msgs/conversions.h>
@@ -56,7 +59,11 @@ class VoliroRopePlanner{
   using AttractionGeometric = rmpcpp::EndEffectorAttraction<LinSpace>;
   using CollisionAvoidGeometric = rmpcpp::CollisionAvoid<LinSpace>;
   using LinkCollisionAvoidGeometric = rmpcpp::LinkCollisionAvoid<LinSpace>;
-  using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
+  // using Integrator = rmpcpp::TrapezoidalIntegrator<rmpcpp::PolicyBase<LinSpace>, RMPG>;
+  using Integrator = rmpcpp::IntegratorSpeedControl<rmpcpp::PolicyBase<LinSpace>, RMPG>;
+
+  using OptimizationPotential = rmpcpp::OptimizationPotential<LinSpace>;
+
 
   struct FixedParams {
     std::string mesh_frame;
@@ -128,6 +135,12 @@ class VoliroRopePlanner{
   void tfUpdateCallback(const ros::TimerEvent &event);
   void ropeUpdateCallback(const ros::TimerEvent &event);
   void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
+
+  /// Convenience method for pseudo-inverse
+  template <int i, int j>
+  static inline Eigen::Matrix<double, i, j> pinv(const Eigen::Matrix<double, i, j> &M) {
+    return (M.completeOrthogonalDecomposition().pseudoInverse());
+  }
 
   //-------------------------------------------------------
   ros::NodeHandle nh_private_, nh_;
