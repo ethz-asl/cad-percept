@@ -67,7 +67,7 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
                     //               (target_uv_1+target_uv_2)*0.5, A);  // 
 
   std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
-
+  std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> forcing_policies; 
   // start integrating path
   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
   bool reached_criteria = false;
@@ -95,10 +95,12 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
 
 
     //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> forcing_policies;
     forcing_policies.clear();
     //speed control test
-    Eigen::Vector3d att_pos = target_uv_2+4.0*(drone_pos-target_uv_2).normalized();
+    Eigen::Vector3d att_pos = target_uv_2+2.0*(drone_pos-target_uv_2).normalized();
+
+    // std::cout<<"[DEBUG] att_pos "<<std::endl;
+    // std::cout<< att_pos <<std::endl;
     auto force_policy_spec_1 = std::make_shared<OptimizationPotential>(att_pos, A);  
     forcing_policies.push_back(force_policy_spec_1);
 
@@ -236,7 +238,9 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
                   //-------------------------------------------------------------------------------------------
                 
     //get next step
-    double vel_desir = 1.0;
+    double vel_desir = 2.0;
+    // ROS_WARN("[DEBUG] integrator.integrateStep");
+
     auto step_result = integrator.integrateStep(policies, 
                                                 pulled_M_forc, pulled_acc_forc, x_to_opt, 
                                                 manifold_, dt_, vel_desir);
