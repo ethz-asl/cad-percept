@@ -77,6 +77,8 @@ class MeshPathSearch {
     //find the closest rope to mesh face vector
     Eigen::Vector3d min_repulsion_vec;
     Eigen::Vector3d repulsion_cost = Eigen::Vector3d::Zero();
+
+
     // int min_node_id;
     // for(int node_id = start_idx; node_id<end_idx; node_id++){
     //   Eigen::Vector3d node = rope.at(node_id);
@@ -90,6 +92,8 @@ class MeshPathSearch {
     //   repulsion_cost = repulsion_cost + repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),8));
     // }
     // repulsion_cost = repulsion_cost.normalized()*repulsion_cost.norm()/rope.size();
+
+
     return repulsion_cost;
   }
 

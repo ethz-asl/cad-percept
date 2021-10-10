@@ -114,7 +114,7 @@
 
     <param name="traject_dt" value="0.01" type="double"/>
     <param name="max_traject_duration" value="0.1" type="double"/>
-    <param name="rope_safe_dist" value="1.5" type="double"/>
+    <param name="rope_safe_dist" value="0.5" type="double"/>
 
     <!-- <param name="zero_angle" type="double" value="0.0" />
     <param name="zero_x" type="double" value="0.0" />

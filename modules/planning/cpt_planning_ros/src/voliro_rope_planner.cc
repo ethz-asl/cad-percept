@@ -23,7 +23,7 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
 
   //sub
   sub_odometry_ = nh_.subscribe("odometry", 1, &VoliroRopePlanner::odometryCallback, this);
-  rope_nodes_sub = nh_.subscribe("rope_vis", 1, &VoliroRopePlanner::ropeUpdateCallback, this);
+  // rope_nodes_sub = nh_.subscribe("rope_vis", 1, &VoliroRopePlanner::ropeUpdateCallback, this);
   moving_target_sub = nh_.subscribe("moving_target", 10, &VoliroRopePlanner::goalCallback, 
                                 this);
   joy_sub_ = nh.subscribe<sensor_msgs::Joy>("joy", 10, &VoliroRopePlanner::joyCallback, this);
@@ -97,7 +97,7 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
     //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     forcing_policies.clear();
     //speed control test
-    Eigen::Vector3d att_pos = target_uv_2+2.0*(drone_pos-target_uv_2).normalized();
+    Eigen::Vector3d att_pos = target_uv_2+3.0*(drone_pos-target_uv_2).normalized();
 
     // std::cout<<"[DEBUG] att_pos "<<std::endl;
     // std::cout<< att_pos <<std::endl;
@@ -163,9 +163,17 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
                     // }
 
     // // obs avoid based on rope_sim
-    // Eigen::Vector3d M_obs_link;
-    // auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, last_push_rope_dir_, A);  
-    // policies.push_back(geo_fabric_link);
+    Eigen::Vector3d M_obs_link;
+    std::cout<<" push_rope_dir_ "<< push_rope_dir_ <<std::endl;
+    std::cout<<" last_push_rope_dir_ "<< last_push_rope_dir_ <<std::endl;
+
+    auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, last_push_rope_dir_, A);  
+    policies.push_back(geo_fabric_link);
+
+    // for(auto m : ropeVerlet->masses){
+    //   auto rope_node_avoid = std::make_shared<CollisionAvoidGeometric>(m->closest_vertex, A, 1.0, 1.0);  
+    //   policies.push_back(rope_node_avoid);
+    // }
 
                   // // rope len limit
                   // Eigen::Vector3d M_len_lim;
@@ -177,11 +185,15 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
                   //   // std::cout <<"retraction requested"<< std::endl;
                   // }
 
-    // //safe dist to the ground
-    // Eigen::Vector3d ground_point;
-    // ground_point << drone_pos.x(), drone_pos.y(), -0.5;
-    // auto safe_dist_ground = std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
-    // policies.push_back(safe_dist_ground);
+    //safe dist to the ground
+    Eigen::Vector3d ground_point;
+    ground_point << drone_pos.x(), drone_pos.y(), -0.1;
+    auto safe_dist_ground = std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
+    policies.push_back(safe_dist_ground);
+
+    //baseline
+    auto baseline_geom = std::make_shared<BaselineGeometric>(A); 
+    policies.push_back(baseline_geom);
 
                   // obs avoid based on straint rope model-------------------------------------------------
                   // // obs point sorted by distance to the link
@@ -561,7 +573,7 @@ void VoliroRopePlanner::readConfig() {
   nh_private_.param("traject_dt", dt_, 0.01);
   nh_private_.param("max_traject_duration", max_traject_duration_, 1.0);
   nh_private_.param<double>("zero_angle", fixed_params_.mesh_zero_angle, 0.0);
-  nh_private_.param("rope_safe_dist", rope_safe_dist_, 1.5);
+  nh_private_.param("rope_safe_dist", rope_safe_dist_, 0.5);
 
   double zero_x = nh_private_.param("zero_x", 0.0);
   double zero_y = nh_private_.param("zero_y", 0.0);
@@ -695,6 +707,41 @@ void VoliroRopePlanner::ropeUpdateCallback(const ros::TimerEvent &event){
   rope = ropeVerlet;
 
   publish_rope_vis(rope->masses);
+
+
+    // int min_node_id;
+    // for(int node_id = start_idx; node_id<end_idx; node_id++){
+    //   Eigen::Vector3d node = rope.at(node_id);
+    //   cgal::PointAndPrimitiveId ppid = mesh_model_->getClosestTriangle(node.x(),node.y(),node.z());
+    //   Eigen::Vector3d p_on_mesh(ppid.first.x(),ppid.first.y(),ppid.first.z());
+    //   Eigen::Vector3d repulsion_vec = node-p_on_mesh;
+    //   if(start_idx == 0 && 
+    //     repulsion_vec.norm()+(node_id-start_idx)*node_dist < safe_dist){
+    //     continue;
+    //   }
+    //   repulsion_cost = repulsion_cost + repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),8));
+    // }
+    // repulsion_cost = repulsion_cost.normalized()*repulsion_cost.norm()/rope.size();
+
+
+  Eigen::Vector3d repulsion_cost = Eigen::Vector3d::Zero();
+  for(auto m:ropeVerlet->masses){
+    Eigen::Vector3d repulsion_vec = m->position - m->closest_vertex;
+    // std::cout<<" m->closest_vertex "<<m->closest_vertex <<std::endl;
+
+    // if(node_id == 0 && 
+    //   repulsion_vec.norm()+(node_id-0)*spring_rest_len_ < rope_safe_dist_){
+    //   continue;
+    // }
+    double repul_norm = repulsion_vec.norm();
+    if(repul_norm-repul_norm == 0){
+      repulsion_cost +=  repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),8));
+    }
+  }
+  std::cout<<" repulsion_cost "<<repulsion_cost <<std::endl;
+
+  last_push_rope_dir_ = push_rope_dir_;
+  push_rope_dir_ = -1.0*repulsion_cost.normalized()*repulsion_cost.norm()/ropeVerlet->masses.size();;
 }
 
 void VoliroRopePlanner::publish_rope_vis(std::vector<ropesim::Mass *> &rope_masses){
@@ -810,9 +857,8 @@ void VoliroRopePlanner::ropeUpdateCallback(const visualization_msgs::MarkerConst
   // push_rope_dir_ = rope_nodes_vec_.at(min_obs_dist_dix) - obs_list_.at(0);
   last_push_rope_dir_ = push_rope_dir_;
   push_rope_dir_ = repulsion_cost;
-  
-  // std::cout<< "push_rope_dir: "<< std::endl;
-  // std::cout<< push_rope_dir_ << std::endl;
+  // std::cout<< "=============="<< std::endl;
+  // std::cout<< "push_rope_dir_: "<< push_rope_dir_ << std::endl;
 }
 
 void VoliroRopePlanner::loadMesh() {

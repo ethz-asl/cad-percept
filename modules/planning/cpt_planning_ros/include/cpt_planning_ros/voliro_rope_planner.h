@@ -17,6 +17,7 @@
 #include <rmpcpp/policies/collision_avoid.h>
 #include <rmpcpp/policies/link_collision_avoid.h>
 #include <rmpcpp/policies/optimization_potential.h>
+#include <rmpcpp/policies/baseline_geometry.h>
 
 
 #include <mav_msgs/conversions.h>
@@ -63,6 +64,8 @@ class VoliroRopePlanner{
   using Integrator = rmpcpp::IntegratorSpeedControl<rmpcpp::PolicyBase<LinSpace>, RMPG>;
 
   using OptimizationPotential = rmpcpp::OptimizationPotential<LinSpace>;
+  using BaselineGeometric = rmpcpp::BaselineGeometry<LinSpace>;
+
 
 
   struct FixedParams {
