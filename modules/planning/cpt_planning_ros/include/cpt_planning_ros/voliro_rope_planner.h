@@ -18,6 +18,7 @@
 #include <rmpcpp/policies/link_collision_avoid.h>
 #include <rmpcpp/policies/optimization_potential.h>
 #include <rmpcpp/policies/baseline_geometry.h>
+#include <rmpcpp/policies/ground_lift_geom.h>
 
 
 #include <mav_msgs/conversions.h>
@@ -65,8 +66,7 @@ class VoliroRopePlanner{
 
   using OptimizationPotential = rmpcpp::OptimizationPotential<LinSpace>;
   using BaselineGeometric = rmpcpp::BaselineGeometry<LinSpace>;
-
-
+  using GroundLiftGeometric = rmpcpp::GroundLiftGeom<LinSpace>;
 
   struct FixedParams {
     std::string mesh_frame;
@@ -138,6 +138,7 @@ class VoliroRopePlanner{
   void tfUpdateCallback(const ros::TimerEvent &event);
   void ropeUpdateCallback(const ros::TimerEvent &event);
   void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
+  void viconRopeCallback(const nav_msgs::OdometryConstPtr &odom);
 
   /// Convenience method for pseudo-inverse
   template <int i, int j>
@@ -172,6 +173,7 @@ class VoliroRopePlanner{
   
   // sub
   ros::Subscriber sub_odometry_;  // curent odom
+  ros::Subscriber vicon_rope_end_odometry_;
   ros::Subscriber rope_nodes_sub;  // curent rope nodes positions
   ros::Subscriber moving_target_sub;
   ros::Subscriber joy_sub_;

@@ -1,0 +1,190 @@
+<!-- killall gzclient -->
+<!-- killall gzserver -->
+
+<launch>
+  <arg name="mav_name" default="eagle"/>
+  <arg name="show_rviz" default="true" />
+  <arg name="rviz_config" default="voliro_rope_planner" />
+  <!-- ========== Sensor reading visualization in RViz ========== -->
+<group if="$(arg show_rviz)">
+<node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_planning_ros)/rviz/$(arg rviz_config).rviz" />
+</group>
+
+  <!-- ========== TF Broadcaster ========== -->
+<node pkg="tf2_ros" type="static_transform_publisher" name="world_broadcaster" args="0 0 0 0 0 0 1 enu world" />
+<node pkg="tf2_ros" type="static_transform_publisher" name="vicon_broadcaster" args="0 0 0 0 0 0 1 enu vicon" />
+<node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="4 0 2.0 0 0 0 1 enu mesh" />
+
+
+  <!-- ========== Vicon ========== -->
+<arg name="object_name" default="rope_end001" />
+  <node name="vrpn_client" type="ros_vrpn_client" pkg="ros_vrpn_client" output="screen">
+    <param name="vrpn_server_ip" value="vicon" />
+    <param name="vrpn_coordinate_system" value="vicon" />
+    <param name="timestamping_system" value="ros" />
+    <param name="object_name" value="$(arg object_name)" />
+    <param name="verbose" value="true" />
+    <param name="translational_estimator/kp" value="0.5" />
+    <param name="translational_estimator/kv" value="0.5" />
+    <param name="rotational_estimator/orientation_estimate_initial_covariance" value="100.0" />
+    <param name="rotational_estimator/rate_estimate_initial_covariance" value="100.0" />
+    <param name="rotational_estimator/orientation_process_covariance" value="0.000002" />
+    <param name="rotational_estimator/rate_process_covariance" value="10.0" />
+    <param name="rotational_estimator/orientation_measurementCovariance" value="0.001" />
+    <param name="rotational_estimator/outlier_rejection_method" value="mahalanobis_distance" />
+    <param name="rotational_estimator/outlier_rejection_mahalanobis_threshold" value="4.0" />
+    <param name="rotational_estimator/outlier_rejection_subsequent_threshold_degrees" value="30.0" />
+    <param name="rotational_estimator/outlier_rejection_subsequent_maximum_count" value="50.0" />
+    <param name="rotational_estimator/output_minimal_quaternions" value="false" />
+    <param name="rotational_estimator/output_minimal_quaternions" value="false" />
+  </node>
+
+    <node ns="eagle" name="vrpn_client_2" type="ros_vrpn_client" pkg="ros_vrpn_client" output="screen">
+    <param name="vrpn_server_ip" value="vicon" />
+    <param name="vrpn_coordinate_system" value="vicon" />
+    <param name="timestamping_system" value="ros" />
+    <param name="object_name" value="eagle" />
+    <param name="verbose" value="true" />
+    <param name="translational_estimator/kp" value="0.5" />
+    <param name="translational_estimator/kv" value="0.5" />
+    <param name="rotational_estimator/orientation_estimate_initial_covariance" value="100.0" />
+    <param name="rotational_estimator/rate_estimate_initial_covariance" value="100.0" />
+    <param name="rotational_estimator/orientation_process_covariance" value="0.000002" />
+    <param name="rotational_estimator/rate_process_covariance" value="10.0" />
+    <param name="rotational_estimator/orientation_measurementCovariance" value="0.001" />
+    <param name="rotational_estimator/outlier_rejection_method" value="mahalanobis_distance" />
+    <param name="rotational_estimator/outlier_rejection_mahalanobis_threshold" value="4.0" />
+    <param name="rotational_estimator/outlier_rejection_subsequent_threshold_degrees" value="30.0" />
+    <param name="rotational_estimator/outlier_rejection_subsequent_maximum_count" value="50.0" />
+    <param name="rotational_estimator/output_minimal_quaternions" value="false" />
+    <param name="rotational_estimator/output_minimal_quaternions" value="false" />
+  </node>
+
+
+
+<!-- ========== Planner ========== -->
+    <!-- parameters for the rope -->
+  <arg name="rope_end_x" default="2.0"/>
+  <arg name="rope_end_y" default="0.0"/>
+  <arg name="rope_end_z" default="0.1"/>
+
+  <arg name="rope_start_x" default="0.0"/>
+  <arg name="rope_start_y" default="0.0"/>
+  <arg name="rope_start_z" default="0.1"/>
+
+  <!-- parameters for the pulley init pose -->
+  <arg name="pulley_init_x" default="1.0"/>
+  <arg name="pulley_init_y" default="0.0"/>
+  <arg name="pulley_init_z" default="0.2"/>
+
+
+  <!-- rope  -->
+  <arg name="pulley_free_yaw" default="true"/>
+  <arg name="rope_node_num" default="50"/>
+  <arg name="rope_node_mass" default="0.0066"/> <!-- rope mass/length = 66g/m  -->
+  <arg name="spring_ks" default="100.0"/>
+  <arg name="spring_rest_len" default="0.1"/> <!-- 10cm  -->
+  <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
+  <arg name="pulley_radius" default="0.5"/>
+  <arg name="update_interval" default="0.1"/>
+  <arg name="hooked_node_idx" default="20"/>
+
+
+  <!-- Motion planner based on opt fabric  -->
+  <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen">
+
+    <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>
+    <param name="rope_start_y" value="$(arg rope_start_y)" type="double"/>
+    <param name="rope_start_z" value="$(arg rope_start_z)" type="double"/>
+
+    <param name="rope_end_x" value="$(arg rope_end_x)" type="double"/>
+    <param name="rope_end_y" value="$(arg rope_end_y)" type="double"/>
+    <param name="rope_end_z" value="$(arg rope_end_z)" type="double"/>
+
+    <param name="body_frame" type="string" value="eagle" />
+    <param name="enu_frame" type="string" value="enu" />
+    <param name="odom_frame" type="string" value="vicon" />
+    <param name="current_reference_frame" value="current_reference" />
+
+    <param name="traject_dt" value="0.01" type="double"/>
+    <param name="max_traject_duration" value="0.1" type="double"/>
+    <param name="rope_safe_dist" value="0.5" type="double"/>
+
+    <!-- <param name="zero_angle" type="double" value="0.0" />
+    <param name="zero_x" type="double" value="0.0" />
+    <param name="zero_y" type="double" value="0.0" />
+    <param name="zero_z" type="double" value="0.0" /> -->
+
+    <param name="mesh_frame" type="string" value="mesh" />
+    <!-- <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" /> -->
+    <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_centered_cut_subsampled_meshLab.off"/>
+
+
+
+    <param name="pulley_init_x" value="$(arg pulley_init_x)" type="double"/>
+    <param name="pulley_init_y" value="$(arg pulley_init_y)" type="double"/>
+    <param name="pulley_init_z" value="$(arg pulley_init_z)" type="double"/>
+
+    <param name="pulley_free_yaw" value="$(arg pulley_free_yaw)" type="bool"/>
+    <param name="rope_node_num" value="$(arg rope_node_num)" type="int"/>
+    <param name="rope_node_mass" value="$(arg rope_node_mass)" type="double"/>
+    <param name="spring_ks" value="$(arg spring_ks)" type="double"/>
+    <param name="spring_rest_len" value="$(arg spring_rest_len)" type="double"/>
+    <param name="pulley_friction" value="$(arg pulley_friction)" type="double"/>
+    <param name="pulley_radius" value="$(arg pulley_radius)" type="double"/>
+    <param name="update_interval" value="$(arg update_interval)" type="double"/>
+    <param name="hooked_node_idx" value="$(arg hooked_node_idx)" type="int"/>
+
+    <remap from="opt_fabric_planner/cmd_trajectory" to="/$(arg mav_name)/command/trajectory" />
+    <!-- <remap from="opt_fabric_planner/odometry" to="/$(arg mav_name)/ground_truth/odometry" /> -->
+    <remap from="opt_fabric_planner/odometry" to="/eagle/vrpn_client_2/estimated_odometry" />
+
+    <remap from="opt_fabric_planner/rope_vis" to="/rope_sim_ros/rope_vis" />
+    <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
+    <remap from="opt_fabric_planner/joy" to="/joy" />
+    <remap from="opt_fabric_planner/rope_end_odom" to="/vrpn_client/estimated_odometry" />
+  </node>
+
+
+<!-- flight controller  -->
+<group ns="$(arg mav_name)">
+    <node pkg="mavros" type="mavros_node" name="mavros" respawn="true" clear_params="true" output="screen">
+      <param name="fcu_url" value="/dev/ttyACM0:921600" />
+      <param name="gcs_url" value="udp://@localhost" />
+      <param name="target_system_id" value="1" />
+      <param name="target_component_id" value="1" />
+      <param name="component_id" value="1"/>
+      <arg name="fcu_protocol" default="v2.0" />
+
+      <remap from="/$(arg mav_name)/mavros/voliro/command/trajectory" to="command/trajectory"/>
+      <remap from="/$(arg mav_name)/mavros/voliro/command/pose" to="command/pose"/>
+
+      <rosparam command="load" file="$(find mav_startup)/parameters/mavs/$(arg mav_name)/px4_pluginlists.yaml" />
+      <rosparam command="load" file="$(find mav_startup)/parameters/mavs/$(arg mav_name)/px4_config.yaml" />
+      <rosparam command="load" file="$(find mav_startup)/parameters/mavs/$(arg mav_name)/px4_params_vicon.yaml"/>
+      <remap from="mavros/vision_pose/tf_stamped" to="vrpn_client/estimated_transform"/>
+      <param name="capability_group" value="Core" />
+    </node>
+
+    <!-- <node name="push_mavros_params" pkg="rosservice" type="rosservice" args="call /$(arg mav_name)/mavros/param/push" output="screen">
+      <param name="capability_group" value="Core" />
+    </node> -->
+
+    <!-- === Broadcasters & TF Publishers === -->
+    <node pkg="px4_tf_broadcaster" type="px_tf_broadcaster" name="px4_tf_broadcaster">
+      <remap from="~input/pose" to="/$(arg mav_name)/mavros/local_position/pose" />
+      <param name="capability_group" value="Core" />
+    </node>
+
+    <!-- <node pkg="tf" type="static_transform_publisher" name="vicon_broadcaster" args="0 0 0 0 0 0 1 vicon world 100">
+      <param name="capability_group" value="Core" />
+    </node> -->
+
+  </group>
+
+
+
+
+
+
+</launch>

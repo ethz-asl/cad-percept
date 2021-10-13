@@ -66,7 +66,9 @@
   <!-- ========== TF Broadcaster ========== -->
   <node pkg="tf2_ros" type="static_transform_publisher" name="enu_broadcaster" args="0 0 0 0 0 0 1 enu world" />
   <!-- mesh transformation according to enu  -->
-  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="14 15 0 0 0 -0.7071068 -0.7071068 enu mesh" />
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="14 15 0 0 0 -0.7071068 -0.7071068 enu mesh" /> -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="4 0 2.0 0 0 0 1 enu mesh" />
+
 
   <!-- ========== Planner ========== -->
     <!-- parameters for the rope -->
@@ -86,10 +88,10 @@
 
   <!-- rope  -->
   <arg name="pulley_free_yaw" default="true"/>
-  <arg name="rope_node_num" default="70"/>
-  <arg name="rope_node_mass" default="0.02"/>
+  <arg name="rope_node_num" default="50"/>
+  <arg name="rope_node_mass" default="0.0066"/> <!-- rope66g/m  -->
   <arg name="spring_ks" default="100.0"/>
-  <arg name="spring_rest_len" default="0.2"/>
+  <arg name="spring_rest_len" default="0.1"/> <!-- 10cm  -->
   <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
   <arg name="pulley_radius" default="0.5"/>
   <arg name="update_interval" default="0.1"/>
@@ -122,7 +124,10 @@
     <param name="zero_z" type="double" value="0.0" /> -->
 
     <param name="mesh_frame" type="string" value="mesh" />
-    <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" />
+    <!-- <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" /> -->
+    <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_centered_cut_subsampled_meshLab.off"/>
+
+
 
     <param name="pulley_init_x" value="$(arg pulley_init_x)" type="double"/>
     <param name="pulley_init_y" value="$(arg pulley_init_y)" type="double"/>
