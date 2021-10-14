@@ -226,16 +226,16 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
     policies.push_back(safe_dist_x_lim_2);
 
 
-
+    //ground lift geom
     Eigen::Vector3d ground_normal(0.0, 0.0, 1.0);
     auto ground_lift = std::make_shared<GroundLiftGeometric>(A, ground_normal);  
     policies.push_back(ground_lift);
 
-    //baseline
+    //baseline geom
     auto baseline_geom = std::make_shared<BaselineGeometric>(A); 
     policies.push_back(baseline_geom);
 
-    //attraction
+    //attraction geom
     auto att_geom = std::make_shared<AttractionGeometric>(target_uv_1, A); 
     policies.push_back(att_geom);
     
