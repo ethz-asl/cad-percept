@@ -14,7 +14,7 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
   pub_marker_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
   hose_path_pub = nh_.advertise<nav_msgs::Path>("hose_path", 1000);
   obs_vis_pub = nh_.advertise<visualization_msgs::MarkerArray>("obs_vis", 10);
-  pub_trajectory_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 1);
+  pub_trajectory_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("cmd_trajectory", 10);
   pub_mesh_ = cad_percept::MeshModelPublisher(nh, "mesh_3d");
   attraction_pub_ =  nh.advertise<visualization_msgs::Marker>("attraction_vis", 1);
   repulsion_pub_ =  nh.advertise<visualization_msgs::Marker>("repulsion_vis", 1);
@@ -194,50 +194,78 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
     auto safe_dist_ground = std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
     policies.push_back(safe_dist_ground);
 
+    if(safe_box_constrain_){
+      //safe dist to the ceiling
+      Eigen::Vector3d ceiling_point;
+      ceiling_point << drone_pos.x(), drone_pos.y(), 2.0;
+      auto safe_dist_ceiling= std::make_shared<CollisionAvoidGeometric>(ceiling_point, A, 1.0, 1.0);  
+      policies.push_back(safe_dist_ceiling);
 
-    //safe dist to the ceiling
-    Eigen::Vector3d ceiling_point;
-    ceiling_point << drone_pos.x(), drone_pos.y(), 2.0;
-    auto safe_dist_ceiling= std::make_shared<CollisionAvoidGeometric>(ceiling_point, A, 1.0, 1.0);  
-    policies.push_back(safe_dist_ceiling);
+      //safe dist to y lim
+      Eigen::Vector3d y_lim_point;
+      y_lim_point << drone_pos.x(), 1.5, drone_pos.z();
+      auto safe_dist_y_lim = std::make_shared<CollisionAvoidGeometric>(y_lim_point, A, 1.0, 1.0);  
+      policies.push_back(safe_dist_y_lim);
 
-    //safe dist to y lim
-    Eigen::Vector3d y_lim_point;
-    y_lim_point << drone_pos.x(), 1.5, drone_pos.z();
-    auto safe_dist_y_lim = std::make_shared<CollisionAvoidGeometric>(y_lim_point, A, 1.0, 1.0);  
-    policies.push_back(safe_dist_y_lim);
+      //safe dist to y lim
+      Eigen::Vector3d y_lim_point_2;
+      y_lim_point_2 << drone_pos.x(), -1.5, drone_pos.z();
+      auto safe_dist_y_lim_2 = std::make_shared<CollisionAvoidGeometric>(y_lim_point_2, A, 1.0, 1.0);  
+      policies.push_back(safe_dist_y_lim_2);
 
-    //safe dist to y lim
-    Eigen::Vector3d y_lim_point_2;
-    y_lim_point_2 << drone_pos.x(), -1.5, drone_pos.z();
-    auto safe_dist_y_lim_2 = std::make_shared<CollisionAvoidGeometric>(y_lim_point_2, A, 1.0, 1.0);  
-    policies.push_back(safe_dist_y_lim_2);
+      // //safe dist to x lim
+      Eigen::Vector3d x_lim_point;
+      x_lim_point << 1.5 , drone_pos.y(), drone_pos.z();
+      auto safe_dist_x_lim = std::make_shared<CollisionAvoidGeometric>(x_lim_point, A, 1.0, 1.0);  
+      policies.push_back(safe_dist_x_lim);
 
-    // //safe dist to x lim
-    Eigen::Vector3d x_lim_point;
-    x_lim_point << 1.5 , drone_pos.y(), drone_pos.z();
-    auto safe_dist_x_lim = std::make_shared<CollisionAvoidGeometric>(x_lim_point, A, 1.0, 1.0);  
-    policies.push_back(safe_dist_x_lim);
+      // //safe dist to x lim
+      Eigen::Vector3d x_lim_point_2;
+      x_lim_point_2 << -1.5 , drone_pos.y(), drone_pos.z();
+      auto safe_dist_x_lim_2 = std::make_shared<CollisionAvoidGeometric>(x_lim_point_2, A, 1.0, 1.0);  
+      policies.push_back(safe_dist_x_lim_2);
+    }
 
-    // //safe dist to x lim
-    Eigen::Vector3d x_lim_point_2;
-    x_lim_point_2 << -1.5 , drone_pos.y(), drone_pos.z();
-    auto safe_dist_x_lim_2 = std::make_shared<CollisionAvoidGeometric>(x_lim_point_2, A, 1.0, 1.0);  
-    policies.push_back(safe_dist_x_lim_2);
-
+    //part 1 rope length limitation
+    double rope_len_part_1 = 3.5;
+    Eigen::Vector3d len_lim_pos = goal_b_+ rope_len_part_1 *(drone_pos-goal_b_).normalized();
+    auto part_1_len_lim = std::make_shared<CollisionAvoidGeometric>(len_lim_pos, A, 1.0, 1.0);  
+    policies.push_back(part_1_len_lim);
 
     //ground lift geom
     Eigen::Vector3d ground_normal(0.0, 0.0, 1.0);
-    auto ground_lift = std::make_shared<GroundLiftGeometric>(A, ground_normal);  
+    auto ground_lift = std::make_shared<GroundLiftGeometric>(A, ground_normal, 6.0);  
     policies.push_back(ground_lift);
 
     //baseline geom
     auto baseline_geom = std::make_shared<BaselineGeometric>(A); 
     policies.push_back(baseline_geom);
 
-    //attraction geom
-    auto att_geom = std::make_shared<AttractionGeometric>(target_uv_1, A); 
+    //attraction geom to starting point, shorten rope part-2
+    auto att_geom = std::make_shared<AttractionGeometric>(goal_a_, A); 
     policies.push_back(att_geom);
+
+    //rope collision avoidance
+    if(rope_avoid_constrain_){
+      int obs_node_num = 10;
+      int obs_node_interval = 6;
+      int obs_node_idx = 0;
+      for(auto m:ropeVerlet->masses){
+        Eigen::Vector3d obs_to_node=m->obs_to_node;
+        double obs_to_node_norm = obs_to_node.norm();
+        if(obs_node_idx % obs_node_interval == 0 && obs_to_node_norm<2.0){
+          if(obs_node_idx == 0){
+            std::cout<<"obs_to_node"<<obs_node_idx<<"; "<<obs_to_node_norm<<std::endl;
+          }
+
+            double rope_len_lim = 4.0;
+            auto rope_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                                obs_to_node, rope_len_lim);
+            policies.push_back(rope_avoid);
+        }
+        obs_node_idx++;
+      }
+    }
     
 
                   // obs avoid based on straint rope model-------------------------------------------------
@@ -647,6 +675,10 @@ void VoliroRopePlanner::readConfig() {
   nh_private_.param("pulley_radius", pulley_radius_, 0.5);
   nh_private_.param("update_interval", update_interval_, 0.1);
   nh_private_.param("hooked_node_idx", hooked_node_idx_, 30);
+  //extra param for field test
+  nh_private_.param("safe_box_constrain", safe_box_constrain_, false);
+  nh_private_.param("rope_avoid_constrain", rope_avoid_constrain_, true);
+ 
   obj_poses_.push_back(obj_pos_0_);
 
   //init the middel drone

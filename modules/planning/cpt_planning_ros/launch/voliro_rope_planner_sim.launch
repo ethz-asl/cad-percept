@@ -149,7 +149,9 @@
     <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
     <remap from="opt_fabric_planner/joy" to="/joy" />
 
-
+    <param name="safe_box_constrain" value="false" type="bool"/>
+    
+    <param name="rope_avoid_constrain" value="false" type="bool"/>
   </node>
 
   <!-- joystick to control the behaviour of the end point  -->

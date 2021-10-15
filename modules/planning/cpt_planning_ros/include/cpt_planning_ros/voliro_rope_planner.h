@@ -19,6 +19,7 @@
 #include <rmpcpp/policies/optimization_potential.h>
 #include <rmpcpp/policies/baseline_geometry.h>
 #include <rmpcpp/policies/ground_lift_geom.h>
+#include <rmpcpp/policies/rope_collision.h>
 
 
 #include <mav_msgs/conversions.h>
@@ -67,6 +68,8 @@ class VoliroRopePlanner{
   using OptimizationPotential = rmpcpp::OptimizationPotential<LinSpace>;
   using BaselineGeometric = rmpcpp::BaselineGeometry<LinSpace>;
   using GroundLiftGeometric = rmpcpp::GroundLiftGeom<LinSpace>;
+  using RopeCollisionGeom = rmpcpp::RopeColliGeom<LinSpace>;
+
 
   struct FixedParams {
     std::string mesh_frame;
@@ -209,7 +212,9 @@ class VoliroRopePlanner{
   Eigen::Vector3d push_rope_dir_{99.,99.,99.};
   Eigen::Vector3d last_push_rope_dir_{99.,99.,99.};
 
-
+  //extral constrain for field test
+  bool safe_box_constrain_{false};
+  bool rope_avoid_constrain_{true};
 
   // Configuration
   bool odom_received_{false};
