@@ -241,6 +241,9 @@ class VoliroRopePlanner{
   double pulley_radius_;
   double update_interval_;//sec
   vector<Eigen::Vector3d> obj_poses_;
+  double safe_x_max_, safe_x_min_, safe_y_max_, safe_y_min_, safe_z_max_, safe_z_min_;
+
+
 
 };
 }  // namespace planning

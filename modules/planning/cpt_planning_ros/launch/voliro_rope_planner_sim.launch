@@ -67,7 +67,7 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="enu_broadcaster" args="0 0 0 0 0 0 1 enu world" />
   <!-- mesh transformation according to enu  -->
   <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="14 15 0 0 0 -0.7071068 -0.7071068 enu mesh" /> -->
-  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="4 0 2.0 0 0 0 1 enu mesh" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="4 0 2.0 0 0.3826834 0 0.9238795 enu mesh" />
 
 
   <!-- ========== Planner ========== -->
@@ -149,7 +149,15 @@
     <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
     <remap from="opt_fabric_planner/joy" to="/joy" />
 
-    <param name="safe_box_constrain" value="false" type="bool"/>
+    <param name="safe_box_constrain" value="true" type="bool"/>
+    <param name="safe_x_min" value="-10.0" type="double"/>
+    <param name="safe_x_max" value="10.0" type="double"/>
+    <param name="safe_y_min" value="-10.0" type="double"/>
+    <param name="safe_y_max" value="10.0" type="double"/>
+    <param name="safe_z_min" value="-0.5" type="double"/>
+    <param name="safe_z_max" value="10.0" type="double"/>
+
+    
     
     <param name="rope_avoid_constrain" value="false" type="bool"/>
   </node>
