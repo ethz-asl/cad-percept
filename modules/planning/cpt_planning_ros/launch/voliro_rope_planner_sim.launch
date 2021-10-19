@@ -157,9 +157,15 @@
     <param name="safe_z_min" value="-0.5" type="double"/>
     <param name="safe_z_max" value="10.0" type="double"/>
 
-    
-    
-    <param name="rope_avoid_constrain" value="false" type="bool"/>
+    <param name="rope_avoid_constrain" value="true" type="bool"/>
+    <param name="node_interval" value="2" type="int"/>
+    <param name="rope_react_range" value="1.5" type="double"/>
+    <param name="rope_len_lim" value="2.0" type="double"/>
+    <param name="rope_avoid_acc_max" value="2.0" type="double"/>
+    <param name="rope_avoid_range" value="1.0" type="double"/>
+
+
+
   </node>
 
   <!-- joystick to control the behaviour of the end point  -->
