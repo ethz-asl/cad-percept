@@ -88,18 +88,19 @@
 
   <!-- rope  -->
   <arg name="pulley_free_yaw" default="true"/>
-  <arg name="rope_node_num" default="50"/>
+  <arg name="rope_node_num" default="20"/> <!-- have to be even number  -->
   <arg name="rope_node_mass" default="0.0066"/> <!-- rope66g/m  -->
   <arg name="spring_ks" default="100.0"/>
-  <arg name="spring_rest_len" default="0.1"/> <!-- 10cm  -->
+  <arg name="spring_rest_len" default="0.30"/> <!-- 10cm  -->
   <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
   <arg name="pulley_radius" default="0.5"/>
   <arg name="update_interval" default="0.1"/>
-  <arg name="hooked_node_idx" default="20"/>
+  <arg name="hooked_node_idx" default="10"/>
 
 
   <!-- Motion planner based on opt fabric  -->
-  <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen">
+  <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen"
+  >
 
     <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>
     <param name="rope_start_y" value="$(arg rope_start_y)" type="double"/>
@@ -115,8 +116,8 @@
     <param name="current_reference_frame" value="current_reference" />
 
     <param name="traject_dt" value="0.01" type="double"/>
-    <param name="max_traject_duration" value="0.1" type="double"/>
-    <param name="rope_safe_dist" value="0.5" type="double"/>
+    <param name="max_traject_duration" value="0.05" type="double"/>
+    <!-- <param name="rope_safe_dist" value="0.5" type="double"/> -->
 
     <!-- <param name="zero_angle" type="double" value="0.0" />
     <param name="zero_x" type="double" value="0.0" />
@@ -124,8 +125,8 @@
     <param name="zero_z" type="double" value="0.0" /> -->
 
     <param name="mesh_frame" type="string" value="mesh" />
+    <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_centered_cut_subsampled_thick.off"/>
     <!-- <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" /> -->
-    <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_centered_cut_subsampled_meshLab.off"/>
 
 
 
@@ -149,20 +150,24 @@
     <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
     <remap from="opt_fabric_planner/joy" to="/joy" />
 
-    <param name="safe_box_constrain" value="true" type="bool"/>
+    <param name="safe_box_constrain" value="false" type="bool"/>
     <param name="safe_x_min" value="-10.0" type="double"/>
     <param name="safe_x_max" value="10.0" type="double"/>
     <param name="safe_y_min" value="-10.0" type="double"/>
     <param name="safe_y_max" value="10.0" type="double"/>
-    <param name="safe_z_min" value="-0.5" type="double"/>
+    <param name="safe_z_min" value="-1.5" type="double"/>
     <param name="safe_z_max" value="10.0" type="double"/>
 
     <param name="rope_avoid_constrain" value="true" type="bool"/>
-    <param name="node_interval" value="2" type="int"/>
+    <param name="node_interval" value="1" type="int"/>
     <param name="rope_react_range" value="1.5" type="double"/>
     <param name="rope_len_lim" value="2.0" type="double"/>
-    <param name="rope_avoid_acc_max" value="2.0" type="double"/>
+    <param name="rope_avoid_acc_max" value="1.5" type="double"/>
     <param name="rope_avoid_range" value="1.0" type="double"/>
+
+    <param name="vel_desir" value="1.0" type="double"/>
+    <param name="force_sacle" value="0.5" type="double"/>
+
 
 
 

@@ -38,6 +38,8 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
   readConfig();
   rope_update_timer_ = nh.createTimer(ros::Duration(update_interval_), 
                                       &VoliroRopePlanner::ropeUpdateCallback, this);
+  env_update_timer_ = nh.createTimer(ros::Duration(0.2), 
+                                    &VoliroRopePlanner::envUpdateCallback, this);
 
   command_update_timer_ = nh_.createTimer(ros::Duration(0.05), &VoliroRopePlanner::commandUpdateCallback,
                               this);  // update TF's every second
@@ -75,7 +77,7 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
   std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> policies;
   std::vector<std::shared_ptr<rmpcpp::PolicyBase<LinSpace>>> forcing_policies; 
   // start integrating path
-  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+  auto start_time = std::chrono::steady_clock::now();
   bool reached_criteria = false;
 
   // integrator.resetTo(start_xyz);
@@ -104,7 +106,7 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
     forcing_policies.clear();
     //speed control test
     // Eigen::Vector3d att_pos = target_uv_2+1.5*(drone_pos-target_uv_2).normalized();
-    Eigen::Vector3d att_pos = goal_b_+1.5*(goal_a_-goal_b_).normalized();
+    Eigen::Vector3d att_pos = goal_b_+1.5*((goal_a_-goal_b_).normalized());
 
 
     // std::cout<<"[DEBUG] att_pos "<<std::endl;
@@ -118,7 +120,7 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
     safe_box.push_back(safe_z_min_);
     safe_box.push_back(safe_z_max_);
 
-    auto force_policy_spec_1 = std::make_shared<OptimizationPotential>(att_pos, A, 2.0, 2.0, safe_box);  
+    auto force_policy_spec_1 = std::make_shared<OptimizationPotential>(att_pos, A, force_sacle_, 8.0, safe_box);  
     forcing_policies.push_back(force_policy_spec_1);
 
     // get current configuration space position and convert to
@@ -246,10 +248,10 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
     // auto part_1_len_lim = std::make_shared<CollisionAvoidGeometric>(len_lim_pos, A, 1.0, 1.0);  
     // policies.push_back(part_1_len_lim);
 
-    //ground lift geom
-    Eigen::Vector3d ground_normal(0.0, 0.0, 1.0);
-    auto ground_lift = std::make_shared<GroundLiftGeometric>(A, ground_normal, 2.0);  
-    policies.push_back(ground_lift);
+    // //ground lift geom
+    // Eigen::Vector3d ground_normal(0.0, 0.0, 1.0);
+    // auto ground_lift = std::make_shared<GroundLiftGeometric>(A, ground_normal, 2.0);  
+    // policies.push_back(ground_lift);
 
     //baseline geom
     auto baseline_geom = std::make_shared<BaselineGeometric>(A); 
@@ -268,87 +270,24 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
         Eigen::Vector3d obs_to_node=m->obs_to_node;
         double obs_to_node_norm = obs_to_node.norm();
         if(obs_node_idx % node_interval_ == 0 && obs_to_node_norm<rope_react_range_){
-          if(obs_node_idx == 0){
-            std::cout<<"obs_to_node"<<obs_node_idx<<"; "<<obs_to_node_norm<<std::endl;
-          }
-
-            // double rope_len_lim = 2.5;
-            auto rope_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
-                                obs_to_node, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
-            policies.push_back(rope_avoid);
+          // if(obs_node_idx == 0){
+          //   std::cout<<"obs_to_node"<<obs_node_idx<<"; "<<obs_to_node_norm<<std::endl;
+          // }
+          auto rope_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                              obs_to_node, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
+          policies.push_back(rope_avoid);
         }
         obs_node_idx++;
       }
     }
-    
-
-                  // obs avoid based on straint rope model-------------------------------------------------
-                  // // obs point sorted by distance to the link
-                  // auto link_obs_list = obs_list_;
-                  // auto another_node_pos = target_uv_2;
-                  // double end_drone_dist = (another_node_pos-drone_pos).norm();
-                  // std::sort( link_obs_list.begin( ), link_obs_list.end( ), 
-                  //   [end_drone_dist, another_node_pos, drone_pos]( const auto& obs_1, const auto& obs_2 )
-                  //   {
-                  //     double dist_1 = ((another_node_pos-drone_pos).cross(drone_pos-obs_1)).norm()/
-                  //                     end_drone_dist;
-                  //     double dist_2 = ((another_node_pos-drone_pos).cross(drone_pos-obs_2)).norm()/
-                  //                     end_drone_dist;
-                  //     return dist_1 < dist_2;
-                  //   });
-
-                  // for(auto link_obs : link_obs_list){
-                  //   double obs_drone_dist = (link_obs-drone_pos).norm(); 
-                  //   double cos_theta = (another_node_pos-drone_pos).dot(link_obs-drone_pos)/
-                  //                       (obs_drone_dist*end_drone_dist);
-                  //   if(obs_drone_dist<end_drone_dist && cos_theta>0.7){
-                  //     auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(
-                  //                         link_obs_list.at(0), target_uv_2, A);  
-                  //     policies.push_back(geo_fabric_link);
-                  //     break;
-                  //   }
-                  // }
-
-                  // // obs point sorted by distance to the link
-                  // link_obs_list = obs_list_;
-                  // another_node_pos = target_uv_1;
-                  // end_drone_dist = (another_node_pos-drone_pos).norm();
-                  // std::sort( link_obs_list.begin( ), link_obs_list.end( ), 
-                  //   [end_drone_dist, another_node_pos, drone_pos]( const auto& obs_1, const auto& obs_2 )
-                  //   {
-                  //     double dist_1 = ((another_node_pos-drone_pos).cross(drone_pos-obs_1)).norm()/
-                  //                     end_drone_dist;
-                  //     double dist_2 = ((another_node_pos-drone_pos).cross(drone_pos-obs_2)).norm()/
-                  //                     end_drone_dist;
-                  //     return dist_1 < dist_2;
-                  //   });
-
-                  // for(auto link_obs : link_obs_list){
-                  //   double obs_drone_dist = (link_obs-drone_pos).norm(); 
-                  //   double cos_theta = (another_node_pos-drone_pos).dot(link_obs-drone_pos)/
-                  //                       (obs_drone_dist*end_drone_dist);
-                  //   if(obs_drone_dist<end_drone_dist && cos_theta>0.7){
-                  //     auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(
-                  //                         link_obs_list.at(0), target_uv_1, A);  
-                  //     policies.push_back(geo_fabric_link);
-                  //     break;
-                  //   }
-                  // }
-                  //-------------------------------------------------------------------------------------------
                 
     //get next step
-    double vel_desir = 2.0;
     // ROS_WARN("[DEBUG] integrator.integrateStep");
-
-    // damping when closing to a specific point
-    // auto step_result = integrator.integrateStep(policies, 
-    //                                             pulled_M_forc, pulled_acc_forc, x_to_opt, 
-    //                                             manifold_, dt_, vel_desir);
 
     //damping optimizing when gradient closing to zero.
     auto step_result = integrator.integrateStep(policies, 
                                             pulled_M_forc, pulled_acc_forc, pulled_acc_forc, 
-                                            manifold_, dt_, vel_desir);
+                                            manifold_, dt_, vel_desir_);
 
     if (!step_result.allFinite()) {
       ROS_WARN("Error, nonfinite integration data, stopping integration");
@@ -369,21 +308,16 @@ void VoliroRopePlanner::generateTrajectoryOdom_5(){
     trajectory_odom_.push_back(pt_test);
 
     if (integrator.atRest(0.01, 0.01)) {
-      std::cout <<"Integrator finished after " << t << " s with a distance of "
-                                                    << integrator.totalDistance()
-                                                    << std::endl;
+      // std::cout <<"Integrator finished after " << t << " s with a distance of "
+      //                                               << integrator.totalDistance()
+      //                                               << std::endl;
       break;
     }
   }
-  std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
-
-  // SurfacePlanner::Result result;
-  // result.success = reached_criteria;
-  // result.duration = end_time - start_time;
-  // std::cout << "Operation took ";
-  // display(std::cout, end_time - start_time);
-  // std::cout << '\n';
-  // std::cout <<"Trajectory Distance:"<<integrator.totalDistance()<<std::endl;
+  auto end_time = std::chrono::steady_clock::now();
+  std::chrono::duration<double> duration = end_time - start_time;
+  // std::cout << "Planner took " << duration.count() << " s" << std::endl;
+  // ROS_DEBUG_STREAM("Planner took " << duration.count() << " us");
 }
 
 
@@ -397,14 +331,6 @@ void VoliroRopePlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::
   mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom, distance,
                                                       fram_id, &markers);
   pub_marker_.publish(markers);
-
-  // if (dynamic_params_.output_enable) {
-  //   trajectory_msgs::MultiDOFJointTrajectory msg;
-  //   mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_odom, &msg);
-  //   msg.header.frame_id = fixed_params_.odom_frame;
-  //   msg.header.stamp = ros::Time::now();
-  //   pub_trajectory_.publish(msg);
-  // }
 }
 
 void VoliroRopePlanner::publishTrajectory_2() {
@@ -418,9 +344,7 @@ void VoliroRopePlanner::publishTrajectory_2() {
   // if (dynamic_params_.output_enable) {
   trajectory_msgs::MultiDOFJointTrajectory msg;
   mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_odom_, &msg);
-  msg.header.frame_id = fixed_params_.odom_frame;  ///TODO!!!
-  // msg.header.frame_id = fram_id;
-
+  msg.header.frame_id = fixed_params_.odom_frame;  
   msg.header.stamp = ros::Time::now();
   pub_trajectory_.publish(msg);
   // }
@@ -473,7 +397,8 @@ nav_msgs::Path VoliroRopePlanner::build_hose_model(std::vector<Eigen::Vector3d> 
 }
 
 void VoliroRopePlanner::commandUpdateCallback(const ros::TimerEvent &event){
-  ROS_INFO("VoliroRopePlanner::replan");
+  // ROS_INFO("commandUpdateCallback triggered");
+  auto start_time = std::chrono::steady_clock::now();
   Eigen::Vector3d drone_pos, drone_vel, drone_acc;
   integrator.getState(&drone_pos, &drone_vel, &drone_acc);
   integrator.resetTo(drone_pos, drone_vel);
@@ -482,47 +407,14 @@ void VoliroRopePlanner::commandUpdateCallback(const ros::TimerEvent &event){
   generateTrajectoryOdom_5();
   //visualize the new trajectory
   publishTrajectory_2();
+  auto end_time = std::chrono::steady_clock::now();
+  std::chrono::duration<double> duration = end_time - start_time;
+  // std::cout << "publishTrajectory_2 took " << duration.count() << " s" << std::endl;
 }
 
 //read new goal and calculate the trajectory
 void VoliroRopePlanner::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
-  ROS_INFO("VoliroRopePlanner::goalCallback");
 
-  // read pos of the new end-effector
-  goal_b_(0) = msg->pose.position.x;
-  goal_b_(1) = msg->pose.position.y;
-  goal_b_(2) = msg->pose.position.z;
-  // std::cout <<"----------------"<<std::endl;
-  // std::cout <<"goal_b_ updated:"<<goal_b_<<std::endl;
-
-  //update the start pos of the trajectory
-  ///use the integrator current state to simulate the start pos,
-  ///in practice, replace it to the real state of the drone.
-  // if(integrator_init_){
-  Eigen::Vector3d drone_pos, drone_vel, drone_acc;
-  integrator.getState(&drone_pos, &drone_vel, &drone_acc);
-  integrator.resetTo(drone_pos, drone_vel);
-  // std::cout <<"Integreator Reset: pos:"<<std::endl;
-  // std::cout << drone_pos<<std::endl;
-  // std::cout << "vel: "<<std::endl;
-  // std::cout << drone_vel <<std::endl;
-
-  // }else{
-  //   //put the drone at the start position
-  //   //vel = 0
-  //   integrator.resetTo(start_);
-  //   integrator_init_ = true;
-  // }
-
-  //calculate a new trajectory
-  trajectory_odom_.clear(); 
-  generateTrajectoryOdom_5();
-
-  //visualize the new trajectory
-  publishTrajectory_2();
-
-  //visualize the sphere obs:
-  // publish_obs_vis(obs_list_);
 }
 
 void VoliroRopePlanner::publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_wall) {
@@ -665,7 +557,7 @@ void VoliroRopePlanner::readConfig() {
                                  "current_reference");
   
   nh_private_.param("traject_dt", dt_, 0.01);
-  nh_private_.param("max_traject_duration", max_traject_duration_, 0.2);
+  nh_private_.param("max_traject_duration", max_traject_duration_, 0.05);
   nh_private_.param<double>("zero_angle", fixed_params_.mesh_zero_angle, 0.0);
   nh_private_.param("rope_safe_dist", rope_safe_dist_, 0.5);
 
@@ -712,6 +604,11 @@ void VoliroRopePlanner::readConfig() {
   nh_private_.param("rope_len_lim", rope_len_lim_, 2.5);
   nh_private_.param("rope_avoid_acc_max", rope_avoid_acc_max_, 2.0);
   nh_private_.param("rope_avoid_range", rope_avoid_range_, 1.0);
+
+  //param for speed control
+  nh_private_.param("vel_desir", vel_desir_, 1.0);
+  nh_private_.param("force_sacle", force_sacle_, 0.5);
+  
 
  
   obj_poses_.push_back(obj_pos_0_);
@@ -801,10 +698,16 @@ void VoliroRopePlanner::tfUpdateCallback(const ros::TimerEvent &event) {
   publishMarkers();
 }
 
+void VoliroRopePlanner::envUpdateCallback(const ros::TimerEvent &event){
+  ropeVerlet->mesh_collision_update();
+}
+
 void VoliroRopePlanner::ropeUpdateCallback(const ros::TimerEvent &event){
   float steps_per_frame = 64.0;
   Eigen::Vector3d gravity(0., 0., -9.8);
-  ropeVerlet->mesh_collision_update();
+  
+  auto start_time = std::chrono::steady_clock::now();
+  
   for (int i = 0; i < steps_per_frame; i++) {
     ropeVerlet->simVerletMovEnd(update_interval_/steps_per_frame, gravity);
     //update pulley free yaw
@@ -819,42 +722,10 @@ void VoliroRopePlanner::ropeUpdateCallback(const ros::TimerEvent &event){
   rope = ropeVerlet;
 
   publish_rope_vis(rope->masses);
-
-
-    // int min_node_id;
-    // for(int node_id = start_idx; node_id<end_idx; node_id++){
-    //   Eigen::Vector3d node = rope.at(node_id);
-    //   cgal::PointAndPrimitiveId ppid = mesh_model_->getClosestTriangle(node.x(),node.y(),node.z());
-    //   Eigen::Vector3d p_on_mesh(ppid.first.x(),ppid.first.y(),ppid.first.z());
-    //   Eigen::Vector3d repulsion_vec = node-p_on_mesh;
-    //   if(start_idx == 0 && 
-    //     repulsion_vec.norm()+(node_id-start_idx)*node_dist < safe_dist){
-    //     continue;
-    //   }
-    //   repulsion_cost = repulsion_cost + repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),8));
-    // }
-    // repulsion_cost = repulsion_cost.normalized()*repulsion_cost.norm()/rope.size();
-
-
-  // Eigen::Vector3d repulsion_cost = Eigen::Vector3d::Zero();
-  // for(auto m:ropeVerlet->masses){
-  //   Eigen::Vector3d repulsion_vec = m->position - m->closest_vertex;
-  //   // std::cout<<" m->closest_vertex "<<m->closest_vertex <<std::endl;
-
-  //   // if(node_id == 0 && 
-  //   //   repulsion_vec.norm()+(node_id-0)*spring_rest_len_ < rope_safe_dist_){
-  //   //   continue;
-  //   // }
-  //   double repul_norm = repulsion_vec.norm();
-  //   if(repul_norm-repul_norm == 0){
-  //     repulsion_cost +=  repulsion_vec.normalized()*(1/pow(repulsion_vec.norm(),4));
-  //   }
-  // }
-  // // std::cout<<" repulsion_cost "<<repulsion_cost <<std::endl;
-
-  // last_push_rope_dir_ = push_rope_dir_;
-  // // push_rope_dir_ = -1.0*repulsion_cost.normalized()*repulsion_cost.norm()/ropeVerlet->masses.size();
-  // push_rope_dir_ = -1.0*repulsion_cost;
+  
+  auto end_time = std::chrono::steady_clock::now();
+  std::chrono::duration<double> duration = end_time - start_time;
+  // std::cout << "mesh_collision_update took " << duration.count() << " s" << std::endl;
 
 }
 

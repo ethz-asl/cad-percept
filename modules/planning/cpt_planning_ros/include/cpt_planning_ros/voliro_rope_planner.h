@@ -142,6 +142,7 @@ class VoliroRopePlanner{
   void tfUpdateCallback(const ros::TimerEvent &event);
   void ropeUpdateCallback(const ros::TimerEvent &event);
   void commandUpdateCallback(const ros::TimerEvent &event);
+  void envUpdateCallback(const ros::TimerEvent &event);
 
   void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
   void viconRopeCallback(const nav_msgs::OdometryConstPtr &odom);
@@ -189,6 +190,7 @@ class VoliroRopePlanner{
   ros::Timer obs_update_timer_;
   ros::Timer rope_update_timer_;
   ros::Timer command_update_timer_;
+  ros::Timer env_update_timer_;
 
 
   Eigen::Vector3d start_{0.0, 0.0, 0.0};
@@ -248,6 +250,8 @@ class VoliroRopePlanner{
   double rope_react_range_, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_;
   int node_interval_;
 
+  double vel_desir_;
+  double force_sacle_;
 
 
 };
