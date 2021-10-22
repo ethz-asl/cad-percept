@@ -243,6 +243,10 @@ void OMAVPlanner::configCallback(cpt_planning_ros::RMPConfigConfig &config, uint
 }
 
 void OMAVPlanner::publishMarkers() {
+  if (!allInitialized()) {
+    ROS_WARN_STREAM("Planner not initialized, not publishing markers.");
+  }
+
   visualization_msgs::Marker marker_mesh;
   marker_mesh.header.frame_id = fixed_params_.enu_frame;
   marker_mesh.header.stamp = ros::Time();
@@ -312,6 +316,12 @@ void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
     zeroed_ = true;
   }
 
+  if(joy->buttons[8]){
+    last_button_state_ = joy->buttons[0];
+    return;
+  }
+
+
   //
   Eigen::Vector3d current_uvh_ = mapping_->point3DtoUVH((T_enu_odom_ * T_odom_body_).translation());
 
@@ -326,10 +336,11 @@ void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
   target_temp_uvh_.topRows<2>() =
       (Eigen::Vector2d)mapping_->clipToManifold((Eigen::Vector2d)target_temp_uvh_.topRows<2>());
 
+
   // convert to xyz target
   target_temp_xyz_ = mapping_->pointUVHto3D(target_temp_uvh_);
 
-  if (joy->buttons[0]) {
+  if (joy->buttons[0] && !last_button_state_) {
     target_xyz_ = target_temp_xyz_;
     target_uvh_ = target_temp_uvh_;
 
@@ -338,6 +349,7 @@ void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
     runPlanner();
   }
   publishMarkers();
+  last_button_state_ = joy->buttons[0];
 }
 
 void OMAVPlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom) {

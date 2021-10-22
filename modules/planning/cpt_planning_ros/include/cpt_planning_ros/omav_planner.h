@@ -153,6 +153,7 @@ class OMAVPlanner {
   bool frames_received_{false};
   bool odom_received_{false};
   bool zeroed_{false};
+  bool last_button_state_{false};
 };
 
 }  // namespace planning

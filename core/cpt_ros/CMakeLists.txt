@@ -14,15 +14,6 @@ cs_add_library(${PROJECT_NAME}
         src/ros_config_provider.cc
         )
 
-############
-# BINARIES #
-############
-
-############
-#  TESTS   #
-############
-
-
 ##########
 # EXPORT #
 ##########
