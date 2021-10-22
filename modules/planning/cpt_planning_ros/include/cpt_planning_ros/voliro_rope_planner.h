@@ -87,24 +87,13 @@ class VoliroRopePlanner{
   VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_private);
   VoliroRopePlanner() = delete;
 
-
-  // void init_ros_interface(ros::NodeHandle nh);
-
-  void generateTrajectoryOdom_5();
-
+  void generateTrajectoryOdom();
   void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
-
   void init_obs_wall();
-
   void publish_obs_vis(std::vector<Eigen::Vector3d> &simple_obs_wall);
-  
   void resetIntegrator(Eigen::Vector3d start_pos, Eigen::Vector3d start_vel);
 
-  
-
   nav_msgs::Path build_hose_model(std::vector<Eigen::Vector3d> &hose_key_points);
-
-
 
   std::ostream& display(std::ostream& os, std::chrono::nanoseconds ns);
   
@@ -197,7 +186,6 @@ class VoliroRopePlanner{
   Eigen::Vector3d goal_a_{-0.1, -0.1, -0.1};
   Eigen::Vector3d goal_b_{0.0, 10.0, 2.0};
   Eigen::Vector3d current_pos_{0.0, 0.0, 0.0};
-  std::vector<Eigen::Vector3d> obs_list_;
   mav_msgs::EigenTrajectoryPoint::Vector trajectory_odom_;
 
   Integrator integrator;
@@ -252,7 +240,8 @@ class VoliroRopePlanner{
 
   double vel_desir_;
   double force_sacle_;
-
+  double att_keep_dist_;
+  double env_update_interval_;
 
 };
 }  // namespace planning

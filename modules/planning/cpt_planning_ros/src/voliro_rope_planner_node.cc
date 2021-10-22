@@ -10,8 +10,6 @@ int main(int argc, char *argv[]) {
   ros::NodeHandle nh_private("~");
 
   cad_percept::planning::VoliroRopePlanner voliro_rope_planner(nh, nh_private);
-  // voliro_rope_planner.init_ros_interface(nh);
-  voliro_rope_planner.init_obs_wall();
   ros::spin();
 
   return 0;

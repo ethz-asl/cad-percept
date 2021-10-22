@@ -88,15 +88,14 @@
 
   <!-- rope  -->
   <arg name="pulley_free_yaw" default="true"/>
-  <arg name="rope_node_num" default="20"/> <!-- have to be even number  -->
+  <arg name="rope_node_num" default="40"/> <!-- have to be even number  -->
   <arg name="rope_node_mass" default="0.0066"/> <!-- rope66g/m  -->
   <arg name="spring_ks" default="100.0"/>
-  <arg name="spring_rest_len" default="0.30"/> <!-- 10cm  -->
+  <arg name="spring_rest_len" default="0.15"/> <!-- 10cm  -->
   <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
   <arg name="pulley_radius" default="0.5"/>
   <arg name="update_interval" default="0.1"/>
-  <arg name="hooked_node_idx" default="10"/>
-
+  <arg name="hooked_node_idx" default="16"/>
 
   <!-- Motion planner based on opt fabric  -->
   <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen">
@@ -163,13 +162,17 @@
 
     <param name="rope_avoid_constrain" value="true" type="bool"/>
     <param name="node_interval" value="1" type="int"/>
-    <param name="rope_react_range" value="1.5" type="double"/>
-    <param name="rope_len_lim" value="2.0" type="double"/>
-    <param name="rope_avoid_acc_max" value="1.5" type="double"/>
-    <param name="rope_avoid_range" value="1.0" type="double"/>
+    <param name="rope_react_range" value="0.4" type="double"/>
+    <param name="rope_len_lim" value="2.5" type="double"/>
+    <param name="rope_avoid_acc_max" value="3.0" type="double"/>
+    <param name="rope_avoid_range" value="0.15" type="double"/>
 
-    <param name="vel_desir" value="1.0" type="double"/>
+    <param name="vel_desir" value="1.5" type="double"/>
     <param name="force_sacle" value="0.5" type="double"/>
+    
+    <param name="att_keep_dist" value="1.5" type="double"/>
+    <param name="env_update_interval" value="0.1" type="double"/>
+
 
   </node>
 
