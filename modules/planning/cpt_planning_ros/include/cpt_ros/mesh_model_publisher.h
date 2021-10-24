@@ -21,7 +21,7 @@ class MeshModelPublisher {
     cgal::Polyhedron poly(model->getMesh());
     cgal::triangleMeshToMsg(poly, &msg.mesh);
     msg.header.stamp = ros::Time::now();
-    msg.header.frame_id = "world";
+    msg.header.frame_id = frame;
 
     if(frame == "uv"){
       for(auto& vertex : msg.mesh.vertices){

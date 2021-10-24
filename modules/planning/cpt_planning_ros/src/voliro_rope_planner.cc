@@ -1,5 +1,6 @@
 #include <cpt_planning_ros/voliro_rope_planner.h>
 #include <glog/logging.h>
+#include <thread>
 
 namespace cad_percept {
 namespace planning {
@@ -10,6 +11,8 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
 
   //read params
   readConfig();
+  //read mesh model
+  loadMesh();
   //initi ros interface
   //pub
   pub_marker_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
@@ -31,18 +34,16 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
                                 this);
   joy_sub_ = nh.subscribe<sensor_msgs::Joy>("joy", 10, &VoliroRopePlanner::joyCallback, this);
 
-  //timer
-  tf_update_timer_ = nh_.createTimer(ros::Duration(1), &VoliroRopePlanner::tfUpdateCallback,
+   //timer
+  tf_update_timer_ = nh_.createTimer(ros::Duration(5), &VoliroRopePlanner::tfUpdateCallback,
                                 this);  // update TF's every second
   rope_update_timer_ = nh.createTimer(ros::Duration(update_interval_), 
                                       &VoliroRopePlanner::ropeUpdateCallback, this);
   env_update_timer_ = nh.createTimer(ros::Duration(env_update_interval_), 
                                     &VoliroRopePlanner::envUpdateCallback, this);
-  command_update_timer_ = nh_.createTimer(ros::Duration(0.05), &VoliroRopePlanner::commandUpdateCallback,
-                              this);  // update TF's every second
 
-  //read mesh model
-  loadMesh();
+  command_update_timer_ = nh_.createTimer(ros::Duration(0.05), &VoliroRopePlanner::commandUpdateCallback,
+                              this);  
 }
 
 void VoliroRopePlanner::resetIntegrator(Eigen::Vector3d start_pos, 
@@ -75,10 +76,18 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
   for (double t = 0; t < max_traject_duration_; t += dt_) {
     Eigen::Vector3d drone_pos, drone_vel, drone_acc;
     integrator.getState(&drone_pos, &drone_vel, &drone_acc);
-      // std::cout << " root_vel: " << drone_vel(0) <<"; "
-      //           << drone_vel(1) <<"; "
-      //           << drone_vel(2) 
-      //           << std::endl;
+    if(drone_pos.size()<0){
+      ROS_WARN("no result from integrator.getState");
+      break;
+    }
+    // std::cout << " root_pos: " << drone_pos(0) <<"; "
+    //       << drone_pos(1) <<"; "
+    //       << drone_pos(2) 
+    //       << std::endl;
+    // std::cout << " root_vel: " << drone_vel(0) <<"; "
+    //           << drone_vel(1) <<"; "
+    //           << drone_vel(2) 
+    //           << std::endl;
 
     policies.clear();
     forcing_policies.clear();
@@ -111,7 +120,6 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
 
     RMPG::MatrixQ  pulled_M_forc;
     RMPG::VectorQ  pulled_acc_forc;
-    RMPG::VectorX  x_to_opt;
 
     RMPG::MatrixQ sum_ai = RMPG::MatrixQ::Zero();
     RMPG::VectorQ sum_ai_fi = RMPG::VectorQ::Zero();
@@ -122,7 +130,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     }
     pulled_acc_forc = pinv(sum_ai) * sum_ai_fi;  //weighted average
     pulled_M_forc = sum_ai;
-    x_to_opt = drone_pos - att_pos;
+
 
     // Eigen::Vector3d att_pos = target_uv_2+4.0*(drone_pos-target_uv_2).normalized();
     // if((drone_pos-att_pos).norm()>0.01){
@@ -147,11 +155,14 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     // policies.push_back(safe_dist_ground);
 
     Eigen::Vector3d obs_drone;
-    if(ropeVerlet->get_closest_obs_drone(obs_drone)){
+    if(ropeVerlet->get_closest_obs_drone(&obs_drone)){
       obs_drone = obs_drone+0.3*((drone_pos-obs_drone).normalized());
       //safe dist to obs for drone
       auto safe_dist_obs_drone= std::make_shared<CollisionAvoidGeometric>(obs_drone, A, 1.0, 1.0);  
       policies.push_back(safe_dist_obs_drone);
+    }else{
+      ROS_WARN("no result from ropeVerlet->get_closest_obs_drone");
+      break;
     }
 
 
@@ -343,19 +354,32 @@ nav_msgs::Path VoliroRopePlanner::build_hose_model(std::vector<Eigen::Vector3d> 
 }
 
 void VoliroRopePlanner::commandUpdateCallback(const ros::TimerEvent &event){
-  // ROS_INFO("commandUpdateCallback triggered");
-  auto start_time = std::chrono::steady_clock::now();
-  Eigen::Vector3d drone_pos, drone_vel, drone_acc;
-  integrator.getState(&drone_pos, &drone_vel, &drone_acc);
-  integrator.resetTo(drone_pos, drone_vel);
-  //calculate a new trajectory
-  trajectory_odom_.clear(); 
-  generateTrajectoryOdom();
-  //visualize the new trajectory
-  publishTrajectory_2();
-  auto end_time = std::chrono::steady_clock::now();
-  std::chrono::duration<double> duration = end_time - start_time;
-  // std::cout << "publishTrajectory_2 took " << duration.count() << " s" << std::endl;
+  if(mesh_loaded_ && rope_update_enable_){
+    // ROS_INFO("commandUpdateCallback triggered");
+    auto start_time = std::chrono::steady_clock::now();
+    Eigen::Vector3d drone_pos, drone_vel, drone_acc;
+    integrator.getState(&drone_pos, &drone_vel, &drone_acc);
+    integrator.resetTo(drone_pos, drone_vel);
+    //calculate a new trajectory
+    trajectory_odom_.clear(); 
+    generateTrajectoryOdom();
+    //visualize the new trajectory
+    publishTrajectory_2();
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = end_time - start_time;
+    // std::cout << "publishTrajectory_2 took " << duration.count() << " s" << std::endl;
+
+    nav_msgs::Path hose_path;
+    current_pos_ = trajectory_odom_.back().position_W;
+    start_ = current_pos_;
+    std::vector<Eigen::Vector3d> hose_key_points;
+    hose_key_points.push_back(goal_a_);
+    hose_key_points.push_back(current_pos_);
+    hose_key_points.push_back(goal_b_);
+    hose_path = build_hose_model(hose_key_points);
+    hose_path_pub.publish(hose_path);
+
+  }
 }
 
 //read new goal and calculate the trajectory
@@ -551,7 +575,7 @@ void VoliroRopePlanner::readConfig() {
   //init the middel drone
   Eigen::Vector3d init_drone_pos;
   init_drone_pos = 0.5*(start_node_pos_ + end_node_pos_);
-  resetIntegrator(init_drone_pos, {0.,0.,0.});
+  resetIntegrator(init_drone_pos, Eigen::Vector3d::Zero());
   //init the rope model 
   setTuning({0.7, 13.6, 0.4}, {20.0, 30.0, 0.01}, start_node_pos_, end_node_pos_, 0.01);
 }
@@ -612,43 +636,49 @@ void VoliroRopePlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom)
 }
 
 void VoliroRopePlanner::tfUpdateCallback(const ros::TimerEvent &event) {
-  if (!listener_.canTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0))) {
-    ROS_WARN_STREAM("Transform " << fixed_params_.enu_frame << " - " << fixed_params_.odom_frame
-                                 << " not available");
-    return;
-  }
+  // if (!listener_.canTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0))) {
+  //   ROS_WARN_STREAM("Transform " << fixed_params_.enu_frame << " - " << fixed_params_.odom_frame
+  //                                << " not available");
+  //   return;
+  // }
 
-  // write transform
-  tf::StampedTransform tf_enu_odom;
-  listener_.lookupTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0),
-                            tf_enu_odom);
-  tf::transformTFToEigen(tf_enu_odom, T_enu_odom_);
+  // // write transform
+  // tf::StampedTransform tf_enu_odom;
+  // listener_.lookupTransform(fixed_params_.enu_frame, fixed_params_.odom_frame, ros::Time(0),
+  //                           tf_enu_odom);
+  // tf::transformTFToEigen(tf_enu_odom, T_enu_odom_);
 
   frames_received_ = true;
-
+  pub_mesh_.publish(model_enu_, fixed_params_.enu_frame);
   publishMarkers();
 }
 
 void VoliroRopePlanner::envUpdateCallback(const ros::TimerEvent &event){
-  ropeVerlet->mesh_collision_update();
+  if(mesh_loaded_){
+    ropeVerlet->mesh_collision_update();
+    env_update_enable_ = true;
+  }
 }
 
 void VoliroRopePlanner::ropeUpdateCallback(const ros::TimerEvent &event){
-  float steps_per_frame = 64.0;
-  Eigen::Vector3d gravity(0., 0., -9.8);
-  
-  // auto start_time = std::chrono::steady_clock::now();
-  
-  for (int i = 0; i < steps_per_frame; i++) {
-    ropeVerlet->simVerletMovEnd(update_interval_/steps_per_frame, gravity);
+  if(mesh_loaded_ && env_update_enable_){
+    float steps_per_frame = 64.0;
+    Eigen::Vector3d gravity(0., 0., -9.8);
+    
+    // auto start_time = std::chrono::steady_clock::now();
+    
+    for (int i = 0; i < steps_per_frame; i++) {
+      ropeVerlet->simVerletMovEnd(update_interval_/steps_per_frame, gravity);
+    }
+    // ropesim::Rope *rope;
+    // rope = ropeVerlet;
+    publish_rope_vis(ropeVerlet->masses);
+    
+    // auto end_time = std::chrono::steady_clock::now();
+    // std::chrono::duration<double> duration = end_time - start_time;
+    // std::cout << "mesh_collision_update took " << duration.count() << " s" << std::endl;
+    rope_update_enable_ = true;
   }
-  // ropesim::Rope *rope;
-  // rope = ropeVerlet;
-  publish_rope_vis(ropeVerlet->masses);
-  
-  // auto end_time = std::chrono::steady_clock::now();
-  // std::chrono::duration<double> duration = end_time - start_time;
-  // std::cout << "mesh_collision_update took " << duration.count() << " s" << std::endl;
 }
 
 void VoliroRopePlanner::publish_rope_vis(std::vector<ropesim::Mass *> &rope_masses){
@@ -687,16 +717,6 @@ void VoliroRopePlanner::publish_rope_vis(std::vector<ropesim::Mass *> &rope_mass
   goal_b_(0) = rope_masses.at(0)->position(0);
   goal_b_(1) = rope_masses.at(0)->position(1);
   goal_b_(2) = rope_masses.at(0)->position(2);
-
-  nav_msgs::Path hose_path;
-  current_pos_ = trajectory_odom_.back().position_W;
-  start_ = current_pos_;
-  std::vector<Eigen::Vector3d> hose_key_points;
-  hose_key_points.push_back(goal_a_);
-  hose_key_points.push_back(current_pos_);
-  hose_key_points.push_back(goal_b_);
-  hose_path = build_hose_model(hose_key_points);
-  hose_path_pub.publish(hose_path);
 
   // //publish one end of the rope as a moving target message
   // geometry_msgs::PoseStamped mov_target;
@@ -751,7 +771,7 @@ void VoliroRopePlanner::loadMesh() {
   ropeVerlet = new ropesim::Rope(end_node_pos_, start_node_pos_, rope_node_num_, rope_node_mass_,
                     spring_ks_, spring_rest_len_, {0,hooked_node_idx_,rope_node_num_-1}, obj_poses_,
                     pulley_friction_, pulley_radius_, model_enu_);
-
+  // mesh_loaded_ = true;
 }
 
 void VoliroRopePlanner::publishMarkers() {
@@ -792,50 +812,48 @@ void VoliroRopePlanner::publishMarkers() {
 
 void VoliroRopePlanner::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 {
-  geometry_msgs::Twist twist;
-  int forth_back = 3;//+ forward , - backward
-  int left_right = 2;//+ left, - right
-  int up_down = 1; //+ up, - down
-  int mode_enable = 4;//BL
-  Eigen::Vector3d offset(0., 0., 0.);
-  offset(0) += joy->axes[forth_back];
-  offset(1) += joy->axes[left_right];
-  offset(2) += joy->axes[up_down];
-  
 
-  if(joy->buttons[mode_enable]>0){
-    //control the motion of the middle drone
-    // ropeVerlet->addObjOffset(offset);
-    ropeVerlet->addObjOffsetVel(offset*0.001);
+    geometry_msgs::Twist twist;
+    int forth_back = 3;//+ forward , - backward
+    int left_right = 2;//+ left, - right
+    int up_down = 1; //+ up, - down
+    int mode_enable = 4;//BL
+    Eigen::Vector3d offset(0., 0., 0.);
+    offset(0) += joy->axes[forth_back];
+    offset(1) += joy->axes[left_right];
+    offset(2) += joy->axes[up_down];
+    
 
-  }else{
-    //control the motion of end point
-    // ropeVerlet->addEndOffset(offset);
-    ropeVerlet->addEndOffsetVel(offset*0.001);
+    if(joy->buttons[mode_enable]>0){
+      //control the motion of the middle drone
+      // ropeVerlet->addObjOffset(offset);
+      ropeVerlet->addObjOffsetVel(offset*0.001);
 
-  }
-  // twist.angular.z = a_scale_*joy->axes[angular_];
-  // twist.linear.x = l_scale_*joy->axes[linear_];
-  // vel_pub_.publish(twist);
-  // id++;
+    }else{
+      //control the motion of end point
+      // ropeVerlet->addEndOffset(offset);
+      ropeVerlet->addEndOffsetVel(offset*0.001);
+
+    }
+
 }
 
 
 
 void VoliroRopePlanner::viconRopeCallback(const nav_msgs::OdometryConstPtr& odom)
 {
-  geometry_msgs::Twist twist;
-  Eigen::Vector3d offset(0., 0., 0.);
+    geometry_msgs::Twist twist;
+    Eigen::Vector3d offset(0., 0., 0.);
 
-  offset(0) = odom->pose.pose.position.x;
-  offset(1) = odom->pose.pose.position.y;
-  offset(2) = odom->pose.pose.position.z;
-  end_node_pos_.x() = odom->pose.pose.position.x;
-  end_node_pos_.y() = odom->pose.pose.position.y;
-  end_node_pos_.z() = odom->pose.pose.position.z;
+    offset(0) = odom->pose.pose.position.x;
+    offset(1) = odom->pose.pose.position.y;
+    offset(2) = odom->pose.pose.position.z;
+    end_node_pos_.x() = odom->pose.pose.position.x;
+    end_node_pos_.y() = odom->pose.pose.position.y;
+    end_node_pos_.z() = odom->pose.pose.position.z;
 
-  //control the motion of end point
-  ropeVerlet->addEndPosset(offset);
+    //control the motion of end point
+    ropeVerlet->addEndPosset(offset);
 }
 
 

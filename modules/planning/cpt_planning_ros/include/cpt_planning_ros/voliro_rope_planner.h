@@ -243,6 +243,10 @@ class VoliroRopePlanner{
   double att_keep_dist_;
   double env_update_interval_;
 
+  bool rope_update_enable_{false};
+  bool env_update_enable_{false};
+  // bool mesh_loaded_{false};
+
 };
 }  // namespace planning
 }  // namespace cad_percept
