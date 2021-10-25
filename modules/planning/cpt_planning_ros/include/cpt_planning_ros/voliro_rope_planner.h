@@ -119,6 +119,8 @@ class VoliroRopePlanner{
   }
 
  private:
+  inline Eigen::Vector3d getVelocityENU() { return T_enu_odom_.rotation() * v_odom_body_; }
+  inline Eigen::Vector3d getPositionENU() { return (T_enu_odom_ * T_odom_body_).translation(); }
 
   // config & startup stuff
   void readConfig();
@@ -207,7 +209,8 @@ class VoliroRopePlanner{
 
   //extral constrain for field test
   bool safe_box_constrain_{false};
-  bool rope_avoid_constrain_{true};
+  bool rope_avoid_constrain_{false};
+  bool obs_drone_constrain_{false};
 
   // Configuration
   bool odom_received_{false};

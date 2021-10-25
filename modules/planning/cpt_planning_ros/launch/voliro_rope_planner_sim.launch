@@ -18,7 +18,7 @@
   <arg name="wait_to_record_bag" default="false"/>
   <arg name="enable_mavlink_interface" default="false"/>
 
-  <arg name="start_x" default="1.0" />
+  <arg name="start_x" default="0.5" />
   <arg name="start_y" default="0.0" />
   <arg name="start_z" default="0.1" />
 
@@ -83,14 +83,14 @@
   <arg name="rope_start_z" default="0.1"/>
 
   <!-- parameters for the pulley init pose -->
-  <arg name="pulley_init_x" default="1.0"/>
+  <arg name="pulley_init_x" default="0.5"/>
   <arg name="pulley_init_y" default="0.0"/>
   <arg name="pulley_init_z" default="0.2"/>
 
 
   <!-- rope  -->
   <arg name="pulley_free_yaw" default="true"/>
-  <arg name="rope_node_num" default="40"/> <!-- have to be even number  -->
+  <arg name="rope_node_num" default="46"/> <!-- have to be even number  -->
   <arg name="rope_node_mass" default="0.0066"/> <!-- rope 66g/m  -->
   <arg name="spring_ks" default="100.0"/>
   <arg name="spring_rest_len" default="0.15"/> <!-- 15cm  -->
@@ -116,6 +116,8 @@
     <param name="enu_frame" type="string" value="enu" />
     <param name="odom_frame" type="string" value="world" />
     <param name="current_reference_frame" value="current_reference" />
+    <!-- <param name="opt_fabric_planner/current_reference_frame" value="voliro_tri/base_link" /> -->
+
 
     <param name="traject_dt" value="0.01" type="double"/>
     <param name="max_traject_duration" value="0.05" type="double"/>
@@ -152,26 +154,29 @@
     <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
     <remap from="opt_fabric_planner/joy" to="/joy" />
 
-    <param name="safe_box_constrain" value="false" type="bool"/>
+    <param name="safe_box_constrain" value="true" type="bool"/>
     <param name="safe_x_min" value="-10.0" type="double"/>
     <param name="safe_x_max" value="10.0" type="double"/>
     <param name="safe_y_min" value="-10.0" type="double"/>
     <param name="safe_y_max" value="10.0" type="double"/>
-    <param name="safe_z_min" value="-1.5" type="double"/>
+    <param name="safe_z_min" value="-0.2" type="double"/>
     <param name="safe_z_max" value="10.0" type="double"/>
 
     <param name="rope_avoid_constrain" value="true" type="bool"/>
     <param name="node_interval" value="1" type="int"/>
     <param name="rope_react_range" value="0.4" type="double"/>
     <param name="rope_len_lim" value="2.5" type="double"/>
-    <param name="rope_avoid_acc_max" value="3.0" type="double"/>
-    <param name="rope_avoid_range" value="0.15" type="double"/>
+    <param name="rope_avoid_acc_max" value="2.5" type="double"/>
+    <param name="rope_avoid_range" value="0.25" type="double"/>
 
-    <param name="vel_desir" value="1.5" type="double"/>
+    <param name="vel_desir" value="1.0" type="double"/>
     <param name="force_sacle" value="0.5" type="double"/>
     
-    <param name="att_keep_dist" value="1.5" type="double"/>
+    <param name="att_keep_dist" value="1.2" type="double"/>
     <param name="env_update_interval" value="0.1" type="double"/>
+
+    <param name="obs_drone_constrain" value="true" type="bool"/>
+
 
   </node>
 

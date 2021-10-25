@@ -157,21 +157,23 @@
     <param name="safe_x_max" value="10.0" type="double"/>
     <param name="safe_y_min" value="-10.0" type="double"/>
     <param name="safe_y_max" value="10.0" type="double"/>
-    <param name="safe_z_min" value="-1.5" type="double"/>
+    <param name="safe_z_min" value="-0.1" type="double"/>
     <param name="safe_z_max" value="10.0" type="double"/>
 
     <param name="rope_avoid_constrain" value="true" type="bool"/>
     <param name="node_interval" value="1" type="int"/>
     <param name="rope_react_range" value="0.4" type="double"/>
     <param name="rope_len_lim" value="2.5" type="double"/>
-    <param name="rope_avoid_acc_max" value="3.0" type="double"/>
-    <param name="rope_avoid_range" value="0.15" type="double"/>
+    <param name="rope_avoid_acc_max" value="2.5" type="double"/>
+    <param name="rope_avoid_range" value="0.25" type="double"/>
 
-    <param name="vel_desir" value="1.5" type="double"/>
+    <param name="vel_desir" value="1.0" type="double"/>
     <param name="force_sacle" value="0.5" type="double"/>
     
-    <param name="att_keep_dist" value="1.5" type="double"/>
+    <param name="att_keep_dist" value="1.2" type="double"/>
     <param name="env_update_interval" value="0.1" type="double"/>
+
+    <param name="obs_drone_constrain" value="true" type="bool"/>
 
 
   </node>

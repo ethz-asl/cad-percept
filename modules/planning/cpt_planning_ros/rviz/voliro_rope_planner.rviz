@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Status1
         - /Trajectory_vis1/Namespaces1
+        - /TF1
         - /TF1/Frames1
         - /Voliro_Odometry1/Shape1
         - /acc_push_rope1
@@ -71,29 +72,19 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        base_link:
-          Value: true
-        base_link_frd:
-          Value: true
         current_reference:
-          Value: true
-        eagle:
           Value: true
         enu:
           Value: true
-        map:
-          Value: true
-        map_ned:
-          Value: true
         mesh:
           Value: true
-        odom:
-          Value: true
-        odom_ned:
-          Value: true
-        rope_end001:
-          Value: true
-        vicon:
+        voliro_tri/base_link:
+          Value: false
+        voliro_tri/base_link_inertia:
+          Value: false
+        voliro_tri/landing_gear_link:
+          Value: false
+        voliro_tri/rotor_4:
           Value: true
         world:
           Value: true
@@ -103,17 +94,19 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        vicon:
-          eagle:
-            {}
-          enu:
-            mesh:
-              {}
-          rope_end001:
+        enu:
+          mesh:
             {}
           world:
             current_reference:
               {}
+            voliro_tri/base_link:
+              voliro_tri/base_link_inertia:
+                {}
+              voliro_tri/landing_gear_link:
+                {}
+              voliro_tri/rotor_4:
+                {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -356,7 +349,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 8.709501266479492
+      Distance: 4.5962815284729
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -371,10 +364,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: -0.025204408913850784
+      Pitch: -0.025204401463270187
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.41182541847229
+      Yaw: 1.6018255949020386
     Saved: ~
 Window Geometry:
   Displays:
@@ -392,5 +385,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1389
-  X: 2451
+  X: 2560
   Y: 0
