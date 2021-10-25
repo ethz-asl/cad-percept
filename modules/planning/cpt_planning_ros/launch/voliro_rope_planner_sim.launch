@@ -115,7 +115,7 @@
     <param name="body_frame" type="string" value="voliro_tri/base_link" />
     <param name="enu_frame" type="string" value="enu" />
     <param name="odom_frame" type="string" value="world" />
-    <param name="current_reference_frame" value="current_reference" />
+    <param name="current_reference_frame" value="voliro_tri/base_link" />
     <!-- <param name="opt_fabric_planner/current_reference_frame" value="voliro_tri/base_link" /> -->
 
 
@@ -169,8 +169,8 @@
     <param name="rope_avoid_acc_max" value="2.5" type="double"/>
     <param name="rope_avoid_range" value="0.25" type="double"/>
 
-    <param name="vel_desir" value="1.0" type="double"/>
-    <param name="force_sacle" value="0.5" type="double"/>
+    <param name="vel_desir" value="0.8" type="double"/>
+    <param name="force_sacle" value="0.4" type="double"/>
     
     <param name="att_keep_dist" value="1.2" type="double"/>
     <param name="env_update_interval" value="0.1" type="double"/>

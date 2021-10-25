@@ -10,8 +10,10 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
   manifold_ = std::make_shared<cad_percept::planning::LinearManifoldInterface>();
 
   //read params
+  ROS_WARN("read conf");
   readConfig();
   //read mesh model
+  ROS_WARN("Load mesh");
   loadMesh();
   //initi ros interface
   //pub
@@ -367,10 +369,11 @@ void VoliroRopePlanner::commandUpdateCallback(const ros::TimerEvent &event){
   if(mesh_loaded_ && rope_update_enable_){
     // ROS_INFO("commandUpdateCallback triggered");
     auto start_time = std::chrono::steady_clock::now();
-    // Eigen::Vector3d drone_pos, drone_vel, drone_acc;
-    // integrator.getState(&drone_pos, &drone_vel, &drone_acc);
+    Eigen::Vector3d drone_pos, drone_vel, drone_acc;
+    integrator.getState(&drone_pos, &drone_vel, &drone_acc);
     // integrator.resetTo(drone_pos, drone_vel);
-    integrator.resetTo(getPositionENU(), getVelocityENU());
+    // integrator.resetTo(getPositionENU(), getVelocityENU());
+    integrator.resetTo(getPositionENU(), drone_vel);
 
     //calculate a new trajectory
     trajectory_odom_.clear(); 
@@ -612,21 +615,22 @@ void VoliroRopePlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom)
    */
   // if (!dynamic_params_.updateOdomFromCurrentRef) {
     // write transform from odom
-    tf::poseMsgToEigen(odom->pose.pose, T_odom_body_);
+    // tf::poseMsgToEigen(odom->pose.pose, T_odom_body_);
   // } else {
-    // // lookup current reference
-    // if (!listener_.canTransform(fixed_params_.odom_frame, fixed_params_.current_reference_frame,
-    //                             ros::Time(0))) {
-    //   ROS_WARN_STREAM("Transform " << fixed_params_.odom_frame << " - "
-    //                                << fixed_params_.current_reference_frame << " not available");
-    //   return;
+    // lookup current reference
+    if (!listener_.canTransform(fixed_params_.odom_frame, fixed_params_.current_reference_frame,
+                                ros::Time(0))) {
+      ROS_WARN_STREAM("Transform " << fixed_params_.odom_frame << " - "
+                                   << fixed_params_.current_reference_frame << " not available");
+      return;
+    }
+    // write transform from current reference
+    tf::StampedTransform tf_enu_odom;
+    listener_.lookupTransform(fixed_params_.odom_frame, fixed_params_.current_reference_frame,
+                              ros::Time(0), tf_enu_odom);
+    tf::transformTFToEigen(tf_enu_odom, T_odom_body_);
+    // std::cout<< "T_odom_body_" <<std::endl;
     // }
-    // // write transform from current reference
-    // tf::StampedTransform tf_enu_odom;
-    // listener_.lookupTransform(fixed_params_.odom_frame, fixed_params_.current_reference_frame,
-    //                           ros::Time(0), tf_enu_odom);
-    // tf::transformTFToEigen(tf_enu_odom, T_odom_body_);
-  // }
 
   // if (dynamic_params_.updateOdomVel) {
     tf::vectorMsgToEigen(odom->twist.twist.linear, v_odom_body_);

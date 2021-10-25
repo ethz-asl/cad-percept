@@ -13,7 +13,8 @@
   <!-- ========== TF Broadcaster ========== -->
 <node pkg="tf2_ros" type="static_transform_publisher" name="vicon_broadcaster" args="0 0 0 0 0 0 1 vicon enu" />
 <node pkg="tf2_ros" type="static_transform_publisher" name="world_broadcaster" args="0 0 0 0 0 0 1 vicon world" />
-<node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="4 0 2.0 0 0.3826834 0 0.9238795 enu mesh" />
+<node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="4 0 2.0 0 0.3826834 0 0.9238795 vicon mesh" />
+
 
 <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="0 0 0 0 0 0 1 vicon_wall mesh" /> -->
 
@@ -88,14 +89,15 @@
 
   <!-- rope  -->
   <arg name="pulley_free_yaw" default="true"/>
-  <arg name="rope_node_num" default="40"/> <!-- have to be even number  -->
-  <arg name="rope_node_mass" default="0.0066"/> <!-- rope66g/m  -->
+  <arg name="rope_node_num" default="46"/> <!-- have to be even number  -->
+  <arg name="rope_node_mass" default="0.0066"/> <!-- rope 66g/m  -->
   <arg name="spring_ks" default="100.0"/>
-  <arg name="spring_rest_len" default="0.15"/> <!-- 10cm  -->
+  <arg name="spring_rest_len" default="0.15"/> <!-- 15cm  -->
   <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
   <arg name="pulley_radius" default="0.5"/>
   <arg name="update_interval" default="0.1"/>
   <arg name="hooked_node_idx" default="16"/>
+
 
   <!-- Motion planner based on opt fabric  -->
   <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen">
