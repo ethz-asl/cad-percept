@@ -154,12 +154,12 @@
     <remap from="opt_fabric_planner/joy" to="/joy" />
     <remap from="opt_fabric_planner/rope_end_odom" to="/rope_vrpn_client/estimated_odometry" />  <arg name="pulley_free_yaw" default="true"/>
 
-    <param name="safe_box_constrain" value="false" type="bool"/>
+    <param name="safe_box_constrain" value="true" type="bool"/>
     <param name="safe_x_min" value="-10.0" type="double"/>
     <param name="safe_x_max" value="10.0" type="double"/>
     <param name="safe_y_min" value="-10.0" type="double"/>
     <param name="safe_y_max" value="10.0" type="double"/>
-    <param name="safe_z_min" value="-0.1" type="double"/>
+    <param name="safe_z_min" value="0.0" type="double"/>
     <param name="safe_z_max" value="10.0" type="double"/>
 
     <param name="rope_avoid_constrain" value="true" type="bool"/>
@@ -169,13 +169,15 @@
     <param name="rope_avoid_acc_max" value="2.5" type="double"/>
     <param name="rope_avoid_range" value="0.25" type="double"/>
 
-    <param name="vel_desir" value="1.0" type="double"/>
-    <param name="force_sacle" value="0.5" type="double"/>
+    <param name="vel_desir" value="0.8" type="double"/>
+    <param name="force_sacle" value="0.4" type="double"/>
     
-    <param name="att_keep_dist" value="1.2" type="double"/>
+    <param name="att_keep_dist" value="1.5" type="double"/>
     <param name="env_update_interval" value="0.1" type="double"/>
 
     <param name="obs_drone_constrain" value="true" type="bool"/>
+    <param name="obs_drone_offset" value="0.5" type="double"/>
+
 
 
   </node>

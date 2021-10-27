@@ -249,6 +249,7 @@ class VoliroRopePlanner{
   bool rope_update_enable_{false};
   bool env_update_enable_{false};
   // bool mesh_loaded_{false};
+  double obs_drone_offset_;
 
 };
 }  // namespace planning

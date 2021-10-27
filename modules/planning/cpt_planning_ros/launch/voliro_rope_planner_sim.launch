@@ -67,8 +67,8 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="enu_broadcaster" args="0 0 0 0 0 0 1 enu world" />
   <!-- mesh transformation according to enu  -->
   <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="14 15 0 0 0 -0.7071068 -0.7071068 enu mesh" /> -->
-  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="3.0 1.0 2.0 0 0.3826834 0 0.9238795 enu mesh" />
-  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="2.0.0 1.0 2.0 -0.2705981 0.2705981 0.6532815 0.6532815 enu mesh" /> -->
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="3.0 1.0 1.0 0 0.3826834 0 0.9238795 enu mesh" /> -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="2.0.0 1.0 1.2 -0.2705981 0.2705981 0.6532815 0.6532815 enu mesh" />
 
 
 
@@ -129,10 +129,9 @@
     <param name="zero_z" type="double" value="0.0" /> -->
 
     <param name="mesh_frame" type="string" value="mesh" />
-    <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_centered_cut_subsampled_thick.off"/>
+    <!-- <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_centered_cut_subsampled_thick.off"/> -->
     <!-- <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" /> -->
-
-
+    <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_large_obstacle_wide.off"/>
 
     <param name="pulley_init_x" value="$(arg pulley_init_x)" type="double"/>
     <param name="pulley_init_y" value="$(arg pulley_init_y)" type="double"/>
@@ -172,10 +171,11 @@
     <param name="vel_desir" value="0.8" type="double"/>
     <param name="force_sacle" value="0.4" type="double"/>
     
-    <param name="att_keep_dist" value="1.2" type="double"/>
+    <param name="att_keep_dist" value="1.5" type="double"/>
     <param name="env_update_interval" value="0.1" type="double"/>
 
-    <param name="obs_drone_constrain" value="true" type="bool"/>
+    <param name="obs_drone_constrain" value="false" type="bool"/>
+    <param name="obs_drone_offset" value="0.5" type="double"/>
 
 
   </node>

@@ -168,7 +168,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     if(obs_drone_constrain_){
       Eigen::Vector3d obs_drone;
       if(ropeVerlet->get_closest_obs_drone(&obs_drone)){
-        obs_drone = obs_drone+0.3*((drone_pos-obs_drone).normalized());
+        obs_drone = obs_drone+obs_drone_offset_*((drone_pos-obs_drone).normalized());
         //safe dist to obs for drone
         auto safe_dist_obs_drone= std::make_shared<CollisionAvoidGeometric>(obs_drone, A, 1.0, 1.0);  
         policies.push_back(safe_dist_obs_drone);
@@ -184,6 +184,12 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
       ceiling_point << drone_pos.x(), drone_pos.y(), safe_z_max_;
       auto safe_dist_ceiling= std::make_shared<CollisionAvoidGeometric>(ceiling_point, A, 1.0, 1.0);  
       policies.push_back(safe_dist_ceiling);
+
+      //safe dist to the ground
+      Eigen::Vector3d ground_point;
+      ground_point << drone_pos.x(), drone_pos.y(), safe_z_min_;
+      auto safe_dist_ground= std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
+      policies.push_back(safe_dist_ground);
 
       //safe dist to y lim
       Eigen::Vector3d y_lim_point;
@@ -584,6 +590,7 @@ void VoliroRopePlanner::readConfig() {
   nh_private_.param("vel_desir", vel_desir_, 1.0);
   nh_private_.param("force_sacle", force_sacle_, 0.5);
   nh_private_.param("att_keep_dist", att_keep_dist_, 1.5);
+  nh_private_.param("obs_drone_offset", obs_drone_offset_, 0.5);
   
 
  
