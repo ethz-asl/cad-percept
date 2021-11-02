@@ -250,6 +250,7 @@ class VoliroRopePlanner{
   bool env_update_enable_{false};
   // bool mesh_loaded_{false};
   double obs_drone_offset_;
+  double drone_avoid_acc_max_, drone_avoid_range_;
 
 };
 }  // namespace planning

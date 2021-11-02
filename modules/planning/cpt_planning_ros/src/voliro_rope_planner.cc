@@ -165,16 +165,48 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
             // auto safe_dist_ground = std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
             // policies.push_back(safe_dist_ground);
 
+    // if(obs_drone_constrain_){
+    //   Eigen::Vector3d obs_drone;
+    //   if(ropeVerlet->get_closest_obs_drone(&obs_drone)){
+    //     obs_drone = obs_drone+obs_drone_offset_*((drone_pos-obs_drone).normalized());
+    //     //safe dist to obs for drone
+    //     auto safe_dist_obs_drone= std::make_shared<CollisionAvoidGeometric>(obs_drone, A, 1.0, 1.0);  
+    //     policies.push_back(safe_dist_obs_drone);
+    //   }else{
+    //     ROS_WARN("no result from ropeVerlet->get_closest_obs_drone");
+    //     break;
+    //   }
+    // }
+
     if(obs_drone_constrain_){
       Eigen::Vector3d obs_drone;
       if(ropeVerlet->get_closest_obs_drone(&obs_drone)){
-        obs_drone = obs_drone+obs_drone_offset_*((drone_pos-obs_drone).normalized());
-        //safe dist to obs for drone
-        auto safe_dist_obs_drone= std::make_shared<CollisionAvoidGeometric>(obs_drone, A, 1.0, 1.0);  
-        policies.push_back(safe_dist_obs_drone);
+        double obs_to_drone_norm = obs_drone.norm();
+        if(obs_to_drone_norm<2.0){
+          auto drone_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                              obs_drone, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
+          policies.push_back(drone_avoid);
+        }
       }else{
         ROS_WARN("no result from ropeVerlet->get_closest_obs_drone");
         break;
+      }
+      Eigen::Vector3d tail_offset(-0.8, 0.0, 0.0);
+      Eigen::Vector3d tail_pos = drone_pos + tail_offset;
+      cad_percept::cgal::PointAndPrimitiveId ppid = 
+        model_enu_->getClosestTriangle(tail_pos.x(),tail_pos.y(),tail_pos.z());
+      
+      //closest point
+      Eigen::Vector3d p_on_tri(ppid.first.x(),ppid.first.y(),ppid.first.z());
+      Eigen::Vector3d tri_to_tail_vec = tail_pos - p_on_tri;
+      double dist = tri_to_tail_vec.norm();
+      Eigen::Vector3d normal = ropeVerlet->normal_table_.find(ppid.second->id())->second;
+      Eigen::Vector3d obs_tail = normal*dist;
+      double obs_to_tail_norm = obs_tail.norm();
+      if(obs_to_tail_norm<2.0){
+        auto drone_tail_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                            obs_tail, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
+        policies.push_back(drone_tail_avoid);
       }
     }
 
@@ -260,8 +292,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     // ROS_WARN("[DEBUG] integrator.integrateStep");
 
     //damping optimizing when gradient closing to zero.
-    auto step_result = integrator.integrateStep(policies, 
-                                            pulled_M_forc, pulled_acc_forc, pulled_acc_forc, 
+    auto step_result = integrator.integrateStep(policies, pulled_M_forc, pulled_acc_forc, pulled_acc_forc, 
                                             manifold_, dt_, vel_desir_);
 
     if (!step_result.allFinite()) {
@@ -591,7 +622,9 @@ void VoliroRopePlanner::readConfig() {
   nh_private_.param("force_sacle", force_sacle_, 0.5);
   nh_private_.param("att_keep_dist", att_keep_dist_, 1.5);
   nh_private_.param("obs_drone_offset", obs_drone_offset_, 0.5);
-  
+  nh_private_.param("drone_avoid_acc_max", drone_avoid_acc_max_, 3.0);
+  nh_private_.param("drone_avoid_range", drone_avoid_range_, 1.0);
+
 
  
   obj_poses_.push_back(obj_pos_0_);
