@@ -27,6 +27,9 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
   rope_vis_pub_ = nh.advertise<visualization_msgs::Marker>("rope_vis", 1);
   moving_target_pub_ = nh.advertise<geometry_msgs::PoseStamped>("moving_target", 50);
 
+  policy_vis_pub_ =  nh.advertise<visualization_msgs::Marker>("policy_vis_0", 1);
+
+
   //sub
   sub_odometry_ = nh_.subscribe("odometry", 1, &VoliroRopePlanner::odometryCallback, this);
   vicon_rope_end_odometry_ = nh_.subscribe("rope_end_odom", 1, &VoliroRopePlanner::viconRopeCallback, 
@@ -210,42 +213,60 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
       }
     }
 
+    Eigen::Vector3d lim_to_drone;
     if(safe_box_constrain_){ //unlimited acc 
       //safe dist to the ceiling
-      Eigen::Vector3d ceiling_point;
-      ceiling_point << drone_pos.x(), drone_pos.y(), safe_z_max_;
-      auto safe_dist_ceiling= std::make_shared<CollisionAvoidGeometric>(ceiling_point, A, 1.0, 1.0);  
+      Eigen::Vector3d z_lim_point;
+      // ceiling_point << drone_pos.x(), drone_pos.y(), safe_z_max_;
+      // auto safe_dist_ceiling= std::make_shared<CollisionAvoidGeometric>(ceiling_point, A, 1.0, 1.0);  
+      // policies.push_back(safe_dist_ceiling);
+      z_lim_point << 0, 0, drone_pos.z() - safe_z_max_;
+      auto safe_dist_ceiling = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                    z_lim_point, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
       policies.push_back(safe_dist_ceiling);
 
+
       //safe dist to the ground
-      Eigen::Vector3d ground_point;
-      ground_point << drone_pos.x(), drone_pos.y(), safe_z_min_;
-      auto safe_dist_ground= std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
+      Eigen::Vector3d z_lim_point_2;
+      // ground_point << drone_pos.x(), drone_pos.y(), safe_z_min_;
+      // auto safe_dist_ground= std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
+      // policies.push_back(safe_dist_ground);
+      z_lim_point_2 << 0, 0, drone_pos.z() - safe_z_min_;
+      auto safe_dist_ground = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                    z_lim_point_2, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
       policies.push_back(safe_dist_ground);
 
       //safe dist to y lim
       Eigen::Vector3d y_lim_point;
-      y_lim_point << drone_pos.x(), safe_y_max_, drone_pos.z();
-      auto safe_dist_y_lim = std::make_shared<CollisionAvoidGeometric>(y_lim_point, A, 1.0, 1.0);  
+      // y_lim_point << drone_pos.x(), safe_y_max_, drone_pos.z();
+      // auto safe_dist_y_lim = std::make_shared<CollisionAvoidGeometric>(y_lim_point, A, 1.0, 1.0);  
+      // policies.push_back(safe_dist_y_lim);
+      y_lim_point << 0, drone_pos.y() - safe_y_max_, 0;
+      auto safe_dist_y_lim = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                          y_lim_point, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
       policies.push_back(safe_dist_y_lim);
 
       //safe dist to y lim
       Eigen::Vector3d y_lim_point_2;
-      y_lim_point_2 << drone_pos.x(), safe_y_min_, drone_pos.z();
-      auto safe_dist_y_lim_2 = std::make_shared<CollisionAvoidGeometric>(y_lim_point_2, A, 1.0, 1.0);  
+      // y_lim_point_2 << drone_pos.x(), safe_y_min_, drone_pos.z();
+      // auto safe_dist_y_lim_2 = std::make_shared<CollisionAvoidGeometric>(y_lim_point_2, A, 1.0, 1.0);  
+      // policies.push_back(safe_dist_y_lim_2);
+      y_lim_point_2 << 0, drone_pos.y() - safe_y_min_, 0;
+      auto safe_dist_y_lim_2 = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                    y_lim_point_2, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
       policies.push_back(safe_dist_y_lim_2);
 
       // //safe dist to x lim
       Eigen::Vector3d x_lim_point;
       x_lim_point << safe_x_max_ , drone_pos.y(), drone_pos.z();
-      auto safe_dist_x_lim = std::make_shared<CollisionAvoidGeometric>(x_lim_point, A, 1.0, 1.0);  
-      policies.push_back(safe_dist_x_lim);
+      // auto safe_dist_x_lim = std::make_shared<CollisionAvoidGeometric>(x_lim_point, A, 1.0, 1.0);  
+      // policies.push_back(safe_dist_x_lim);
 
       // //safe dist to x lim
       Eigen::Vector3d x_lim_point_2;
       x_lim_point_2 << safe_x_min_ , drone_pos.y(), drone_pos.z();
-      auto safe_dist_x_lim_2 = std::make_shared<CollisionAvoidGeometric>(x_lim_point_2, A, 1.0, 1.0);  
-      policies.push_back(safe_dist_x_lim_2);
+      // auto safe_dist_x_lim_2 = std::make_shared<CollisionAvoidGeometric>(x_lim_point_2, A, 1.0, 1.0);  
+      // policies.push_back(safe_dist_x_lim_2);
     }
 
     //part 1 rope length limitation (limited acc to avoid contraction to safe box)
@@ -293,7 +314,8 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
 
     //damping optimizing when gradient closing to zero.
     auto step_result = integrator.integrateStep(policies, pulled_M_forc, pulled_acc_forc, pulled_acc_forc, 
-                                            manifold_, dt_, vel_desir_);
+                                            manifold_, dt_, vel_desir_, damp_sw_threshold_, damp_sw_quick_,
+                                            damp_B_);
 
     if (!step_result.allFinite()) {
       ROS_WARN("Error, nonfinite integration data, stopping integration");
@@ -408,9 +430,10 @@ void VoliroRopePlanner::commandUpdateCallback(const ros::TimerEvent &event){
     auto start_time = std::chrono::steady_clock::now();
     Eigen::Vector3d drone_pos, drone_vel, drone_acc;
     integrator.getState(&drone_pos, &drone_vel, &drone_acc);
-    // integrator.resetTo(drone_pos, drone_vel);
+    integrator.resetTo(drone_pos, drone_vel);
     // integrator.resetTo(getPositionENU(), getVelocityENU());
-    integrator.resetTo(getPositionENU(), drone_vel);
+    // drone_vel = trajectory_odom_[3].velocity_W;
+    // integrator.resetTo(getPositionENU(), drone_vel);
 
     //calculate a new trajectory
     trajectory_odom_.clear(); 
@@ -592,7 +615,7 @@ void VoliroRopePlanner::readConfig() {
   nh_private_.param("rope_node_num", rope_node_num_, 50);
   nh_private_.param("rope_node_mass", rope_node_mass_, float(1.0));
   nh_private_.param("spring_ks", spring_ks_, float(100.0));
-  nh_private_.param("spring_rest_len", spring_rest_len_, 0.2);
+  nh_private_.param("spring_rest_len", spring_rest_len_, 0.15);
   nh_private_.param("pulley_friction", pulley_friction_, 0.02);
   nh_private_.param("pulley_radius", pulley_radius_, 0.5);
   nh_private_.param("update_interval", update_interval_, 0.1);
@@ -625,6 +648,10 @@ void VoliroRopePlanner::readConfig() {
   nh_private_.param("drone_avoid_acc_max", drone_avoid_acc_max_, 3.0);
   nh_private_.param("drone_avoid_range", drone_avoid_range_, 1.0);
 
+  //damper params
+  nh_private_.param("damp_sw_threshold", damp_sw_threshold_, 1.5);
+  nh_private_.param("damp_sw_quick", damp_sw_quick_, 4.0);
+  nh_private_.param("damp_B", damp_B_, 1.0);
 
  
   obj_poses_.push_back(obj_pos_0_);
@@ -691,6 +718,7 @@ void VoliroRopePlanner::odometryCallback(const nav_msgs::OdometryConstPtr &odom)
 
   //update obj pos in the rope sim
   ropeVerlet->objPosSet(obj_position, pulley_yaw_vec_);
+  // ropeVerlet->objPosSet(getPositionENU(), pulley_yaw_vec_);
 }
 
 void VoliroRopePlanner::tfUpdateCallback(const ros::TimerEvent &event) {

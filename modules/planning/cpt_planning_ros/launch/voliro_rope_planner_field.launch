@@ -13,10 +13,10 @@
   <!-- ========== TF Broadcaster ========== -->
 <node pkg="tf2_ros" type="static_transform_publisher" name="vicon_broadcaster" args="0 0 0 0 0 0 1 vicon enu" />
 <node pkg="tf2_ros" type="static_transform_publisher" name="world_broadcaster" args="0 0 0 0 0 0 1 vicon world" />
-<!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="4 0 2.0 0 0.3826834 0 0.9238795 vicon mesh" /> -->
+<node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="4 0 4.0 0 0.3826834 0 0.9238795 vicon mesh" />
 
 
-<node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="0 0 0 0 0 0 1 vicon_wall mesh" />
+<!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="0 0 0 0 0 0 1 vicon_wall mesh" /> -->
 
 
 
@@ -68,30 +68,31 @@
   </node>
 
 <!-- ========== Planner ========== -->
-   <arg name="rope_end_x" default="2.0"/>
-  <arg name="rope_end_y" default="0.0"/>
-  <arg name="rope_end_z" default="0.1"/>
+   <arg name="rope_end_x" value="2.0"/>
+  <arg name="rope_end_y" value="0.0"/>
+  <arg name="rope_end_z" value="0.1"/>
 
-  <arg name="rope_start_x" default="-2.7"/>
-  <arg name="rope_start_y" default="-0.7"/>
-  <arg name="rope_start_z" default="0.1"/>
+  <arg name="rope_start_x" value="-2.7"/>
+  <arg name="rope_start_y" value="-0.7"/>
+  <arg name="rope_start_z" value="0.1"/>
 
   <!-- parameters for the pulley init pose -->
-  <arg name="pulley_init_x" default="1.0"/>
-  <arg name="pulley_init_y" default="0.0"/>
-  <arg name="pulley_init_z" default="0.2"/>
+  <arg name="pulley_init_x" value="1.0"/>
+  <arg name="pulley_init_y" value="0.0"/>
+  <arg name="pulley_init_z" value="0.2"/>
 
 
   <!-- rope  -->
-  <arg name="pulley_free_yaw" default="true"/>
-  <arg name="rope_node_num" default="68"/> <!-- have to be even number  -->
-  <arg name="rope_node_mass" default="0.0066"/> <!-- rope 66g/m  -->
-  <arg name="spring_ks" default="100.0"/>
-  <arg name="spring_rest_len" default="0.15"/> <!-- 15cm  -->
-  <arg name="pulley_friction" default="0.2"/> <!-- friction between pulley and rope  -->
-  <arg name="pulley_radius" default="0.5"/>
-  <arg name="update_interval" default="0.1"/>
-  <arg name="hooked_node_idx" default="16"/>
+  <arg name="pulley_free_yaw" value="true"/>
+  <!-- <arg name="rope_node_num" default="46"/> have to be even number  -->
+  <arg name="rope_node_num" value="30"/> <!-- have to be even number  -->
+  <arg name="rope_node_mass" value="0.0066"/> <!-- rope 66g/m  -->
+  <arg name="spring_ks" value="100.0"/>
+  <arg name="spring_rest_len" value="0.3"/> <!-- 15cm  -->
+  <arg name="pulley_friction" value="0.2"/> <!-- friction between pulley and rope  -->
+  <arg name="pulley_radius" value="0.5"/>
+  <arg name="update_interval" value="0.1"/>
+  <arg name="hooked_node_idx" value="11"/> <!-- idx = 3.6/0.3 -1 -->
 
 
   <!-- Motion planner based on opt fabric  -->
@@ -111,7 +112,7 @@
     <param name="current_reference_frame" value="current_reference" />
 
     <param name="traject_dt" value="0.01" type="double"/>
-    <param name="max_traject_duration" value="0.1" type="double"/>
+    <param name="max_traject_duration" value="0.05" type="double"/>
     <!-- <param name="rope_safe_dist" value="0.5" type="double"/> -->
 
     <!-- <param name="zero_angle" type="double" value="0.0" />
@@ -150,7 +151,7 @@
     <remap from="opt_fabric_planner/joy" to="/joy" />
     <remap from="opt_fabric_planner/rope_end_odom" to="/rope_vrpn_client/estimated_odometry" />  <arg name="pulley_free_yaw" default="true"/>
 
-    <param name="safe_box_constrain" value="false" type="bool"/>
+    <!-- <param name="safe_box_constrain" value="false" type="bool"/>
     <param name="safe_x_min" value="-10.0" type="double"/>
     <param name="safe_x_max" value="10.0" type="double"/>
     <param name="safe_y_min" value="-10.0" type="double"/>
@@ -174,7 +175,49 @@
     <param name="obs_drone_constrain" value="true" type="bool"/>
     <param name="obs_drone_offset" value="0.5" type="double"/>
     <param name="drone_avoid_acc_max" value="3.0" type="double"/>
-    <param name="drone_avoid_range" value="1.0" type="double"/>
+    <param name="drone_avoid_range" value="1.0" type="double"/> -->
+
+    <param name="safe_box_constrain" value="false" type="bool"/>
+    <param name="safe_x_min" value="-10.0" type="double"/>
+    <param name="safe_x_max" value="10.0" type="double"/>
+    <param name="safe_y_min" value="-10.0" type="double"/>
+    <param name="safe_y_max" value="10.0" type="double"/>
+    <param name="safe_z_min" value="-0.5" type="double"/>
+    <param name="safe_z_max" value="3.5" type="double"/>
+
+    <param name="rope_avoid_constrain" value="true" type="bool"/>
+    <param name="node_interval" value="1" type="int"/>
+    <!-- <param name="rope_react_range" value="0.4" type="double"/> -->
+    <param name="rope_react_range" value="0.5" type="double"/>
+    <!-- <param name="rope_len_lim" value="2.4" type="double"/> -->
+    <!-- <param name="rope_len_lim" value="2.7" type="double"/> -->
+    <!-- <param name="rope_avoid_acc_max" value="2.0" type="double"/> -->
+    <param name="rope_avoid_acc_max" value="4.0" type="double"/>
+    <!-- <param name="rope_avoid_range" value="0.25" type="double"/> -->
+    <param name="rope_avoid_range" value="0.25" type="double"/>
+
+    <param name="vel_desir" value="1.0" type="double"/>
+    <param name="force_sacle" value="0.5" type="double"/>
+
+    <param name="rope_len_lim" value="1.8" type="double"/>
+    <!-- att_keep_dist = rope_len_lim - 0.3 -->
+    <param name="att_keep_dist" value="1.5" type="double"/>
+
+    <param name="env_update_interval" value="0.1" type="double"/>
+
+
+    <param name="obs_drone_constrain" value="true" type="bool"/>
+    <param name="obs_drone_offset" value="0.5" type="double"/>
+    <!-- <param name="drone_avoid_acc_max" value="5.0" type="double"/> -->
+    <param name="drone_avoid_acc_max" value="4.0" type="double"/>
+    <param name="drone_avoid_range" value="0.8" type="double"/>
+
+
+    <!-- <param name="damp_sw_threshold" value="1.1" type="double"/> -->
+    <param name="damp_sw_threshold" value="1.1" type="double"/>
+    <!-- <param name="damp_sw_quick" value="4.0" type="double"/> -->
+    <param name="damp_sw_quick" value="4.0" type="double"/>
+    <param name="damp_B" value="1.0" type="double"/>
 
 
 

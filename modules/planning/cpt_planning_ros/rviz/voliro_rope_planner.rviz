@@ -6,17 +6,15 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /Grid1
         - /Trajectory_vis1/Namespaces1
         - /TF1
-        - /TF1/Status1
         - /TF1/Frames1
         - /Rope_straight_model1
-        - /Rope_straight_model1/Status1
         - /Voliro_Odometry1/Shape1
         - /acc_push_rope1
         - /drone_control_acc1
         - /TriangleMeshDisplay1
-        - /TriangleMeshDisplay1/Status1
         - /Odometry1/Shape1
       Splitter Ratio: 0.437168151140213
     Tree Height: 724
@@ -50,7 +48,7 @@ Visualization Manager:
     - Alpha: 0.5
       Cell Size: 1
       Class: rviz/Grid
-      Color: 160; 160; 164
+      Color: 193; 125; 17
       Enabled: true
       Line Style:
         Line Width: 0.029999999329447746
@@ -62,7 +60,7 @@ Visualization Manager:
         Y: 0
         Z: 0
       Plane: XY
-      Plane Cell Count: 10
+      Plane Cell Count: 6
       Reference Frame: <Fixed Frame>
       Value: true
     - Class: rviz/MarkerArray
@@ -78,31 +76,19 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        base_link:
-          Value: true
-        base_link_frd:
-          Value: true
         current_reference:
-          Value: true
-        eagle:
           Value: true
         enu:
           Value: true
-        map:
-          Value: true
-        map_ned:
-          Value: true
         mesh:
           Value: true
-        odom:
+        voliro_tri/base_link:
           Value: true
-        odom_ned:
+        voliro_tri/base_link_inertia:
           Value: true
-        rope_end001:
+        voliro_tri/landing_gear_link:
           Value: true
-        vicon:
-          Value: true
-        vicon_wall:
+        voliro_tri/rotor_4:
           Value: true
         world:
           Value: true
@@ -112,19 +98,19 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        vicon:
-          eagle:
+        enu:
+          mesh:
             {}
-          enu:
-            {}
-          rope_end001:
-            {}
-          vicon_wall:
-            mesh:
-              {}
           world:
             current_reference:
               {}
+            voliro_tri/base_link:
+              voliro_tri/base_link_inertia:
+                {}
+              voliro_tri/landing_gear_link:
+                {}
+              voliro_tri/rotor_4:
+                {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -367,7 +353,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10.160913467407227
+      Distance: 12.347919464111328
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -382,10 +368,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6597952246665955
+      Pitch: 1.4347963333129883
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.3418198227882385
+      Yaw: 3.1018242835998535
     Saved: ~
 Window Geometry:
   Displays:
@@ -404,4 +390,4 @@ Window Geometry:
     collapsed: true
   Width: 1661
   X: 204
-  Y: 137
+  Y: 47

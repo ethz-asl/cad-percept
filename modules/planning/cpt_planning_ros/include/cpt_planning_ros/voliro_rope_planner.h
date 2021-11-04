@@ -168,6 +168,9 @@ class VoliroRopePlanner{
   ros::Publisher repulsion_pub_;
   ros::Publisher rope_vis_pub_;
   ros::Publisher moving_target_pub_;
+
+  ros::Publisher policy_vis_pub_;
+
   
   // sub
   ros::Subscriber sub_odometry_;  // curent odom
@@ -251,6 +254,15 @@ class VoliroRopePlanner{
   // bool mesh_loaded_{false};
   double obs_drone_offset_;
   double drone_avoid_acc_max_, drone_avoid_range_;
+
+  double damp_sw_threshold_{1.5};
+  double damp_sw_quick_{4.0};
+  double damp_B_{1.0};
+  
+  //policy vis
+  double damper_sw_vis_;
+  double eng_reg_sw_vis_;
+
 
 };
 }  // namespace planning
