@@ -27,7 +27,7 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
   rope_vis_pub_ = nh.advertise<visualization_msgs::Marker>("rope_vis", 1);
   moving_target_pub_ = nh.advertise<geometry_msgs::PoseStamped>("moving_target", 50);
 
-  policy_vis_pub_ =  nh.advertise<visualization_msgs::Marker>("policy_vis_0", 1);
+  policy_vis_pub_ =  nh.advertise<std_msgs::Float32MultiArray>("policy_vis", 1);
 
 
   //sub
@@ -79,6 +79,8 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
   // integrate over trajectory
   // double max_traject_duration_= 1.0;
   for (double t = 0; t < max_traject_duration_; t += dt_) {
+    tensor_list_.clear();
+    policy_list_.clear();
     Eigen::Vector3d drone_pos, drone_vel, drone_acc;
     integrator.getState(&drone_pos, &drone_vel, &drone_acc);
     if(drone_pos.size()<0){
@@ -96,6 +98,9 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
 
     policies.clear();
     forcing_policies.clear();
+    std::fill(policy_number_list_.begin(), policy_number_list_.end(), 0.0);
+
+    //forcing policies ==================================================================
     //set optimization target
     // Eigen::Vector3d att_pos = goal_b_+att_keep_dist_*((goal_a_-goal_b_).normalized());
     Eigen::Vector3d att_pos = goal_b_+att_keep_dist_*((drone_pos-goal_b_).normalized());
@@ -115,7 +120,6 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     Eigen::Vector3d att_pos_2 = goal_b_+att_keep_dist_*((goal_a_-goal_b_).normalized());
     auto force_policy_spec_2 = std::make_shared<OptimizationPotential>(att_pos_2, A, force_sacle_/2.0, 8.0, safe_box);  
     forcing_policies.push_back(force_policy_spec_2);
-
     // auto force_policy_spec_2 = std::make_shared<OptimizationPotential>(goal_a_, A, force_sacle_/2.0, 8.0, safe_box);  
     // forcing_policies.push_back(force_policy_spec_2);
 
@@ -141,46 +145,18 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     for (const auto &RMPBase : evaluated_forc_policies) {
       sum_ai += RMPBase.A_;
       sum_ai_fi += RMPBase.A_ * RMPBase.f_;
+      //for policy profiling:
+      tensor_list_.push_back(RMPBase.A_);
+      policy_list_.push_back(RMPBase.f_);
+      policy_number_list_.at(0) += 1.0;
     }
     pulled_acc_forc = pinv(sum_ai) * sum_ai_fi;  //weighted average
     pulled_M_forc = sum_ai;
-
-
-            // Eigen::Vector3d att_pos = target_uv_2+4.0*(drone_pos-target_uv_2).normalized();
-            // if((drone_pos-att_pos).norm()>0.01){
-            //   auto att_1 = std::make_shared<AttractionPotential>(att_pos, A);  
-            //   policies.push_back(att_1);
-            //   //vis attraction
-            //   publish_attraction_vis(drone_pos, att_pos);
-            // }
-
-            // auto geo_fabric_link = std::make_shared<LinkCollisionAvoidGeometric>(push_rope_dir_, last_push_rope_dir_, A);  
-            // policies.push_back(geo_fabric_link);
-
-            // for(auto m : ropeVerlet->masses){
-            //   auto rope_node_avoid = std::make_shared<CollisionAvoidGeometric>(m->closest_vertex, A, 1.0, 1.0);  
-            //   policies.push_back(rope_node_avoid);
-            // }
-
-            // safe dist to the ground
-            // Eigen::Vector3d ground_point;
-            // ground_point << drone_pos.x(), drone_pos.y(), -0.1;
-            // auto safe_dist_ground = std::make_shared<CollisionAvoidGeometric>(ground_point, A, 1.0, 1.0);  
-            // policies.push_back(safe_dist_ground);
-
-    // if(obs_drone_constrain_){
-    //   Eigen::Vector3d obs_drone;
-    //   if(ropeVerlet->get_closest_obs_drone(&obs_drone)){
-    //     obs_drone = obs_drone+obs_drone_offset_*((drone_pos-obs_drone).normalized());
-    //     //safe dist to obs for drone
-    //     auto safe_dist_obs_drone= std::make_shared<CollisionAvoidGeometric>(obs_drone, A, 1.0, 1.0);  
-    //     policies.push_back(safe_dist_obs_drone);
-    //   }else{
-    //     ROS_WARN("no result from ropeVerlet->get_closest_obs_drone");
-    //     break;
-    //   }
-    // }
-
+    tensor_list_.push_back(pulled_M_forc);
+    policy_list_.push_back(pulled_acc_forc);
+    policy_number_list_.at(0) += 1.0;
+    
+    //GEO Fabrics ===============================================================================
     if(obs_drone_constrain_){
       Eigen::Vector3d obs_drone;
       if(ropeVerlet->get_closest_obs_drone(&obs_drone)){
@@ -189,6 +165,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
           auto drone_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
                               obs_drone, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
           policies.push_back(drone_avoid);
+          policy_number_list_.at(1) += 1.0;
         }
       }else{
         ROS_WARN("no result from ropeVerlet->get_closest_obs_drone");
@@ -210,10 +187,10 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
         auto drone_tail_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
                             obs_tail, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
         policies.push_back(drone_tail_avoid);
+        policy_number_list_.at(1) += 1.0;
       }
     }
 
-    Eigen::Vector3d lim_to_drone;
     if(safe_box_constrain_){ //unlimited acc 
       //safe dist to the ceiling
       Eigen::Vector3d z_lim_point;
@@ -224,7 +201,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
       auto safe_dist_ceiling = std::make_shared<RopeCollisionGeom>(A, goal_b_,
                     z_lim_point, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
       policies.push_back(safe_dist_ceiling);
-
+      policy_number_list_.at(2) += 1.0;
 
       //safe dist to the ground
       Eigen::Vector3d z_lim_point_2;
@@ -235,6 +212,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
       auto safe_dist_ground = std::make_shared<RopeCollisionGeom>(A, goal_b_,
                     z_lim_point_2, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
       policies.push_back(safe_dist_ground);
+      policy_number_list_.at(2) += 1.0;
 
       //safe dist to y lim
       Eigen::Vector3d y_lim_point;
@@ -245,6 +223,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
       auto safe_dist_y_lim = std::make_shared<RopeCollisionGeom>(A, goal_b_,
                           y_lim_point, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
       policies.push_back(safe_dist_y_lim);
+      policy_number_list_.at(2) += 1.0;
 
       //safe dist to y lim
       Eigen::Vector3d y_lim_point_2;
@@ -255,6 +234,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
       auto safe_dist_y_lim_2 = std::make_shared<RopeCollisionGeom>(A, goal_b_,
                     y_lim_point_2, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
       policies.push_back(safe_dist_y_lim_2);
+      policy_number_list_.at(2) += 1.0;
 
       // //safe dist to x lim
       Eigen::Vector3d x_lim_point;
@@ -269,13 +249,6 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
       // policies.push_back(safe_dist_x_lim_2);
     }
 
-    //part 1 rope length limitation (limited acc to avoid contraction to safe box)
-    // Eigen::Vector3d len_lim_pos = goal_b_+ (drone_pos-goal_b_).normalized()*(att_keep_dist_+1.5);
-    // auto part_1_len_lim = std::make_shared<CollisionAvoidGeometric>(len_lim_pos, A, 0.2, 1.0);  
-    // policies.push_back(part_1_len_lim);
-    // auto att_geom = std::make_shared<AttractionGeometric>(len_lim_pos, A, 2.0, 3.0); 
-    // policies.push_back(att_geom);
-
     // //ground lift geom
     // Eigen::Vector3d ground_normal(0.0, 0.0, 1.0);
     // auto ground_lift = std::make_shared<GroundLiftGeometric>(A, ground_normal, 2.0);  
@@ -284,6 +257,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     //baseline geom
     auto baseline_geom = std::make_shared<BaselineGeometric>(A); 
     policies.push_back(baseline_geom);
+    policy_number_list_.at(3) += 1.0;
 
     // //attraction geom to starting point, shorten rope part-2
     // auto att_geom = std::make_shared<AttractionGeometric>(goal_a_, A); 
@@ -304,18 +278,17 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
           auto rope_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
                               obs_to_node, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
           policies.push_back(rope_avoid);
+          policy_number_list_.at(4) += 1.0;
         }
         obs_node_idx++;
       }
     }
                 
     //get next step
-    // ROS_WARN("[DEBUG] integrator.integrateStep");
-
     //damping optimizing when gradient closing to zero.
     auto step_result = integrator.integrateStep(policies, pulled_M_forc, pulled_acc_forc, pulled_acc_forc, 
-                                            manifold_, dt_, vel_desir_, damp_sw_threshold_, damp_sw_quick_,
-                                            damp_B_);
+                                            manifold_, tensor_list_, policy_list_, dt_, vel_desir_, 
+                                            damp_sw_threshold_, damp_sw_quick_, damp_B_);
 
     if (!step_result.allFinite()) {
       ROS_WARN("Error, nonfinite integration data, stopping integration");
@@ -344,8 +317,29 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
   }
   auto end_time = std::chrono::steady_clock::now();
   std::chrono::duration<double> duration = end_time - start_time;
-  // std::cout << "Planner took " << duration.count() << " s" << std::endl;
-  // ROS_DEBUG_STREAM("Planner took " << duration.count() << " us");
+
+
+  //log policies
+  std_msgs::Float32MultiArray policies_log_msg;
+  policies_log_msg.data.clear();
+  int log_data_idx;
+  for(log_data_idx=0; log_data_idx<policy_list_.size(); log_data_idx++){
+    // policies_log_msg.data.push_back(123456.78);
+    policies_log_msg.data.push_back(policy_list_.at(log_data_idx).x());
+    policies_log_msg.data.push_back(policy_list_.at(log_data_idx).y());
+    policies_log_msg.data.push_back(policy_list_.at(log_data_idx).z());
+    policies_log_msg.data.push_back(policy_list_.at(log_data_idx).norm());
+    policies_log_msg.data.push_back(tensor_list_.at(log_data_idx)(0,0));
+    policies_log_msg.data.push_back(tensor_list_.at(log_data_idx)(1,1));
+    policies_log_msg.data.push_back(tensor_list_.at(log_data_idx)(2,2));
+  }
+  policies_log_msg.data.push_back(-9.9);
+  for(auto num: policy_number_list_){
+    policies_log_msg.data.push_back(num);
+  }
+  policies_log_msg.data.push_back((float)policy_list_.size());
+  policy_vis_pub_.publish(policies_log_msg);
+
 }
 
 

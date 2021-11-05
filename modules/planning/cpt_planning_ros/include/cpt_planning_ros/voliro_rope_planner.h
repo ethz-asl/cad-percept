@@ -33,7 +33,7 @@
 #include <tf_conversions/tf_eigen.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <sensor_msgs/Joy.h>
-
+#include <std_msgs/Float32MultiArray.h>
 
 // add mesh
 #include <cgal_definitions/mesh_model.h>
@@ -262,6 +262,26 @@ class VoliroRopePlanner{
   //policy vis
   double damper_sw_vis_;
   double eng_reg_sw_vis_;
+
+  /**
+   * list contains:
+   * &1. end-effector distance holding force potential
+   *  2. straight rope preferance force potential
+   *  3. total force potential (1+2)
+   * &4. obs_drone_constrain_
+   *  5. obs_drone_constrain_ tail
+   * &6. safe_box_constrain_  x4
+   * &7. baseline_geom
+   * &8. rope_avoid_constrain_ xn
+   * $9. overall geo policy
+   * $10. overall acc 
+  */
+  std::vector<Eigen::Matrix3d> tensor_list_;
+  std::vector<Eigen::Vector3d> policy_list_;
+  
+  std::vector<float> policy_number_list_{0.0, 0.0, 0.0, 0.0, 0.0};
+
+
 
 
 };
