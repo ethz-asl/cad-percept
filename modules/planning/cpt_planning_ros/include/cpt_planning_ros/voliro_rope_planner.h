@@ -265,22 +265,31 @@ class VoliroRopePlanner{
 
   /**
    * list contains:
-   * &1. end-effector distance holding force potential
-   *  2. straight rope preferance force potential
-   *  3. total force potential (1+2)
-   * &4. obs_drone_constrain_
+   * &1. end-effector distance holding force potential [0~6]
+   *  2. straight rope preferance force potential [7~13]
+   *  3. total force potential (1+2) [14~20]
+   * &4. obs_drone_constrain_ [7*3~ ]
    *  5. obs_drone_constrain_ tail
    * &6. safe_box_constrain_  x4
-   * &7. baseline_geom
+   * &7. baseline_geom []
    * &8. rope_avoid_constrain_ xn
    * $9. overall geo policy
    * $10. overall acc 
+   * 
+   * policy numer in each policy class 
+   * 
+    eng_reg_coef_list_.push_back((float)(alpha_ex_eta*q_dot_norm));
+    eng_reg_coef_list_.push_back((float)switchEta);
+    eng_reg_coef_list_.push_back((float)(-1.0*damper_beta*q_dot_norm));
+    eng_reg_coef_list_.push_back((float)switchSbeta);
+    eng_reg_coef_list_.push_back((float)(booster_alpha*q_dot_norm));
+    eng_reg_coef_list_.push_back(q_dot_norm);
+    eng_reg_coef_list_.push_back(q_ddot_norm);
   */
   std::vector<Eigen::Matrix3d> tensor_list_;
   std::vector<Eigen::Vector3d> policy_list_;
-  
   std::vector<float> policy_number_list_{0.0, 0.0, 0.0, 0.0, 0.0};
-
+  std::vector<float> eng_reg_coef_list_;
 
 
 

@@ -81,6 +81,8 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
   for (double t = 0; t < max_traject_duration_; t += dt_) {
     tensor_list_.clear();
     policy_list_.clear();
+    eng_reg_coef_list_.clear();
+
     Eigen::Vector3d drone_pos, drone_vel, drone_acc;
     integrator.getState(&drone_pos, &drone_vel, &drone_acc);
     if(drone_pos.size()<0){
@@ -287,7 +289,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     //get next step
     //damping optimizing when gradient closing to zero.
     auto step_result = integrator.integrateStep(policies, pulled_M_forc, pulled_acc_forc, pulled_acc_forc, 
-                                            manifold_, tensor_list_, policy_list_, dt_, vel_desir_, 
+                                            manifold_, tensor_list_, policy_list_, eng_reg_coef_list_, dt_, vel_desir_, 
                                             damp_sw_threshold_, damp_sw_quick_, damp_B_);
 
     if (!step_result.allFinite()) {
@@ -324,20 +326,24 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
   policies_log_msg.data.clear();
   int log_data_idx;
   for(log_data_idx=0; log_data_idx<policy_list_.size(); log_data_idx++){
-    // policies_log_msg.data.push_back(123456.78);
+    policies_log_msg.data.push_back(policy_list_.at(log_data_idx).norm());
     policies_log_msg.data.push_back(policy_list_.at(log_data_idx).x());
     policies_log_msg.data.push_back(policy_list_.at(log_data_idx).y());
     policies_log_msg.data.push_back(policy_list_.at(log_data_idx).z());
-    policies_log_msg.data.push_back(policy_list_.at(log_data_idx).norm());
     policies_log_msg.data.push_back(tensor_list_.at(log_data_idx)(0,0));
     policies_log_msg.data.push_back(tensor_list_.at(log_data_idx)(1,1));
     policies_log_msg.data.push_back(tensor_list_.at(log_data_idx)(2,2));
   }
-  policies_log_msg.data.push_back(-9.9);
   for(auto num: policy_number_list_){
     policies_log_msg.data.push_back(num);
   }
-  policies_log_msg.data.push_back((float)policy_list_.size());
+
+  policies_log_msg.data.push_back((float)policy_list_.size()); //policy number + 1(all force) +1(all geo)+1(overall)
+
+  for(auto coef:eng_reg_coef_list_){
+    policies_log_msg.data.push_back(coef);
+  }
+
   policy_vis_pub_.publish(policies_log_msg);
 
 }
