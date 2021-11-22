@@ -107,7 +107,7 @@
 
   <!-- Motion planner based on opt fabric  -->
   <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen"
->
+        launch-prefix="valgrind --tool=callgrind --callgrind-out-file='/home/gcs/Desktop/callgrind.listener.%p'">
 
     <!-- <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>
     <param name="rope_start_y" value="$(arg rope_start_y)" type="double"/>
