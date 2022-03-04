@@ -399,17 +399,30 @@ bool Mapper::selectiveICP(const DP &cloud, PM::TransformationParameters *T_updat
       map_thread = boost::thread(&Mapper::addScanToMap, this, pc, stamp);
     }
 
-    // TODO (Hermann) It would make more sense to just publish the transform for the corresponding
-    // scan sequence number
-    if (selective_icp_scan_pub_.getNumSubscribers()) {
-      std::cout << "Selective ICP scan publishing " << pc.getNbPoints() << " points" << std::endl;
-      selective_icp_scan_pub_.publish(
-          PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc, parameters_.tf_map_frame, stamp));
-    }
-
     if (parameters_.output) {
       getError(selective_ref_dp, pc, 1);
     }
+
+    // TODO (Hermann) It would make more sense to just publish the transform for the corresponding
+    // scan sequence number
+    if (selective_icp_scan_pub_.getNumSubscribers()) {
+      // Dimension of the point cloud, important since we handle 2D and 3D.
+      const int dimp1(cloud.features.rows());
+      PM::TransformationParameters T_map_to_marker = PointMatcher_ros::eigenMatrixToDim<float>(
+            PointMatcher_ros::transformListenerToEigenMatrix<float>(
+                tf_listener_,
+                mesh_frame_id_,
+                parameters_.tf_map_frame,  // to
+                //mesh_frame_id_,   // from
+                ros::Time(0)),
+            dimp1);
+      DP pc_in_mesh = transformation_->compute(pc, T_map_to_marker);
+      std::cout << "Selective ICP scan publishing " << pc_in_mesh.getNbPoints() << " points" << std::endl;
+      selective_icp_scan_pub_.publish(
+          PointMatcher_ros::pointMatcherCloudToRosMsg<float>(pc_in_mesh, mesh_frame_id_, stamp));
+    }
+
+    
 
     return true;
 

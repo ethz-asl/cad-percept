@@ -69,7 +69,7 @@ bool DeviationMeshPublisher::triggerPublishMesh(cgal_msgs::PublishMesh::Request 
 void DeviationMeshPublisher::jsonListener(const std_msgs::String &msg) {
   // load mesh from json
   nlohmann::json j = nlohmann::json::parse(msg.data);
-  publishMesh(j);
+  publishMesh(j["data"]);
 }
 
 }  // namespace cpt_deviation_analysis
