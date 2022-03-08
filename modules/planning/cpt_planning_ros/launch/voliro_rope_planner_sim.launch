@@ -71,9 +71,9 @@
   <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="3.0 1.0 1.0 0 0.3826834 0 0.9238795 enu mesh" /> -->
   <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="1.0 -1.0 1.2 -0.2705981 0.2705981 0.6532815 0.6532815 enu mesh" /> -->
 
-  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="1.0 -1.0 1.2 0.2705981 0.2705981 -0.6532815 0.6532815 enu mesh" />
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="2.0 -2.0 1.2 0.2705981 0.2705981 -0.6532815 0.6532815 enu mesh" /> -->
 
-  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="0 0 0 0 0 0 1 enu mesh" /> -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="0 0 -0.1 0 0 0 1 enu mesh" />
 
 
   <!-- ========== Planner ========== -->
@@ -139,8 +139,8 @@
     <param name="mesh_frame" type="string" value="mesh" />
     <!-- <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_centered_cut_subsampled_thick.off"/> -->
     <!-- <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" /> -->
-    <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_large_obstacle_wide.off"/>
-    <!-- <param name="mesh_path" type="string" value="$(find rope_sim_ros)/mesh/rock_remeshed.off"/> -->
+    <!-- <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_large_obstacle_wide.off"/> -->
+    <param name="mesh_path" type="string" value="$(find rope_sim_ros)/mesh/rock_remeshed.off"/>
 
 
     
@@ -206,6 +206,7 @@
     <param name="damp_sw_quick" value="4.0" type="double"/>
     <param name="damp_B" value="1.0" type="double"/>
 
+    <param name="dist_eval_enable" value="true" type="bool"/>
 
   </node>
 

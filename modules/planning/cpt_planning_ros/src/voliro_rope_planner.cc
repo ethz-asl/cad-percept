@@ -28,6 +28,8 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
   moving_target_pub_ = nh.advertise<geometry_msgs::PoseStamped>("moving_target", 50);
 
   policy_vis_pub_ =  nh.advertise<std_msgs::Float32MultiArray>("policy_vis", 1);
+  dist_eval_vis_pub_ =  nh.advertise<std_msgs::Float32MultiArray>("dist_eval_vis", 1);
+
 
 
   //sub
@@ -273,6 +275,15 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
       for(auto m:ropeVerlet->masses){
         Eigen::Vector3d obs_to_node=m->obs_to_node;
         double obs_to_node_norm = obs_to_node.norm();
+         
+        if(dist_eval_enable_){
+          if(dist_eval_list_.at(0)<0){//assign the first value after init
+            dist_eval_list_.at(0) = (float) obs_to_node_norm;
+          }else if(obs_to_node_norm<dist_eval_list_.at(0)){
+            dist_eval_list_.at(0) = (float) obs_to_node_norm;
+          }
+        }
+
         if(obs_node_idx % node_interval_ == 0 && obs_to_node_norm<rope_react_range_){
           // if(obs_node_idx == 0){
           //   std::cout<<"obs_to_node"<<obs_node_idx<<"; "<<obs_to_node_norm<<std::endl;
@@ -284,6 +295,22 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
         }
         obs_node_idx++;
       }
+      if(dist_eval_enable_){
+        publishDistEval(dist_eval_list_);
+      }
+    }else if(dist_eval_enable_){
+      for(auto m:ropeVerlet->masses){
+        Eigen::Vector3d obs_to_node=m->obs_to_node;
+        double obs_to_node_norm = obs_to_node.norm();
+         
+          if(dist_eval_list_.at(0)<0){//assign the first value after init
+            dist_eval_list_.at(0) = (float) obs_to_node_norm;
+          }else if(obs_to_node_norm<dist_eval_list_.at(0)){
+            dist_eval_list_.at(0) = (float) obs_to_node_norm;
+          }
+      }
+      publishDistEval(dist_eval_list_);
+
     }
                 
     //get next step
@@ -319,7 +346,8 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
   }
   auto end_time = std::chrono::steady_clock::now();
   std::chrono::duration<double> duration = end_time - start_time;
-
+  std::cout << "generateTrajectoryOdom took " << duration.count() << " s" << std::endl;
+  time_analysis_table[2].push_back(duration.count());
 
   //log policies
   std_msgs::Float32MultiArray policies_log_msg;
@@ -348,7 +376,15 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
 
 }
 
-
+void VoliroRopePlanner::publishDistEval(std::vector<float> &dist_list){
+  std_msgs::Float32MultiArray dist_eval_msg;
+  dist_eval_msg.data.clear();
+  dist_eval_msg.data.push_back(dist_eval_list_.at(0));
+  dist_eval_msg.data.push_back(dist_eval_list_.at(1));
+  dist_eval_list_.at(0) = -1.0;
+  dist_eval_list_.at(1) = -1.0;
+  dist_eval_vis_pub_.publish(dist_eval_msg);
+}
 
 
 void VoliroRopePlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom) {
@@ -442,8 +478,13 @@ void VoliroRopePlanner::commandUpdateCallback(const ros::TimerEvent &event){
     publishTrajectory_2();
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
-    // std::cout << "publishTrajectory_2 took " << duration.count() << " s" << std::endl;
-
+    std::cout << "commandUpdateCallback took " << duration.count() << " s" << std::endl;
+    time_analysis_table[3].push_back(duration.count());
+    if(time_analysis_table[0].size()>10){
+      ROS_INFO("Write the time measure to CSV");
+      write_csv("/home/gcs/Desktop/asl_omav_ws/src/cad_percept/modules/planning/cpt_planning_ros/csv/time.csv", time_analysis_table);
+      time_analysis_table.clear();
+    }   
     nav_msgs::Path hose_path;
     current_pos_ = trajectory_odom_.back().position_W;
     start_ = current_pos_;
@@ -624,6 +665,8 @@ void VoliroRopePlanner::readConfig() {
   nh_private_.param("safe_box_constrain", safe_box_constrain_, false);
   nh_private_.param("rope_avoid_constrain", rope_avoid_constrain_, true);
   nh_private_.param("obs_drone_constrain", obs_drone_constrain_, true);
+  nh_private_.param("dist_eval_enable", dist_eval_enable_, false);
+
 
   nh_private_.param("safe_x_min", safe_x_min_, -1.5);
   nh_private_.param("safe_x_max", safe_x_max_, 1.5);
@@ -741,8 +784,14 @@ void VoliroRopePlanner::tfUpdateCallback(const ros::TimerEvent &event) {
 
 void VoliroRopePlanner::envUpdateCallback(const ros::TimerEvent &event){
   if(mesh_loaded_){
+    auto start_time = std::chrono::steady_clock::now();
     ropeVerlet->mesh_collision_update();
     env_update_enable_ = true;
+
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = end_time - start_time;
+    std::cout << "envUpdateCallback took " << duration.count() << " s" << std::endl;
+    time_analysis_table[0].push_back(duration.count());
   }
 }
 
@@ -751,7 +800,7 @@ void VoliroRopePlanner::ropeUpdateCallback(const ros::TimerEvent &event){
     float steps_per_frame = 64.0;
     Eigen::Vector3d gravity(0., 0., -9.8);
     
-    // auto start_time = std::chrono::steady_clock::now();
+    auto start_time = std::chrono::steady_clock::now();
     
     for (int i = 0; i < steps_per_frame; i++) {
       ropeVerlet->simVerletMovEnd(update_interval_/steps_per_frame, gravity);
@@ -760,9 +809,11 @@ void VoliroRopePlanner::ropeUpdateCallback(const ros::TimerEvent &event){
     // rope = ropeVerlet;
     publish_rope_vis(ropeVerlet->masses);
     
-    // auto end_time = std::chrono::steady_clock::now();
-    // std::chrono::duration<double> duration = end_time - start_time;
-    // std::cout << "mesh_collision_update took " << duration.count() << " s" << std::endl;
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = end_time - start_time;
+    std::cout << "ropeUpdateCallback took " << duration.count() << " s" << std::endl;
+    time_analysis_table[1].push_back(duration.count());
+
     rope_update_enable_ = true;
   }
 }
@@ -784,15 +835,15 @@ void VoliroRopePlanner::publish_rope_vis(std::vector<ropesim::Mass *> &rope_mass
     p.y = m->position(1);
     p.z = m->position(2);
 
-    rope_marker.scale.x = 0.03;
-    rope_marker.scale.y = 0.03;
-    rope_marker.scale.z = 0.03;
+    rope_marker.scale.x = 0.05;
+    rope_marker.scale.y = 0.05;
+    rope_marker.scale.z = 0.05;
     rope_marker.pose.orientation.w = 1.0;
 
     rope_marker.points.push_back(p);
     rope_marker.color.a = 1.0;
-    rope_marker.color.r = 1.0;
-    rope_marker.color.g = 1.0;
+    rope_marker.color.r = 0.4;
+    rope_marker.color.g = 0.2;
     rope_marker.color.b = 0.0;
     rope_marker.lifetime = ros::Duration(update_interval_*0.9);
   }
@@ -943,8 +994,60 @@ void VoliroRopePlanner::viconRopeCallback(const nav_msgs::OdometryConstPtr& odom
 }
 
 
+// Function: fileExists
+/**
+    Check if a file exists
+@param[in] filename - the name of the file to check
 
+@return    true if the file exists, else false
 
+*/
+bool VoliroRopePlanner::fileExists(const std::string& filename)
+{
+    struct stat buf;
+    if (stat(filename.c_str(), &buf) != -1)
+    {
+        return true;
+    }
+    return false;
+}
+
+void VoliroRopePlanner::write_csv(std::string filename, std::map<int, std::vector<double>> dataset){
+    // Make a CSV file with one or more columns of integer values
+    // Each column of data is represented by the pair <column name, column data>
+    //   as std::pair<std::string, std::vector<int>>
+    // The dataset is represented as a vector of these columns
+    // Note that all columns should be the same size
+    
+    // Create an output filestream object
+    std::ofstream myFile;
+    // Send column names to the stream
+    if(fileExists(filename) == false){
+        myFile.open(filename);
+        for(int j = 0; j < dataset.size(); ++j)
+        {
+            myFile << std::to_string(j);
+            if(j != dataset.size() - 1) myFile << ","; // No comma at end of line
+        }
+        myFile << "\n";
+    }else{
+        myFile.open(filename, std::ios_base::app);
+    }
+    // Send data to the stream
+    for(int i = 0; i < dataset[0].size()/2; ++i)
+    {
+        for(int j = 0; j < dataset.size(); ++j)
+        {
+            myFile << dataset[j].at(i);
+            if(j != dataset.size() - 1) myFile << ","; // No comma at end of line
+        }
+        myFile << "\n";
+    }
+    
+    // Close the file
+    myFile.close();
+    ROS_INFO("write_csv");
+}
 
 
 

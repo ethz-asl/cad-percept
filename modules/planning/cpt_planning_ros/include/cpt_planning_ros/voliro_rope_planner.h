@@ -50,6 +50,13 @@
 #include <iostream>
 #include <tuple>
 
+//csv file
+#include <fstream>
+#include <utility> // std::pair
+#include <string> 
+// #include <iostream>
+#include <sys/stat.h>
+
 namespace cad_percept {
 namespace planning {
 
@@ -104,6 +111,7 @@ class VoliroRopePlanner{
   void publish_attraction_vis(Eigen::Vector3d start, Eigen::Vector3d end);
   void publish_repulsion_vis(Eigen::Vector3d start, Eigen::Vector3d end);
   void publish_rope_vis(std::vector<ropesim::Mass *> &rope_masses);
+  void publishDistEval(std::vector<float> &dist_list);
 
   inline const std::string getName() const {
     return "NA";
@@ -117,10 +125,16 @@ class VoliroRopePlanner{
       goal_a_ = goal_a;
       goal_b_ = goal_b;
   }
+  //csv
+  bool fileExists(const std::string& filename);
+  void write_csv(std::string filename, std::map<int, std::vector<double>> dataset);
 
  private:
   inline Eigen::Vector3d getVelocityENU() { return T_enu_odom_.rotation() * v_odom_body_; }
   inline Eigen::Vector3d getPositionENU() { return (T_enu_odom_ * T_odom_body_).translation(); }
+
+  //csv: function time measurement
+  std::map<int, std::vector<double>> time_analysis_table;
 
   // config & startup stuff
   void readConfig();
@@ -170,7 +184,7 @@ class VoliroRopePlanner{
   ros::Publisher moving_target_pub_;
 
   ros::Publisher policy_vis_pub_;
-
+  ros::Publisher dist_eval_vis_pub_;
   
   // sub
   ros::Subscriber sub_odometry_;  // curent odom
@@ -214,6 +228,9 @@ class VoliroRopePlanner{
   bool safe_box_constrain_{false};
   bool rope_avoid_constrain_{false};
   bool obs_drone_constrain_{false};
+
+  bool dist_eval_enable_{false};
+
 
   // Configuration
   bool odom_received_{false};
@@ -290,8 +307,7 @@ class VoliroRopePlanner{
   std::vector<Eigen::Vector3d> policy_list_;
   std::vector<float> policy_number_list_{0.0, 0.0, 0.0, 0.0, 0.0};
   std::vector<float> eng_reg_coef_list_;
-
-
+  std::vector<float> dist_eval_list_{-1.0, -1.0}; //min obs to rope dist, min obs to drone dist
 
 };
 }  // namespace planning
