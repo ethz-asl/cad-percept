@@ -1,0 +1,225 @@
+<!-- killall gzclient -->
+<!-- killall gzserver -->
+
+<launch>
+  <arg name="mav_name" default="voliro_tri"/>
+  <arg name="namespace" default="voliro_tri"/>
+  <arg name="model" default="$(find voliro_description)/urdf/voliro_tri_ouster_lidar_os0.xacro"/>
+  <arg name="tf_prefix" default="$(optenv ROS_NAMESPACE)"/>
+
+  <!-- <arg name="world" default="$(find omav_gazebo_wada)/worlds/wada.world" /> -->
+  <arg name="world" default="$(find omav_demos_simulator)/worlds/rock.world"/>
+  <arg name="show_gazebo" default="false"/>
+  <arg name="pause_gazebo" default="false" />
+
+  <arg name="enable_logging" default="false"/>
+  <arg name="enable_ground_truth" default="true"/>
+  <arg name="log_file" default="$(arg mav_name)"/>
+  <arg name="wait_to_record_bag" default="false"/>
+  <arg name="enable_mavlink_interface" default="false"/>
+
+  <!-- drone init pos  -->
+  <arg name="start_x" value="-2.5" />
+  <arg name="start_y" value="1.0" />
+  <arg name="start_z" value="0.1" />
+
+  <arg name="show_rviz" value="true" />
+  <arg name="rviz_config" value="voliro_rope_planner_OS1" />
+
+  <!-- ========== Simulation ========== -->
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find rotors_gazebo)/models:$(find omav_gazebo_wada)/models"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find rotors_gazebo)/models"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg world)"/>
+    <arg name="gui" value="$(arg show_gazebo)"/>
+    <arg name="paused" value="$(arg pause_gazebo)" />
+  </include>
+
+  <!-- ========== MAV ========== -->
+  <!-- Send the robot XML to param server. -->
+  <param name="robot_description" command="
+    $(find xacro)/xacro $(arg model) enable_logging:=$(arg enable_logging) 
+    enable_ground_truth:=$(arg enable_ground_truth) enable_mavlink_interface:=$(arg enable_mavlink_interface) 
+    log_file:=$(arg log_file) wait_to_record_bag:=$(arg wait_to_record_bag) mav_name:=$(arg mav_name) 
+    namespace:=$(arg namespace)
+    " />
+  <param name="tf_prefix" type="string" value="$(arg tf_prefix)" />
+
+  <!-- Push robot_description to factory and spawn robot in gazebo. -->
+  <node name="spawn_$(arg namespace)" pkg="gazebo_ros" type="spawn_model" args="-param robot_description
+         -urdf
+         -x $(arg start_x)
+         -y $(arg start_y)
+         -z $(arg start_z)
+         -model $(arg namespace)" respawn="false" output="screen">
+  </node>
+
+  <!-- ========== State Publisher ========== -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
+    <remap from="/joint_states" to="/$(arg mav_name)/joint_states" />
+  </node>
+
+  <!-- ========== Controller ========== -->
+  <include file="$(find voliro_gazebo_control)/launch/voliro_tri_control.launch">
+    <arg name="mav_name" value="$(arg mav_name)" />
+  </include>
+
+  <!-- ========== TF Broadcaster ========== -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="enu_broadcaster" args="0 0 0 0 0 0 1 enu world" />
+  <!-- mesh transformation according to enu  -->
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="14 15 0 0 0 -0.7071068 -0.7071068 enu mesh" /> -->
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="3.0 1.0 1.0 0 0.3826834 0 0.9238795 enu mesh" /> -->
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="1.0 -1.0 1.2 -0.2705981 0.2705981 0.6532815 0.6532815 enu mesh" /> -->
+
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="2.0 -2.0 1.2 0.2705981 0.2705981 -0.6532815 0.6532815 enu mesh" /> -->
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster" args="0 0 -0.1 0 0 0 1 enu mesh" />
+
+
+  <!-- ========== Planner ========== -->
+    <!-- parameters for the rope -->
+  <arg name="rope_end_x" value="-2.7"/>
+  <arg name="rope_end_y" value="2.0"/>
+  <arg name="rope_end_z" value="0.1"/>
+
+  <arg name="rope_start_x" value="-2.7"/>
+  <arg name="rope_start_y" value="-0.7"/>
+  <arg name="rope_start_z" value="0.1"/>
+
+  <!-- parameters for the pulley init pose -->
+  <arg name="pulley_init_x" value="0.5"/>
+  <arg name="pulley_init_y" value="0.0"/>
+  <arg name="pulley_init_z" value="0.2"/>
+
+
+  <!-- rope  -->
+  <arg name="pulley_free_yaw" value="true"/>
+  <!-- <arg name="rope_node_num" default="46"/> have to be even number  -->
+  <arg name="rope_node_num" value="30"/> <!-- have to be even number  -->
+  <arg name="rope_node_mass" value="0.0066"/> <!-- rope 66g/m  -->
+  <arg name="spring_ks" value="100.0"/>
+  <arg name="spring_rest_len" value="0.3"/> <!-- 15cm  -->
+  <arg name="pulley_friction" value="0.2"/> <!-- friction between pulley and rope  -->
+  <arg name="pulley_radius" value="0.5"/>
+  <arg name="update_interval" value="0.1"/>
+  <arg name="hooked_node_idx" value="11"/> <!-- idx = 3.6/0.3 -1 -->
+
+
+  <!-- Motion planner based on opt fabric  -->
+  <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_unknown_environment_node" output="screen"
+> 
+
+    <!-- <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>
+    <param name="rope_start_y" value="$(arg rope_start_y)" type="double"/>
+    <param name="rope_start_z" value="$(arg rope_start_z)" type="double"/> -->
+    <param name="rope_start_x" value="-2.7" type="double"/>
+    <param name="rope_start_y" value="-0.7" type="double"/>
+    <param name="rope_start_z" value="0.1" type="double"/>
+
+    <param name="rope_end_x" value="$(arg rope_end_x)" type="double"/>
+    <param name="rope_end_y" value="$(arg rope_end_y)" type="double"/>
+    <param name="rope_end_z" value="$(arg rope_end_z)" type="double"/>
+
+    <param name="body_frame" type="string" value="voliro_tri/base_link" />
+    <param name="enu_frame" type="string" value="enu" />
+    <param name="odom_frame" type="string" value="world" />
+    <param name="current_reference_frame" value="voliro_tri/base_link" />
+    <!-- <param name="opt_fabric_planner/current_reference_frame" value="voliro_tri/base_link" /> -->
+
+
+    <param name="traject_dt" value="0.01" type="double"/>
+    <param name="max_traject_duration" value="0.05" type="double"/>
+    <!-- <param name="rope_safe_dist" value="0.5" type="double"/> -->
+
+    <!-- <param name="zero_angle" type="double" value="0.0" />
+    <param name="zero_x" type="double" value="0.0" />
+    <param name="zero_y" type="double" value="0.0" />
+    <param name="zero_z" type="double" value="0.0" /> -->
+
+    <param name="mesh_frame" type="string" value="mesh" />
+    <!-- <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_centered_cut_subsampled_thick.off"/> -->
+    <!-- <param name="mesh_path" type="string" value="/home/liping/Documents/asl_omav_doc/3d-model/test_obs_01.off" /> -->
+    <!-- <param name="mesh_path" type="string" value="$(find omav_gazebo_vicon)/models/vicon_wall/meshes/vicon_wall_large_obstacle_wide.off"/> -->
+    <param name="mesh_path" type="string" value="$(find rope_sim_ros)/mesh/rock_remeshed.off"/>
+
+
+    
+    <param name="pulley_init_x" value="$(arg pulley_init_x)" type="double"/>
+    <param name="pulley_init_y" value="$(arg pulley_init_y)" type="double"/>
+    <param name="pulley_init_z" value="$(arg pulley_init_z)" type="double"/>
+
+    <param name="pulley_free_yaw" value="$(arg pulley_free_yaw)" type="bool"/>
+    <param name="rope_node_num" value="$(arg rope_node_num)" type="int"/>
+    <param name="rope_node_mass" value="$(arg rope_node_mass)" type="double"/>
+    <param name="spring_ks" value="$(arg spring_ks)" type="double"/>
+    <param name="spring_rest_len" value="$(arg spring_rest_len)" type="double"/>
+    <param name="pulley_friction" value="$(arg pulley_friction)" type="double"/>
+    <param name="pulley_radius" value="$(arg pulley_radius)" type="double"/>
+    <param name="update_interval" value="$(arg update_interval)" type="double"/>
+    <param name="hooked_node_idx" value="$(arg hooked_node_idx)" type="int"/>
+
+    <remap from="opt_fabric_planner/cmd_trajectory" to="/$(arg mav_name)/command/trajectory" />
+    <remap from="opt_fabric_planner/odometry" to="/$(arg mav_name)/ground_truth/odometry" />
+    <remap from="opt_fabric_planner/rope_vis" to="/rope_sim_ros/rope_vis" />
+    <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
+    <remap from="opt_fabric_planner/joy" to="/joy" />
+
+    <param name="safe_box_constrain" value="false" type="bool"/>
+    <param name="safe_x_min" value="-10.0" type="double"/>
+    <param name="safe_x_max" value="10.0" type="double"/>
+    <param name="safe_y_min" value="-10.0" type="double"/>
+    <param name="safe_y_max" value="10.0" type="double"/>
+    <param name="safe_z_min" value="-0.5" type="double"/>
+    <param name="safe_z_max" value="3.5" type="double"/>
+
+    <param name="rope_avoid_constrain" value="true" type="bool"/>
+    <param name="node_interval" value="1" type="int"/>
+    <!-- <param name="rope_react_range" value="0.4" type="double"/> -->
+    <param name="rope_react_range" value="0.55" type="double"/>
+    <!-- <param name="rope_len_lim" value="2.4" type="double"/> -->
+    <!-- <param name="rope_len_lim" value="2.7" type="double"/> -->
+    <!-- <param name="rope_avoid_acc_max" value="2.0" type="double"/> -->
+    <param name="rope_avoid_acc_max" value="4.0" type="double"/>
+    <!-- <param name="rope_avoid_range" value="0.25" type="double"/> -->
+    <param name="rope_avoid_range" value="0.3" type="double"/>
+
+    <param name="vel_desir" value="1.0" type="double"/>
+    <param name="force_sacle" value="0.5" type="double"/>
+
+    <param name="rope_len_lim" value="2.7" type="double"/>
+    <!-- att_keep_dist = rope_len_lim - 0.3 -->
+    <param name="att_keep_dist" value="2.4" type="double"/>
+
+    <param name="env_update_interval" value="0.1" type="double"/>
+
+
+    <param name="obs_drone_constrain" value="true" type="bool"/>
+    <param name="obs_drone_offset" value="0.5" type="double"/>
+    <!-- <param name="drone_avoid_acc_max" value="5.0" type="double"/> -->
+    <param name="drone_avoid_acc_max" value="4.0" type="double"/>
+    <param name="drone_avoid_range" value="0.8" type="double"/>
+
+
+    <!-- <param name="damp_sw_threshold" value="1.1" type="double"/> -->
+    <param name="damp_sw_threshold" value="1.1" type="double"/>
+    <!-- <param name="damp_sw_quick" value="4.0" type="double"/> -->
+    <param name="damp_sw_quick" value="4.0" type="double"/>
+    <param name="damp_B" value="1.0" type="double"/>
+
+    <param name="dist_eval_enable" value="true" type="bool"/>
+
+  </node>
+
+  <!-- joystick to control the behaviour of the end point  -->
+  <node pkg="joy" name="joystick_interface" type="joy_node" output="screen">
+     <rosparam>
+       joy_node/dev: "/dev/input/js0"
+     </rosparam>
+  </node>
+
+  <!-- ========== Sensor reading visualization in RViz ========== -->
+<group if="$(arg show_rviz)">
+<node type="rviz" name="rviz" pkg="rviz" args="-d $(find cpt_planning_ros)/rviz/$(arg rviz_config).rviz" />
+</group>
+
+</launch>
