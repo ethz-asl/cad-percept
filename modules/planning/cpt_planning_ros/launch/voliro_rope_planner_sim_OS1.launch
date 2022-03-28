@@ -11,6 +11,7 @@
   <arg name="world" default="$(find omav_demos_simulator)/worlds/rock.world"/>
   <arg name="show_gazebo" default="false"/>
   <arg name="pause_gazebo" default="false" />
+  <arg name="verbose" default="true" />
 
   <arg name="enable_logging" default="false"/>
   <arg name="enable_ground_truth" default="true"/>
@@ -33,6 +34,7 @@
     <arg name="world_name" value="$(arg world)"/>
     <arg name="gui" value="$(arg show_gazebo)"/>
     <arg name="paused" value="$(arg pause_gazebo)" />
+    <arg name="verbose" value="$(arg verbose)" />
   </include>
 
   <!-- ========== MAV ========== -->
@@ -163,6 +165,7 @@
     <remap from="opt_fabric_planner/rope_vis" to="/rope_sim_ros/rope_vis" />
     <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
     <remap from="opt_fabric_planner/joy" to="/joy" />
+    <remap from="opt_fabric_planner/ouster_points" to="/ouster_points" />
 
     <param name="safe_box_constrain" value="false" type="bool"/>
     <param name="safe_x_min" value="-10.0" type="double"/>

@@ -34,6 +34,7 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Float32MultiArray.h>
+#include <sensor_msgs/PointCloud2.h>
 
 // add mesh
 #include <cgal_definitions/mesh_model.h>
@@ -56,6 +57,11 @@
 #include <string> 
 // #include <iostream>
 #include <sys/stat.h>
+// PointCloudLibrary headers for KDTree, nearest neighbor search
+#include <pcl/point_cloud.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/conversions.h>
+#include <pcl/point_types.h>
 
 namespace cad_percept {
 namespace planning {
@@ -151,6 +157,7 @@ class VoliroRopePlanner{
 
   void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
   void viconRopeCallback(const nav_msgs::OdometryConstPtr &odom);
+  void lidarCallback(const sensor_msgs::PointCloud2ConstPtr &input_msg);
 
   /// Convenience method for pseudo-inverse
   template <int i, int j>
@@ -185,6 +192,7 @@ class VoliroRopePlanner{
 
   ros::Publisher policy_vis_pub_;
   ros::Publisher dist_eval_vis_pub_;
+  ros::Publisher lidar_pub_;
   
   // sub
   ros::Subscriber sub_odometry_;  // curent odom
@@ -192,6 +200,7 @@ class VoliroRopePlanner{
   ros::Subscriber rope_nodes_sub;  // curent rope nodes positions
   ros::Subscriber moving_target_sub;
   ros::Subscriber joy_sub_;
+  ros::Subscriber lidar_sub_;
 
   // timer
   ros::Timer tf_update_timer_;

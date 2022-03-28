@@ -10,6 +10,7 @@ Panels:
         - /TF1/Frames1
         - /Voliro_Odometry1/Shape1
         - /Odometry1/Shape1
+        - /Selected Points1
       Splitter Ratio: 0.437168151140213
     Tree Height: 717
   - Class: rviz/Selection
@@ -30,7 +31,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: OS1 Lidar
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -185,6 +186,7 @@ Visualization Manager:
       Name: ENU
       Radius: 0.029999999329447746
       Reference Frame: <Fixed Frame>
+      Show Trail: false
       Value: true
     - Angle Tolerance: 0.10000000149011612
       Class: rviz/Odometry
@@ -347,7 +349,7 @@ Visualization Manager:
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: PointCloud2
+      Name: OS1 Lidar
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
@@ -355,6 +357,34 @@ Visualization Manager:
       Size (m): 0.009999999776482582
       Style: Flat Squares
       Topic: /ouster_points
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 138; 226; 52
+      Min Color: 0; 0; 0
+      Name: Selected Points
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.05000000074505806
+      Style: Spheres
+      Topic: /opt_fabric_planner/processed_pcl
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -389,7 +419,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 24.992982864379883
+      Distance: 7.882023334503174
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -405,9 +435,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3453989624977112
+      Pitch: 0.40539905428886414
       Target Frame: <Fixed Frame>
-      Yaw: 3.6940882205963135
+      Yaw: 3.3040850162506104
     Saved: ~
 Window Geometry:
   Displays:

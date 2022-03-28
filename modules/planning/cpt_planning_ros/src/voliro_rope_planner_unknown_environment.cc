@@ -29,6 +29,8 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
 
   policy_vis_pub_ =  nh.advertise<std_msgs::Float32MultiArray>("policy_vis", 1);
   dist_eval_vis_pub_ =  nh.advertise<std_msgs::Float32MultiArray>("dist_eval_vis", 1);
+  // LiDAR pointcloud publisher for debug
+  lidar_pub_ = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("processed_pcl", 1);
 
 
 
@@ -40,6 +42,8 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
   moving_target_sub = nh_.subscribe("moving_target", 10, &VoliroRopePlanner::goalCallback, 
                                 this);
   joy_sub_ = nh.subscribe<sensor_msgs::Joy>("joy", 10, &VoliroRopePlanner::joyCallback, this);
+  // Lidar callback
+  lidar_sub_ = nh.subscribe<sensor_msgs::PointCloud2>("ouster_points", 10, &VoliroRopePlanner::lidarCallback, this);
 
    //timer
   tf_update_timer_ = nh_.createTimer(ros::Duration(1), &VoliroRopePlanner::tfUpdateCallback,
@@ -50,7 +54,9 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
                                     &VoliroRopePlanner::envUpdateCallback, this);
 
   command_update_timer_ = nh_.createTimer(ros::Duration(0.05), &VoliroRopePlanner::commandUpdateCallback,
-                              this);  
+                              this);
+  
+
 }
 
 void VoliroRopePlanner::resetIntegrator(Eigen::Vector3d start_pos, 
@@ -269,7 +275,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     // auto att_geom = std::make_shared<AttractionGeometric>(goal_a_, A); 
     // policies.push_back(att_geom);
 
-    //rope collision avoidance
+    //rope collision avoidance: for each mass in the rope, find the closest obstacle and if it's too close add avoidance policy to the stack
     if(rope_avoid_constrain_){
       int obs_node_num = 10;
       // int obs_node_interval = 6;
@@ -995,6 +1001,40 @@ void VoliroRopePlanner::viconRopeCallback(const nav_msgs::OdometryConstPtr& odom
     ropeVerlet->addEndPosset(offset);
 }
 
+void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &input_msg){
+    auto start_time = std::chrono::steady_clock::now();
+
+    // Convert msg to pcl
+    pcl::PCLPointCloud2 pcl_pc2;
+    pcl_conversions::toPCL(*input_msg, pcl_pc2);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromPCLPointCloud2(pcl_pc2, *cloud);
+    // Build KDTree
+    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+    kdtree.setInputCloud (cloud);
+
+    // Search K closest points and init the ROS message
+    pcl::PointXYZ searchPoint{0.0f, 0.0f, 0.0f}; // The origin of the LiDAR sensor, same as its frame.
+
+    int K = 20;
+    std::vector<int> pointIdx(K);
+    std::vector<float> pointDistSquared(K);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr msg (new pcl::PointCloud<pcl::PointXYZ>);
+    msg->header.frame_id = input_msg->header.frame_id;
+    msg->height = 1;
+    if ( kdtree.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
+      for (std::size_t i = 0; i < pointIdx.size(); ++i)
+        msg->points.push_back(pcl::PointXYZ((*cloud)[pointIdx[i]].x, (*cloud)[pointIdx[i]].y, (*cloud)[pointIdx[i]].z));
+    }
+    msg->width = pointIdx.size();
+    // Publish the mssage
+    pcl_conversions::toPCL(ros::Time::now(), msg->header.stamp);
+    lidar_pub_.publish(msg);
+
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = end_time - start_time;
+    std::cout << "Search took " << duration.count() << std::endl;
+}
 
 // Function: fileExists
 /**
