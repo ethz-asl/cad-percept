@@ -289,6 +289,9 @@ class VoliroRopePlanner{
   double damper_sw_vis_;
   double eng_reg_sw_vis_;
 
+  //use of mesh
+  bool known_obstacle_mesh_;
+
   /**
    * list contains:
    * &1. end-effector distance holding force potential [0~6]
@@ -317,6 +320,7 @@ class VoliroRopePlanner{
   std::vector<float> policy_number_list_{0.0, 0.0, 0.0, 0.0, 0.0};
   std::vector<float> eng_reg_coef_list_;
   std::vector<float> dist_eval_list_{-1.0, -1.0}; //min obs to rope dist, min obs to drone dist
+  std::vector<pcl::PointXYZ> close_obstacle_points_; // A list of obstacle points to which policies are assigned
 
 };
 }  // namespace planning

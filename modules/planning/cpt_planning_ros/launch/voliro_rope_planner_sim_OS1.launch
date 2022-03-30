@@ -4,7 +4,7 @@
 <launch>
   <arg name="mav_name" default="voliro_tri"/>
   <arg name="namespace" default="voliro_tri"/>
-  <arg name="model" default="$(find voliro_description)/urdf/voliro_tri_ouster_lidar_os0.xacro"/>
+  <arg name="model" default="$(find voliro_description)/urdf/voliro_tri_base.xacro"/>
   <arg name="tf_prefix" default="$(optenv ROS_NAMESPACE)"/>
 
   <!-- <arg name="world" default="$(find omav_gazebo_wada)/worlds/wada.world" /> -->
@@ -14,6 +14,7 @@
   <arg name="verbose" default="true" />
 
   <arg name="enable_logging" default="false"/>
+  <arg name="mount_os1_lidar" default="true"/>
   <arg name="enable_ground_truth" default="true"/>
   <arg name="log_file" default="$(arg mav_name)"/>
   <arg name="wait_to_record_bag" default="false"/>
@@ -43,7 +44,7 @@
     $(find xacro)/xacro $(arg model) enable_logging:=$(arg enable_logging) 
     enable_ground_truth:=$(arg enable_ground_truth) enable_mavlink_interface:=$(arg enable_mavlink_interface) 
     log_file:=$(arg log_file) wait_to_record_bag:=$(arg wait_to_record_bag) mav_name:=$(arg mav_name) 
-    namespace:=$(arg namespace)
+    namespace:=$(arg namespace) mount_os1_lidar:=$(arg mount_os1_lidar)
     " />
   <param name="tf_prefix" type="string" value="$(arg tf_prefix)" />
 
@@ -165,7 +166,7 @@
     <remap from="opt_fabric_planner/rope_vis" to="/rope_sim_ros/rope_vis" />
     <remap from="opt_fabric_planner/moving_target" to="/rope_sim_ros/moving_target"/>
     <remap from="opt_fabric_planner/joy" to="/joy" />
-    <remap from="opt_fabric_planner/ouster_points" to="/ouster_points" />
+    <remap from="opt_fabric_planner/ouster_points" to="/$(arg mav_name)/os1/ouster_points" />
 
     <param name="safe_box_constrain" value="false" type="bool"/>
     <param name="safe_x_min" value="-10.0" type="double"/>
@@ -201,7 +202,7 @@
     <!-- <param name="drone_avoid_acc_max" value="5.0" type="double"/> -->
     <param name="drone_avoid_acc_max" value="4.0" type="double"/>
     <param name="drone_avoid_range" value="0.8" type="double"/>
-
+    <param name="known_obstacle_mesh" value="false" type="bool"/>
 
     <!-- <param name="damp_sw_threshold" value="1.1" type="double"/> -->
     <param name="damp_sw_threshold" value="1.1" type="double"/>
