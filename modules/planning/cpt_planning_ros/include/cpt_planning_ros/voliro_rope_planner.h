@@ -34,6 +34,7 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Float32MultiArray.h>
+#include <sensor_msgs/PointCloud2.h>
 
 // add mesh
 #include <cgal_definitions/mesh_model.h>
@@ -56,6 +57,11 @@
 #include <string> 
 // #include <iostream>
 #include <sys/stat.h>
+// PointCloudLibrary headers for KDTree, nearest neighbor search
+#include <pcl/point_cloud.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/conversions.h>
+#include <pcl/point_types.h>
 
 namespace cad_percept {
 namespace planning {
@@ -151,6 +157,7 @@ class VoliroRopePlanner{
 
   void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
   void viconRopeCallback(const nav_msgs::OdometryConstPtr &odom);
+  void lidarCallback(const sensor_msgs::PointCloud2ConstPtr &input_msg);  
 
   /// Convenience method for pseudo-inverse
   template <int i, int j>
@@ -185,6 +192,7 @@ class VoliroRopePlanner{
 
   ros::Publisher policy_vis_pub_;
   ros::Publisher dist_eval_vis_pub_;
+  ros::Publisher lidar_pub_;
   
   // sub
   ros::Subscriber sub_odometry_;  // curent odom
@@ -192,6 +200,7 @@ class VoliroRopePlanner{
   ros::Subscriber rope_nodes_sub;  // curent rope nodes positions
   ros::Subscriber moving_target_sub;
   ros::Subscriber joy_sub_;
+  ros::Subscriber lidar_sub_;
 
   // timer
   ros::Timer tf_update_timer_;
@@ -280,6 +289,9 @@ class VoliroRopePlanner{
   double damper_sw_vis_;
   double eng_reg_sw_vis_;
 
+  //use of mesh
+  bool known_obstacle_mesh_;
+
   /**
    * list contains:
    * &1. end-effector distance holding force potential [0~6]
@@ -308,6 +320,7 @@ class VoliroRopePlanner{
   std::vector<float> policy_number_list_{0.0, 0.0, 0.0, 0.0, 0.0};
   std::vector<float> eng_reg_coef_list_;
   std::vector<float> dist_eval_list_{-1.0, -1.0}; //min obs to rope dist, min obs to drone dist
+    std::vector<pcl::PointXYZ> close_obstacle_points_; // A list of obstacle points to which policies are assigned
 
 };
 }  // namespace planning

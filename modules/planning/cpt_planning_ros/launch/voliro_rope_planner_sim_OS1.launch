@@ -109,7 +109,7 @@
 
 
   <!-- Motion planner based on opt fabric  -->
-  <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_unknown_environment_node" output="screen"
+  <node pkg="cpt_planning_ros" name="opt_fabric_planner" type="voliro_rope_planner_node" output="screen"
 > 
 
     <!-- <param name="rope_start_x" value="$(arg rope_start_x)" type="double"/>

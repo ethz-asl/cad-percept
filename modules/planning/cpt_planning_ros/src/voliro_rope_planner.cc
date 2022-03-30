@@ -29,7 +29,8 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
 
   policy_vis_pub_ =  nh.advertise<std_msgs::Float32MultiArray>("policy_vis", 1);
   dist_eval_vis_pub_ =  nh.advertise<std_msgs::Float32MultiArray>("dist_eval_vis", 1);
-
+  // LiDAR pointcloud publisher for debug
+  lidar_pub_ = nh.advertise<pcl::PointCloud<pcl::PointXYZ>>("processed_pcl", 1);
 
 
   //sub
@@ -39,8 +40,9 @@ VoliroRopePlanner::VoliroRopePlanner(ros::NodeHandle nh, ros::NodeHandle nh_priv
   // rope_nodes_sub = nh_.subscribe("rope_vis", 1, &VoliroRopePlanner::ropeUpdateCallback, this);
   moving_target_sub = nh_.subscribe("moving_target", 10, &VoliroRopePlanner::goalCallback, 
                                 this);
-  joy_sub_ = nh.subscribe<sensor_msgs::Joy>("joy", 10, &VoliroRopePlanner::joyCallback, this);
-
+    joy_sub_ = nh.subscribe<sensor_msgs::Joy>("joy", 10, &VoliroRopePlanner::joyCallback, this);
+    // Subscribe to lidar messages
+    lidar_sub_ = nh.subscribe<sensor_msgs::PointCloud2>("ouster_points", 10, &VoliroRopePlanner::lidarCallback, this);
    //timer
   tf_update_timer_ = nh_.createTimer(ros::Duration(1), &VoliroRopePlanner::tfUpdateCallback,
                                 this);  // update TF's every second
@@ -163,38 +165,61 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     //GEO Fabrics ===============================================================================
     if(obs_drone_constrain_){
       Eigen::Vector3d obs_drone;
-      if(ropeVerlet->get_closest_obs_drone(&obs_drone)){
-        double obs_to_drone_norm = obs_drone.norm();
-        if(obs_to_drone_norm<2.0){
-          auto drone_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
-                              obs_drone, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
-          policies.push_back(drone_avoid);
-          policy_number_list_.at(1) += 1.0;
-        }
-      }else{
-        ROS_WARN("no result from ropeVerlet->get_closest_obs_drone");
-        break;
-      }
       Eigen::Vector3d tail_offset(-0.8, 0.0, 0.0);
       Eigen::Vector3d tail_pos = drone_pos + tail_offset;
-      cad_percept::cgal::PointAndPrimitiveId ppid = 
+
+      if(known_obstacle_mesh_){ // Rely on known mesh for distances
+        if(ropeVerlet->get_closest_obs_drone(&obs_drone)){
+          double obs_to_drone_norm = obs_drone.norm();
+          if(obs_to_drone_norm<2.0){
+            auto drone_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                                obs_drone, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
+            policies.push_back(drone_avoid);
+            policy_number_list_.at(1) += 1.0;
+          }
+        }else{
+          ROS_WARN("no result from ropeVerlet->get_closest_obs_drone");
+          break;
+        }
+        cad_percept::cgal::PointAndPrimitiveId ppid = 
         model_enu_->getClosestTriangle(tail_pos.x(),tail_pos.y(),tail_pos.z());
-      
-      //closest point
-      Eigen::Vector3d p_on_tri(ppid.first.x(),ppid.first.y(),ppid.first.z());
-      Eigen::Vector3d tri_to_tail_vec = tail_pos - p_on_tri;
-      double dist = tri_to_tail_vec.norm();
-      Eigen::Vector3d normal = ropeVerlet->normal_table_.find(ppid.second->id())->second;
-      Eigen::Vector3d obs_tail = normal*dist;
-      double obs_to_tail_norm = obs_tail.norm();
-      if(obs_to_tail_norm<2.0){
-        auto drone_tail_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
-                            obs_tail, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
-        policies.push_back(drone_tail_avoid);
-        policy_number_list_.at(1) += 1.0;
+        //closest point
+        Eigen::Vector3d p_on_tri(ppid.first.x(),ppid.first.y(),ppid.first.z());
+        Eigen::Vector3d tri_to_tail_vec = tail_pos - p_on_tri;
+        double dist = tri_to_tail_vec.norm();
+        Eigen::Vector3d normal = ropeVerlet->normal_table_.find(ppid.second->id())->second;
+        Eigen::Vector3d obs_tail = normal*dist;
+        double obs_to_tail_norm = obs_tail.norm();
+        if(obs_to_tail_norm<2.0){
+          auto drone_tail_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                              obs_tail, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
+          policies.push_back(drone_tail_avoid);
+          policy_number_list_.at(1) += 1.0;
+        }
+      } else {  // Use LiDAR-fetched points to avoid obstacles
+        for(auto point:close_obstacle_points_){
+          Eigen::Vector3d obs_pos = drone_pos + Eigen::Vector3d(point.x, point.y, point.z);
+          obs_drone = drone_pos-obs_pos;
+          double obs_to_drone_norm = obs_drone.norm();
+          if(obs_to_drone_norm<2.0){
+            auto drone_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                                obs_drone, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
+            policies.push_back(drone_avoid);
+            policy_number_list_.at(1) += 1.0;
+          }
+          Eigen::Vector3d obs_tail = tail_pos-obs_pos;
+          double obs_to_tail_norm = obs_tail.norm();
+          if(obs_to_tail_norm<2.0){
+            auto drone_tail_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                                obs_tail, rope_len_lim_, drone_avoid_acc_max_, drone_avoid_range_);
+            policies.push_back(drone_tail_avoid);
+            policy_number_list_.at(1) += 1.0;
+          }
+        }
       }
     }
 
+    // Form some kind of bounding box?
     if(safe_box_constrain_){ //unlimited acc 
       //safe dist to the ceiling
       Eigen::Vector3d z_lim_point;
@@ -267,50 +292,65 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
     // auto att_geom = std::make_shared<AttractionGeometric>(goal_a_, A); 
     // policies.push_back(att_geom);
 
-    //rope collision avoidance
+    //rope collision avoidance: for each mass in the rope, find the closest obstacle and if it's too close add avoidance policy to the stack
     if(rope_avoid_constrain_){
-      int obs_node_num = 10;
+      // int obs_node_num = 10;
       // int obs_node_interval = 6;
       int obs_node_idx = 0;
-      for(auto m:ropeVerlet->masses){
-        Eigen::Vector3d obs_to_node=m->obs_to_node;
-        double obs_to_node_norm = obs_to_node.norm();
-         
+      if(known_obstacle_mesh_){
+        for(auto m:ropeVerlet->masses){
+          Eigen::Vector3d obs_to_node=m->obs_to_node;
+          double obs_to_node_norm = obs_to_node.norm();
+           
+          if(dist_eval_enable_){
+            if(dist_eval_list_.at(0)<0){//assign the first value after init
+              dist_eval_list_.at(0) = (float) obs_to_node_norm;
+            }else if(obs_to_node_norm<dist_eval_list_.at(0)){
+              dist_eval_list_.at(0) = (float) obs_to_node_norm;
+            }
+          }
+
+          if(obs_node_idx % node_interval_ == 0 && obs_to_node_norm<rope_react_range_){
+            // if(obs_node_idx == 0){
+            //   std::cout<<"obs_to_node"<<obs_node_idx<<"; "<<obs_to_node_norm<<std::endl;
+            // }
+            auto rope_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                                obs_to_node, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
+            policies.push_back(rope_avoid);
+            policy_number_list_.at(4) += 1.0;
+          }
+          obs_node_idx++;
+        }
         if(dist_eval_enable_){
-          if(dist_eval_list_.at(0)<0){//assign the first value after init
-            dist_eval_list_.at(0) = (float) obs_to_node_norm;
-          }else if(obs_to_node_norm<dist_eval_list_.at(0)){
-            dist_eval_list_.at(0) = (float) obs_to_node_norm;
+          publishDistEval(dist_eval_list_);
+        }
+      }else{
+        for(auto m:ropeVerlet->masses){
+          for(auto point:close_obstacle_points_){
+            Eigen::Vector3d obs_pos = drone_pos + Eigen::Vector3d(point.x, point.y, point.z);
+            Eigen::Vector3d obs_to_node = m->position-obs_pos;
+            double obs_to_node_norm = obs_to_node.norm();
+            //Keep track of the closest obstacle
+            if(dist_eval_enable_){
+              if(dist_eval_list_.at(0)<0){//assign the first value after init
+                dist_eval_list_.at(0) = (float) obs_to_node_norm;
+              }else if(obs_to_node_norm<dist_eval_list_.at(0)){
+                dist_eval_list_.at(0) = (float) obs_to_node_norm;
+              }
+            }
+            if(obs_node_idx % node_interval_ == 0 && obs_to_node_norm<rope_react_range_){
+              auto rope_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
+                                  obs_to_node, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
+              policies.push_back(rope_avoid);
+              policy_number_list_.at(4) += 1.0;
+            }
+            obs_node_idx++;
+            if(dist_eval_enable_){
+              publishDistEval(dist_eval_list_);
+            }
           }
         }
-
-        if(obs_node_idx % node_interval_ == 0 && obs_to_node_norm<rope_react_range_){
-          // if(obs_node_idx == 0){
-          //   std::cout<<"obs_to_node"<<obs_node_idx<<"; "<<obs_to_node_norm<<std::endl;
-          // }
-          auto rope_avoid = std::make_shared<RopeCollisionGeom>(A, goal_b_,
-                              obs_to_node, rope_len_lim_, rope_avoid_acc_max_, rope_avoid_range_);
-          policies.push_back(rope_avoid);
-          policy_number_list_.at(4) += 1.0;
-        }
-        obs_node_idx++;
       }
-      if(dist_eval_enable_){
-        publishDistEval(dist_eval_list_);
-      }
-    }else if(dist_eval_enable_){
-      for(auto m:ropeVerlet->masses){
-        Eigen::Vector3d obs_to_node=m->obs_to_node;
-        double obs_to_node_norm = obs_to_node.norm();
-         
-          if(dist_eval_list_.at(0)<0){//assign the first value after init
-            dist_eval_list_.at(0) = (float) obs_to_node_norm;
-          }else if(obs_to_node_norm<dist_eval_list_.at(0)){
-            dist_eval_list_.at(0) = (float) obs_to_node_norm;
-          }
-      }
-      publishDistEval(dist_eval_list_);
-
     }
                 
     //get next step
@@ -346,7 +386,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
   }
   auto end_time = std::chrono::steady_clock::now();
   std::chrono::duration<double> duration = end_time - start_time;
-  std::cout << "generateTrajectoryOdom took " << duration.count() << " s" << std::endl;
+  // std::cout << "generateTrajectoryOdom took " << duration.count() << " s" << std::endl;
   time_analysis_table[2].push_back(duration.count());
 
   //log policies
@@ -478,7 +518,7 @@ void VoliroRopePlanner::commandUpdateCallback(const ros::TimerEvent &event){
     publishTrajectory_2();
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
-    std::cout << "commandUpdateCallback took " << duration.count() << " s" << std::endl;
+    // std::cout << "commandUpdateCallback took " << duration.count() << " s" << std::endl;
     time_analysis_table[3].push_back(duration.count());
     if(time_analysis_table[0].size()>10){
       ROS_INFO("Write the time measure to CSV");
@@ -696,6 +736,9 @@ void VoliroRopePlanner::readConfig() {
   nh_private_.param("damp_sw_quick", damp_sw_quick_, 4.0);
   nh_private_.param("damp_B", damp_B_, 1.0);
 
+  //param for deciding if mesh model is used in obsacle computation
+  nh_private_.param("known_obstacle_mesh", known_obstacle_mesh_, false);
+
  
   obj_poses_.push_back(obj_pos_0_);
 
@@ -790,7 +833,7 @@ void VoliroRopePlanner::envUpdateCallback(const ros::TimerEvent &event){
 
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
-    std::cout << "envUpdateCallback took " << duration.count() << " s" << std::endl;
+    // std::cout << "envUpdateCallback took " << duration.count() << " s" << std::endl;
     time_analysis_table[0].push_back(duration.count());
   }
 }
@@ -811,7 +854,7 @@ void VoliroRopePlanner::ropeUpdateCallback(const ros::TimerEvent &event){
     
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> duration = end_time - start_time;
-    std::cout << "ropeUpdateCallback took " << duration.count() << " s" << std::endl;
+    // std::cout << "ropeUpdateCallback took " << duration.count() << " s" << std::endl;
     time_analysis_table[1].push_back(duration.count());
 
     rope_update_enable_ = true;
@@ -992,6 +1035,46 @@ void VoliroRopePlanner::viconRopeCallback(const nav_msgs::OdometryConstPtr& odom
     //control the motion of end point
     ropeVerlet->addEndPosset(offset);
 }
+
+
+void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &input_msg){
+    auto start_time = std::chrono::steady_clock::now();
+
+    // Convert msg to pcl
+    pcl::PCLPointCloud2 pcl_pc2;
+    pcl_conversions::toPCL(*input_msg, pcl_pc2);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromPCLPointCloud2(pcl_pc2, *cloud);
+    // Build KDTree
+    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+    kdtree.setInputCloud (cloud);
+
+    // Search K closest points and init the ROS message
+    pcl::PointXYZ searchPoint{0.0f, 0.0f, 0.0f}; // The origin of the LiDAR sensor, same as its frame.
+
+    int K = 20;
+    std::vector<int> pointIdx(K);
+    std::vector<float> pointDistSquared(K);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr msg (new pcl::PointCloud<pcl::PointXYZ>);
+    msg->header.frame_id = input_msg->header.frame_id;
+    msg->height = 1;
+    close_obstacle_points_.clear();
+    if ( kdtree.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
+      for (std::size_t i = 0; i < pointIdx.size(); ++i){
+        close_obstacle_points_.push_back(pcl::PointXYZ((*cloud)[pointIdx[i]].x, (*cloud)[pointIdx[i]].y, (*cloud)[pointIdx[i]].z));
+        msg->points.push_back(close_obstacle_points_.back());
+      }
+    }
+    msg->width = pointIdx.size();
+    // Publish the mssage
+    pcl_conversions::toPCL(ros::Time::now(), msg->header.stamp);
+    lidar_pub_.publish(msg);
+
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = end_time - start_time;
+    // std::cout << "Search took " << duration.count() << std::endl;
+}
+
 
 
 // Function: fileExists
