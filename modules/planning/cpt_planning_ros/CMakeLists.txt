@@ -30,11 +30,7 @@ cs_add_executable(voliro_rope_planner_node
 cs_add_executable(data_analysis_node
         src/planner_data_analysis.cc
         )
-
-cs_add_executable(voliro_rope_planner_unknown_environment_node
-        src/voliro_rope_planner_unknown_environment_node.cc
-        src/voliro_rope_planner_unknown_environment.cc
-        )        
+     
 
 ############
 #  TESTS   #
