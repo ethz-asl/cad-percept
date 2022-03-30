@@ -134,6 +134,7 @@ class VoliroRopePlanner{
   //csv
   bool fileExists(const std::string& filename);
   void write_csv(std::string filename, std::map<int, std::vector<double>> dataset);
+  bool point_in_vector(pcl::PointXYZ point, std::vector<pcl::PointXYZ>& vector);
 
  private:
   inline Eigen::Vector3d getVelocityENU() { return T_enu_odom_.rotation() * v_odom_body_; }
@@ -320,7 +321,7 @@ class VoliroRopePlanner{
   std::vector<float> policy_number_list_{0.0, 0.0, 0.0, 0.0, 0.0};
   std::vector<float> eng_reg_coef_list_;
   std::vector<float> dist_eval_list_{-1.0, -1.0}; //min obs to rope dist, min obs to drone dist
-    std::vector<pcl::PointXYZ> close_obstacle_points_; // A list of obstacle points to which policies are assigned
+  std::vector<pcl::PointXYZ> close_obstacle_points_; // A list of obstacle points to which policies are assigned
 
 };
 }  // namespace planning

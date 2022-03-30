@@ -1050,22 +1050,31 @@ void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &in
     kdtree.setInputCloud (cloud);
 
     // Search K closest points and init the ROS message
-    pcl::PointXYZ searchPoint{0.0f, 0.0f, 0.0f}; // The origin of the LiDAR sensor, same as its frame.
-
-    int K = 20;
+    int K = 5;
     std::vector<int> pointIdx(K);
     std::vector<float> pointDistSquared(K);
     pcl::PointCloud<pcl::PointXYZ>::Ptr msg (new pcl::PointCloud<pcl::PointXYZ>);
     msg->header.frame_id = input_msg->header.frame_id;
     msg->height = 1;
+    msg->width = 0;
     close_obstacle_points_.clear();
-    if ( kdtree.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
-      for (std::size_t i = 0; i < pointIdx.size(); ++i){
-        close_obstacle_points_.push_back(pcl::PointXYZ((*cloud)[pointIdx[i]].x, (*cloud)[pointIdx[i]].y, (*cloud)[pointIdx[i]].z));
-        msg->points.push_back(close_obstacle_points_.back());
+    Eigen::Vector3d drone_pos, drone_vel, drone_acc;
+    integrator.getState(&drone_pos, &drone_vel, &drone_acc);
+
+    for(auto m:ropeVerlet->masses){
+      Eigen::Vector3d drone_to_mass = m->position - drone_pos;
+      pcl::PointXYZ searchPoint{drone_to_mass(0),drone_to_mass(1),drone_to_mass(2)}; 
+      if ( kdtree.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
+        for (std::size_t i = 0; i < pointIdx.size(); ++i){
+          pcl::PointXYZ obs_point((*cloud)[pointIdx[i]].x, (*cloud)[pointIdx[i]].y, (*cloud)[pointIdx[i]].z);
+          if (!point_in_vector(obs_point, close_obstacle_points_)){
+            close_obstacle_points_.push_back(obs_point);
+            msg->points.push_back(obs_point);
+          }
+        }
       }
     }
-    msg->width = pointIdx.size();
+    msg->width = close_obstacle_points_.size();
     // Publish the mssage
     pcl_conversions::toPCL(ros::Time::now(), msg->header.stamp);
     lidar_pub_.publish(msg);
@@ -1132,7 +1141,13 @@ void VoliroRopePlanner::write_csv(std::string filename, std::map<int, std::vecto
     ROS_INFO("write_csv");
 }
 
-
+bool VoliroRopePlanner::point_in_vector(pcl::PointXYZ point, std::vector<pcl::PointXYZ>& vector){
+  for(auto p:vector){
+    if((point.x==p.x) && (point.y==p.y) && (point.z==p.z))
+      return true;
+  }
+  return false;
+}
 
 
 
