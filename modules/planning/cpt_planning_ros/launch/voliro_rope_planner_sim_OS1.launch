@@ -11,7 +11,7 @@
   <arg name="world" default="$(find omav_demos_simulator)/worlds/rock.world"/>
   <arg name="show_gazebo" default="false"/>
   <arg name="pause_gazebo" default="false" />
-  <arg name="verbose" default="true" />
+  <arg name="verbose" default="false" />
 
   <arg name="enable_logging" default="false"/>
   <arg name="mount_os1_lidar" default="true"/>
@@ -202,7 +202,7 @@
     <!-- <param name="drone_avoid_acc_max" value="5.0" type="double"/> -->
     <param name="drone_avoid_acc_max" value="4.0" type="double"/>
     <param name="drone_avoid_range" value="0.8" type="double"/>
-    <param name="known_obstacle_mesh" value="true" type="bool"/>
+    <param name="known_obstacle_mesh" value="false" type="bool"/>
 
     <!-- <param name="damp_sw_threshold" value="1.1" type="double"/> -->
     <param name="damp_sw_threshold" value="1.1" type="double"/>

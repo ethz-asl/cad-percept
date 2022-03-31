@@ -62,6 +62,7 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/conversions.h>
 #include <pcl/point_types.h>
+#include <pcl/filters/conditional_removal.h>
 
 namespace cad_percept {
 namespace planning {

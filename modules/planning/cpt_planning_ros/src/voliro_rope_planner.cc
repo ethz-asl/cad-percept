@@ -1039,34 +1039,47 @@ void VoliroRopePlanner::viconRopeCallback(const nav_msgs::OdometryConstPtr& odom
 
 void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &input_msg){
     auto start_time = std::chrono::steady_clock::now();
+    close_obstacle_points_.clear();
+    Eigen::Vector3d drone_pos, drone_vel, drone_acc;
+    integrator.getState(&drone_pos, &drone_vel, &drone_acc);
 
     // Convert msg to pcl
     pcl::PCLPointCloud2 pcl_pc2;
     pcl_conversions::toPCL(*input_msg, pcl_pc2);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromPCLPointCloud2(pcl_pc2, *cloud);
+
+    // Remove points with z <= 0
+    pcl::ConditionAnd<pcl::PointXYZ>::Ptr range_condition (new pcl::ConditionAnd<pcl::PointXYZ> ());
+    range_condition->addComparison (pcl::FieldComparison<pcl::PointXYZ>::ConstPtr (new pcl::FieldComparison<pcl::PointXYZ> ("z", pcl::ComparisonOps::GT, -drone_pos(2))));
+    pcl::ConditionalRemoval<pcl::PointXYZ> cond_removal;
+    cond_removal.setCondition(range_condition);
+    cond_removal.setInputCloud(cloud);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
+    cond_removal.filter(*cloud_filtered);
+    if (cloud_filtered->empty())
+      return;
+
+
     // Build KDTree
     pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-    kdtree.setInputCloud (cloud);
+    kdtree.setInputCloud (cloud_filtered);
 
     // Search K closest points and init the ROS message
-    int K = 5;
+    int K = 1;
     std::vector<int> pointIdx(K);
     std::vector<float> pointDistSquared(K);
     pcl::PointCloud<pcl::PointXYZ>::Ptr msg (new pcl::PointCloud<pcl::PointXYZ>);
     msg->header.frame_id = input_msg->header.frame_id;
     msg->height = 1;
     msg->width = 0;
-    close_obstacle_points_.clear();
-    Eigen::Vector3d drone_pos, drone_vel, drone_acc;
-    integrator.getState(&drone_pos, &drone_vel, &drone_acc);
 
     for(auto m:ropeVerlet->masses){
       Eigen::Vector3d drone_to_mass = m->position - drone_pos;
       pcl::PointXYZ searchPoint{drone_to_mass(0),drone_to_mass(1),drone_to_mass(2)}; 
       if ( kdtree.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
         for (std::size_t i = 0; i < pointIdx.size(); ++i){
-          pcl::PointXYZ obs_point((*cloud)[pointIdx[i]].x, (*cloud)[pointIdx[i]].y, (*cloud)[pointIdx[i]].z);
+          pcl::PointXYZ obs_point((*cloud_filtered)[pointIdx[i]].x, (*cloud_filtered)[pointIdx[i]].y, (*cloud_filtered)[pointIdx[i]].z);
           if (!point_in_vector(obs_point, close_obstacle_points_)){
             close_obstacle_points_.push_back(obs_point);
             msg->points.push_back(obs_point);
