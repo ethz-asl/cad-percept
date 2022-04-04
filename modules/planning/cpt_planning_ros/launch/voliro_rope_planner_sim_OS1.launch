@@ -176,7 +176,7 @@
     <param name="safe_z_min" value="-0.5" type="double"/>
     <param name="safe_z_max" value="3.5" type="double"/>
 
-    <param name="rope_avoid_constrain" value="false" type="bool"/>
+    <param name="rope_avoid_constrain" value="true" type="bool"/>
     <param name="node_interval" value="1" type="int"/>
     <!-- <param name="rope_react_range" value="0.4" type="double"/> -->
     <param name="rope_react_range" value="0.55" type="double"/>

@@ -328,7 +328,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
         int mass_index = 0;
         for(auto vect:points_close_to_rope_){
           for(auto point:vect){
-            Eigen::Vector3d obs_pos = drone_pos + Eigen::Vector3d(point.x, point.y, point.z);
+            Eigen::Vector3d obs_pos = Eigen::Vector3d(point.x, point.y, point.z);
             Eigen::Vector3d obs_to_node = ropeVerlet->masses[mass_index]->position-obs_pos;
             double obs_to_node_norm = obs_to_node.norm();
             //Keep track of the closest obstacle
