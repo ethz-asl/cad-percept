@@ -197,7 +197,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
           policy_number_list_.at(1) += 1.0;
         }
       } else {  // Use LiDAR-fetched points to avoid obstacles
-        for(auto point:close_obstacle_points_){
+        for(auto point:points_close_to_drone_){
           Eigen::Vector3d obs_pos = drone_pos + Eigen::Vector3d(point.x, point.y, point.z);
           obs_drone = drone_pos-obs_pos;
           double obs_to_drone_norm = obs_drone.norm();
@@ -325,10 +325,11 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
           publishDistEval(dist_eval_list_);
         }
       }else{
-        for(auto m:ropeVerlet->masses){
-          for(auto point:close_obstacle_points_){
+        int mass_index = 0;
+        for(auto vect:points_close_to_rope_){
+          for(auto point:vect){
             Eigen::Vector3d obs_pos = drone_pos + Eigen::Vector3d(point.x, point.y, point.z);
-            Eigen::Vector3d obs_to_node = m->position-obs_pos;
+            Eigen::Vector3d obs_to_node = ropeVerlet->masses[mass_index]->position-obs_pos;
             double obs_to_node_norm = obs_to_node.norm();
             //Keep track of the closest obstacle
             if(dist_eval_enable_){
@@ -349,6 +350,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
               publishDistEval(dist_eval_list_);
             }
           }
+          mass_index++;
         }
       }
     }
@@ -618,7 +620,7 @@ void VoliroRopePlanner::publish_attraction_vis(Eigen::Vector3d start, Eigen::Vec
 
 void VoliroRopePlanner::publish_repulsion_vis(Eigen::Vector3d start, Eigen::Vector3d end){
   //vis push rope arrow----------------------------
-   visualization_msgs::Marker marker;
+  visualization_msgs::Marker marker;
   auto rope_frame = std::string("enu");
   auto rope_time = ros::Time::now();
 
@@ -738,6 +740,7 @@ void VoliroRopePlanner::readConfig() {
 
   //param for deciding if mesh model is used in obsacle computation
   nh_private_.param("known_obstacle_mesh", known_obstacle_mesh_, false);
+  nh_private_.param("filter_ground_plane", filter_ground_plane_, true);
 
  
   obj_poses_.push_back(obj_pos_0_);
@@ -1039,7 +1042,6 @@ void VoliroRopePlanner::viconRopeCallback(const nav_msgs::OdometryConstPtr& odom
 
 void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &input_msg){
     auto start_time = std::chrono::steady_clock::now();
-    close_obstacle_points_.clear();
     Eigen::Vector3d drone_pos, drone_vel, drone_acc;
     integrator.getState(&drone_pos, &drone_vel, &drone_acc);
 
@@ -1050,20 +1052,25 @@ void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &in
     pcl::fromPCLPointCloud2(pcl_pc2, *cloud);
 
     // Remove points with z <= 0
-    pcl::ConditionAnd<pcl::PointXYZ>::Ptr range_condition (new pcl::ConditionAnd<pcl::PointXYZ> ());
-    range_condition->addComparison (pcl::FieldComparison<pcl::PointXYZ>::ConstPtr (new pcl::FieldComparison<pcl::PointXYZ> ("z", pcl::ComparisonOps::GT, -drone_pos(2))));
-    pcl::ConditionalRemoval<pcl::PointXYZ> cond_removal;
-    cond_removal.setCondition(range_condition);
-    cond_removal.setInputCloud(cloud);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
-    cond_removal.filter(*cloud_filtered);
+    if(filter_ground_plane_){
+      pcl::ConditionAnd<pcl::PointXYZ>::Ptr range_condition (new pcl::ConditionAnd<pcl::PointXYZ> ());
+      range_condition->addComparison (pcl::FieldComparison<pcl::PointXYZ>::ConstPtr (new pcl::FieldComparison<pcl::PointXYZ> ("z", pcl::ComparisonOps::GT, -drone_pos(2))));
+      pcl::ConditionalRemoval<pcl::PointXYZ> cond_removal;
+      cond_removal.setCondition(range_condition);
+      cond_removal.setInputCloud(cloud);
+      cond_removal.filter(*cloud_filtered);
+    } else {
+      cloud_filtered = cloud;
+    }
     if (cloud_filtered->empty())
-      return;
+      return; 
 
 
     // Build KDTree
-    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-    kdtree.setInputCloud (cloud_filtered);
+    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree, kdtree_filtered;
+    kdtree.setInputCloud (cloud);
+    kdtree_filtered.setInputCloud(cloud_filtered);
 
     // Search K closest points and init the ROS message
     int K = 1;
@@ -1074,20 +1081,36 @@ void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &in
     msg->height = 1;
     msg->width = 0;
 
-    for(auto m:ropeVerlet->masses){
-      Eigen::Vector3d drone_to_mass = m->position - drone_pos;
-      pcl::PointXYZ searchPoint{drone_to_mass(0),drone_to_mass(1),drone_to_mass(2)}; 
-      if ( kdtree.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
-        for (std::size_t i = 0; i < pointIdx.size(); ++i){
-          pcl::PointXYZ obs_point((*cloud_filtered)[pointIdx[i]].x, (*cloud_filtered)[pointIdx[i]].y, (*cloud_filtered)[pointIdx[i]].z);
-          if (!point_in_vector(obs_point, close_obstacle_points_)){
-            close_obstacle_points_.push_back(obs_point);
-            msg->points.push_back(obs_point);
-          }
-        }
+    // Find K closest points to drone
+    points_close_to_drone_.clear();
+    pcl::PointXYZ searchPoint{0.0f, 0.0f, 0.0f}; 
+    if ( kdtree_filtered.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
+      for (std::size_t i = 0; i < pointIdx.size(); ++i){
+        pcl::PointXYZ obs_point((*cloud_filtered)[pointIdx[i]].x, (*cloud_filtered)[pointIdx[i]].y, (*cloud_filtered)[pointIdx[i]].z);
+        points_close_to_drone_.push_back(obs_point);
+        msg->points.push_back(obs_point);
+        msg->width +=1;
       }
     }
-    msg->width = close_obstacle_points_.size();
+    
+    // For each mass, save a vector of the K closest points in a list
+    if(rope_avoid_constrain_){
+      points_close_to_rope_.clear();
+      for (auto m:ropeVerlet->masses){
+        std:vector<pcl::PointXYZ> points_near_mass;
+        Eigen::Vector3d drone_to_mass = m->position - drone_pos;
+        pcl::PointXYZ searchPoint{drone_to_mass(0),drone_to_mass(1),drone_to_mass(2)}; 
+        if ( kdtree_filtered.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
+          for (std::size_t i = 0; i < pointIdx.size(); ++i){
+            pcl::PointXYZ obs_point((*cloud_filtered)[pointIdx[i]].x, (*cloud_filtered)[pointIdx[i]].y, (*cloud_filtered)[pointIdx[i]].z);
+            points_near_mass.push_back(obs_point);
+            msg->points.push_back(obs_point);
+            msg->width +=1;
+          }
+        }
+        points_close_to_rope_.push_back(points_near_mass);
+      }
+    }
     // Publish the mssage
     pcl_conversions::toPCL(ros::Time::now(), msg->header.stamp);
     lidar_pub_.publish(msg);
@@ -1098,7 +1121,7 @@ void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &in
 }
 
 
-
+//can use const_iterator depends on what you will do on class objects
 // Function: fileExists
 /**
     Check if a file exists
@@ -1154,13 +1177,6 @@ void VoliroRopePlanner::write_csv(std::string filename, std::map<int, std::vecto
     ROS_INFO("write_csv");
 }
 
-bool VoliroRopePlanner::point_in_vector(pcl::PointXYZ point, std::vector<pcl::PointXYZ>& vector){
-  for(auto p:vector){
-    if((point.x==p.x) && (point.y==p.y) && (point.z==p.z))
-      return true;
-  }
-  return false;
-}
 
 
 

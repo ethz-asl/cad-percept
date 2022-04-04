@@ -63,6 +63,7 @@
 #include <pcl/conversions.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/conditional_removal.h>
+#include <pcl/common/transforms.h>
 
 namespace cad_percept {
 namespace planning {
@@ -293,6 +294,8 @@ class VoliroRopePlanner{
 
   //use of mesh
   bool known_obstacle_mesh_;
+  //PointCloud filtering
+  bool filter_ground_plane_;
 
   /**
    * list contains:
@@ -322,7 +325,8 @@ class VoliroRopePlanner{
   std::vector<float> policy_number_list_{0.0, 0.0, 0.0, 0.0, 0.0};
   std::vector<float> eng_reg_coef_list_;
   std::vector<float> dist_eval_list_{-1.0, -1.0}; //min obs to rope dist, min obs to drone dist
-  std::vector<pcl::PointXYZ> close_obstacle_points_; // A list of obstacle points to which policies are assigned
+  std::list< std::vector<pcl::PointXYZ> > points_close_to_rope_; // A list of obstacle points to which policies are assigned
+  std::vector<pcl::PointXYZ> points_close_to_drone_;
 
 };
 }  // namespace planning
