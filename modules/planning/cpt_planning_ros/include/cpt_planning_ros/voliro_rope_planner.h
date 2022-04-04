@@ -328,6 +328,8 @@ class VoliroRopePlanner{
   std::list< std::vector<pcl::PointXYZ> > points_close_to_rope_; // A list of obstacle points to which policies are assigned
   std::vector<pcl::PointXYZ> points_close_to_drone_;
 
+  
+
 };
 }  // namespace planning
 }  // namespace cad_percept

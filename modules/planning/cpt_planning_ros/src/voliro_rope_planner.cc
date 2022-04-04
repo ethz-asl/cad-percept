@@ -198,7 +198,7 @@ void VoliroRopePlanner::generateTrajectoryOdom(){
         }
       } else {  // Use LiDAR-fetched points to avoid obstacles
         for(auto point:points_close_to_drone_){
-          Eigen::Vector3d obs_pos = drone_pos + Eigen::Vector3d(point.x, point.y, point.z);
+          Eigen::Vector3d obs_pos = Eigen::Vector3d(point.x, point.y, point.z);
           obs_drone = drone_pos-obs_pos;
           double obs_to_drone_norm = obs_drone.norm();
           if(obs_to_drone_norm<2.0){
@@ -1051,40 +1051,53 @@ void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &in
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromPCLPointCloud2(pcl_pc2, *cloud);
 
-    // Remove points with z <= 0
+    // Transform cloud in ENU frame to filter ground plane
+    tf::StampedTransform transform;
+    try{
+      listener_.lookupTransform(fixed_params_.odom_frame, input_msg->header.frame_id, ros::Time(0), transform);
+    } catch (tf::TransformException ex) {
+      ROS_ERROR("%s", ex.what());
+      ros::Duration(1.0).sleep();
+    }
+    Eigen::Affine3f pcl_transform = Eigen::Affine3f::Identity();
+    pcl_transform.translation() << transform.getOrigin().getX(), transform.getOrigin().getY(), transform.getOrigin().getZ();
+    Eigen::Vector3f axis {transform.getRotation().getAxis().getX(), transform.getRotation().getAxis().getY(), transform.getRotation().getAxis().getZ()};
+    pcl_transform.rotate(Eigen::AngleAxisf(transform.getRotation().getAngle(),axis));
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::transformPointCloud(*cloud, *cloud_filtered, pcl_transform);
+    // Filter out ground plane (z=0)
     if(filter_ground_plane_){
       pcl::ConditionAnd<pcl::PointXYZ>::Ptr range_condition (new pcl::ConditionAnd<pcl::PointXYZ> ());
-      range_condition->addComparison (pcl::FieldComparison<pcl::PointXYZ>::ConstPtr (new pcl::FieldComparison<pcl::PointXYZ> ("z", pcl::ComparisonOps::GT, -drone_pos(2))));
+      range_condition->addComparison (pcl::FieldComparison<pcl::PointXYZ>::ConstPtr (new pcl::FieldComparison<pcl::PointXYZ> ("z", pcl::ComparisonOps::GT, 0.1f)));
       pcl::ConditionalRemoval<pcl::PointXYZ> cond_removal;
       cond_removal.setCondition(range_condition);
-      cond_removal.setInputCloud(cloud);
+      cond_removal.setInputCloud(cloud_filtered);
       cond_removal.filter(*cloud_filtered);
     } else {
       cloud_filtered = cloud;
     }
-    if (cloud_filtered->empty())
+    if (cloud_filtered->empty()){
+      ROS_WARN("Filtered point cloud is empty.");
       return; 
-
+    }
 
     // Build KDTree
-    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree, kdtree_filtered;
-    kdtree.setInputCloud (cloud);
-    kdtree_filtered.setInputCloud(cloud_filtered);
+    pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+    kdtree.setInputCloud (cloud_filtered);
 
     // Search K closest points and init the ROS message
     int K = 1;
     std::vector<int> pointIdx(K);
     std::vector<float> pointDistSquared(K);
     pcl::PointCloud<pcl::PointXYZ>::Ptr msg (new pcl::PointCloud<pcl::PointXYZ>);
-    msg->header.frame_id = input_msg->header.frame_id;
+    msg->header.frame_id = fixed_params_.odom_frame;
     msg->height = 1;
     msg->width = 0;
 
     // Find K closest points to drone
     points_close_to_drone_.clear();
-    pcl::PointXYZ searchPoint{0.0f, 0.0f, 0.0f}; 
-    if ( kdtree_filtered.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
+    pcl::PointXYZ searchPoint{drone_pos(0), drone_pos(1), drone_pos(2)};
+    if ( kdtree.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
       for (std::size_t i = 0; i < pointIdx.size(); ++i){
         pcl::PointXYZ obs_point((*cloud_filtered)[pointIdx[i]].x, (*cloud_filtered)[pointIdx[i]].y, (*cloud_filtered)[pointIdx[i]].z);
         points_close_to_drone_.push_back(obs_point);
@@ -1098,9 +1111,8 @@ void VoliroRopePlanner::lidarCallback(const sensor_msgs::PointCloud2ConstPtr &in
       points_close_to_rope_.clear();
       for (auto m:ropeVerlet->masses){
         std:vector<pcl::PointXYZ> points_near_mass;
-        Eigen::Vector3d drone_to_mass = m->position - drone_pos;
-        pcl::PointXYZ searchPoint{drone_to_mass(0),drone_to_mass(1),drone_to_mass(2)}; 
-        if ( kdtree_filtered.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
+        pcl::PointXYZ searchPoint{m->position(0),m->position(1),m->position(2)}; 
+        if ( kdtree.nearestKSearch (searchPoint, K, pointIdx, pointDistSquared) > 0 ){
           for (std::size_t i = 0; i < pointIdx.size(); ++i){
             pcl::PointXYZ obs_point((*cloud_filtered)[pointIdx[i]].x, (*cloud_filtered)[pointIdx[i]].y, (*cloud_filtered)[pointIdx[i]].z);
             points_near_mass.push_back(obs_point);
