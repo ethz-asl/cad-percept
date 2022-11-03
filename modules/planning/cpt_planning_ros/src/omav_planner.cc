@@ -15,6 +15,8 @@ OMAVPlanner::OMAVPlanner(ros::NodeHandle nh, ros::NodeHandle nh_private)
 
   loadMesh();
 
+  ROS_WARN_STREAM("subscribing to presenter");
+  sub_presenter_ = nh.subscribe("presenter",1, &OMAVPlanner::presenterCallback, this);
   sub_joystick_ = nh.subscribe("joy", 1, &OMAVPlanner::joystickCallback, this);
   sub_odometry_ = nh.subscribe("odometry", 1, &OMAVPlanner::odometryCallback, this);
   tf_update_timer_ = nh.createTimer(ros::Duration(1), &OMAVPlanner::tfUpdateCallback,
@@ -202,7 +204,7 @@ void OMAVPlanner::generateTrajectoryOdom(const OMAVPlanner::Policies &policies,
 
       // convert to odom frame
       ROS_WARN_ONCE("DANGER, ASSUMING ENU = ODOM= MESH here");
-      pt_odom.orientation_W_B = Eigen::Quaterniond( R );
+      pt_odom.orientation_W_B = Eigen::Quaterniond(R);
 
     } else {
       pt_odom.orientation_W_B = T_odom_body_.rotation();
@@ -218,12 +220,12 @@ void OMAVPlanner::generateTrajectoryOdom(const OMAVPlanner::Policies &policies,
 }
 
 void OMAVPlanner::publishTrajectory(const mav_msgs::EigenTrajectoryPoint::Vector &trajectory_odom) {
-  // publish marker message of trajectory
+  //publish marker message of trajectory
   visualization_msgs::MarkerArray markers;
   double distance = 0.1;  // Distance by which to seperate additional markers. Set 0.0 to disable.
-  mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom, distance,
-                                                      fixed_params_.odom_frame, &markers);
-  pub_marker_.publish(markers);
+  //mav_trajectory_generation::drawMavSampledTrajectory(trajectory_odom, distance,
+   //                                                   fixed_params_.odom_frame, &markers);
+  //pub_marker_.publish(markers);
 
   if (dynamic_params_.output_enable) {
     trajectory_msgs::MultiDOFJointTrajectory msg;
@@ -309,6 +311,44 @@ void OMAVPlanner::publishMarkers() {
   pub_marker_.publish(msg);
 }
 
+void OMAVPlanner::presenterCallback(const geometry_msgs::Vector3StampedPtr &vctr) {
+  Eigen::Vector2d input{vctr->vector.x, vctr->vector.y};
+  if (!zeroed_) {
+    ROS_WARN("ZEROED");
+    // don't do nothing
+      target_uvh_ = mapping_->point3DtoUVH((T_enu_odom_ * T_odom_body_).translation());
+    target_temp_uvh_ = target_uvh_;
+       zeroed_ = true;
+   return;
+  }
+
+  Eigen::Vector3d current_uvh_ = mapping_->point3DtoUVH((T_enu_odom_ * T_odom_body_).translation());
+
+  ROS_WARN_STREAM("current_uvh" << current_uvh_.transpose());
+
+  target_temp_uvh_.x() += -input.x() * dynamic_params_.joystick_xy_scaling;
+  target_temp_uvh_.y() +=  input.y() * dynamic_params_.joystick_xy_scaling;
+  target_temp_uvh_.z() = dynamic_params_.terrain_min_dist;
+
+  ROS_WARN_STREAM("new target" << target_temp_uvh_.transpose());
+  // clamp to manifold (avoid going out of the map)
+  target_temp_uvh_.topRows<2>() =
+      (Eigen::Vector2d)mapping_->clipToManifold((Eigen::Vector2d)target_temp_uvh_.topRows<2>());
+
+  // convert to xyz target
+  target_temp_xyz_ = mapping_->pointUVHto3D(target_temp_uvh_);
+
+
+  target_xyz_ = target_temp_xyz_;
+  target_uvh_ = target_temp_uvh_;
+
+  if(input.norm() > 0.01) {
+    runPlanner();
+  }
+  publishMarkers();
+
+}
+
 void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
   if (joy->buttons[5]) {
     target_uvh_ = mapping_->point3DtoUVH((T_enu_odom_ * T_odom_body_).translation());
@@ -316,11 +356,10 @@ void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
     zeroed_ = true;
   }
 
-  if(joy->buttons[8]){
+  if (joy->buttons[8]) {
     last_button_state_ = joy->buttons[0];
     return;
   }
-
 
   //
   Eigen::Vector3d current_uvh_ = mapping_->point3DtoUVH((T_enu_odom_ * T_odom_body_).translation());
@@ -335,7 +374,6 @@ void OMAVPlanner::joystickCallback(const sensor_msgs::JoyConstPtr &joy) {
   // clamp to manifold (avoid going out of the map)
   target_temp_uvh_.topRows<2>() =
       (Eigen::Vector2d)mapping_->clipToManifold((Eigen::Vector2d)target_temp_uvh_.topRows<2>());
-
 
   // convert to xyz target
   target_temp_xyz_ = mapping_->pointUVHto3D(target_temp_uvh_);

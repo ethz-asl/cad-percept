@@ -32,6 +32,7 @@
     <depend>sensor_msgs</depend>
     <depend>pcl_ros</depend>
     <depend>mav_msgs</depend>
+    <depend>cv_bridge</depend>
     <depend>mav_trajectory_generation_ros</depend>
     <depend>nav_msgs</depend>
 </package>

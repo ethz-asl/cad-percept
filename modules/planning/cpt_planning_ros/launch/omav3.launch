@@ -1,0 +1,33 @@
+<launch>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="world_broadcaster"
+          args="0 0 0 0 0 0 1  enu world"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="odom_broadcaster"
+          args="0 0 0 0 0 0 1  enu odom"/>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="mesh_broadcaster"
+          args="2.163 -0.049 -0.138 0.011 0.011 -0.049 0.999 world mesh"/>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="mesh2d_broadcaster"
+          args="-4 -2 0 0 0 0 1 world mesh2d"/>
+
+
+
+    <node name="omav_planner_node" pkg="cpt_planning_ros" type="omav_planner_node"
+          output="screen">
+        <param name="zero_angle" value="0.8"/>
+        <param name="zero_x" value="0.0"/>
+        <param name="zero_y" value="0.0"/>
+        <param name="zero_z" value="0.0"/>
+        <param name="output_enable" value="false"/>
+        <param name="odom_frame" value="world"/>
+        <param name="current_reference_frame" value="stork/current_reference"/>
+        <remap from="odometry" to="/stork/ground_truth/odometry"/>
+        <remap from="cmd_trajectory" to="/stork/command/trajectory"/>
+        <remap from="presenter" to="/presenter"/>
+        <param name="mesh_path"
+               value="/home/mpantic/ws/rmp/src/manifold_simulations/models/vicon_wall/vicon_wall.off"/>
+
+    </node>
+
+</launch>

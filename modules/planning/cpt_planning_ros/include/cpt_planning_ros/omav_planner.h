@@ -102,6 +102,7 @@ class OMAVPlanner {
 
   // callbacks to update stuff
   void joystickCallback(const sensor_msgs::JoyConstPtr &joy);
+  void presenterCallback(const geometry_msgs::Vector3StampedPtr& vctr);
   void odometryCallback(const nav_msgs::OdometryConstPtr &odom);
   void tfUpdateCallback(const ros::TimerEvent &event);
   void configCallback(cpt_planning_ros::RMPConfigConfig &config, uint32_t level);
@@ -129,6 +130,7 @@ class OMAVPlanner {
 
   ros::Subscriber sub_joystick_;  // setpoint via joystick
   ros::Subscriber sub_odometry_;  // curent odom
+  ros::Subscriber sub_presenter_;  // curent odom
 
   ros::Timer tf_update_timer_;
   // UAV State
